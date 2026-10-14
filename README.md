@@ -173,3 +173,11 @@ estar suscrita a la app: `scripts/meta-subscribe.sh <WABA_ID> <APP_ID>`.
       y simulador local.
 - [ ] Conectar un número real de WhatsApp y publicar en Vercel.
 - [ ] **Fase 3:** rate limiting, Sentry, CI, política de privacidad y salida a producción en Meta.
+
+## Licencia
+
+Copyright (c) 2026 Santiago Rodriguez Gutierrez. **Todos los derechos reservados.**
+
+Este repositorio es público solo para consulta. No se permite usar, copiar, modificar, distribuir
+ni ofrecer el software como servicio sin autorización previa y por escrito del titular. Consulta
+los términos completos en [LICENSE](LICENSE). Para solicitar permisos: santiagorock000@gmail.com.
