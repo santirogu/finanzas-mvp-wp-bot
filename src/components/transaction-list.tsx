@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { deleteTransactionAction } from "@/modules/transactions/actions";
 import type { TransactionRow } from "@/modules/transactions/queries";
 import { formatShortDate } from "@/lib/dates";
@@ -38,6 +39,18 @@ export function TransactionList({
               {isIncome ? "+" : "−"}
               {formatMoney(t.amount, t.currency)}
             </span>
+            {allowDelete && (
+              <Link
+                href={`/movimientos/${t.id}/editar`}
+                aria-label={`Editar ${t.description}`}
+                title="Editar"
+                className="rounded-md p-1.5 text-muted transition hover:bg-brand/10 hover:text-brand"
+              >
+                <svg viewBox="0 0 20 20" fill="currentColor" className="size-4" aria-hidden>
+                  <path d="M13.586 3.586a2 2 0 1 1 2.828 2.828l-.793.793-2.828-2.828.793-.793ZM11.379 5.793 3 14.172V17h2.828l8.38-8.379-2.83-2.828Z" />
+                </svg>
+              </Link>
+            )}
             {allowDelete && (
               <form action={deleteTransactionAction}>
                 <input type="hidden" name="id" value={t.id} />

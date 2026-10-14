@@ -1,9 +1,9 @@
 # Finanzas MVP + Bot de WhatsApp
 
 App web para registrar ingresos y egresos y ver el balance del mes actual. Cada usuario tiene
-su propia sesión y su dashboard con tres pestañas: **Resumen**, **Ingresos** y **Egresos**.
-Próximamente: registrar movimientos escribiéndole a un bot de WhatsApp
-("me compré unos zapatos de $500.000").
+su propia sesión y su dashboard con tres pestañas: **Resumen**, **Ingresos** y **Egresos**, donde
+cada movimiento se puede editar o eliminar. También se registran escribiéndole a un bot de
+WhatsApp ("me compré unos zapatos de $500.000"), que entiende el mensaje con Claude.
 
 ## Stack
 
@@ -67,7 +67,7 @@ pnpm dev                        # http://localhost:3000
   Claude y WhatsApp se simulan: no cuestan dinero.
 - **E2E y accesibilidad** (`e2e/`, `pnpm test:e2e`, [Playwright](https://playwright.dev)): un
   navegador real recorre la app como un usuario contra un build de producción local, con su propia
-  base (`finanzas_e2e_test`): registro, login, ingresos, egresos, balance, borrar y salir (también
+  base (`finanzas_e2e_test`): registro, login, ingresos, egresos, balance, editar, borrar y salir (también
   en tamaño de celular), errores del formulario, el límite de intentos de login y que dos usuarios
   no vean los datos del otro. [axe-core](https://github.com/dequelabs/axe-core) revisa cada página
   (WCAG 2.1 A y AA) y falla ante problemas graves. **El bot de WhatsApp de punta a punta**

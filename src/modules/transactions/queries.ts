@@ -77,6 +77,25 @@ export async function listTransactions(
 
 export type TransactionRow = Awaited<ReturnType<typeof listTransactions>>[number];
 
+/** Un movimiento propio y no eliminado, para editarlo; null si no existe o es de otro usuario. */
+export async function getTransaction(userId: string, id: string) {
+  const [row] = await db
+    .select({
+      id: transaction.id,
+      type: transaction.type,
+      amount: transaction.amount,
+      description: transaction.description,
+      categoryId: transaction.categoryId,
+      occurredOn: transaction.occurredOn,
+      source: transaction.source,
+    })
+    .from(transaction)
+    .where(and(eq(transaction.id, id), eq(transaction.userId, userId), isNull(transaction.deletedAt)));
+  return row ?? null;
+}
+
+export type EditableTransaction = NonNullable<Awaited<ReturnType<typeof getTransaction>>>;
+
 export async function listCategories(userId: string, type: TransactionType) {
   return db
     .select({ id: category.id, name: category.name, emoji: category.emoji })

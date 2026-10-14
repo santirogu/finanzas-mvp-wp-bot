@@ -1,21 +1,42 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState, useEffect, useRef } from "react";
-import { createTransactionAction, type FormState } from "@/modules/transactions/actions";
+import {
+  createTransactionAction,
+  updateTransactionAction,
+  type FormState,
+} from "@/modules/transactions/actions";
 
 type CategoryOption = { id: string; name: string; emoji: string };
+
+/** Movimiento a editar; sin él, el formulario registra uno nuevo. */
+export type TransactionToEdit = {
+  id: string;
+  amount: number;
+  description: string;
+  categoryId: string | null;
+  occurredOn: string;
+};
 
 export function TransactionForm({
   type,
   categories,
   today,
+  transaction,
+  cancelHref,
 }: {
   type: "income" | "expense";
   categories: CategoryOption[];
   today: string;
+  transaction?: TransactionToEdit;
+  /** Adónde vuelve "Cancelar" al editar. */
+  cancelHref?: string;
 }) {
+  const editing = Boolean(transaction);
+  // Al editar, si se guarda bien, la Server Action redirige a la lista.
   const [state, formAction, pending] = useActionState<FormState, FormData>(
-    createTransactionAction,
+    editing ? updateTransactionAction : createTransactionAction,
     { ok: false },
   );
   const amountRef = useRef<HTMLInputElement>(null);
@@ -25,13 +46,16 @@ export function TransactionForm({
   }, [state]);
 
   const errors = state.fieldErrors ?? {};
-  const values = state.values ?? {};
+  // Lo que devolvió el servidor tras un error; si no, los datos del movimiento que se edita.
+  const values = state.values ?? (transaction ? valuesOf(transaction) : {});
   const isIncome = type === "income";
+  const noun = isIncome ? "ingreso" : "egreso";
 
   return (
     <form action={formAction} className="card space-y-4 p-4 sm:p-5">
-      <h2 className="font-semibold">{isIncome ? "Nuevo ingreso" : "Nuevo egreso"}</h2>
+      <h2 className="font-semibold">{editing ? `Editar ${noun}` : `Nuevo ${noun}`}</h2>
       <input type="hidden" name="type" value={type} />
+      {transaction && <input type="hidden" name="id" value={transaction.id} />}
 
       <Field label="Monto" error={errors.amount}>
         <div className="relative">
@@ -92,14 +116,33 @@ export function TransactionForm({
       </div>
 
       <button type="submit" disabled={pending} className="btn-primary w-full">
-        {pending ? "Guardando…" : isIncome ? "Registrar ingreso" : "Registrar egreso"}
+        {pending ? "Guardando…" : editing ? "Guardar cambios" : `Registrar ${noun}`}
       </button>
 
-      <p aria-live="polite" className="min-h-5 text-center text-sm text-income">
-        {state.ok ? `✓ ${state.message}` : ""}
+      {editing && cancelHref && (
+        <Link href={cancelHref} className="block text-center text-sm font-medium text-muted">
+          Cancelar
+        </Link>
+      )}
+
+      <p
+        aria-live="polite"
+        className={`min-h-5 text-center text-sm ${state.ok ? "text-income" : "text-expense"}`}
+      >
+        {state.ok ? `✓ ${state.message}` : (state.message ?? "")}
       </p>
     </form>
   );
+}
+
+/** Valores del formulario a partir de un movimiento guardado (el monto con separadores). */
+function valuesOf(transaction: TransactionToEdit): Record<string, string> {
+  return {
+    amount: transaction.amount.toLocaleString("es-CO"),
+    description: transaction.description,
+    categoryId: transaction.categoryId ?? "",
+    occurredOn: transaction.occurredOn,
+  };
 }
 
 function Field({

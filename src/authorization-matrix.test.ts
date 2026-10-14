@@ -25,6 +25,7 @@ const PAGES = {
   "/ingresos": "requiere sesión",
   "/egresos": "requiere sesión",
   "/simulador": "requiere sesión; solo en desarrollo",
+  "/movimientos/[id]/editar": "requiere sesión; solo movimientos propios (los demás dan 404)",
 } as const;
 
 const API_ROUTES = {
@@ -37,6 +38,7 @@ const API_ROUTES = {
 
 const SERVER_ACTIONS = {
   createTransactionAction: "requireUser; el dueño sale de la sesión, nunca del formulario",
+  updateTransactionAction: "requireUser; solo edita movimientos propios, sin cambiar su tipo",
   deleteTransactionAction: "requireUser; solo borra movimientos propios",
   generateLinkCodeAction: "requireUser; el código queda a nombre del usuario de la sesión",
   unlinkWhatsAppAction: "requireUser; solo desvincula el número propio",
@@ -162,7 +164,7 @@ describe("Server Actions", () => {
       const check = body.search(/await\s+requireUser\(\)/);
       expect(check, `${action.name} no llama a requireUser()`).toBeGreaterThan(-1);
       // Nada toca la base ni el bot antes de validar la sesión.
-      const firstDataAccess = body.search(/\bdb\.|createLinkCode\(|unlinkUser\(|handleIncomingMessage\(|isCategoryAvailable\(/);
+      const firstDataAccess = body.search(/\bdb\.|createLinkCode\(|unlinkUser\(|handleIncomingMessage\(|isCategoryAvailable\(|readForm\(/);
       expect(firstDataAccess === -1 || check < firstDataAccess, `${action.name} usa datos antes de validar la sesión`).toBe(true);
     }
   });

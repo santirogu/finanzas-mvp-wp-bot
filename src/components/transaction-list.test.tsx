@@ -66,6 +66,17 @@ describe("TransactionList", () => {
     expect(item).toHaveTextContent("Sin categoría");
   });
 
+  it("solo con allowDelete muestra el enlace para editar cada movimiento", () => {
+    const { rerender } = render(<TransactionList emptyMessage="vacío" items={[row()]} />);
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+
+    rerender(<TransactionList emptyMessage="vacío" items={[row()]} allowDelete />);
+    expect(screen.getByRole("link", { name: "Editar Zapatos" })).toHaveAttribute(
+      "href",
+      "/movimientos/00000000-0000-4000-8000-000000000001/editar",
+    );
+  });
+
   it("solo con allowDelete muestra el botón de eliminar, con nombre accesible y el id del movimiento", () => {
     const { rerender } = render(<TransactionList emptyMessage="vacío" items={[row()]} />);
     expect(screen.queryByRole("button")).not.toBeInTheDocument();

@@ -9,8 +9,16 @@ const TABS = [
   { href: "/egresos", label: "Egresos" },
 ] as const;
 
+/** Pestañas que marcan la ruta actual (lee la URL: va dentro de Suspense en el layout). */
 export function NavTabs() {
-  const pathname = usePathname();
+  return <TabLinks pathname={usePathname()} />;
+}
+
+/**
+ * Las pestañas en sí. Sin `pathname` no marca ninguna: es el respaldo del layout mientras se
+ * resuelve la URL de una ruta dinámica (p. ej. /movimientos/[id]/editar).
+ */
+export function TabLinks({ pathname }: { pathname: string | null }) {
   return (
     <nav className="-mb-px mt-3 flex gap-1 overflow-x-auto">
       {TABS.map((tab) => {

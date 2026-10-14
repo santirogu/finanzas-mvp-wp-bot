@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { NavTabs } from "./nav-tabs";
+import { NavTabs, TabLinks } from "./nav-tabs";
 import { UserMenu } from "./user-menu";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -17,7 +17,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </Suspense>
         </div>
         <div className="mx-auto max-w-5xl px-4">
-          <NavTabs />
+          {/* En rutas con un id en la URL, la ruta actual se conoce recién en cada request
+              (Cache Components): mientras tanto, las pestañas sin ninguna marcada. */}
+          <Suspense fallback={<TabLinks pathname={null} />}>
+            <NavTabs />
+          </Suspense>
         </div>
       </header>
       <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 sm:py-8">{children}</main>
