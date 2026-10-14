@@ -1,6 +1,6 @@
-// Tablas requeridas por Better Auth (user, session, account, verification).
+// Tablas requeridas por Better Auth (user, session, account, verification, rateLimit).
 // Si cambias la configuración de Better Auth, revisa que estos campos sigan coincidiendo.
-import { boolean, index, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { bigint, boolean, index, integer, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -76,4 +76,18 @@ export const verification = pgTable(
       .$onUpdate(() => new Date()),
   },
   (t) => [index("verification_identifier_idx").on(t.identifier)],
+);
+
+// Límite de intentos de Better Auth (rateLimit.storage = "database"): una fila por IP y ruta, con
+// cuántos pedidos van en la ventana actual. Better Auth borra sola las filas vencidas.
+export const rateLimit = pgTable(
+  "rate_limit",
+  {
+    id: text("id").primaryKey(),
+    key: text("key").notNull().unique(),
+    count: integer("count").notNull(),
+    // Milisegundos desde 1970 (Date.now()), como los guarda Better Auth.
+    lastRequest: bigint("last_request", { mode: "number" }).notNull(),
+  },
+  (t) => [index("rate_limit_last_request_idx").on(t.lastRequest)],
 );
