@@ -1,7 +1,7 @@
 import "server-only";
 import { envVar } from "@/lib/env";
 
-const GRAPH_VERSION = envVar("WHATSAPP_GRAPH_VERSION") || "v23.0";
+const GRAPH_VERSION = envVar("WHATSAPP_GRAPH_VERSION") || "v26.0";
 
 export type SendResult = { ok: true } | { ok: false; error: string };
 export type Sender = (to: string, body: string) => Promise<SendResult>;
