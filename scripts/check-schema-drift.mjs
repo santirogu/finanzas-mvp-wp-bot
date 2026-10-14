@@ -10,23 +10,31 @@
 // Uso: pnpm db:check-drift   (no necesita conexión a la base de datos)
 
 import { spawnSync } from "node:child_process";
-import { existsSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const MIGRATIONS_DIR = "drizzle";
 
-/** Contenido de todos los archivos de una carpeta: { "ruta/relativa": "contenido" }. */
+/**
+ * Contenido de todos los archivos de una carpeta: { "ruta/relativa": "contenido" }.
+ * Usa el tipo que devuelve readdir en vez de revisar cada ruta antes de leerla, para no abrir una
+ * ventana entre "revisar" y "usar" el archivo (condición de carrera que señala CodeQL).
+ */
 export function snapshot(dir) {
   const files = {};
   const walk = (current) => {
-    for (const name of readdirSync(current)) {
-      const path = join(current, name);
-      if (statSync(path).isDirectory()) walk(path);
-      else files[relative(dir, path)] = readFileSync(path, "utf8");
+    for (const entry of readdirSync(current, { withFileTypes: true })) {
+      const path = join(current, entry.name);
+      if (entry.isDirectory()) walk(path);
+      else if (entry.isFile()) files[relative(dir, path)] = readFileSync(path, "utf8");
     }
   };
-  if (existsSync(dir)) walk(dir);
+  try {
+    walk(dir);
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error; // la carpeta no existe: snapshot vacío
+  }
   return files;
 }
 
