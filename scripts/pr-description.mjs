@@ -13,9 +13,22 @@ export const OPTIONAL_SECTIONS = ["Additional Notes"];
 // Por debajo de esto se asume que la sección quedó vacía o con un "N/A".
 export const MIN_CONTENT_LENGTH = 10;
 
+/**
+ * Quita los comentarios HTML de la plantilla. Se repite hasta que no quede ninguno: una sola
+ * pasada deja restos con entradas como "<!<!-- -->-- x -->", que forman un comentario nuevo.
+ */
+export function stripHtmlComments(text) {
+  let previous;
+  do {
+    previous = text;
+    text = text.replace(/<!--[\s\S]*?-->/g, "");
+  } while (text !== previous);
+  return text;
+}
+
 /** Separa el markdown en secciones de nivel 2 ("## Título") con su contenido. */
 export function parseSections(body) {
-  const text = (body ?? "").replace(/\r\n/g, "\n").replace(/<!--[\s\S]*?-->/g, "");
+  const text = stripHtmlComments((body ?? "").replace(/\r\n/g, "\n"));
   const sections = new Map();
   let current = null;
   for (const line of text.split("\n")) {

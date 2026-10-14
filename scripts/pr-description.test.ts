@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { parseSections, validateDescription } from "./pr-description.mjs";
+import { parseSections, stripHtmlComments, validateDescription } from "./pr-description.mjs";
 
 const valid = `## Why
 Desplegar en cada merge gastaba builds en cambios que no tocan la app.
@@ -28,7 +28,10 @@ describe("validateDescription", () => {
   });
 
   it("acepta saltos de línea de Windows y mayúsculas distintas en los encabezados", () => {
-    const body = valid.replace(/\n/g, "\r\n").replace("## Why", "## WHY").replace("## How", "## how");
+    const body = valid
+      .replace(/\n/g, "\r\n")
+      .replace("## Why", "## WHY")
+      .replace("## How", "## how");
     expect(validateDescription(body)).toEqual({ ok: true });
   });
 
@@ -64,7 +67,8 @@ describe("validateDescription", () => {
   });
 
   it("no confunde un ### subtítulo con una sección", () => {
-    const body = "## Why\nPorque sí, de verdad.\n### What\nno cuenta\n## How\nAsí se hizo y se probó.";
+    const body =
+      "## Why\nPorque sí, de verdad.\n### What\nno cuenta\n## How\nAsí se hizo y se probó.";
     expect(validateDescription(body)).toEqual({
       ok: false,
       errors: ['Falta la sección "## What".'],
@@ -75,5 +79,19 @@ describe("validateDescription", () => {
 describe("parseSections", () => {
   it("ignora los comentarios HTML de la plantilla", () => {
     expect(parseSections("## Why\n<!-- pista -->\nReal").get("why")).toBe("Real");
+  });
+});
+
+describe("stripHtmlComments", () => {
+  it("quita comentarios anidados que una sola pasada dejaría armados", () => {
+    expect(stripHtmlComments("a<!<!-- -->-- oculto -->b")).toBe("ab");
+  });
+
+  it("quita varios comentarios y conserva el texto entre ellos", () => {
+    expect(stripHtmlComments("<!-- uno -->visible<!-- dos\nlíneas -->")).toBe("visible");
+  });
+
+  it("deja el texto sin comentarios tal cual", () => {
+    expect(stripHtmlComments("## Why\nPorque sí")).toBe("## Why\nPorque sí");
   });
 });

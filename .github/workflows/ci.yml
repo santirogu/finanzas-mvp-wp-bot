@@ -14,6 +14,11 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+# Menor privilegio: el token del CI solo puede leer el código (los jobs que necesitan más
+# permisos los declaran por su cuenta).
+permissions:
+  contents: read
+
 jobs:
   checks:
     name: Lint, tipos y pruebas
@@ -41,7 +46,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
 
       - uses: actions/setup-node@v4
         with:
@@ -170,6 +175,11 @@ jobs:
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && needs.changes.outputs.deploy == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # Registra cada publicación en el entorno "production": es el historial que usa el job
+    # "Detectar cambios de la app" para saber qué fue lo último desplegado.
+    permissions:
+      contents: read
+      deployments: write
     environment:
       name: production
       url: https://finanzas-mvp-wp-bot.vercel.app
@@ -185,7 +195,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
 
       - uses: actions/setup-node@v4
         with:

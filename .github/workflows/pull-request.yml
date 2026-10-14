@@ -6,6 +6,11 @@ on:
   pull_request:
     types: [opened, edited, synchronize, reopened]
 
+# Menor privilegio: el token del CI solo puede leer el código (los jobs que necesitan más
+# permisos los declaran por su cuenta).
+permissions:
+  contents: read
+
 jobs:
   # Con "squash and merge", el título del PR se convierte en el commit de main:
   # validarlo garantiza que todo el historial siga Conventional Commits.
