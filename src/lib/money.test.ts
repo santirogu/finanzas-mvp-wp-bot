@@ -13,7 +13,7 @@ describe("parseAmountInput", () => {
     expect(parseAmountInput(input)).toBe(expected);
   });
 
-  it.each(["", "abc", "0", "$0", "-"])("rechaza %j", (input) => {
+  it.each(["", "abc", "0", "$0", "-", "-5.000", "$-500.000", "5.000-"])("rechaza %j", (input) => {
     expect(parseAmountInput(input)).toBeNull();
   });
 });
