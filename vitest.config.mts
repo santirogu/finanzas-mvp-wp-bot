@@ -15,11 +15,11 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       // Lógica de negocio y servidor. La interfaz (src/app, src/components) se cubrirá con E2E.
-      include: ["src/lib/**", "src/modules/**", "src/db/**", "src/app/api/**"],
+      include: ["src/lib/**", "src/modules/**", "src/db/**", "src/app/api/**", "scripts/*.mjs"],
       exclude: ["**/*.test.ts", "src/modules/bot/eval/**", "src/lib/auth-client.ts"],
       reporter: ["text", "json-summary", "html"],
       // Piso actual: el CI falla si la cobertura baja. Súbelo a medida que agregues pruebas.
-      thresholds: { lines: 70, statements: 70, functions: 65, branches: 65 },
+      thresholds: { lines: 85, statements: 85, functions: 80, branches: 80 },
     },
     projects: [
       {

@@ -41,11 +41,23 @@ describe("parseCommand", () => {
 });
 
 describe("normalizeTransactions", () => {
-  const base = { type: "expense" as const, amount: 500000, description: "zapatos", category: "Ropa", date: "2026-10-13" };
+  const base = {
+    type: "expense" as const,
+    amount: 500000,
+    description: "zapatos",
+    category: "Ropa",
+    date: "2026-10-13",
+  };
 
   it("acepta una transacción válida y capitaliza la descripción", () => {
     expect(normalizeTransactions([base], ctx)).toEqual([
-      { type: "expense", amount: 500000, description: "Zapatos", category: "Ropa", occurredOn: "2026-10-13" },
+      {
+        type: "expense",
+        amount: 500000,
+        description: "Zapatos",
+        category: "Ropa",
+        occurredOn: "2026-10-13",
+      },
     ]);
   });
 
@@ -69,7 +81,49 @@ describe("normalizeTransactions", () => {
   });
 
   it("respeta fechas pasadas razonables", () => {
-    expect(normalizeTransactions([{ ...base, date: "2026-10-12" }], ctx)[0].occurredOn).toBe("2026-10-12");
+    expect(normalizeTransactions([{ ...base, date: "2026-10-12" }], ctx)[0].occurredOn).toBe(
+      "2026-10-12",
+    );
+  });
+
+  it("reemplaza por hoy una fecha con mes inexistente", () => {
+    expect(normalizeTransactions([{ ...base, date: "2026-13-01" }], ctx)[0].occurredOn).toBe(
+      "2026-10-13",
+    );
+  });
+
+  // Falla conocida: Date.parse acepta "2026-02-30" (lo corre al 2 de marzo), la fecha pasa la
+  // validación y Postgres la rechaza al guardar. Se corregirá en una rama fix/; luego quitar `.fails`.
+  it.fails("reemplaza por hoy una fecha imposible como el 30 de febrero", () => {
+    expect(normalizeTransactions([{ ...base, date: "2026-02-30" }], ctx)[0].occurredOn).toBe(
+      "2026-10-13",
+    );
+  });
+
+  it("usa una descripción por defecto si viene vacía", () => {
+    const [expense, income] = normalizeTransactions(
+      [
+        { ...base, description: "   " },
+        { ...base, type: "income", description: "" },
+      ],
+      ctx,
+    );
+    expect(expense.description).toBe("Gasto");
+    expect(income.description).toBe("Ingreso");
+  });
+
+  it("recorta descripciones largas a 140 caracteres y une espacios", () => {
+    const [t] = normalizeTransactions(
+      [{ ...base, description: `zapatos   de\n${"x".repeat(200)}` }],
+      ctx,
+    );
+    expect(t.description).toHaveLength(140);
+    expect(t.description.startsWith("Zapatos de x")).toBe(true);
+  });
+
+  it("descarta tipos desconocidos", () => {
+    const raw = [{ ...base, type: "transfer" as unknown as "expense" }];
+    expect(normalizeTransactions(raw, ctx)).toEqual([]);
   });
 
   it("usa la categoría del tipo correcto", () => {
@@ -87,12 +141,19 @@ describe("matchCategory", () => {
   it("cae en 'Otros' si la categoría no existe", () => {
     expect(matchCategory("Mascotas", categories.expense)).toBe("Otros");
   });
+
+  it("devuelve null si no existe la categoría ni 'Otros'", () => {
+    expect(matchCategory("Mascotas", ["Ropa", "Mercado"])).toBeNull();
+  });
 });
 
 describe("interpretMessage", () => {
   it("resuelve comandos sin llamar a la IA", async () => {
     const extractor = fakeExtractor({ ok: true, transactions: [], reply: null, usage });
-    expect(await interpretMessage("balance", ctx, extractor)).toEqual({ kind: "command", command: "balance" });
+    expect(await interpretMessage("balance", ctx, extractor)).toEqual({
+      kind: "command",
+      command: "balance",
+    });
     expect(extractor).not.toHaveBeenCalled();
   });
 
@@ -109,11 +170,23 @@ describe("interpretMessage", () => {
   it("devuelve las transacciones validadas", async () => {
     const extractor = fakeExtractor({
       ok: true,
-      transactions: [{ type: "expense", amount: 500000, description: "Zapatos", category: "Ropa", date: "2026-10-13" }],
+      transactions: [
+        {
+          type: "expense",
+          amount: 500000,
+          description: "Zapatos",
+          category: "Ropa",
+          date: "2026-10-13",
+        },
+      ],
       reply: null,
       usage,
     });
-    const intent = await interpretMessage("me compré unos zapatos que me costaron $500.000", ctx, extractor);
+    const intent = await interpretMessage(
+      "me compré unos zapatos que me costaron $500.000",
+      ctx,
+      extractor,
+    );
     expect(intent).toMatchObject({
       kind: "transactions",
       items: [{ type: "expense", amount: 500000, description: "Zapatos", category: "Ropa" }],
@@ -121,7 +194,12 @@ describe("interpretMessage", () => {
   });
 
   it("devuelve la pregunta de aclaración de la IA", async () => {
-    const extractor = fakeExtractor({ ok: true, transactions: [], reply: "¿Cuánto te costaron?", usage });
+    const extractor = fakeExtractor({
+      ok: true,
+      transactions: [],
+      reply: "¿Cuánto te costaron?",
+      usage,
+    });
     expect(await interpretMessage("me compré unos zapatos", ctx, extractor)).toMatchObject({
       kind: "reply",
       text: "¿Cuánto te costaron?",
@@ -131,7 +209,15 @@ describe("interpretMessage", () => {
   it("pide el monto si la IA propuso uno inválido", async () => {
     const extractor = fakeExtractor({
       ok: true,
-      transactions: [{ type: "expense", amount: 0, description: "Zapatos", category: "Ropa", date: "2026-10-13" }],
+      transactions: [
+        {
+          type: "expense",
+          amount: 0,
+          description: "Zapatos",
+          category: "Ropa",
+          date: "2026-10-13",
+        },
+      ],
       reply: null,
       usage,
     });
@@ -143,6 +229,29 @@ describe("interpretMessage", () => {
     expect(await interpretMessage("gasté 20 mil", ctx, extractor)).toMatchObject({
       kind: "error",
       reason: "not_configured",
+    });
+  });
+
+  it("responde sin llamar a la IA si el mensaje es demasiado largo", async () => {
+    const extractor = fakeExtractor({ ok: true, transactions: [], reply: null, usage });
+    const intent = await interpretMessage("gasté ".repeat(200), ctx, extractor);
+    expect(intent).toMatchObject({ kind: "reply", text: expect.stringContaining("muy largo") });
+    expect(extractor).not.toHaveBeenCalled();
+  });
+
+  it("un mensaje vacío muestra la ayuda", async () => {
+    const extractor = fakeExtractor({ ok: true, transactions: [], reply: null, usage });
+    expect(await interpretMessage("   ", ctx, extractor)).toEqual({
+      kind: "command",
+      command: "help",
+    });
+  });
+
+  it("usa una respuesta por defecto si la IA no da ni movimientos ni texto", async () => {
+    const extractor = fakeExtractor({ ok: true, transactions: [], reply: null, usage });
+    expect(await interpretMessage("algo raro", ctx, extractor)).toMatchObject({
+      kind: "reply",
+      text: expect.stringContaining("gasté $20.000 en almuerzo"),
     });
   });
 
