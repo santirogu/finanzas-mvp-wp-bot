@@ -66,6 +66,10 @@ jobs:
       - name: Tipos
         run: pnpm typecheck
 
+      # Falla si src/db/schema/ cambió sin su migración en drizzle/ (no necesita base de datos).
+      - name: Migraciones al día (schema drift)
+        run: pnpm db:check-drift
+
       - name: Pruebas unitarias y de integración con cobertura
         run: pnpm test:coverage
 

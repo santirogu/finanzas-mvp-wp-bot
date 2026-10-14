@@ -14,6 +14,7 @@
     "db:up": "docker compose up -d",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
+    "db:check-drift": "node scripts/check-schema-drift.mjs",
     "db:seed": "tsx scripts/seed.ts",
     "db:studio": "drizzle-kit studio",
     "db:setup": "pnpm db:migrate && pnpm db:seed",
