@@ -23,6 +23,7 @@ export default defineConfig({
         "src/app/api/**",
         "src/app/**/actions.ts",
         "src/proxy.ts",
+        "src/app/robots.ts",
         "src/components/**",
         "src/app/**/{auth-form,nav-tabs,whatsapp-connect,page-skeleton}.tsx",
         "scripts/*.mjs",
