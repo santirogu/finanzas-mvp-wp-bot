@@ -5,10 +5,11 @@ on:
     branches: [main]
   pull_request:
 
-# Si llega un push nuevo a la misma rama, cancela la corrida anterior.
+# En PRs, un push nuevo cancela la corrida anterior. En main nunca se cancela:
+# podría cortar un despliegue a mitad de una migración.
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   checks:
@@ -77,3 +78,53 @@ jobs:
           name: coverage
           path: coverage/
           retention-days: 14
+
+  # Solo se despliega si el job anterior pasó por completo, y solo desde main.
+  # Vercel no despliega por su cuenta (vercel.json → git.deploymentEnabled: false),
+  # así que ni el código ni las migraciones llegan a producción sin pasar el CI.
+  deploy:
+    name: Desplegar a producción
+    needs: checks
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: production
+      url: https://finanzas-mvp-wp-bot.vercel.app
+    # Un despliegue a la vez; uno nuevo espera a que termine el anterior (no lo cancela a mitad).
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Verificar credenciales de Vercel
+        run: |
+          for name in VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID; do
+            if [ -z "${!name}" ]; then echo "::error::Falta el secreto $name en GitHub"; exit 1; fi
+          done
+
+      - name: Descargar configuración y variables de producción
+        run: pnpm dlx vercel@61.1.0 pull --yes --environment=production --token="$VERCEL_TOKEN"
+
+      # Ejecuta `pnpm vercel-build`: migraciones + categorías + build de Next.js.
+      - name: Migrar base de datos y compilar
+        run: pnpm dlx vercel@61.1.0 build --prod --token="$VERCEL_TOKEN"
+
+      - name: Publicar en producción
+        run: pnpm dlx vercel@61.1.0 deploy --prebuilt --prod --token="$VERCEL_TOKEN"
+

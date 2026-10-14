@@ -108,21 +108,29 @@ scripts/seed.ts                     Categorías por defecto
 En desarrollo, sin credenciales de Meta, las respuestas se imprimen en la consola. Para probar sin
 WhatsApp, usa el simulador en `/simulador`.
 
-## Despliegue en Vercel + Neon
+## Despliegue (bloqueado por el CI)
 
-Cada despliegue ejecuta `pnpm vercel-build`: aplica las migraciones pendientes, inserta las
-categorías por defecto (idempotente) y compila la app.
+**Nada llega a producción sin pasar el CI.** Vercel no despliega por su cuenta
+(`vercel.json` → `git.deploymentEnabled: false`); lo hace el job `deploy` de
+`.github/workflows/ci.yml`, que solo corre en `main` y solo si lint, tipos y todas las pruebas
+pasaron. Ese job ejecuta `pnpm vercel-build` (migraciones + categorías + build) y publica con
+`vercel deploy --prebuilt --prod`. Así, tampoco una migración rota llega a la base de producción.
 
-1. **Importar:** en [vercel.com](https://vercel.com) → *Add New → Project* → importa este repo.
-   Agrega `BETTER_AUTH_SECRET` (uno distinto al local). El primer despliegue falla porque aún no
-   hay base de datos: es esperado.
-2. **Base de datos:** en el proyecto → *Storage → Create Database → Neon* → conéctala al proyecto.
-   Vercel crea `DATABASE_URL` (con pooler) y `DATABASE_URL_UNPOOLED` (para migraciones).
-3. **Redesplegar:** *Deployments → … → Redeploy*. La URL pública se detecta sola
-   (`VERCEL_PROJECT_PRODUCTION_URL`); `BETTER_AUTH_URL` solo hace falta con dominio propio.
-4. **Bot:** agrega `ANTHROPIC_API_KEY` y las variables `WHATSAPP_*` de `.env.example`, y redespliega.
-5. **Webhook en Meta:** URL `https://<tu-app>.vercel.app/api/whatsapp/webhook`, el mismo
-   `WHATSAPP_VERIFY_TOKEN` y suscripción al campo `messages`.
+Secretos necesarios en GitHub (*Settings → Secrets and variables → Actions*):
+
+| Secreto | De dónde sale |
+|---|---|
+| `VERCEL_TOKEN` | vercel.com → Account Settings → Tokens |
+| `VERCEL_ORG_ID` | Vercel → Team Settings → General → Team ID (`team_…`) |
+| `VERCEL_PROJECT_ID` | Vercel → proyecto → Settings → General → Project ID (`prj_…`) |
+
+Variables de la app en Vercel (*Settings → Environment Variables*): `DATABASE_URL` y
+`DATABASE_URL_UNPOOLED` (las crea Neon), `BETTER_AUTH_SECRET`, `ANTHROPIC_API_KEY` y las
+`WHATSAPP_*` de `.env.example`. `BETTER_AUTH_URL` solo hace falta con dominio propio.
+
+Webhook en Meta: `https://<tu-app>.vercel.app/api/whatsapp/webhook`, el mismo
+`WHATSAPP_VERIFY_TOKEN` y suscripción al campo `messages`. La cuenta de WhatsApp Business debe
+estar suscrita a la app: `scripts/meta-subscribe.sh <WABA_ID> <APP_ID>`.
 
 ## Roadmap
 
