@@ -3,7 +3,8 @@
 App web para registrar ingresos y egresos y ver el balance del mes actual. Cada usuario tiene
 su propia sesión y su dashboard con tres pestañas: **Resumen**, **Ingresos** y **Egresos**, donde
 cada movimiento se puede editar o eliminar. También se registran escribiéndole a un bot de
-WhatsApp ("me compré unos zapatos de $500.000"), que entiende el mensaje con Claude.
+WhatsApp ("me compré unos zapatos de $500.000"), que entiende el mensaje con Claude. En **Mi
+cuenta**, cada persona puede eliminar su cuenta y todos sus datos (confirmando con su contraseña).
 
 ## Stack
 

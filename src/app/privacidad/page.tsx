@@ -102,17 +102,19 @@ export default function PrivacyPage() {
         <section>
           <h2>Cuánto tiempo los conservamos</h2>
           <p>
-            Conservamos tus datos mientras tu cuenta esté activa. Cuando solicitas eliminar tu
-            cuenta, borramos tus datos en un plazo máximo de 30 días.
+            Conservamos tus datos mientras tu cuenta esté activa. Si eliminas tu cuenta desde la
+            app, tus datos se borran de inmediato; si lo pides por correo, en un plazo máximo de 30
+            días.
           </p>
         </section>
 
         <section>
           <h2>Tus derechos</h2>
           <p>
-            Puedes conocer, actualizar, rectificar y solicitar la eliminación de tus datos, así como
-            revocar la autorización para tratarlos. Para ejercer cualquiera de estos derechos,
-            escríbenos a{" "}
+            Puedes conocer, actualizar, rectificar y eliminar tus datos, así como revocar la
+            autorización para tratarlos. Tus movimientos los puedes editar o eliminar en la app, y
+            tu cuenta completa la puedes eliminar en <strong>Mi cuenta</strong>. Para cualquier otra
+            solicitud, escríbenos a{" "}
             <a href={`mailto:${CONTACT_EMAIL}`} className="text-brand underline">
               {CONTACT_EMAIL}
             </a>

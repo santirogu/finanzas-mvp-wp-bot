@@ -14,16 +14,21 @@ export function DataDeletionSteps() {
         número”. El bot deja de asociar tus mensajes a tu cuenta.
       </li>
       <li>
-        <strong>Eliminar tu cuenta y todos tus datos:</strong> envía un correo a{" "}
+        <strong>Eliminar tu cuenta y todos tus datos:</strong> entra a la app, toca{" "}
+        <strong>Mi cuenta</strong> → “Eliminar mi cuenta” y confirma con tu contraseña. Se borran
+        de inmediato tu cuenta, tus movimientos, el vínculo con tu WhatsApp y los mensajes que le
+        enviaste al bot.
+      </li>
+      <li>
+        <strong>Si no puedes entrar a tu cuenta:</strong> envía un correo a{" "}
         <a
           href={`mailto:${CONTACT_EMAIL}?subject=Eliminar%20mi%20cuenta`}
           className="text-brand underline"
         >
           {CONTACT_EMAIL}
         </a>{" "}
-        desde el correo con el que te registraste, con el asunto “Eliminar mi cuenta”. Borraremos tu
-        cuenta, tus movimientos y tus mensajes en un plazo máximo de 30 días y te confirmaremos por
-        correo.
+        desde el correo con el que te registraste, con el asunto “Eliminar mi cuenta”. Borraremos
+        todo en un plazo máximo de 30 días y te confirmaremos por correo.
       </li>
     </ul>
   );

@@ -19,7 +19,7 @@ async function seriousViolations(page: Page, { only }: { only?: string } = {}) {
 }
 
 test.describe("páginas públicas", () => {
-  for (const path of ["/", "/login", "/registro", "/privacidad", "/eliminar-datos"]) {
+  for (const path of ["/", "/login", "/registro", "/privacidad", "/eliminar-datos", "/cuenta-eliminada"]) {
     test(`${path} no tiene problemas graves de accesibilidad`, async ({ page }) => {
       await page.goto(path);
       expect(await seriousViolations(page)).toEqual([]);
@@ -68,6 +68,13 @@ test.describe("páginas con sesión (y con datos)", () => {
     // Solo el esqueleto: mientras la respuesta no llega, Next todavía no puso el <title> de la
     // página nueva (las demás pruebas revisan la página completa ya cargada).
     expect(await seriousViolations(page, { only: "[role=status]" })).toEqual([]);
+  });
+
+  test("Mi cuenta tampoco", async ({ page }) => {
+    await visible(page.getByRole("link", { name: "Mi cuenta" })).click();
+    await expect(visible(page.getByRole("heading", { name: "Mi cuenta", exact: true }))).toBeVisible();
+    await expect(visible(page.locator("[aria-busy=true]"))).toHaveCount(0);
+    expect(await seriousViolations(page)).toEqual([]);
   });
 
   test("la página para editar un movimiento tampoco", async ({ page }) => {
