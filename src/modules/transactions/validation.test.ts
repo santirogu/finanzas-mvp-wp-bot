@@ -41,11 +41,19 @@ describe("newTransactionSchema", () => {
     );
   });
 
-  // Falla conocida: parseAmountInput descarta el signo y "-5.000" se guarda como 5.000.
-  // Cuando se corrija (rama fix/), esta prueba empezará a pasar y hay que quitarle `.fails`.
-  it.fails("rechaza montos negativos en vez de ignorar el signo", () => {
-    expect(errorsOf({ ...base, amount: "-5.000" })).toHaveProperty("amount");
+  it.each(["-5.000", "$-5.000", "- 5.000", "-$5.000"])("rechaza el monto negativo %j", (amount) => {
+    expect(errorsOf({ ...base, amount })).toHaveProperty(
+      "amount",
+      "Ingresa un monto mayor que cero",
+    );
   });
+
+  it.each(["2026-02-30", "2025-02-29", "2026-04-31"])(
+    "rechaza la fecha imposible %j",
+    (occurredOn) => {
+      expect(errorsOf({ ...base, occurredOn })).toHaveProperty("occurredOn", "Fecha inválida");
+    },
+  );
 
   it("rechaza descripciones vacías o de más de 140 caracteres", () => {
     expect(errorsOf({ ...base, description: "   " })).toHaveProperty(

@@ -92,11 +92,17 @@ describe("normalizeTransactions", () => {
     );
   });
 
-  // Falla conocida: Date.parse acepta "2026-02-30" (lo corre al 2 de marzo), la fecha pasa la
-  // validación y Postgres la rechaza al guardar. Se corregirá en una rama fix/; luego quitar `.fails`.
-  it.fails("reemplaza por hoy una fecha imposible como el 30 de febrero", () => {
-    expect(normalizeTransactions([{ ...base, date: "2026-02-30" }], ctx)[0].occurredOn).toBe(
-      "2026-10-13",
+  it.each(["2026-02-30", "2025-02-29", "2026-09-31"])(
+    "reemplaza por hoy la fecha imposible %s",
+    (date) => {
+      expect(normalizeTransactions([{ ...base, date }], ctx)[0].occurredOn).toBe("2026-10-13");
+    },
+  );
+
+  it("acepta el 29 de febrero en año bisiesto", () => {
+    const leapCtx = { ...ctx, today: "2024-03-10" };
+    expect(normalizeTransactions([{ ...base, date: "2024-02-29" }], leapCtx)[0].occurredOn).toBe(
+      "2024-02-29",
     );
   });
 

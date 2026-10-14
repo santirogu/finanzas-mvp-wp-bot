@@ -27,12 +27,7 @@ const MAX_AMOUNT = 100_000_000_000; // 100 mil millones: por encima, casi seguro
 const MAX_DESCRIPTION = 140;
 const MAX_DAYS_BACK = 366;
 
-const fold = (s: string) =>
-  s
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "");
+const fold = (s: string) => s.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
 export function matchCategory(proposed: string, available: readonly string[]): string | null {
   const wanted = fold(proposed);
@@ -41,10 +36,18 @@ export function matchCategory(proposed: string, available: readonly string[]): s
   return available.find((name) => fold(name) === "otros") ?? null;
 }
 
+/** true si "YYYY-MM-DD" es un día que existe (Date.parse acepta "2026-02-30" y lo corre a marzo). */
+function isCalendarDate(iso: string): boolean {
+  const [year, month, day] = iso.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return (
+    date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day
+  );
+}
+
 function normalizeDate(proposed: string, today: string): string {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(proposed)) return today;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(proposed) || !isCalendarDate(proposed)) return today;
   const time = Date.parse(`${proposed}T00:00:00Z`);
-  if (Number.isNaN(time)) return today;
   // Nunca fechas futuras ni absurdamente viejas.
   if (proposed > today) return today;
   const daysBack = (Date.parse(`${today}T00:00:00Z`) - time) / 86_400_000;

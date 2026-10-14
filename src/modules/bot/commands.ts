@@ -10,7 +10,7 @@ const strip = (text: string) =>
     .trim()
     .toLowerCase()
     .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
+    .replace(/[\u0300-\u036f]/g, "")
     .replace(/[¿?¡!.]+/g, "")
     .trim();
 
