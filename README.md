@@ -147,6 +147,14 @@ Resumen de lo que se revisa de forma automática (detalles y cómo reportar en [
 | **Dependabot** (`.github/dependabot.yml`) | Alertas y PRs de seguridad, y actualizaciones semanales agrupadas | Lunes y ante cada vulnerabilidad nueva | No: abre PRs que el dueño revisa y fusiona |
 | **Secret scanning + push protection** | Detecta credenciales en el repo y **rechaza pushes** que las contengan | Siempre | Sí |
 
+**Límite de intentos (contra fuerza bruta):** Better Auth permite 3 intentos de login o registro
+cada 10 segundos por IP (y 100 pedidos cada 10 s en el resto de `/api/auth`); después responde 429
+y el formulario pide esperar. El contador se guarda en Postgres (tabla `rate_limit`), así que lo
+respetan todas las instancias de Vercel; en memoria cada instancia tendría el suyo. La IP sale de
+`x-forwarded-for`, que Vercel reemplaza con la IP real del cliente. Lo prueban
+`src/lib/rate-limit.int.test.ts` y las E2E. La vinculación de WhatsApp tiene su propio límite: 5
+códigos fallidos por hora y número.
+
 ### Versiones forzadas de dependencias
 
 `package.json → pnpm.overrides` fuerza versiones corregidas en dependencias indirectas cuyo paquete

@@ -9,6 +9,7 @@ beforeEach(async () => {
   await db.execute(sql`delete from "user"`);
   await db.execute(sql`delete from whatsapp_message`);
   await db.execute(sql`delete from verification`);
+  await db.execute(sql`delete from rate_limit`);
 });
 
 afterAll(async () => {

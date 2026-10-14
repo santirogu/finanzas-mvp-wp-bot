@@ -29,6 +29,7 @@ export const auth = betterAuth({
       session: schema.session,
       account: schema.account,
       verification: schema.verification,
+      rateLimit: schema.rateLimit,
     },
   }),
   emailAndPassword: {
@@ -42,6 +43,12 @@ export const auth = betterAuth({
       currency: { type: "string", required: false, defaultValue: "COP", input: false },
     },
   },
+  // Límite de intentos por IP (contra quien prueba contraseñas a la fuerza), guardado en Postgres.
+  // En memoria (lo que hace Better Auth por defecto) no sirve en Vercel: cada instancia tiene su
+  // propio contador y se reinicia seguido. Reglas de Better Auth: 3 intentos cada 10 s en login y
+  // registro, y 100 pedidos cada 10 s en el resto. Activo también fuera de producción, para
+  // probarlo. La IP sale de x-forwarded-for, que Vercel reemplaza con la IP real del cliente.
+  rateLimit: { enabled: true, storage: "database" },
   session: {
     // Sesión en cookie httpOnly, válida 30 días y renovada cada 24 h de uso.
     expiresIn: 60 * 60 * 24 * 30,
