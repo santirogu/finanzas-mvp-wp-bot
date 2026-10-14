@@ -146,6 +146,15 @@ Resumen de lo que se revisa de forma automática (detalles y cómo reportar en [
 | **`pnpm audit`** (job de CI) | Vulnerabilidades conocidas en dependencias de producción | Cada PR y push | Sí, si son altas o críticas |
 | **Dependabot** (`.github/dependabot.yml`) | Alertas y PRs de seguridad, y actualizaciones semanales agrupadas | Lunes y ante cada vulnerabilidad nueva | No: abre PRs que el dueño revisa y fusiona |
 | **Secret scanning + push protection** | Detecta credenciales en el repo y **rechaza pushes** que las contengan | Siempre | Sí |
+| **OWASP ZAP** (job `dast` del CI) | Escaneo dinámico pasivo del build de producción: cabeceras faltantes, cookies inseguras, fugas de información. Reglas en `.zap/rules.tsv` (FAIL bloquea; WARN aceptadas con su porqué) | Cada PR y push | Sí, ante reglas en FAIL; el despliegue también lo espera |
+
+**Cabeceras de seguridad** (`src/lib/security-headers.ts`, aplicadas en `next.config.ts` a todas las
+rutas): Content-Security-Policy (solo recursos propios, sin iframes ni plugins), HSTS,
+X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Permissions-Policy y
+Cross-Origin-Opener/Resource-Policy; sin `X-Powered-By`. La CSP permite scripts en línea
+(`'unsafe-inline'`) porque los nonces no son compatibles con el prerenderizado parcial que usa la
+app (guía de CSP de Next 16). Las E2E fallan si la CSP bloquea algo de la app, y los smoke tests
+revisan las cabeceras en cada despliegue.
 
 **Límite de intentos (contra fuerza bruta):** Better Auth permite 3 intentos de login o registro
 cada 10 segundos por IP (y 100 pedidos cada 10 s en el resto de `/api/auth`); después responde 429

@@ -26,10 +26,24 @@ function fakeFetch(routes: Record<string, Reply | Error | Array<Reply | Error>>)
   return { fetch, calls };
 }
 
-/** Respuestas de una app sana para todos los chequeos. */
-const HEALTHY: Record<string, Reply> = Object.fromEntries(
-  CHECKS.map((check) => [check.path, { status: check.status, body: check.contains ?? "" }]),
-);
+/** Cabeceras de seguridad de una app bien configurada. */
+const SECURE_HEADERS = {
+  "content-security-policy": "default-src 'self'; frame-ancestors 'none'",
+  "x-frame-options": "DENY",
+  "x-content-type-options": "nosniff",
+  "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+};
+
+/** Respuestas de una app sana para todos los chequeos (varios pueden pedir la misma ruta). */
+const HEALTHY: Record<string, Reply> = {};
+for (const check of CHECKS) {
+  const previous = HEALTHY[check.path];
+  HEALTHY[check.path] = {
+    status: check.status,
+    body: [previous?.body, check.contains].filter(Boolean).join(" "),
+    headers: SECURE_HEADERS,
+  };
+}
 
 function run(routes: Record<string, Reply | Error | Array<Reply | Error>>, options = {}) {
   const logs: string[] = [];
@@ -51,6 +65,7 @@ describe("CHECKS", () => {
   it("cubre las páginas públicas, la salud de la app y el webhook", () => {
     expect(CHECKS.map((c) => [c.method ?? "GET", c.path, c.status])).toEqual([
       ["GET", "/login", 200],
+      ["GET", "/login", 200],
       ["GET", "/privacidad", 200],
       ["GET", "/eliminar-datos", 200],
       ["GET", "/api/health", 200],
@@ -66,6 +81,7 @@ describe("CHECKS", () => {
   it("cada chequeo dice en el log qué revisa", () => {
     expect(CHECKS.map((c) => c.name)).toEqual([
       "La página de inicio de sesión carga",
+      "Las cabeceras de seguridad están activas",
       "La política de privacidad es pública (la exige Meta)",
       "La página para eliminar datos es pública (la exige Meta)",
       "La base de datos responde, tiene todas las migraciones y no falta configuración",
@@ -81,6 +97,15 @@ describe("CHECKS", () => {
       "x-hub-signature-256": `sha256=${"0".repeat(64)}`,
     });
     expect(post?.body).toBe("{}");
+  });
+
+  it("exige las cabeceras de seguridad en producción", () => {
+    expect(CHECKS.find((c) => c.responseHeaders)?.responseHeaders).toEqual({
+      "content-security-policy": "frame-ancestors 'none'",
+      "x-frame-options": "DENY",
+      "x-content-type-options": "nosniff",
+      "strict-transport-security": "max-age=",
+    });
   });
 
   it("exige el contenido que demuestra que la página y la salud son reales", () => {
@@ -99,7 +124,7 @@ describe("runSmoke", () => {
       [
         "Smoke tests contra https://app.test",
         ...CHECKS.map((c) => `  ✓ ${c.name}`),
-        "\n✓ Los 6 chequeos pasaron.",
+        "\n✓ Los 7 chequeos pasaron.",
       ].join("\n"),
     );
     expect(result.sleep).not.toHaveBeenCalled();
@@ -117,7 +142,7 @@ describe("runSmoke", () => {
       [
         "  ✗ La política de privacidad es pública (la exige Meta): respondió 307 → https://app.test/login, se esperaba 200",
         "  ✗ La base de datos responde, tiene todas las migraciones y no falta configuración: respondió 503, se esperaba 200",
-        "\n✗ 2 de 6 chequeos fallaron.",
+        "\n✗ 2 de 7 chequeos fallaron.",
       ].join("\n"),
     );
     expect(result.logs).toContain("  ✓ La página de inicio de sesión carga");
@@ -149,8 +174,9 @@ describe("runSmoke", () => {
 
     expect(result.exit).toBe(1);
     expect(result.errors).toContain("La página de inicio de sesión carga: no respondió (getaddrinfo ENOTFOUND)");
-    expect(result.calls.filter((c) => c.url === "https://app.test/login")).toHaveLength(2);
-    expect(result.sleep).toHaveBeenCalledTimes(1);
+    // Dos chequeos piden /login (la página y sus cabeceras): 2 intentos cada uno.
+    expect(result.calls.filter((c) => c.url === "https://app.test/login")).toHaveLength(4);
+    expect(result.sleep).toHaveBeenCalledTimes(2);
     expect(result.sleep).toHaveBeenCalledWith(10);
   });
 
@@ -172,7 +198,8 @@ describe("runSmoke", () => {
   it("con attempts menor a 1 igual hace un intento", async () => {
     const result = await run({ ...HEALTHY, "/login": { status: 500 } }, { attempts: 0 });
     expect(result.exit).toBe(1);
-    expect(result.calls.filter((c) => c.url === "https://app.test/login")).toHaveLength(1);
+    // Un intento por cada uno de los dos chequeos de /login.
+    expect(result.calls.filter((c) => c.url === "https://app.test/login")).toHaveLength(2);
     expect(result.sleep).not.toHaveBeenCalled();
   });
 
@@ -239,6 +266,35 @@ describe("runSmoke", () => {
       expect(await runSmoke(local, { fetch, log: (m: string) => logs.push(m), error: () => {} })).toBe(0);
       expect(logs[0]).toBe(`Smoke tests contra ${new URL(local).origin}`);
     }
+  });
+});
+
+describe("runCheck · cabeceras", () => {
+  const headersCheck = CHECKS.find((c) => c.responseHeaders)!;
+
+  it("pasa si cada cabecera incluye lo esperado", async () => {
+    const { fetch } = fakeFetch({ "/login": { status: 200, headers: SECURE_HEADERS } });
+    expect(await runCheck(BASE, headersCheck, { fetch })).toEqual({ ok: true });
+  });
+
+  it("falla si una cabecera falta o no tiene el valor esperado", async () => {
+    const { fetch } = fakeFetch({
+      "/login": [
+        { status: 200, headers: { ...SECURE_HEADERS, "x-frame-options": "SAMEORIGIN" } },
+        { status: 200, headers: { ...SECURE_HEADERS, "content-security-policy": "" } },
+      ],
+    });
+    expect(await runCheck(BASE, headersCheck, { fetch })).toEqual({
+      ok: false,
+      detail: 'la cabecera x-frame-options es "SAMEORIGIN", debería incluir "DENY"',
+      retry: true,
+    });
+    const { fetch: missing } = fakeFetch({ "/login": { status: 200, headers: {} } });
+    expect(await runCheck(BASE, headersCheck, { fetch: missing })).toEqual({
+      ok: false,
+      detail: `la cabecera content-security-policy es null, debería incluir "frame-ancestors 'none'"`,
+      retry: true,
+    });
   });
 });
 

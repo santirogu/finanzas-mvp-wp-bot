@@ -19,12 +19,24 @@ import { pathToFileURL } from "node:url";
  *   headers?: Record<string, string>,
  *   body?: string,
  *   contains?: string,
+ *   responseHeaders?: Record<string, string>,
  * }} Check
  */
 
 /** @type {Check[]} */
 export const CHECKS = [
   { name: "La página de inicio de sesión carga", path: "/login", status: 200, contains: "Entrar" },
+  {
+    name: "Las cabeceras de seguridad están activas",
+    path: "/login",
+    status: 200,
+    responseHeaders: {
+      "content-security-policy": "frame-ancestors 'none'",
+      "x-frame-options": "DENY",
+      "x-content-type-options": "nosniff",
+      "strict-transport-security": "max-age=",
+    },
+  },
   { name: "La política de privacidad es pública (la exige Meta)", path: "/privacidad", status: 200 },
   { name: "La página para eliminar datos es pública (la exige Meta)", path: "/eliminar-datos", status: 200 },
   {
@@ -85,6 +97,12 @@ export async function runCheck(baseUrl, check, { fetch = globalThis.fetch, bypas
   if (response.status !== check.status) {
     const redirect = location ? ` → ${location}` : "";
     return { ok: false, detail: `respondió ${response.status}${redirect}, se esperaba ${check.status}`, retry: true };
+  }
+  for (const [name, expected] of Object.entries(check.responseHeaders ?? {})) {
+    const value = response.headers.get(name);
+    if (!value?.includes(expected)) {
+      return { ok: false, detail: `la cabecera ${name} es ${JSON.stringify(value)}, debería incluir ${JSON.stringify(expected)}`, retry: true };
+    }
   }
   if (check.contains) {
     const body = await response.text();

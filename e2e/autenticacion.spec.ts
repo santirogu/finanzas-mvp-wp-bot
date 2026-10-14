@@ -76,6 +76,30 @@ test.describe("límite de intentos (Better Auth)", () => {
   });
 });
 
+test.describe("sin JavaScript (antes de que cargue la página)", () => {
+  // Si alguien envía el formulario antes de que cargue el JavaScript (o si falla), el navegador
+  // lo envía por su cuenta: la contraseña no debe terminar en la URL (historial, logs, Referer).
+  for (const [path, button] of [
+    ["/login", "Entrar"],
+    ["/registro", "Crear cuenta"],
+  ] as const) {
+    test(`${path} no pone la contraseña en la URL`, async ({ browser }) => {
+      const context = await browser.newContext({ javaScriptEnabled: false });
+      const page = await context.newPage();
+      await page.goto(path);
+      if (path === "/registro") await page.getByLabel("Nombre").fill("Ana");
+      await page.getByLabel("Correo").fill(uniqueEmail());
+      await page.getByLabel("Contraseña").fill("secreto-que-no-debe-verse");
+      await page.getByRole("button", { name: button }).click();
+      await page.waitForLoadState();
+
+      expect(page.url()).not.toContain("secreto-que-no-debe-verse");
+      expect(page.url()).not.toContain("password");
+      await context.close();
+    });
+  }
+});
+
 test.describe("registro", () => {
   test("no permite dos cuentas con el mismo correo", async ({ browser }) => {
     const first = await newPerson(browser);

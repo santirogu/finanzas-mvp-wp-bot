@@ -15,6 +15,7 @@ export const SKIP_PATTERNS = [
   /^\.github\//, // workflows de CI
   /^\.githooks\//,
   /^\.claude\//,
+  /^\.zap\//, // reglas del escaneo de seguridad (ZAP) del CI
   /^test\//, // infraestructura de pruebas
   /^e2e\//, // pruebas E2E (Playwright)
   /\.test\.tsx?$/, // pruebas unitarias, de integración y de componentes

@@ -104,6 +104,9 @@ de Vercel ni muevas las migraciones fuera del job `deploy`.
   migrada. Agrega antes de quitar: para renombrar o borrar una columna o tabla, primero un PR que
   agregue lo nuevo (y el código que lo usa) y, en otro PR posterior, uno que quite lo viejo.
   Nunca renombres ni borres en el mismo PR que cambia el código que lo usa.
+- Si la app empieza a usar recursos de otro dominio (scripts, fuentes, imágenes, una API desde el
+  navegador), agrégalo a la CSP en `src/lib/security-headers.ts` con su prueba: si no, el navegador
+  lo bloquea y las E2E fallan.
 - Si agregas una variable de entorno obligatoria, súmala a `REQUIRED_ENV` en `src/lib/health.ts`
   (y configúrala en Vercel **antes** del merge, o el despliegue se detendrá en los smoke tests).
 - Toda consulta o Server Action filtra por el usuario de la sesión (`src/lib/session.ts`). Si
