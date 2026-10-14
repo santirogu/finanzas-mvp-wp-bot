@@ -180,6 +180,7 @@ describe("respuestas y registros del webhook", () => {
     expect(console.warn).toHaveBeenLastCalledWith("[whatsapp] firma inválida", {
       cabeceraPresente: false,
       appSecretConfigurado: true,
+      userAgent: null,
     });
 
     vi.stubEnv("WHATSAPP_APP_SECRET", "");
@@ -187,7 +188,31 @@ describe("respuestas y registros del webhook", () => {
     expect(console.warn).toHaveBeenLastCalledWith("[whatsapp] firma inválida", {
       cabeceraPresente: true,
       appSecretConfigurado: false,
+      userAgent: null,
     });
+  });
+
+  it("registra el user-agent (recortado) para distinguir los smoke tests de un intento real", async () => {
+    const send = (userAgent: string) =>
+      POST(
+        new NextRequest(URL_BASE, {
+          method: "POST",
+          body: "{}",
+          headers: { "x-hub-signature-256": "sha256=falsa", "user-agent": userAgent },
+        }),
+      );
+
+    await send("finanzas-smoke-test");
+    expect(console.warn).toHaveBeenLastCalledWith(
+      "[whatsapp] firma inválida",
+      expect.objectContaining({ userAgent: "finanzas-smoke-test" }),
+    );
+
+    await send("x".repeat(500));
+    expect(console.warn).toHaveBeenLastCalledWith(
+      "[whatsapp] firma inválida",
+      expect.objectContaining({ userAgent: "x".repeat(120) }),
+    );
   });
 
   it("registra cuántos mensajes llegaron y de qué tipo", async () => {

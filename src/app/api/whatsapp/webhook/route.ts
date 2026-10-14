@@ -29,6 +29,9 @@ export async function POST(request: NextRequest) {
     console.warn("[whatsapp] firma inválida", {
       cabeceraPresente: Boolean(signature),
       appSecretConfigurado: Boolean(appSecret),
+      // Distingue los smoke tests del despliegue ("finanzas-smoke-test") de un intento real.
+      // Recortado: es texto que manda el cliente.
+      userAgent: request.headers.get("user-agent")?.slice(0, 120) ?? null,
     });
     return new Response("Invalid signature", { status: 401 });
   }

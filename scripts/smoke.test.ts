@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { CHECKS, runCheck, runSmoke } from "./smoke.mjs";
+import { CHECKS, SMOKE_USER_AGENT, runCheck, runSmoke } from "./smoke.mjs";
 
 const BASE = "https://app.test";
 
@@ -308,18 +308,19 @@ describe("runCheck", () => {
     expect(calls[0].url).toBe("https://app.test/api/whatsapp/webhook");
     expect(calls[0].init).toMatchObject({
       method: "POST",
-      headers: post.headers,
+      headers: { "user-agent": SMOKE_USER_AGENT, ...post.headers },
       body: "{}",
       redirect: "manual",
     });
     expect(calls[0].init.signal).toBeInstanceOf(AbortSignal);
   });
 
-  it("por defecto usa GET y no agrega la llave de Vercel", async () => {
+  it("por defecto usa GET, se identifica como smoke test y no agrega la llave de Vercel", async () => {
     const { fetch, calls } = fakeFetch({ "/login": { status: 200, body: "Entrar" } });
     await runCheck(BASE, CHECKS[0], { fetch });
     expect(calls[0].init.method).toBe("GET");
-    expect(calls[0].init.headers).toEqual({});
+    expect(calls[0].init.headers).toEqual({ "user-agent": "finanzas-smoke-test" });
+    expect(SMOKE_USER_AGENT).toBe("finanzas-smoke-test");
   });
 
   it("corta las respuestas lentas con un timeout", async () => {

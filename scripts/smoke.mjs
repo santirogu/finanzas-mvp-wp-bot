@@ -60,6 +60,10 @@ export const CHECKS = [
   },
 ];
 
+// Así se identifican los pedidos de los smoke tests en los logs (p. ej. el aviso de firma
+// inválida del webhook), para no confundirlos con un intento real.
+export const SMOKE_USER_AGENT = "finanzas-smoke-test";
+
 // La protección de despliegues de Vercel redirige a su inicio de sesión.
 const VERCEL_LOGIN = /^https:\/\/vercel\.com\/(sso-api|login)/;
 
@@ -68,7 +72,7 @@ const VERCEL_LOGIN = /^https:\/\/vercel\.com\/(sso-api|login)/;
  * @returns {Promise<{ ok: boolean, detail?: string, retry?: boolean }>}
  */
 export async function runCheck(baseUrl, check, { fetch = globalThis.fetch, bypassSecret, timeoutMs = 20_000 } = {}) {
-  const headers = { ...check.headers };
+  const headers = { "user-agent": SMOKE_USER_AGENT, ...check.headers };
   if (bypassSecret) headers["x-vercel-protection-bypass"] = bypassSecret;
 
   let response;
