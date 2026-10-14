@@ -1,0 +1,4 @@
+#!/bin/sh
+# Valida cada commit local con Conventional Commits (ver CLAUDE.md).
+# Se activa solo con `pnpm install` (script "prepare" → core.hooksPath=.githooks).
+exec node scripts/conventional-commit.mjs --file "$1"

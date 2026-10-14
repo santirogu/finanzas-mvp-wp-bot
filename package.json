@@ -20,7 +20,8 @@
     "bot:eval": "tsx scripts/bot-eval.ts",
     "test:int": "vitest run --project integration",
     "test:all": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "prepare": "git config core.hooksPath .githooks || true"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.133.0",
