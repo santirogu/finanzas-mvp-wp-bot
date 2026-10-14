@@ -22,5 +22,7 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
+  // Todo menos la API (cada ruta tiene su propia protección) y los archivos estáticos. Cada
+  // exclusión termina en "/" o en el fin de la ruta: sin eso, "api" también excluiría "/apiario".
+  matcher: ["/((?!api(?:/|$)|_next/static/|_next/image(?:/|$)|favicon\\.ico$).*)"],
 };
