@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { filesRequiringDeploy, runCli } from "./deploy-needed.mjs";
 
 describe("filesRequiringDeploy", () => {
@@ -119,7 +119,17 @@ describe("runCli", () => {
     );
   });
 
-  it("fuera de GitHub Actions no escribe GITHUB_OUTPUT", () => {
-    expect(run("src/lib/money.ts", undefined).appended).toEqual([]);
+  describe("sin indicar el archivo de salida", () => {
+    afterEach(() => vi.unstubAllEnvs());
+
+    it("en GitHub Actions lo toma de GITHUB_OUTPUT", () => {
+      vi.stubEnv("GITHUB_OUTPUT", "/tmp/gh-output");
+      expect(run("src/lib/money.ts").appended).toEqual([["/tmp/gh-output", "deploy=true\n"]]);
+    });
+
+    it("fuera de GitHub Actions no escribe nada", () => {
+      vi.stubEnv("GITHUB_OUTPUT", undefined);
+      expect(run("src/lib/money.ts").appended).toEqual([]);
+    });
   });
 });

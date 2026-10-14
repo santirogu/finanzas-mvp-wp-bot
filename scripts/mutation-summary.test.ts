@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { runCli, score, summarize } from "./mutation-summary.mjs";
 
 const mutants = (statuses: string[]) => statuses.map((status) => ({ status }));
@@ -90,15 +90,22 @@ describe("runCli", () => {
     expect(read).not.toHaveBeenCalled();
   });
 
-  it("fuera de GitHub Actions no escribe el resumen de la corrida", () => {
-    const append = vi.fn();
-    runCli("r.json", {
-      exists: () => true,
-      read: () => report,
-      log: () => {},
-      summaryFile: undefined,
-      append,
+  describe("sin indicar el archivo del resumen", () => {
+    afterEach(() => vi.unstubAllEnvs());
+    const run = () => {
+      const append = vi.fn();
+      runCli("r.json", { exists: () => true, read: () => report, log: () => {}, append });
+      return append;
+    };
+
+    it("en GitHub Actions lo toma de GITHUB_STEP_SUMMARY", () => {
+      vi.stubEnv("GITHUB_STEP_SUMMARY", "/tmp/gh-summary");
+      expect(run()).toHaveBeenCalledWith("/tmp/gh-summary", expect.stringContaining("100.0 %"));
     });
-    expect(append).not.toHaveBeenCalled();
+
+    it("fuera de GitHub Actions no escribe el resumen de la corrida", () => {
+      vi.stubEnv("GITHUB_STEP_SUMMARY", undefined);
+      expect(run()).not.toHaveBeenCalled();
+    });
   });
 });
