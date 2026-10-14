@@ -37,7 +37,7 @@ export type ExtractionResult =
   | { ok: true; transactions: RawTransaction[]; reply: string | null; usage: Usage }
   | {
       ok: false;
-      reason: "refusal" | "invalid_output" | "api_error";
+      reason: "not_configured" | "refusal" | "invalid_output" | "api_error";
       detail?: string;
       usage?: Usage;
     };
@@ -57,6 +57,10 @@ function getClient() {
 const supportsServerFallback = (model: string) => !model.includes("haiku");
 
 export const claudeExtractor: Extractor = async ({ text, today, categories }) => {
+  // Sin credenciales el SDK lanza un Error genérico; mejor detectarlo antes.
+  if (!envVar("ANTHROPIC_API_KEY") && !envVar("ANTHROPIC_AUTH_TOKEN")) {
+    return { ok: false, reason: "not_configured" };
+  }
   const model = botModel();
   try {
     const response = await getClient().beta.messages.parse({

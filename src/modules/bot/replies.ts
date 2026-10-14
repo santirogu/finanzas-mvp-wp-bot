@@ -74,3 +74,5 @@ export const linkRateLimitedReply =
 export const unsupportedTypeReply = "Por ahora solo entiendo mensajes de texto ✍️";
 export const errorReply =
   "Tuve un problema procesando tu mensaje 😕 Intenta de nuevo en un momento.";
+export const aiUnavailableReply =
+  "Por ahora solo entiendo *balance*, *deshacer* y *ayuda*. Muy pronto podrás registrar gastos escribiendo normal ✍️";

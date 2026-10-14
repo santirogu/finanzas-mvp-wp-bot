@@ -138,6 +138,14 @@ describe("interpretMessage", () => {
     expect(await interpretMessage("zapatos", ctx, extractor)).toMatchObject({ kind: "reply" });
   });
 
+  it("indica cuando la IA no está configurada (sin API key)", async () => {
+    const extractor = fakeExtractor({ ok: false, reason: "not_configured" });
+    expect(await interpretMessage("gasté 20 mil", ctx, extractor)).toMatchObject({
+      kind: "error",
+      reason: "not_configured",
+    });
+  });
+
   it("reporta errores de la API sin lanzar excepción", async () => {
     const extractor = fakeExtractor({ ok: false, reason: "api_error", detail: "529 overloaded" });
     expect(await interpretMessage("gasté 20 mil", ctx, extractor)).toEqual({

@@ -176,7 +176,12 @@ async function respond(
     case "reply":
       return { ...base, reply: intent.text };
     case "error":
-      return { ...base, status: "failed", reply: replies.errorReply };
+      return {
+        ...base,
+        status: "failed",
+        // Sin API key el texto libre no se puede interpretar: avisamos qué sí funciona.
+        reply: intent.reason === "not_configured" ? replies.aiUnavailableReply : replies.errorReply,
+      };
     case "link":
       // Ya se manejó arriba; se deja por exhaustividad.
       return { ...base, reply: replies.helpReply(user.name) };
