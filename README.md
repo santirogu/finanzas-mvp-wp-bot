@@ -167,6 +167,12 @@ Cross-Origin-Opener/Resource-Policy; sin `X-Powered-By`. La CSP permite scripts 
 app (guía de CSP de Next 16). Las E2E fallan si la CSP bloquea algo de la app, y los smoke tests
 revisan las cabeceras en cada despliegue.
 
+**Analítica:** [Vercel Web Analytics](https://vercel.com/docs/analytics) (`<Analytics />` en
+`src/app/layout.tsx`, activada en Vercel → Analytics). Es anónima y sin cookies, y está explicada
+en `/privacidad`. En producción el script se sirve desde la propia app, así que la CSP no cambia;
+en desarrollo carga solo el script de depuración de `va.vercel-scripts.com`, que escribe en la
+consola y no envía nada. El proxy no intercepta las rutas `/_vercel/`.
+
 **Límite de intentos (contra fuerza bruta):** Better Auth permite 3 intentos de login o registro
 cada 10 segundos por IP (y 100 pedidos cada 10 s en el resto de `/api/auth`); después responde 429
 y el formulario pide esperar. El contador se guarda en Postgres (tabla `rate_limit`), así que lo

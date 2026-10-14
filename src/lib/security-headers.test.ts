@@ -20,18 +20,21 @@ describe("contentSecurityPolicy", () => {
     );
   });
 
-  it("en desarrollo agrega lo que necesitan React y el recargado en caliente", () => {
+  it("en desarrollo agrega lo que necesitan React, el recargado en caliente y la analítica de depuración", () => {
     const dev = contentSecurityPolicy({ dev: true });
-    expect(dev).toContain("script-src 'self' 'unsafe-inline' 'unsafe-eval'");
+    expect(dev).toContain("script-src 'self' 'unsafe-inline' 'unsafe-eval' https://va.vercel-scripts.com");
     expect(dev).toContain("connect-src 'self' ws:");
-    expect(contentSecurityPolicy()).not.toMatch(/unsafe-eval|ws:/);
+    expect(contentSecurityPolicy()).not.toMatch(/unsafe-eval|ws:|vercel-scripts/);
   });
 
-  it("nunca permite scripts ni conexiones a otros dominios", () => {
-    for (const dev of [false, true]) {
-      const csp = contentSecurityPolicy({ dev });
-      expect(csp).not.toMatch(/https?:|\*/);
-    }
+  it("en producción nunca permite scripts ni conexiones a otros dominios", () => {
+    expect(contentSecurityPolicy()).not.toMatch(/https?:|\*/);
+  });
+
+  it("en desarrollo el único dominio externo es el script de depuración de la analítica", () => {
+    const external = contentSecurityPolicy({ dev: true }).match(/https?:\/\/[^\s;]+/g);
+    expect(external).toEqual(["https://va.vercel-scripts.com"]);
+    expect(contentSecurityPolicy({ dev: true })).not.toContain("*");
   });
 });
 

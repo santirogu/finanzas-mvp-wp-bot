@@ -70,13 +70,15 @@ describe("proxy · matcher", () => {
       "/_next/image?url=x",
       "/favicon.ico",
       "/robots.txt",
+      "/_vercel/insights/script.js",
+      "/_vercel/insights/view",
     ]) {
       expect(runsOn(url), url).toBe(false);
     }
   });
 
   it("no se salta páginas que solo empiezan como una ruta excluida", () => {
-    for (const url of ["/apiario", "/api-docs", "/_next/staticos", "/_next/imagenes", "/favicon.icono", "/faviconXico", "/robots.txt.bak", "/robotsXtxt"]) {
+    for (const url of ["/apiario", "/api-docs", "/_next/staticos", "/_next/imagenes", "/favicon.icono", "/faviconXico", "/robots.txt.bak", "/robotsXtxt", "/_vercelito", "/_vercel"]) {
       expect(runsOn(url), url).toBe(true);
     }
   });
