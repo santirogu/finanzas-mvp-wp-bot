@@ -141,6 +141,44 @@ describe("handleIncomingMessage · registro de movimientos", () => {
     expect(await loggedMessage(msg.id)).toMatchObject({ status: "processed", userId: user.id });
   });
 
+  it("registra en la cuenta dueña del número que escribe, nunca en otra", async () => {
+    const ana = await linkedUser();
+    const beto = await linkedUser("573007777777", "Beto");
+    const zapatos = fakeExtractor([
+      { type: "expense", amount: 500000, description: "Zapatos", category: "Ropa" },
+    ]);
+
+    await handleIncomingMessage(incoming("zapatos", "573007777777"), deps(zapatos).deps);
+
+    expect(await activeTransactions(ana.id)).toEqual([]);
+    expect(await activeTransactions(beto.id)).toEqual([
+      expect.objectContaining({ description: "Zapatos", userId: beto.id }),
+    ]);
+  });
+
+  it("un número sin vincular no registra nada ni puede ver el balance de nadie", async () => {
+    const ana = await linkedUser();
+    const add = fakeExtractor([
+      { type: "expense", amount: 500000, description: "Zapatos", category: "Ropa" },
+    ]);
+    await handleIncomingMessage(incoming("zapatos"), deps(add).deps);
+
+    const extractor = fakeExtractor([
+      { type: "expense", amount: 1, description: "Intruso", category: "Otros" },
+    ]);
+    const { deps: d, sender } = deps(extractor);
+    await handleIncomingMessage(incoming("balance", "573005550000"), d);
+    await handleIncomingMessage(incoming("gasté 1 peso", "573005550000"), d);
+    await handleIncomingMessage(incoming("deshacer", "573005550000"), d);
+
+    expect(extractor.calls).toBe(0);
+    for (const message of sender.sent) {
+      expect(message.to).toBe("573005550000");
+      expect(message.body).not.toContain("500.000");
+    }
+    expect(await activeTransactions(ana.id)).toHaveLength(1);
+  });
+
   it("ignora el mismo mensaje si Meta lo entrega dos veces", async () => {
     const user = await linkedUser();
     const extractor = fakeExtractor([
@@ -240,6 +278,21 @@ describe("handleIncomingMessage · comandos", () => {
 
     await handleIncomingMessage(incoming("deshacer"), d);
     expect(sender.sent[2].body).toBe(replies.undoReply([], "COP"));
+  });
+
+  it("deshacer no toca los movimientos de otro usuario, aunque sean más recientes", async () => {
+    const ana = await linkedUser();
+    const beto = await linkedUser("573007777777", "Beto");
+    const cafe = fakeExtractor([
+      { type: "expense", amount: 10000, description: "Café", category: "Alimentación" },
+    ]);
+    await handleIncomingMessage(incoming("café"), deps(cafe).deps);
+    await handleIncomingMessage(incoming("café", "573007777777"), deps(cafe).deps);
+
+    await handleIncomingMessage(incoming("deshacer"), deps().deps);
+
+    expect(await activeTransactions(ana.id)).toEqual([]);
+    expect(await activeTransactions(beto.id)).toHaveLength(1);
   });
 
   it("deshacer no toca movimientos registrados desde la web", async () => {

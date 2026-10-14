@@ -14,8 +14,17 @@ export default defineConfig({
   test: {
     coverage: {
       provider: "v8",
-      // Lógica de negocio y servidor. La interfaz (src/app, src/components) se cubrirá con E2E.
-      include: ["src/lib/**", "src/modules/**", "src/db/**", "src/app/api/**", "scripts/*.mjs"],
+      // Lógica de negocio y servidor (incluidas las Server Actions y el proxy). La interfaz
+      // (páginas y componentes de src/app y src/components) se cubrirá con E2E.
+      include: [
+        "src/lib/**",
+        "src/modules/**",
+        "src/db/**",
+        "src/app/api/**",
+        "src/app/**/actions.ts",
+        "src/proxy.ts",
+        "scripts/*.mjs",
+      ],
       exclude: ["**/*.test.ts", "src/modules/bot/eval/**", "src/lib/auth-client.ts"],
       reporter: ["text", "json-summary", "html"],
       // Piso actual: el CI falla si la cobertura baja. Súbelo a medida que agregues pruebas.

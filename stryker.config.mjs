@@ -18,6 +18,8 @@ const config = {
     "src/modules/whatsapp/{signature,payload,phone,client,actions}.ts",
     "src/modules/transactions/validation.ts",
     "src/app/api/{whatsapp/webhook,health}/route.ts",
+    "src/app/*/simulador/actions.ts",
+    "src/proxy.ts",
     "scripts/{conventional-commit,deploy-needed,pr-description,check-schema-drift,mutation-summary,smoke}.mjs",
   ],
   reporters: ["clear-text", "progress-append-only", "html", "json"],

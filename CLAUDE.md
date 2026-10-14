@@ -105,4 +105,7 @@ de Vercel ni muevas las migraciones fuera del job `deploy`.
   Nunca renombres ni borres en el mismo PR que cambia el código que lo usa.
 - Si agregas una variable de entorno obligatoria, súmala a `REQUIRED_ENV` en `src/lib/health.ts`
   (y configúrala en Vercel **antes** del merge, o el despliegue se detendrá en los smoke tests).
-- Toda consulta o Server Action filtra por el usuario de la sesión (`src/lib/session.ts`).
+- Toda consulta o Server Action filtra por el usuario de la sesión (`src/lib/session.ts`). Si
+  agregas una página, una ruta de API o una Server Action, clasifícala en
+  `src/authorization-matrix.test.ts` (la prueba falla hasta que lo hagas) y prueba en integración,
+  con dos usuarios, que no expone ni modifica datos ajenos.

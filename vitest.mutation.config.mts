@@ -14,6 +14,8 @@ export default defineConfig({
   },
   test: {
     include: ["src/**/*.test.ts", "scripts/**/*.test.ts"],
-    exclude: ["src/**/*.int.test.ts"],
+    // La matriz de autorización lee el código fuente, que Stryker reescribe para activar los
+    // mutantes: ahí no reconoce las Server Actions. Corre igual en el CI normal (pnpm test).
+    exclude: ["src/**/*.int.test.ts", "src/authorization-matrix.test.ts"],
   },
 });

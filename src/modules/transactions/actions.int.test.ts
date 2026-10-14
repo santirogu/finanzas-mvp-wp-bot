@@ -119,6 +119,34 @@ describe("createTransactionAction", () => {
       "NEXT_REDIRECT",
     );
   });
+
+  it("ignora campos extra del formulario: el dueño, la moneda y el origen salen del servidor", async () => {
+    const victim = await createUser({ currency: "USD" });
+    const user = await signIn();
+
+    await createTransactionAction(
+      { ok: false },
+      form({
+        ...validExpense,
+        userId: victim.id,
+        currency: "USD",
+        source: "whatsapp",
+        externalId: "wamid.falso:0",
+        deletedAt: "2026-01-01",
+      }),
+    );
+
+    expect(await activeTransactions(victim.id)).toEqual([]);
+    expect(await activeTransactions(user.id)).toEqual([
+      expect.objectContaining({
+        userId: user.id,
+        currency: "COP",
+        source: "web",
+        externalId: null,
+        deletedAt: null,
+      }),
+    ]);
+  });
 });
 
 describe("deleteTransactionAction", () => {
@@ -139,6 +167,17 @@ describe("deleteTransactionAction", () => {
 
     await signIn(); // ahora la sesión es de otra persona
     await deleteTransactionAction(form({ id: tx.id }));
+
+    expect(await activeTransactions(owner.id)).toHaveLength(1);
+  });
+
+  it("tampoco puede eliminarlos sin sesión", async () => {
+    const owner = await signIn();
+    await createTransactionAction({ ok: false }, form(validExpense));
+    const [tx] = await activeTransactions(owner.id);
+
+    session.current = null;
+    await expect(deleteTransactionAction(form({ id: tx.id }))).rejects.toThrow("NEXT_REDIRECT");
 
     expect(await activeTransactions(owner.id)).toHaveLength(1);
   });
