@@ -108,6 +108,23 @@ scripts/seed.ts                     Categorías por defecto
 En desarrollo, sin credenciales de Meta, las respuestas se imprimen en la consola. Para probar sin
 WhatsApp, usa el simulador en `/simulador`.
 
+## Flujo de trabajo
+
+`main` está protegida: **no acepta pushes directos**, solo Pull Requests con el CI en verde
+(regla "Proteger main" en *Settings → Rules*, sin excepciones, ni siquiera para administradores).
+
+```bash
+git checkout -b mi-cambio          # 1. trabaja en una rama
+git push -u origin mi-cambio       # 2. súbela
+gh pr create --fill                # 3. abre el PR: el CI corre lint, tipos y pruebas
+```
+
+4. Cuando el check **Lint, tipos y pruebas** esté en verde, revisa el PR en GitHub y haz clic en
+   **Merge**. La fusión es siempre manual: el auto-merge está desactivado en el repositorio.
+
+Al fusionarse, el CI vuelve a correr sobre `main` y, si pasa, despliega a producción. La rama se
+borra automáticamente. El PR debe estar al día con `main` antes de fusionarse.
+
 ## Despliegue (bloqueado por el CI)
 
 **Nada llega a producción sin pasar el CI.** Vercel no despliega por su cuenta
