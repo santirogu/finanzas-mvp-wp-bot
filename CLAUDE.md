@@ -49,7 +49,25 @@ Responde y escribe en **español** (commits, PRs, comentarios del código y text
 4. **Antes de abrir el PR**, en local: `pnpm lint`, `pnpm typecheck`, `pnpm test` y, si tocaste
    algo que usa la base de datos, `pnpm test:int`. Si cambiaste el prompt o el esquema del bot,
    propón correr `pnpm bot:eval` (cuesta créditos de la API: pide confirmación).
-5. **Abre un Pull Request hacia `main`** con un resumen de qué cambia y cómo se probó.
+5. **Abre un Pull Request hacia `main`.** El título sigue el punto 3 (descripción en español) y
+   la descripción sigue `.github/pull_request_template.md`: encabezados en inglés, contenido en
+   español. El check **Descripción del PR** exige contenido real en las tres primeras:
+
+   ```markdown
+   ## Why
+   Por qué hace falta el cambio (el problema o la motivación).
+
+   ## What
+   Qué cambia, en una lista corta.
+
+   ## How
+   Cómo se resolvió (enfoque, decisiones, alternativas descartadas) y cómo se probó.
+
+   ## Additional Notes
+   Opcional: riesgos, migraciones, pasos manuales tras el merge, capturas, deuda técnica.
+   ```
+
+   Si el PR lo abre Claude, termina con la línea "🤖 Generated with Claude Code".
 6. **El merge lo hace el dueño del repositorio, a mano.** No fusiones PRs, no actives auto-merge
    ni pidas a ninguna herramienta que lo haga. Cuando el PR esté listo, avisa y espera.
 7. Después del merge: `git checkout main && git pull --ff-only` y borra la rama local.

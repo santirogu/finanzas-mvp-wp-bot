@@ -1,0 +1,36 @@
+name: Pull request
+
+# Validaciones del PR (ver CLAUDE.md). Corren también al editar el PR, así que basta con
+# corregir el título o la descripción para que se vuelvan a ejecutar.
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+jobs:
+  # Con "squash and merge", el título del PR se convierte en el commit de main:
+  # validarlo garantiza que todo el historial siga Conventional Commits.
+  pr-title:
+    name: Título del PR
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validar Conventional Commits
+        env:
+          # Se pasa por variable de entorno para no interpolar texto del PR dentro del script.
+          TITLE: ${{ github.event.pull_request.title }}
+        run: node scripts/conventional-commit.mjs "$TITLE"
+
+  # La descripción debe seguir .github/pull_request_template.md: Why / What / How.
+  pr-description:
+    name: Descripción del PR
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validar Why / What / How
+        env:
+          BODY: ${{ github.event.pull_request.body }}
+        run: printf '%s' "$BODY" | node scripts/pr-description.mjs

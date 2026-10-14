@@ -4,7 +4,7 @@ import { filesRequiringDeploy } from "./deploy-needed.mjs";
 describe("filesRequiringDeploy", () => {
   it.each([
     ["documentación", ["README.md", "CLAUDE.md", "AGENTS.md"]],
-    ["workflows de CI", [".github/workflows/ci.yml", ".github/workflows/pr-title.yml"]],
+    ["workflows de CI", [".github/workflows/ci.yml", ".github/workflows/pull-request.yml"]],
     ["pruebas", ["src/lib/money.test.ts", "src/modules/bot/handle-message.int.test.ts", "test/integration/setup.ts"]],
     ["herramientas de desarrollo", ["scripts/bot-eval.ts", "scripts/meta-subscribe.sh", "scripts/conventional-commit.mjs"]],
     ["configuración local", ["eslint.config.mjs", "vitest.config.mts", ".env.example", "docker-compose.yml", ".gitignore", ".githooks/commit-msg", "docker/init-test-db.sql"]],

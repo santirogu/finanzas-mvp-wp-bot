@@ -115,7 +115,9 @@ WhatsApp, usa el simulador en `/simulador`.
 Las ramas siguen la convención `<tipo>/<descripcion-corta>` (`feature/`, `fix/`, `hotfix/`,
 `refactor/`, `test/`, `docs/`, `chore/`, `ci/`), validada por el check **Nombre de rama**.
 Los commits y títulos de PR siguen **Conventional Commits** (`feat(bot): …`, `fix: …`), validados
-por el check **Título del PR** y por un hook local de git. Los PRs se fusionan solo con *squash and
+por el check **Título del PR** y por un hook local de git. La descripción del PR sigue la plantilla
+`.github/pull_request_template.md` (**Why / What / How** y *Additional Notes* opcional), validada
+por el check **Descripción del PR**. Los PRs se fusionan solo con *squash and
 merge*. Las reglas completas están en [CLAUDE.md](CLAUDE.md).
 
 ```bash
