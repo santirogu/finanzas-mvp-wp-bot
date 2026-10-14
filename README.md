@@ -114,7 +114,9 @@ WhatsApp, usa el simulador en `/simulador`.
 (regla "Proteger main" en *Settings → Rules*, sin excepciones, ni siquiera para administradores).
 Las ramas siguen la convención `<tipo>/<descripcion-corta>` (`feature/`, `fix/`, `hotfix/`,
 `refactor/`, `test/`, `docs/`, `chore/`, `ci/`), validada por el check **Nombre de rama**.
-Las reglas completas están en [CLAUDE.md](CLAUDE.md).
+Los commits y títulos de PR siguen **Conventional Commits** (`feat(bot): …`, `fix: …`), validados
+por el check **Título del PR** y por un hook local de git. Los PRs se fusionan solo con *squash and
+merge*. Las reglas completas están en [CLAUDE.md](CLAUDE.md).
 
 ```bash
 git checkout -b feature/mi-cambio  # 1. trabaja en una rama
@@ -122,8 +124,8 @@ git push -u origin feature/mi-cambio  # 2. súbela
 gh pr create --fill                # 3. abre el PR: el CI corre lint, tipos y pruebas
 ```
 
-4. Cuando el check **Lint, tipos y pruebas** esté en verde, revisa el PR en GitHub y haz clic en
-   **Merge**. La fusión es siempre manual: el auto-merge está desactivado en el repositorio.
+4. Cuando los checks estén en verde, revisa el PR en GitHub y haz clic en **Squash and merge**.
+   La fusión es siempre manual: el auto-merge está desactivado en el repositorio.
 
 Al fusionarse, el CI vuelve a correr sobre `main` y, si pasa, despliega a producción. La rama se
 borra automáticamente. El PR debe estar al día con `main` antes de fusionarse.

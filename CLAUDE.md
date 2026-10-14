@@ -28,13 +28,31 @@ Responde y escribe en **español** (commits, PRs, comentarios del código y text
 
    Si un cambio mezcla tipos, usa el del cambio principal (una funcionalidad con sus pruebas es
    `feature/`).
-3. **Antes de abrir el PR**, en local: `pnpm lint`, `pnpm typecheck`, `pnpm test` y, si tocaste
+3. **Commits y título del PR con [Conventional Commits](https://www.conventionalcommits.org/es/):**
+
+   ```
+   <tipo>(<ámbito opcional>): <descripción en imperativo, minúscula inicial, sin punto final>
+
+   <cuerpo opcional: el porqué del cambio>
+   ```
+
+   - Tipos: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`, `ci`, `perf` (el de la rama:
+     `feature/` → `feat`, `fix/` y `hotfix/` → `fix`, el resto igual).
+   - Ámbitos sugeridos: `bot`, `whatsapp`, `web`, `auth`, `db`, `transacciones`, `deps`.
+   - Máximo 72 caracteres en la primera línea. Un `!` antes de los dos puntos marca un cambio
+     incompatible: `feat(auth)!: exigir verificación del correo`.
+   - Ejemplos: `feat(bot): registrar gastos desde notas de voz`,
+     `fix(whatsapp): ignorar saltos de línea en el token`, `docs: explicar el flujo de PRs`.
+   - Los PRs se fusionan solo con **squash and merge**: el **título del PR** se vuelve el commit
+     de `main`, y el check **Título del PR** lo valida. El hook `.githooks/commit-msg` (se activa
+     con `pnpm install`) valida cada commit local con `scripts/conventional-commit.mjs`.
+4. **Antes de abrir el PR**, en local: `pnpm lint`, `pnpm typecheck`, `pnpm test` y, si tocaste
    algo que usa la base de datos, `pnpm test:int`. Si cambiaste el prompt o el esquema del bot,
    propón correr `pnpm bot:eval` (cuesta créditos de la API: pide confirmación).
-4. **Abre un Pull Request hacia `main`** con un resumen de qué cambia y cómo se probó.
-5. **El merge lo hace el dueño del repositorio, a mano.** No fusiones PRs, no actives auto-merge
+5. **Abre un Pull Request hacia `main`** con un resumen de qué cambia y cómo se probó.
+6. **El merge lo hace el dueño del repositorio, a mano.** No fusiones PRs, no actives auto-merge
    ni pidas a ninguna herramienta que lo haga. Cuando el PR esté listo, avisa y espera.
-6. Después del merge: `git checkout main && git pull --ff-only` y borra la rama local.
+7. Después del merge: `git checkout main && git pull --ff-only` y borra la rama local.
 
 El merge a `main` dispara el CI y, solo si pasa, el despliegue a producción (incluidas las
 migraciones). Nada llega a producción por otro camino: no reactives los despliegues automáticos
