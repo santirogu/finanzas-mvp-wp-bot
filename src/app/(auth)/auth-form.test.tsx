@@ -168,11 +168,7 @@ describe("AuthForm · registro", () => {
     expect(screen.queryByText(/Quisiste decir/)).not.toBeInTheDocument();
   });
 
-  // Falla conocida: la sugerencia (con su botón) está dentro del <label> del correo, así que el
-  // nombre accesible del campo pasa a ser "Correo ¿Quisiste decir …? Sí, corregir" y queda un
-  // botón dentro de una etiqueta. Se corrige en una rama fix/ (sugerencia fuera del label, unida
-  // con aria-describedby); luego quitar `.fails`.
-  it.fails("con la sugerencia visible, el campo se sigue llamando 'Correo' y la sugerencia lo describe", async () => {
+  it("con la sugerencia visible, el campo se sigue llamando 'Correo' y la sugerencia lo describe", async () => {
     render(<AuthForm mode="register" />);
     await userEvent.type(email(), "ana@gmal.com");
     await userEvent.tab();

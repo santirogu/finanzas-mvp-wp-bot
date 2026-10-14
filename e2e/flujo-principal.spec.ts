@@ -65,9 +65,11 @@ test("los errores del formulario se muestran y no se pierde lo escrito", async (
   await register(page);
   await openTab(page, "Egresos");
 
-  await addTransaction(page, { amount: "0", description: "Monto inválido" });
+  await addTransaction(page, { amount: "0", description: "Monto inválido", category: "Mercado" });
 
   await expect(text(page, "Ingresa un monto mayor que cero")).toBeVisible();
   await expect(visible(page.getByLabel("Descripción"))).toHaveValue("Monto inválido");
+  const category = visible(page.getByLabel("Categoría"));
+  await expect(category.locator("option:checked")).toHaveText(/Mercado/);
   await expect(text(page, "No has registrado egresos este mes.")).toBeVisible();
 });

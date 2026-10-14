@@ -68,7 +68,16 @@ export function TransactionForm({
 
       <div className="grid grid-cols-2 gap-3">
         <Field label="Categoría" error={errors.categoryId}>
-          <select name="categoryId" className="input" defaultValue={values.categoryId ?? ""}>
+          {/* key: React 19 reinicia el formulario al terminar la acción y un <select> no toma un
+              defaultValue nuevo después de montarse; con la key se vuelve a montar con la
+              categoría que había elegido la persona (si no, tras un error volvería a "Sin
+              categoría"). */}
+          <select
+            key={values.categoryId ?? ""}
+            name="categoryId"
+            className="input"
+            defaultValue={values.categoryId ?? ""}
+          >
             <option value="">Sin categoría</option>
             {categories.map((c) => (
               <option key={c.id} value={c.id}>
