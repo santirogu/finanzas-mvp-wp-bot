@@ -11,8 +11,10 @@ describe("filesRequiringDeploy", () => {
         "src/lib/money.test.ts",
         "src/modules/bot/handle-message.int.test.ts",
         "test/integration/setup.ts",
+        "test/reset-database.ts",
       ],
     ],
+    ["pruebas E2E", ["e2e/flujo-principal.spec.ts", "e2e/helpers.ts", "playwright.config.ts"]],
     [
       "herramientas de desarrollo",
       ["scripts/bot-eval.ts", "scripts/meta-subscribe.sh", "scripts/conventional-commit.mjs"],
@@ -76,6 +78,14 @@ describe("filesRequiringDeploy · las reglas solo aplican en la raíz del repo",
 
   it("solo scripts/seed.ts despliega: otros scripts que empiezan igual son herramientas", () => {
     expect(filesRequiringDeploy(["scripts/seed.ts.bak", "scripts/seed.tsx"])).toEqual([]);
+  });
+
+  it("las pruebas E2E solo se excluyen en su carpeta y su configuración exacta", () => {
+    expect(filesRequiringDeploy(["src/e2e/util.ts", "playwright.config.ts.bak", "mi-e2e/x.ts"])).toEqual([
+      "src/e2e/util.ts",
+      "playwright.config.ts.bak",
+      "mi-e2e/x.ts",
+    ]);
   });
 });
 
