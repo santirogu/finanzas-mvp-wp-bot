@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { currentMonthRange, formatLongDate, formatMonthLabel, monthRange, todayInTimezone } from "./dates";
+import {
+  currentMonthRange,
+  formatLongDate,
+  formatMonthLabel,
+  monthRange,
+  todayInTimezone,
+} from "./dates";
 
 describe("todayInTimezone", () => {
   it("usa la fecha local de Bogotá y no la de UTC", () => {

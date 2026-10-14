@@ -92,6 +92,46 @@ describe("extractMessages", () => {
   });
 });
 
+describe("extractMessages · payloads incompletos", () => {
+  it("tolera entradas sin cambios, campos ajenos y mensajes sin id o remitente", () => {
+    const payload = {
+      object: "whatsapp_business_account",
+      entry: [
+        {},
+        { changes: [{ field: "account_update", value: {} }] },
+        { changes: [{ field: "messages" }] },
+        {
+          changes: [
+            {
+              field: "messages",
+              value: {
+                messages: [
+                  { from: "573001112233", type: "text", text: { body: "sin id" } },
+                  { id: "wamid.SIN_FROM", type: "text", text: { body: "sin remitente" } },
+                  { id: "wamid.OK", from: "573001112233" },
+                ],
+                contacts: [{ wa_id: "573001112233", profile: {} }],
+              },
+            },
+          ],
+        },
+      ],
+    };
+
+    const before = Math.floor(Date.now() / 1000);
+    const [message, ...rest] = extractMessages(payload);
+
+    expect(rest).toEqual([]);
+    expect(message).toMatchObject({
+      id: "wamid.OK",
+      type: "unknown",
+      text: null,
+      profileName: null,
+    });
+    expect(message.timestamp).toBeGreaterThanOrEqual(before);
+  });
+});
+
 describe("maskPhone", () => {
   it("oculta el número colombiano", () => {
     expect(maskPhone("573001234567")).toBe("+57 300 ••• 4567");

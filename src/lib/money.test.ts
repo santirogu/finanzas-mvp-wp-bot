@@ -19,6 +19,10 @@ describe("parseAmountInput", () => {
 });
 
 describe("formatMoney", () => {
+  it("usa dos decimales en monedas distintas al peso", () => {
+    expect(formatMoney(1234.5, "USD").replace(/\s/g, " ")).toBe("US$ 1.234,50");
+  });
+
   it("formatea pesos colombianos sin decimales", () => {
     expect(formatMoney(500000).replace(/\s/g, " ")).toBe("$ 500.000");
   });

@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { monthRange } from "@/lib/dates";
-import { balanceReply, registeredReply, undoReply } from "./replies";
+import {
+  balanceReply,
+  helpReply,
+  linkedReply,
+  notLinkedReply,
+  registeredReply,
+  undoReply,
+} from "./replies";
 
 const range = monthRange(2026, 10);
 const nbsp = (s: string) => s.replace(/\u00a0/g, " ");
@@ -85,5 +92,27 @@ describe("balanceReply", () => {
 describe("undoReply", () => {
   it("informa si no hay nada que deshacer", () => {
     expect(undoReply([], "COP")).toContain("No encontré");
+  });
+});
+
+describe("mensajes de vinculación y ayuda", () => {
+  it("saluda por el primer nombre o sin nombre", () => {
+    expect(helpReply("Ana Pérez")).toMatch(/^Hola Ana 👋/);
+    expect(helpReply()).toMatch(/^Hola 👋/);
+    expect(linkedReply("Ana Pérez")).toContain("¡Listo, Ana!");
+    expect(linkedReply("")).toContain("¡Listo!");
+  });
+
+  it("indica dónde vincular el número", () => {
+    expect(notLinkedReply("https://finanzas.test")).toContain("https://finanzas.test/dashboard");
+  });
+
+  it("lista lo que se deshizo", () => {
+    expect(
+      undoReply([{ description: "Café", amount: 6500, type: "expense" }], "COP").replace(
+        /\u00a0/g,
+        " ",
+      ),
+    ).toBe("Listo, eliminé:\n🗑️ Café — $ 6.500");
   });
 });
