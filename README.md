@@ -127,6 +127,20 @@ Resumen de lo que se revisa de forma automática (detalles y cómo reportar en [
 | **Dependabot** (`.github/dependabot.yml`) | Alertas y PRs de seguridad, y actualizaciones semanales agrupadas | Lunes y ante cada vulnerabilidad nueva | No: abre PRs que el dueño revisa y fusiona |
 | **Secret scanning + push protection** | Detecta credenciales en el repo y **rechaza pushes** que las contengan | Siempre | Sí |
 
+### Versiones forzadas de dependencias
+
+`package.json → pnpm.overrides` fuerza versiones corregidas en dependencias indirectas cuyo paquete
+padre todavía no se actualiza. Revísalas cuando se actualicen esos paquetes y bórralas si ya no
+hacen falta:
+
+| Override | Por qué | Quitar cuando |
+|---|---|---|
+| `@esbuild-kit/core-utils>esbuild: ^0.25.4` | `drizzle-kit` 0.31 trae `esbuild` 0.18, vulnerable ([GHSA-67mh-4wv8-2f99](https://github.com/advisories/GHSA-67mh-4wv8-2f99)). Verificado: `drizzle-kit generate`, `check` y `migrate` siguen funcionando | `drizzle-kit` deje de depender de `@esbuild-kit` |
+| `typed-rest-client>qs: ^6.16.0` | Stryker 10.0.0 usa `typed-rest-client` 2.x con `qs` vulnerable (3 avisos de DoS) | Stryker actualice `typed-rest-client` a 3.x |
+
+Única vulnerabilidad conocida restante: `braces` (alta, vía ESLint, solo desarrollo), sin versión
+corregida publicada.
+
 ## Flujo de trabajo
 
 `main` está protegida: **no acepta pushes directos**, solo Pull Requests con el CI en verde

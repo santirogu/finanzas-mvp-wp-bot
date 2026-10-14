@@ -52,5 +52,11 @@
     "typescript": "^5",
     "vitest": "^5.0.4"
   },
-  "packageManager": "pnpm@9.15.0"
+  "packageManager": "pnpm@9.15.0",
+  "pnpm": {
+    "overrides": {
+      "@esbuild-kit/core-utils>esbuild": "^0.25.4",
+      "typed-rest-client>qs": "^6.16.0"
+    }
+  }
 }
