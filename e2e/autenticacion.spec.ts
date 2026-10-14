@@ -1,4 +1,5 @@
 import { expect, type Page } from "@playwright/test";
+import { TOO_MANY_ATTEMPTS } from "../src/lib/auth-errors";
 import { PASSWORD, formAlert, newPerson, register, test, uniqueEmail } from "./helpers";
 
 test.describe("sin sesión", () => {
@@ -68,18 +69,10 @@ test.describe("límite de intentos (Better Auth)", () => {
     }
   }
 
-  test("bloquea los intentos de login después del tercero", async ({ page }) => {
+  test("bloquea los intentos de login después del tercero y avisa en español", async ({ page }) => {
     await wrongPasswordAttempts(page, uniqueEmail(), 4);
-    // Hoy el aviso llega en inglés (ver la prueba siguiente); acepta ambos para no depender de eso.
-    await expect(formAlert(page)).toHaveText(/too many requests|espera/i);
+    await expect(formAlert(page)).toHaveText(TOO_MANY_ATTEMPTS);
     await expect(page).toHaveURL(/\/login$/);
-  });
-
-  // Falla conocida: el aviso llega en inglés ("Too many requests. Please try again later.").
-  // Se corrige en una rama fix/; luego quitar `test.fail`.
-  test.fail("avisa en español que hay que esperar", async ({ page }) => {
-    await wrongPasswordAttempts(page, uniqueEmail(), 4);
-    await expect(formAlert(page)).toHaveText(/espera/i, { timeout: 2_000 });
   });
 });
 

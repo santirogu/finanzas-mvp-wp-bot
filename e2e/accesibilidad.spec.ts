@@ -4,10 +4,10 @@ import { addTransaction, openTab, register, test, visible } from "./helpers";
 
 // Accesibilidad con axe-core (reglas WCAG 2.1 A y AA): falla ante problemas graves o críticos,
 // como contraste insuficiente, campos sin etiqueta o botones sin nombre.
-async function seriousViolations(page: Page) {
-  const { violations } = await new AxeBuilder({ page })
-    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
-    .analyze();
+async function seriousViolations(page: Page, { only }: { only?: string } = {}) {
+  let builder = new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]);
+  if (only) builder = builder.include(only);
+  const { violations } = await builder.analyze();
   return violations
     .filter((v) => v.impact === "serious" || v.impact === "critical")
     .map((v) => ({
@@ -41,6 +41,20 @@ test.describe("páginas con sesión (y con datos)", () => {
       expect(await seriousViolations(page)).toEqual([]);
     });
   }
+
+  test("el esqueleto de carga tampoco", async ({ page }) => {
+    // Demora la respuesta del servidor al cambiar de pestaña: mientras tanto se ve el esqueleto.
+    await page.route(/\/ingresos(\?|$)/, async (route) => {
+      if (route.request().headers()["rsc"]) await new Promise((r) => setTimeout(r, 2_000));
+      await route.continue();
+    });
+    await page.getByRole("navigation").getByRole("link", { name: "Ingresos", exact: true }).click();
+
+    await expect(visible(page.getByRole("status", { name: "Cargando" }))).toBeVisible();
+    // Solo el esqueleto: mientras la respuesta no llega, Next todavía no puso el <title> de la
+    // página nueva (las demás pruebas revisan la página completa ya cargada).
+    expect(await seriousViolations(page, { only: "[role=status]" })).toEqual([]);
+  });
 
   test("los errores del formulario tampoco", async ({ page }) => {
     await addTransaction(page, { amount: "0", description: "Inválido" });

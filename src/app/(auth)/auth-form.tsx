@@ -4,15 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition, type FormEvent } from "react";
 import { authClient } from "@/lib/auth-client";
+import { authErrorMessage } from "@/lib/auth-errors";
 import { suggestEmailCorrection } from "@/lib/email-typo";
-
-const ERRORS: Record<string, string> = {
-  INVALID_EMAIL_OR_PASSWORD: "Correo o contraseña incorrectos.",
-  USER_ALREADY_EXISTS: "Ya existe una cuenta con ese correo.",
-  USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL: "Ya existe una cuenta con ese correo.",
-  PASSWORD_TOO_SHORT: "La contraseña debe tener al menos 8 caracteres.",
-  INVALID_EMAIL: "El correo no es válido.",
-};
 
 export function AuthForm({ mode }: { mode: "login" | "register" }) {
   const router = useRouter();
@@ -51,7 +44,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
         : await authClient.signIn.email({ email, password });
 
       if (error) {
-        setError((error.code && ERRORS[error.code]) || error.message || "Algo salió mal.");
+        setError(authErrorMessage(error));
         return;
       }
       router.replace("/dashboard");
