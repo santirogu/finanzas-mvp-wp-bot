@@ -90,3 +90,14 @@ describe("sendWhatsAppText", () => {
     expect(info).toHaveBeenCalledWith(expect.stringContaining("573001112233"));
   });
 });
+
+describe("sendWhatsAppText · errores sin cuerpo", () => {
+  it("si no se puede leer el cuerpo del error, informa solo el estado", async () => {
+    const response = new Response(null, { status: 503 });
+    vi.spyOn(response, "text").mockRejectedValue(new Error("stream cerrado"));
+    fetchMock.mockResolvedValue(response);
+    const { sendWhatsAppText } = await loadClient();
+
+    expect(await sendWhatsAppText("573001112233", "Hola")).toEqual({ ok: false, error: "503 " });
+  });
+});

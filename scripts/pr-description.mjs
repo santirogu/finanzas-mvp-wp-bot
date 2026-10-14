@@ -8,8 +8,8 @@
 import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 
+// "## Additional Notes" es opcional: no se valida.
 export const REQUIRED_SECTIONS = ["Why", "What", "How"];
-export const OPTIONAL_SECTIONS = ["Additional Notes"];
 // Por debajo de esto se asume que la sección quedó vacía o con un "N/A".
 export const MIN_CONTENT_LENGTH = 10;
 
@@ -58,19 +58,23 @@ export function validateDescription(body) {
   return errors.length ? { ok: false, errors } : { ok: true };
 }
 
-function main() {
-  const body = readFileSync(0, "utf8");
+/** Valida desde la línea de comandos y devuelve el código de salida. */
+export function runCli(body, { log = console.log, error = console.error } = {}) {
   const result = validateDescription(body);
   if (result.ok) {
-    console.log("✓ La descripción del PR sigue la plantilla (Why / What / How).");
+    log("✓ La descripción del PR sigue la plantilla (Why / What / How).");
     return 0;
   }
-  console.error("✗ La descripción del PR no sigue la plantilla:\n");
-  for (const error of result.errors) console.error(`  • ${error}`);
-  console.error(
+  error("✗ La descripción del PR no sigue la plantilla:\n");
+  for (const message of result.errors) error(`  • ${message}`);
+  error(
     `\nUsa las secciones de .github/pull_request_template.md:\n  ## Why  — por qué hace falta el cambio\n  ## What — qué cambia\n  ## How  — cómo se resolvió y cómo se probó\n  ## Additional Notes — opcional\n\nEdita la descripción del PR: el check se vuelve a ejecutar solo.`,
   );
   return 1;
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) process.exit(main());
+// Stryker disable next-line all: punto de entrada de la línea de comandos; se prueba con la función exportada y lo ejercita el CI.
+if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
+  // Stryker disable next-line all
+  process.exit(runCli(readFileSync(0, "utf8")));
+}

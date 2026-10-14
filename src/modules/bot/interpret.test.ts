@@ -270,3 +270,92 @@ describe("interpretMessage", () => {
     });
   });
 });
+
+describe("parseCommand · solo comandos exactos", () => {
+  it.each([
+    "mi balance de la tarjeta",
+    "ver mi balance",
+    "necesito ayuda con algo",
+    "ayuda por favor",
+    "deshacer el gasto de ayer",
+    "quiero deshacer",
+    "vincular 123456 por favor",
+    "por favor vincular 123456",
+    "cuanto llevo gastado en ropa",
+  ])("%j no es un comando (lo interpreta la IA)", (text) => {
+    expect(parseCommand(text)).toBeNull();
+  });
+
+  it("acepta variaciones de los comandos", () => {
+    expect(parseCommand("deshacer último")).toEqual({ kind: "command", command: "undo" });
+    expect(parseCommand("¡¡Balance!!")).toEqual({ kind: "command", command: "balance" });
+    expect(parseCommand("vincular   482913")).toEqual({ kind: "link", code: "482913" });
+  });
+});
+
+describe("interpretMessage · límites y respuestas", () => {
+  it("acepta mensajes de hasta 1.000 caracteres", async () => {
+    const extractor = fakeExtractor({ ok: true, transactions: [], reply: "¿Cuánto?", usage });
+    await interpretMessage("a".repeat(1000), ctx, extractor);
+    expect(extractor).toHaveBeenCalled();
+  });
+
+  it("si la IA propuso un monto inválido, pregunta exactamente por el monto", async () => {
+    const extractor = fakeExtractor({
+      ok: true,
+      transactions: [
+        {
+          type: "expense",
+          amount: 0,
+          description: "Zapatos",
+          category: "Ropa",
+          date: "2026-10-13",
+        },
+      ],
+      reply: "texto de la IA que no debe usarse",
+      usage,
+    });
+    expect(await interpretMessage("zapatos", ctx, extractor)).toMatchObject({
+      kind: "reply",
+      text: "No entendí el monto. ¿Cuánto fue exactamente?",
+    });
+  });
+
+  it("recorta los espacios de la respuesta de la IA", async () => {
+    const extractor = fakeExtractor({
+      ok: true,
+      transactions: [],
+      reply: "  ¿Cuánto te costaron?  ",
+      usage,
+    });
+    expect(await interpretMessage("me compré algo", ctx, extractor)).toMatchObject({
+      text: "¿Cuánto te costaron?",
+    });
+  });
+});
+
+describe("normalizeTransactions · límites", () => {
+  const base = {
+    type: "expense" as const,
+    amount: 1000,
+    description: "x",
+    category: "Ropa",
+    date: "2026-10-13",
+  };
+
+  it("acepta fechas de hasta 366 días atrás", () => {
+    const [ok] = normalizeTransactions([{ ...base, date: "2025-10-12" }], ctx);
+    const [old] = normalizeTransactions([{ ...base, date: "2025-10-11" }], ctx);
+    expect(ok.occurredOn).toBe("2025-10-12");
+    expect(old.occurredOn).toBe("2026-10-13");
+  });
+
+  it("acepta el monto máximo y rechaza lo que lo supera", () => {
+    expect(normalizeTransactions([{ ...base, amount: 100_000_000_000 }], ctx)).toHaveLength(1);
+    expect(normalizeTransactions([{ ...base, amount: 100_000_000_001 }], ctx)).toEqual([]);
+  });
+
+  it("reconoce la categoría aunque venga con espacios", () => {
+    expect(matchCategory("  ropa  ", categories.expense)).toBe("Ropa");
+  });
+});

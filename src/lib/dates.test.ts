@@ -40,3 +40,12 @@ describe("formatLongDate", () => {
     expect(formatLongDate("2026-10-13")).toBe("martes 13 de octubre de 2026");
   });
 });
+
+describe("todayInTimezone · otras zonas horarias", () => {
+  it("respeta la zona del usuario aunque el servidor esté en otra", () => {
+    // 13 oct 2026 20:00 UTC = 14 oct en Tokio y 13 oct en Bogotá.
+    const now = new Date("2026-10-13T20:00:00Z");
+    expect(todayInTimezone("Asia/Tokyo", now)).toBe("2026-10-14");
+    expect(todayInTimezone("America/Bogota", now)).toBe("2026-10-13");
+  });
+});

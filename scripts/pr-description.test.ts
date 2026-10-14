@@ -1,6 +1,11 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { parseSections, stripHtmlComments, validateDescription } from "./pr-description.mjs";
+import {
+  parseSections,
+  runCli,
+  stripHtmlComments,
+  validateDescription,
+} from "./pr-description.mjs";
 
 const valid = `## Why
 Desplegar en cada merge gastaba builds en cambios que no tocan la app.
@@ -93,5 +98,52 @@ describe("stripHtmlComments", () => {
 
   it("deja el texto sin comentarios tal cual", () => {
     expect(stripHtmlComments("## Why\nPorque sí")).toBe("## Why\nPorque sí");
+  });
+});
+
+describe("validateDescription · límites", () => {
+  const withHow = (how: string) =>
+    `## Why\nPorque hace falta el cambio.\n## What\nUna lista de cambios.\n## How\n${how}`;
+
+  it("acepta exactamente el mínimo de 10 caracteres (sin contar espacios)", () => {
+    expect(validateDescription(withHow("abcde fghij"))).toEqual({ ok: true });
+    expect(validateDescription(withHow("abcde fghi")).ok).toBe(false);
+  });
+
+  it("si una sección aparece dos veces, suma su contenido", () => {
+    const body =
+      "## Why\nPorque sí,\n## What\nUna lista de cambios.\n## How\nAsí se hizo.\n## Why\nde verdad.";
+    expect(validateDescription(body)).toEqual({ ok: true });
+  });
+});
+
+describe("runCli", () => {
+  function run(body: string) {
+    const out: string[] = [];
+    const err: string[] = [];
+    const code = runCli(body, {
+      log: (l: string) => out.push(l),
+      error: (l: string) => err.push(l),
+    });
+    return { code, out: out.join("\n"), err: err.join("\n") };
+  }
+
+  it("confirma una descripción válida", () => {
+    expect(run(valid)).toEqual({
+      code: 0,
+      out: "✓ La descripción del PR sigue la plantilla (Why / What / How).",
+      err: "",
+    });
+  });
+
+  it("explica qué falta y cómo corregirlo", () => {
+    const result = run("## Why\nPorque hace falta este cambio.");
+    expect(result.code).toBe(1);
+    expect(result.err).toContain("✗ La descripción del PR no sigue la plantilla:");
+    expect(result.err).toContain('  • Falta la sección "## What".');
+    expect(result.err).toContain("## How  — cómo se resolvió y cómo se probó");
+    expect(result.err).toContain(
+      "Edita la descripción del PR: el check se vuelve a ejecutar solo.",
+    );
   });
 });
