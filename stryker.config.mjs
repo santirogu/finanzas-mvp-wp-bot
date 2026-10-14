@@ -13,7 +13,7 @@ const config = {
   // Lógica cubierta por pruebas unitarias. Lo que depende de la base de datos (consultas,
   // vinculación, flujo del bot) se prueba en integración y queda fuera por ahora.
   mutate: [
-    "src/lib/{money,dates,email-typo,env,app-url,session,health}.ts",
+    "src/lib/{money,dates,email-typo,env,app-url,session,health,auth-errors}.ts",
     "src/modules/bot/{commands,normalize,interpret,replies,prompt,claude-extractor}.ts",
     "src/modules/whatsapp/{signature,payload,phone,client,actions}.ts",
     "src/modules/transactions/validation.ts",

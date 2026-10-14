@@ -16,6 +16,10 @@ const eslintConfig = defineConfig([
     "coverage/**",
     // Reporte y sandbox del mutation testing (Stryker).
     "reports/**",
+    // Reportes y trazas de las pruebas E2E (Playwright).
+    "playwright-report/**",
+    "test-results/**",
+    "blob-report/**",
     ".stryker-tmp/**",
   ]),
 ]);
