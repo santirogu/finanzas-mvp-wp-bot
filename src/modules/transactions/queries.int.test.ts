@@ -103,6 +103,41 @@ describe("getTotalsByCategory", () => {
   });
 });
 
+describe("aislamiento entre usuarios", () => {
+  it("las listas y los totales por categoría nunca incluyen movimientos de otro usuario", async () => {
+    const ana = await createUser();
+    const beto = await createUser();
+    const ropa = await globalCategory("expense", "Ropa");
+    await addTx({ userId: ana.id, categoryId: ropa.id, amount: 100000, description: "De Ana" });
+    await addTx({ userId: beto.id, categoryId: ropa.id, amount: 900000, description: "De Beto" });
+    await addTx({ userId: beto.id, type: "income", amount: 5000000, description: "Ingreso de Beto" });
+
+    expect((await listTransactions(ana.id, october)).map((t) => t.description)).toEqual(["De Ana"]);
+    expect(
+      (await listTransactions(ana.id, october, { type: "income" })).map((t) => t.description),
+    ).toEqual([]);
+    expect(await getTotalsByCategory(ana.id, "expense", october)).toEqual([
+      { name: "Ropa", emoji: "👟", total: 100000 },
+    ]);
+    expect(await getTotalsByCategory(ana.id, "income", october)).toEqual([]);
+  });
+
+  it("un usuario sin movimientos no ve nada aunque otros sí tengan", async () => {
+    const vacio = await createUser();
+    const otro = await createUser();
+    await addTx({ userId: otro.id });
+
+    expect(await listTransactions(vacio.id, october)).toEqual([]);
+    expect(await getTotalsByCategory(vacio.id, "expense", october)).toEqual([]);
+    expect(await getMonthlySummary(vacio.id, october)).toEqual({
+      income: 0,
+      expense: 0,
+      balance: 0,
+      count: 0,
+    });
+  });
+});
+
 describe("listTransactions", () => {
   it("filtra por tipo y ordena del más reciente al más antiguo", async () => {
     const user = await createUser();

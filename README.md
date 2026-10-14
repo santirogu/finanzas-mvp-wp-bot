@@ -58,6 +58,11 @@ pnpm dev                        # http://localhost:3000
   flujo completo del bot (vincular, registrar, duplicados, deshacer, errores), las consultas del
   balance y las Server Actions, incluido que un usuario no pueda ver ni borrar datos de otro.
   Claude y WhatsApp se simulan: no cuestan dinero.
+- **Matriz de autorización** (`src/authorization-matrix.test.ts`): inventario de todas las
+  páginas, rutas de API y Server Actions con la protección de cada una. Falla si aparece una entrada
+  sin clasificar, una Server Action que no llama a `requireUser()` antes de tocar datos, o una página
+  privada que solo depende del proxy. El aislamiento entre usuarios de cada entrada se prueba en
+  integración con dos usuarios, y `src/proxy.test.ts` cubre cada redirección con y sin sesión.
 - **Schema drift** (`pnpm db:check-drift`): falla si `src/db/schema/` cambió sin su migración en
   `drizzle/`, mostrando el SQL pendiente, o si `drizzle-kit` necesita una decisión (p. ej. ante un
   renombre de columna). No necesita base de datos y deja `drizzle/` intacto.
