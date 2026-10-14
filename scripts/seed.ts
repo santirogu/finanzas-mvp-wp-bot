@@ -3,38 +3,15 @@ import "dotenv/config";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { category } from "../src/db/schema";
-
-const EXPENSE = [
-  ["Alimentación", "🍽️"],
-  ["Mercado", "🛒"],
-  ["Transporte", "🚌"],
-  ["Vivienda", "🏠"],
-  ["Servicios", "💡"],
-  ["Salud", "🩺"],
-  ["Ropa", "👟"],
-  ["Entretenimiento", "🎬"],
-  ["Educación", "📚"],
-  ["Deudas", "💳"],
-  ["Otros", "📦"],
-] as const;
-
-const INCOME = [
-  ["Salario", "💼"],
-  ["Freelance", "💻"],
-  ["Ventas", "🏷️"],
-  ["Inversiones", "📈"],
-  ["Regalos", "🎁"],
-  ["Otros", "📦"],
-] as const;
+import { DEFAULT_CATEGORIES } from "../src/modules/transactions/default-categories";
 
 async function main() {
   const client = postgres(process.env.DATABASE_URL!, { max: 1, prepare: false });
   const db = drizzle(client);
 
-  const rows = [
-    ...EXPENSE.map(([name, emoji]) => ({ type: "expense" as const, name, emoji })),
-    ...INCOME.map(([name, emoji]) => ({ type: "income" as const, name, emoji })),
-  ];
+  const rows = (["expense", "income"] as const).flatMap((type) =>
+    DEFAULT_CATEGORIES[type].map(({ name, emoji }) => ({ type, name, emoji })),
+  );
   const inserted = await db.insert(category).values(rows).onConflictDoNothing().returning();
   console.log(`Categorías nuevas: ${inserted.length} (de ${rows.length})`);
   await client.end();

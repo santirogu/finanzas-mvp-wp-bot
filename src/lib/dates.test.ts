@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { currentMonthRange, formatMonthLabel, monthRange, todayInTimezone } from "./dates";
+import { currentMonthRange, formatLongDate, formatMonthLabel, monthRange, todayInTimezone } from "./dates";
 
 describe("todayInTimezone", () => {
   it("usa la fecha local de Bogotá y no la de UTC", () => {
@@ -26,5 +26,11 @@ describe("currentMonthRange", () => {
 describe("formatMonthLabel", () => {
   it("muestra el mes en español", () => {
     expect(formatMonthLabel({ year: 2026, month: 10 })).toBe("Octubre de 2026");
+  });
+});
+
+describe("formatLongDate", () => {
+  it("incluye el día de la semana (lo usa el bot para entender 'el lunes')", () => {
+    expect(formatLongDate("2026-10-13")).toBe("martes 13 de octubre de 2026");
   });
 });

@@ -1,0 +1,149 @@
+import { describe, expect, it, vi } from "vitest";
+import { DEFAULT_CATEGORIES } from "@/modules/transactions/default-categories";
+import type { ExtractionResult, Extractor } from "./claude-extractor";
+import { parseCommand } from "./commands";
+import { interpretMessage } from "./interpret";
+import { matchCategory, normalizeTransactions, type CategoryNames } from "./normalize";
+
+const categories: CategoryNames = {
+  expense: DEFAULT_CATEGORIES.expense.map((c) => c.name),
+  income: DEFAULT_CATEGORIES.income.map((c) => c.name),
+};
+const ctx = { today: "2026-10-13", categories };
+const usage = { model: "test", inputTokens: 0, outputTokens: 0 };
+
+const fakeExtractor = (result: ExtractionResult) => vi.fn<Extractor>().mockResolvedValue(result);
+
+describe("parseCommand", () => {
+  it.each([
+    ["balance", "balance"],
+    ["Balance?", "balance"],
+    ["saldo", "balance"],
+    ["¿Cuánto llevo este mes?", "balance"],
+    ["deshacer", "undo"],
+    ["Borrar el último", "undo"],
+    ["ayuda", "help"],
+    ["Hola!", "help"],
+    ["Buenos días", "help"],
+  ])("%j → %s", (text, command) => {
+    expect(parseCommand(text)).toEqual({ kind: "command", command });
+  });
+
+  it("reconoce el código de vinculación", () => {
+    expect(parseCommand("VINCULAR 482913")).toEqual({ kind: "link", code: "482913" });
+    expect(parseCommand("vincular 1234")).toBeNull();
+  });
+
+  it("no confunde un gasto con un comando", () => {
+    expect(parseCommand("pagué el balance de la tarjeta 200.000")).toBeNull();
+    expect(parseCommand("me compré unos zapatos de $500.000")).toBeNull();
+  });
+});
+
+describe("normalizeTransactions", () => {
+  const base = { type: "expense" as const, amount: 500000, description: "zapatos", category: "Ropa", date: "2026-10-13" };
+
+  it("acepta una transacción válida y capitaliza la descripción", () => {
+    expect(normalizeTransactions([base], ctx)).toEqual([
+      { type: "expense", amount: 500000, description: "Zapatos", category: "Ropa", occurredOn: "2026-10-13" },
+    ]);
+  });
+
+  it("descarta montos inválidos", () => {
+    const items = [0, -5000, 1e15, Number.NaN].map((amount) => ({ ...base, amount }));
+    expect(normalizeTransactions(items, ctx)).toEqual([]);
+  });
+
+  it("nunca guarda fechas futuras ni inválidas", () => {
+    const [future, invalid, old] = normalizeTransactions(
+      [
+        { ...base, date: "2026-10-20" },
+        { ...base, date: "13/10/2026" },
+        { ...base, date: "2020-01-01" },
+      ],
+      ctx,
+    );
+    expect(future.occurredOn).toBe("2026-10-13");
+    expect(invalid.occurredOn).toBe("2026-10-13");
+    expect(old.occurredOn).toBe("2026-10-13");
+  });
+
+  it("respeta fechas pasadas razonables", () => {
+    expect(normalizeTransactions([{ ...base, date: "2026-10-12" }], ctx)[0].occurredOn).toBe("2026-10-12");
+  });
+
+  it("usa la categoría del tipo correcto", () => {
+    const [income] = normalizeTransactions([{ ...base, type: "income", category: "Ropa" }], ctx);
+    expect(income.category).toBe("Otros");
+  });
+});
+
+describe("matchCategory", () => {
+  it("ignora mayúsculas y tildes", () => {
+    expect(matchCategory("alimentacion", categories.expense)).toBe("Alimentación");
+    expect(matchCategory("EDUCACIÓN", categories.expense)).toBe("Educación");
+  });
+
+  it("cae en 'Otros' si la categoría no existe", () => {
+    expect(matchCategory("Mascotas", categories.expense)).toBe("Otros");
+  });
+});
+
+describe("interpretMessage", () => {
+  it("resuelve comandos sin llamar a la IA", async () => {
+    const extractor = fakeExtractor({ ok: true, transactions: [], reply: null, usage });
+    expect(await interpretMessage("balance", ctx, extractor)).toEqual({ kind: "command", command: "balance" });
+    expect(extractor).not.toHaveBeenCalled();
+  });
+
+  it("pasa la fecha de hoy y las categorías al extractor", async () => {
+    const extractor = fakeExtractor({ ok: true, transactions: [], reply: "¿Cuánto fue?", usage });
+    await interpretMessage("me compré unos zapatos", ctx, extractor);
+    expect(extractor).toHaveBeenCalledWith({
+      text: "me compré unos zapatos",
+      today: { iso: "2026-10-13", long: "martes 13 de octubre de 2026" },
+      categories,
+    });
+  });
+
+  it("devuelve las transacciones validadas", async () => {
+    const extractor = fakeExtractor({
+      ok: true,
+      transactions: [{ type: "expense", amount: 500000, description: "Zapatos", category: "Ropa", date: "2026-10-13" }],
+      reply: null,
+      usage,
+    });
+    const intent = await interpretMessage("me compré unos zapatos que me costaron $500.000", ctx, extractor);
+    expect(intent).toMatchObject({
+      kind: "transactions",
+      items: [{ type: "expense", amount: 500000, description: "Zapatos", category: "Ropa" }],
+    });
+  });
+
+  it("devuelve la pregunta de aclaración de la IA", async () => {
+    const extractor = fakeExtractor({ ok: true, transactions: [], reply: "¿Cuánto te costaron?", usage });
+    expect(await interpretMessage("me compré unos zapatos", ctx, extractor)).toMatchObject({
+      kind: "reply",
+      text: "¿Cuánto te costaron?",
+    });
+  });
+
+  it("pide el monto si la IA propuso uno inválido", async () => {
+    const extractor = fakeExtractor({
+      ok: true,
+      transactions: [{ type: "expense", amount: 0, description: "Zapatos", category: "Ropa", date: "2026-10-13" }],
+      reply: null,
+      usage,
+    });
+    expect(await interpretMessage("zapatos", ctx, extractor)).toMatchObject({ kind: "reply" });
+  });
+
+  it("reporta errores de la API sin lanzar excepción", async () => {
+    const extractor = fakeExtractor({ ok: false, reason: "api_error", detail: "529 overloaded" });
+    expect(await interpretMessage("gasté 20 mil", ctx, extractor)).toEqual({
+      kind: "error",
+      reason: "api_error: 529 overloaded",
+      usage: undefined,
+    });
+  });
+});

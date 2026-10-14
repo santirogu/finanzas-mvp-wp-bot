@@ -51,3 +51,17 @@ export function formatShortDate(isoDate: string): string {
     .format(new Date(Date.UTC(y, m - 1, d)))
     .replace(".", "");
 }
+
+/** "2026-10-13" → "martes 13 de octubre de 2026" */
+export function formatLongDate(isoDate: string): string {
+  const [y, m, d] = isoDate.split("-").map(Number);
+  return new Intl.DateTimeFormat("es-CO", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  })
+    .format(new Date(Date.UTC(y, m - 1, d)))
+    .replace(",", "");
+}

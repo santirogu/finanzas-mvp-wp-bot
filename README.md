@@ -38,6 +38,8 @@ pnpm dev                        # http://localhost:3000
 | `pnpm db:migrate` | Aplica migraciones pendientes |
 | `pnpm db:seed` | Inserta categorías globales (idempotente) |
 | `pnpm db:studio` | Explorador visual de la base de datos |
+| `pnpm bot:try "texto"` | Muestra cómo interpreta el bot un mensaje (usa la API de Claude) |
+| `pnpm bot:eval` | Corre el set de ~50 frases de prueba del bot y reporta aciertos, latencia y costo |
 
 > No uses `pnpm setup` (es un comando propio de pnpm que modifica tu shell). El script del proyecto se llama `db:setup`.
 
@@ -55,6 +57,7 @@ src/
     auth.ts, session.ts             Config de auth y Data Access Layer (único lugar que lee la sesión)
     money.ts, dates.ts              Formato/parsing de COP y "mes actual" según zona horaria
   modules/transactions/             Consultas, Server Actions y validación de movimientos
+  modules/bot/                      Intérprete de mensajes: comandos fijos + extracción con Claude + validación
   proxy.ts                          Redirecciones rápidas según haya cookie de sesión
 scripts/seed.ts                     Categorías por defecto
 ```

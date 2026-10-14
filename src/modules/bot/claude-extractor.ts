@@ -1,0 +1,93 @@
+import Anthropic from "@anthropic-ai/sdk";
+import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
+import { z } from "zod";
+import type { CategoryNames, RawTransaction } from "./normalize";
+import { buildSystemPrompt, buildUserMessage } from "./prompt";
+
+// Modelo configurable por entorno. Por defecto Claude Opus 5.5 con esfuerzo bajo
+// (una extracción corta no necesita razonar mucho). Para abaratar se puede usar
+// BOT_MODEL=claude-haiku-5-5 después de comparar ambos con `pnpm bot:eval`.
+const botModel = () => process.env.BOT_MODEL || "claude-opus-5-5";
+const botEffort = () => (process.env.BOT_EFFORT || "low") as "low" | "medium" | "high";
+
+const extractionSchema = z.object({
+  transactions: z.array(
+    z.object({
+      type: z.enum(["income", "expense"]),
+      amount: z.number().describe("Monto en pesos colombianos: número entero, sin separadores"),
+      description: z.string().describe("Qué fue, en 1 a 5 palabras"),
+      category: z.string().describe("Una de las categorías de su tipo, o 'Otros'"),
+      date: z.string().describe("Fecha del movimiento, YYYY-MM-DD"),
+    }),
+  ),
+  reply: z
+    .string()
+    .nullable()
+    .describe("Respuesta al usuario cuando no hay transacciones; null si las hay"),
+});
+
+export type ExtractionInput = {
+  text: string;
+  today: { iso: string; long: string };
+  categories: CategoryNames;
+};
+
+export type ExtractionResult =
+  | { ok: true; transactions: RawTransaction[]; reply: string | null; usage: Usage }
+  | { ok: false; reason: "refusal" | "invalid_output" | "api_error"; detail?: string; usage?: Usage };
+
+export type Usage = { model: string; inputTokens: number; outputTokens: number };
+
+export type Extractor = (input: ExtractionInput) => Promise<ExtractionResult>;
+
+let client: Anthropic | null = null;
+function getClient() {
+  // Toma ANTHROPIC_API_KEY del entorno. Timeout corto: es una conversación de WhatsApp.
+  client ??= new Anthropic({ timeout: 30_000, maxRetries: 2 });
+  return client;
+}
+
+// Los modelos Haiku no tienen fallback del lado del servidor.
+const supportsServerFallback = (model: string) => !model.includes("haiku");
+
+export const claudeExtractor: Extractor = async ({ text, today, categories }) => {
+  const model = botModel();
+  try {
+    const response = await getClient().beta.messages.parse({
+      model,
+      max_tokens: 8000,
+      system: buildSystemPrompt(categories),
+      messages: [{ role: "user", content: buildUserMessage(text, today) }],
+      output_config: { effort: botEffort(), format: betaZodOutputFormat(extractionSchema) },
+      // Si un clasificador de seguridad rechaza el mensaje, el servidor reintenta
+      // con el modelo recomendado en lugar de devolver el rechazo.
+      ...(supportsServerFallback(model)
+        ? { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" as const }
+        : {}),
+    });
+
+    const usage: Usage = {
+      model: response.model,
+      inputTokens: response.usage.input_tokens,
+      outputTokens: response.usage.output_tokens,
+    };
+
+    if (response.stop_reason === "refusal") {
+      return { ok: false, reason: "refusal", detail: response.stop_details?.category ?? undefined, usage };
+    }
+    if (!response.parsed_output) {
+      return { ok: false, reason: "invalid_output", detail: `stop_reason=${response.stop_reason}`, usage };
+    }
+    return {
+      ok: true,
+      transactions: response.parsed_output.transactions,
+      reply: response.parsed_output.reply,
+      usage,
+    };
+  } catch (error) {
+    if (error instanceof Anthropic.APIError) {
+      return { ok: false, reason: "api_error", detail: `${error.status ?? ""} ${error.message}`.trim() };
+    }
+    throw error;
+  }
+};
