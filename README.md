@@ -112,10 +112,13 @@ WhatsApp, usa el simulador en `/simulador`.
 
 `main` está protegida: **no acepta pushes directos**, solo Pull Requests con el CI en verde
 (regla "Proteger main" en *Settings → Rules*, sin excepciones, ni siquiera para administradores).
+Las ramas siguen la convención `<tipo>/<descripcion-corta>` (`feature/`, `fix/`, `hotfix/`,
+`refactor/`, `test/`, `docs/`, `chore/`, `ci/`), validada por el check **Nombre de rama**.
+Las reglas completas están en [CLAUDE.md](CLAUDE.md).
 
 ```bash
-git checkout -b mi-cambio          # 1. trabaja en una rama
-git push -u origin mi-cambio       # 2. súbela
+git checkout -b feature/mi-cambio  # 1. trabaja en una rama
+git push -u origin feature/mi-cambio  # 2. súbela
 gh pr create --fill                # 3. abre el PR: el CI corre lint, tipos y pruebas
 ```
 
