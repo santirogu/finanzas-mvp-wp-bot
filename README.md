@@ -138,6 +138,15 @@ borra automáticamente. El PR debe estar al día con `main` antes de fusionarse.
 pasaron. Ese job ejecuta `pnpm vercel-build` (migraciones + categorías + build) y publica con
 `vercel deploy --prebuilt --prod`. Así, tampoco una migración rota llega a la base de producción.
 
+**Solo se despliega si cambió algo que afecta la app.** El job `changes` compara `main` con el
+**último commit desplegado con éxito** (no con el anterior, para no perder cambios de un despliegue
+fallido) y `scripts/deploy-needed.mjs` decide: si todos los archivos cambiados son documentación,
+workflows, pruebas o herramientas de desarrollo, no despliega; cualquier otro archivo, incluido uno
+nuevo o desconocido, despliega. La decisión queda explicada en el resumen de cada corrida.
+
+**Despliegue manual:** *Actions → CI → Run workflow* (rama `main`) corre los checks y despliega
+siempre. Úsalo después de cambiar variables de entorno en Vercel.
+
 Secretos necesarios en GitHub (*Settings → Secrets and variables → Actions*):
 
 | Secreto | De dónde sale |

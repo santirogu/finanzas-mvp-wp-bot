@@ -54,8 +54,10 @@ Responde y escribe en **español** (commits, PRs, comentarios del código y text
    ni pidas a ninguna herramienta que lo haga. Cuando el PR esté listo, avisa y espera.
 7. Después del merge: `git checkout main && git pull --ff-only` y borra la rama local.
 
-El merge a `main` dispara el CI y, solo si pasa, el despliegue a producción (incluidas las
-migraciones). Nada llega a producción por otro camino: no reactives los despliegues automáticos
+El merge a `main` dispara el CI y, solo si pasa y cambió algo que afecta la app (ver
+`scripts/deploy-needed.mjs`), el despliegue a producción, incluidas las migraciones. Si agregas
+archivos que no afectan la app en ejecución (docs, herramientas, configuración de desarrollo),
+agrégalos a `SKIP_PATTERNS` en ese script con su prueba. Nada llega a producción por otro camino: no reactives los despliegues automáticos
 de Vercel ni muevas las migraciones fuera del job `deploy`.
 
 ## Seguridad y datos
