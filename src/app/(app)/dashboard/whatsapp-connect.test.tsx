@@ -1,0 +1,102 @@
+import { act, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+// La Server Action y el router se simulan; el reloj también, para probar la cuenta regresiva.
+const mocks = vi.hoisted(() => ({ generate: vi.fn(), refresh: vi.fn() }));
+vi.mock("@/modules/whatsapp/actions", () => ({ generateLinkCodeAction: mocks.generate }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: mocks.refresh }) }));
+
+const { WhatsAppConnect } = await import("./whatsapp-connect");
+
+const NOW = new Date("2026-10-14T15:00:00Z").getTime();
+const inMinutes = (minutes: number) => new Date(NOW + minutes * 60_000).toISOString();
+
+async function generateCode(props: { botNumber: string | null; showSimulator?: boolean }) {
+  render(<WhatsAppConnect botNumber={props.botNumber} showSimulator={props.showSimulator ?? false} />);
+  await act(async () => {
+    fireEvent.click(screen.getByRole("button", { name: "Conectar WhatsApp" }));
+  });
+}
+
+beforeEach(() => {
+  vi.useFakeTimers({ now: NOW });
+  vi.clearAllMocks();
+  mocks.generate.mockResolvedValue({ code: "482913", expiresAt: inMinutes(10) });
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+});
+
+describe("WhatsAppConnect", () => {
+  it("antes de generar el código explica para qué sirve", () => {
+    render(<WhatsAppConnect botNumber="573001112233" showSimulator={false} />);
+    expect(screen.getByText(/me compré unos zapatos de \$500\.000/)).toBeVisible();
+    expect(screen.getByRole("button", { name: "Conectar WhatsApp" })).toBeEnabled();
+  });
+
+  it("muestra el mensaje que hay que enviar, el número del bot y un enlace que lo abre en WhatsApp", async () => {
+    await generateCode({ botNumber: "573001112233" });
+
+    expect(mocks.generate).toHaveBeenCalledOnce();
+    expect(screen.getByText("VINCULAR 482913")).toBeVisible();
+    expect(screen.getByText("+573001112233")).toBeVisible();
+    const link = screen.getByRole("link", { name: "Abrir WhatsApp" });
+    expect(link).toHaveAttribute("href", "https://wa.me/573001112233?text=VINCULAR%20482913");
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("rel", "noreferrer");
+    expect(screen.getByText(/Vence en 10 minutos/)).toBeVisible();
+  });
+
+  it("sin número del bot configurado no muestra el enlace", async () => {
+    await generateCode({ botNumber: null });
+    expect(screen.getByText(/al número del bot/)).toBeVisible();
+    expect(screen.queryByRole("link", { name: "Abrir WhatsApp" })).not.toBeInTheDocument();
+  });
+
+  it("solo ofrece el simulador cuando se pide", async () => {
+    await generateCode({ botNumber: null, showSimulator: true });
+    expect(screen.getByRole("link", { name: "Pruébalo en el simulador" })).toHaveAttribute("href", "/simulador");
+  });
+
+  it("cada 4 segundos revisa si ya se vinculó y actualiza los minutos que faltan", async () => {
+    mocks.generate.mockResolvedValue({ code: "482913", expiresAt: inMinutes(1.5) });
+    await generateCode({ botNumber: null });
+    expect(screen.getByText(/Vence en 2 minutos/)).toBeVisible();
+    expect(mocks.refresh).not.toHaveBeenCalled();
+
+    act(() => vi.advanceTimersByTime(4_000));
+    expect(mocks.refresh).toHaveBeenCalledTimes(1);
+
+    act(() => vi.advanceTimersByTime(40_000));
+    expect(screen.getByText(/Vence en 1 minuto\./)).toBeVisible();
+  });
+
+  it("cuando el código vence, lo dice, deja generar otro y deja de revisar", async () => {
+    mocks.generate.mockResolvedValue({ code: "482913", expiresAt: inMinutes(0.1) });
+    await generateCode({ botNumber: null });
+
+    act(() => vi.advanceTimersByTime(8_000));
+    expect(screen.getByText("El código venció. Genera uno nuevo.")).toBeVisible();
+    expect(screen.queryByText(/VINCULAR/)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Conectar WhatsApp" })).toBeEnabled();
+
+    const refreshes = mocks.refresh.mock.calls.length;
+    act(() => vi.advanceTimersByTime(60_000));
+    expect(mocks.refresh).toHaveBeenCalledTimes(refreshes);
+  });
+
+  it("mientras genera el código, desactiva el botón", async () => {
+    let finish!: (value: { code: string; expiresAt: string }) => void;
+    mocks.generate.mockReturnValue(new Promise((resolve) => (finish = resolve)));
+    render(<WhatsAppConnect botNumber={null} showSimulator={false} />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Conectar WhatsApp" }));
+    });
+    expect(screen.getByRole("button", { name: "Generando…" })).toBeDisabled();
+
+    await act(async () => finish({ code: "111222", expiresAt: inMinutes(10) }));
+    expect(screen.getByText("VINCULAR 111222")).toBeVisible();
+  });
+});

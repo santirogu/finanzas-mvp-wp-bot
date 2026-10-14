@@ -34,7 +34,7 @@ pnpm dev                        # http://localhost:3000
 |---|---|
 | `pnpm dev` / `build` / `start` | Servidor de desarrollo / build de producción / servir build |
 | `pnpm typecheck` · `lint` | Tipos y ESLint |
-| `pnpm test` | Pruebas unitarias (rápidas, sin base de datos) |
+| `pnpm test` | Pruebas unitarias y de componentes (rápidas, sin base de datos) |
 | `pnpm test:int` | Pruebas de integración contra Postgres real (`TEST_DATABASE_URL`) |
 | `pnpm test:coverage` | Todas las pruebas + reporte de cobertura en `coverage/` |
 | `pnpm test:e2e` | Pruebas E2E y de accesibilidad con Playwright (compila la app; ~1 minuto). `E2E_SKIP_BUILD=1` reutiliza el último build |
@@ -54,6 +54,12 @@ pnpm dev                        # http://localhost:3000
 
 - **Unitarias** (`*.test.ts`): lógica pura — dinero, fechas, intérprete del bot, firma y payload
   de WhatsApp. No necesitan base de datos.
+- **Componentes** (`*.test.tsx`, [React Testing Library](https://testing-library.com/react) en
+  jsdom): los componentes de cliente por separado — formulario de login y registro (errores,
+  sugerencia de correo, envío por POST), formulario de movimientos (formato del monto, errores,
+  botón desactivado mientras guarda), lista de movimientos, pestañas y la tarjeta para conectar
+  WhatsApp (cuenta regresiva y vencimiento del código, con reloj simulado). Se buscan los
+  elementos por rol y etiqueta, como un lector de pantalla.
 - **Integración** (`*.int.test.ts`): contra un Postgres real en la base `finanzas_test`, que se
   borra y migra al inicio de cada corrida (nunca uses una base que no termine en `_test`). Cubren el
   flujo completo del bot (vincular, registrar, duplicados, deshacer, errores), las consultas del

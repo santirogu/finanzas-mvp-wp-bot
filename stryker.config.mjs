@@ -11,7 +11,9 @@ const config = {
   commandRunner: { command: "npx vitest run --config vitest.mutation.config.mts --reporter=dot" },
   coverageAnalysis: "off",
   // Lógica cubierta por pruebas unitarias. Lo que depende de la base de datos (consultas,
-  // vinculación, flujo del bot) se prueba en integración y queda fuera por ahora.
+  // vinculación, flujo del bot) se prueba en integración y queda fuera por ahora. Los componentes
+  // (*.tsx) tampoco se mutan: casi todo su código son clases de Tailwind y textos, y su
+  // comportamiento lo cubren las pruebas de componentes y las E2E.
   mutate: [
     "src/lib/{money,dates,email-typo,env,app-url,session,health,auth-errors,security-headers}.ts",
     "src/modules/bot/{commands,normalize,interpret,replies,prompt,claude-extractor}.ts",
