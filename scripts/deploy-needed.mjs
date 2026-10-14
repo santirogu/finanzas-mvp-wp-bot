@@ -16,7 +16,7 @@ export const SKIP_PATTERNS = [
   /^\.githooks\//,
   /^\.claude\//,
   /^test\//, // infraestructura de pruebas
-  /\.test\.ts$/, // pruebas unitarias y de integración
+  /\.test\.tsx?$/, // pruebas unitarias, de integración y de componentes
   /^docker\//,
   /^scripts\/(?!seed\.ts$)/, // herramientas de desarrollo (seed.ts sí corre en el despliegue)
   /^(eslint\.config\.mjs|vitest(\.mutation)?\.config\.mts|stryker\.config\.mjs|docker-compose\.yml|\.env\.example|\.gitignore)$/,
@@ -31,22 +31,39 @@ export function filesRequiringDeploy(files) {
     .filter((file) => !SKIP_PATTERNS.some((re) => re.test(file)));
 }
 
-function main() {
-  const files = readFileSync(0, "utf8").split("\n").filter((f) => f.trim());
+/**
+ * Decide desde la línea de comandos: recibe la salida de `git diff --name-only`, explica la
+ * decisión y la escribe en GITHUB_OUTPUT. Devuelve true si hay que desplegar.
+ *
+ * @param {string} input
+ * @param {{
+ *   log?: (line: string) => void,
+ *   outputFile?: string,
+ *   append?: (file: string, text: string) => void,
+ * }} [options]
+ * @returns {boolean}
+ */
+export function runCli(
+  input,
+  { log = console.log, outputFile = process.env.GITHUB_OUTPUT, append = appendFileSync } = {},
+) {
+  const files = input.split("\n").filter((f) => f.trim());
   const relevant = filesRequiringDeploy(files);
   // Sin lista de archivos no hay forma de saber qué cambió: se despliega.
   const deploy = files.length === 0 || relevant.length > 0;
 
   if (files.length === 0) {
-    console.log("No se recibió la lista de archivos cambiados: se despliega por seguridad.");
+    log("No se recibió la lista de archivos cambiados: se despliega por seguridad.");
   } else if (deploy) {
-    console.log(`Se despliega. Archivos que afectan la app (${relevant.length}):`);
-    for (const f of relevant) console.log(`  • ${f}`);
+    log(`Se despliega. Archivos que afectan la app (${relevant.length}):`);
+    for (const f of relevant) log(`  • ${f}`);
   } else {
-    console.log(`No se despliega: los ${files.length} archivos cambiados no afectan la app.`);
-    for (const f of files) console.log(`  · ${f}`);
+    log(`No se despliega: los ${files.length} archivos cambiados no afectan la app.`);
+    for (const f of files) log(`  · ${f}`);
   }
-  if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `deploy=${deploy}\n`);
+  if (outputFile) append(outputFile, `deploy=${deploy}\n`);
+  return deploy;
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) main();
+// Stryker disable next-line all: punto de entrada de la línea de comandos; se prueba con la función exportada y lo ejercita el CI.
+if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) runCli(readFileSync(0, "utf8"));

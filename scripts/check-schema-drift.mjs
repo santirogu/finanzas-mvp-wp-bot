@@ -65,9 +65,10 @@ export function classifyGenerate({ added, output }) {
   return /No schema changes/i.test(output) ? "ok" : "undecided";
 }
 
-function drizzleKit(args) {
+/** Corre drizzle-kit y devuelve su código de salida y toda su salida, sin colores ANSI. */
+export function drizzleKit(args, spawn = spawnSync) {
   // stdin vacío: si drizzle-kit quiere preguntar algo, falla en vez de esperar para siempre.
-  const result = spawnSync("pnpm", ["exec", "drizzle-kit", ...args], {
+  const result = spawn("pnpm", ["exec", "drizzle-kit", ...args], {
     encoding: "utf8",
     input: "",
     timeout: 120_000,
@@ -139,4 +140,5 @@ export function checkSchemaDrift({
   }
 }
 
+// Stryker disable next-line all: punto de entrada de la línea de comandos; se prueba con la función exportada y lo ejercita el CI.
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) process.exit(checkSchemaDrift());

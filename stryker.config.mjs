@@ -18,7 +18,7 @@ const config = {
     "src/modules/whatsapp/{signature,payload,phone,client,actions}.ts",
     "src/modules/transactions/validation.ts",
     "src/app/api/whatsapp/webhook/route.ts",
-    "scripts/{conventional-commit,deploy-needed,pr-description}.mjs",
+    "scripts/{conventional-commit,deploy-needed,pr-description,check-schema-drift,mutation-summary}.mjs",
   ],
   reporters: ["clear-text", "progress-append-only", "html", "json"],
   htmlReporter: { fileName: "reports/mutation/index.html" },
@@ -26,8 +26,9 @@ const config = {
   tempDirName: ".stryker-tmp",
   cleanTempDir: "always",
   timeoutMS: 15000,
-  // break: la corrida falla por debajo (no bloquea el merge). Puntaje base al agregarlo: 76,8 %.
-  thresholds: { high: 85, low: 70, break: 75 },
+  // break: la corrida falla por debajo (no bloquea el merge). Puntaje al agregarlo: 76,8 %; tras
+  // cubrir los mutantes sobrevivientes: ~95 % (lo que queda son mutantes equivalentes).
+  thresholds: { high: 95, low: 90, break: 90 },
 };
 
 export default config;

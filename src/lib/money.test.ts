@@ -27,3 +27,15 @@ describe("formatMoney", () => {
     expect(formatMoney(500000).replace(/\s/g, " ")).toBe("$ 500.000");
   });
 });
+
+describe("formatMoney · pesos con decimales", () => {
+  it("redondea los pesos colombianos, sin mostrar centavos", () => {
+    expect(formatMoney(1234.5).replace(/\s/g, " ")).toBe("$ 1.235");
+  });
+});
+
+describe("parseAmountInput · espacios", () => {
+  it("quita los decimales aunque haya espacios alrededor", () => {
+    expect(parseAmountInput("  45.900,50  ")).toBe(45900);
+  });
+});
