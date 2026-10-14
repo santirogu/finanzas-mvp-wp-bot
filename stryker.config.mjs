@@ -13,12 +13,12 @@ const config = {
   // Lógica cubierta por pruebas unitarias. Lo que depende de la base de datos (consultas,
   // vinculación, flujo del bot) se prueba en integración y queda fuera por ahora.
   mutate: [
-    "src/lib/{money,dates,email-typo,env,app-url,session}.ts",
+    "src/lib/{money,dates,email-typo,env,app-url,session,health}.ts",
     "src/modules/bot/{commands,normalize,interpret,replies,prompt,claude-extractor}.ts",
     "src/modules/whatsapp/{signature,payload,phone,client,actions}.ts",
     "src/modules/transactions/validation.ts",
-    "src/app/api/whatsapp/webhook/route.ts",
-    "scripts/{conventional-commit,deploy-needed,pr-description,check-schema-drift,mutation-summary}.mjs",
+    "src/app/api/{whatsapp/webhook,health}/route.ts",
+    "scripts/{conventional-commit,deploy-needed,pr-description,check-schema-drift,mutation-summary,smoke}.mjs",
   ],
   reporters: ["clear-text", "progress-append-only", "html", "json"],
   htmlReporter: { fileName: "reports/mutation/index.html" },

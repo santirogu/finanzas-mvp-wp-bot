@@ -77,7 +77,9 @@ Responde y escribe en **español** (commits, PRs, comentarios del código y text
 7. Después del merge: `git checkout main && git pull --ff-only` y borra la rama local.
 
 El merge a `main` dispara el CI y, solo si pasa y cambió algo que afecta la app (ver
-`scripts/deploy-needed.mjs`), el despliegue a producción, incluidas las migraciones. Si agregas
+`scripts/deploy-needed.mjs`), el despliegue a producción, incluidas las migraciones. La versión
+nueva se publica sin dominio, pasa los smoke tests (`scripts/smoke.mjs`) y solo entonces recibe el
+dominio; si falla después, vuelve sola a la anterior (README → Despliegue). Si agregas
 archivos que no afectan la app en ejecución (docs, herramientas, configuración de desarrollo),
 agrégalos a `SKIP_PATTERNS` en ese script con su prueba. Nada llega a producción por otro camino: no reactives los despliegues automáticos
 de Vercel ni muevas las migraciones fuera del job `deploy`.
@@ -96,4 +98,11 @@ de Vercel ni muevas las migraciones fuera del job `deploy`.
   `pnpm db:generate --name <descripcion>` y revisa el SQL antes de subirlo: el check de CI
   "Migraciones al día" falla si falta. Si `drizzle-kit` pregunta si una columna se renombró,
   responde con cuidado (un renombre conserva los datos; "crear" borra la columna vieja).
+- **Migraciones compatibles con la versión anterior del código.** Corren en el build, antes de
+  los smoke tests; si la versión nueva falla y el despliegue vuelve a la anterior, la base queda
+  migrada. Agrega antes de quitar: para renombrar o borrar una columna o tabla, primero un PR que
+  agregue lo nuevo (y el código que lo usa) y, en otro PR posterior, uno que quite lo viejo.
+  Nunca renombres ni borres en el mismo PR que cambia el código que lo usa.
+- Si agregas una variable de entorno obligatoria, súmala a `REQUIRED_ENV` en `src/lib/health.ts`
+  (y configúrala en Vercel **antes** del merge, o el despliegue se detendrá en los smoke tests).
 - Toda consulta o Server Action filtra por el usuario de la sesión (`src/lib/session.ts`).

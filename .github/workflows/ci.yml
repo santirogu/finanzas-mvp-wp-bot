@@ -178,7 +178,7 @@ jobs:
     needs: [checks, changes]
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && needs.changes.outputs.deploy == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     # Registra cada publicación en el entorno "production": es el historial que usa el job
     # "Detectar cambios de la app" para saber qué fue lo último desplegado.
     permissions:
@@ -195,7 +195,11 @@ jobs:
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      PRODUCTION_URL: https://finanzas-mvp-wp-bot.vercel.app
 
+    # Publicar sin tráfico → smoke tests → pasarle el dominio → smoke tests → (si fallan) volver a
+    # la versión anterior. Ojo: las migraciones corren en el build y no se deshacen; por eso deben
+    # ser compatibles con la versión anterior del código (ver CLAUDE.md).
     steps:
       - uses: actions/checkout@v7
 
@@ -208,9 +212,12 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # Antes de migrar: si falta algo, mejor fallar aquí que con la base ya migrada.
       - name: Verificar credenciales de Vercel
+        env:
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
         run: |
-          for name in VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID; do
+          for name in VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID VERCEL_AUTOMATION_BYPASS_SECRET; do
             if [ -z "${!name}" ]; then echo "::error::Falta el secreto $name en GitHub"; exit 1; fi
           done
 
@@ -221,6 +228,47 @@ jobs:
       - name: Migrar base de datos y compilar
         run: pnpm dlx vercel@61.1.0 build --prod --token="$VERCEL_TOKEN"
 
-      - name: Publicar en producción
-        run: pnpm dlx vercel@61.1.0 deploy --prebuilt --prod --token="$VERCEL_TOKEN"
+      # --skip-domain: la versión nueva queda publicada en su propia URL, sin recibir tráfico.
+      - name: Publicar sin dominio
+        id: publicar
+        run: |
+          url=$(pnpm dlx vercel@61.1.0 deploy --prebuilt --prod --skip-domain --token="$VERCEL_TOKEN")
+          echo "Versión nueva, todavía sin tráfico: $url"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+
+      - name: Smoke tests de la versión nueva (sin tráfico)
+        env:
+          NUEVA: ${{ steps.publicar.outputs.url }}
+          # Llave de "Protection Bypass for Automation" (Vercel → Settings → Deployment
+          # Protection): la URL propia de cada versión está protegida; el dominio, no.
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+        run: node scripts/smoke.mjs "$NUEVA"
+
+      # La que hoy sirve el dominio: es a la que se vuelve si algo falla después del cambio.
+      - name: Anotar la versión actual de producción
+        id: anterior
+        run: |
+          id=$(pnpm dlx vercel@61.1.0 inspect "$PRODUCTION_URL" --json --token="$VERCEL_TOKEN" | jq -er '.id')
+          echo "Versión actual de producción: $id"
+          echo "id=$id" >> "$GITHUB_OUTPUT"
+
+      - name: Pasarle el dominio a la versión nueva
+        id: promover
+        env:
+          NUEVA: ${{ steps.publicar.outputs.url }}
+        run: pnpm dlx vercel@61.1.0 promote "$NUEVA" --timeout=5m --token="$VERCEL_TOKEN"
+
+      - name: Smoke tests en el dominio de producción
+        run: node scripts/smoke.mjs "$PRODUCTION_URL"
+
+      # Solo si se alcanzó a intentar el cambio de dominio (si falló antes, el dominio sigue en la
+      # versión anterior y no hay nada que deshacer).
+      - name: Volver a la versión anterior
+        if: failure() && (steps.promover.outcome == 'success' || steps.promover.outcome == 'failure')
+        env:
+          ANTERIOR: ${{ steps.anterior.outputs.id }}
+        run: |
+          echo "::error::La versión nueva falló en producción: volviendo a la anterior ($ANTERIOR)."
+          pnpm dlx vercel@61.1.0 rollback "$ANTERIOR" --timeout=5m --token="$VERCEL_TOKEN"
+          node scripts/smoke.mjs "$PRODUCTION_URL" || echo "::error::La versión anterior tampoco pasa los smoke tests: revisa Vercel."
 

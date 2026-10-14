@@ -38,6 +38,7 @@ pnpm dev                        # http://localhost:3000
 | `pnpm test:int` | Pruebas de integración contra Postgres real (`TEST_DATABASE_URL`) |
 | `pnpm test:coverage` | Todas las pruebas + reporte de cobertura en `coverage/` |
 | `pnpm test:mutation` | Mutation testing con Stryker; reporte en `reports/mutation/` (~8 minutos) |
+| `pnpm smoke <url>` | Smoke tests contra una versión publicada (lo corre el despliegue; ver abajo) |
 | `pnpm db:generate` | Genera una migración SQL tras cambiar `src/db/schema/*` |
 | `pnpm db:migrate` | Aplica migraciones pendientes |
 | `pnpm db:check-drift` | Verifica que cada cambio del esquema tenga su migración (lo corre el CI) |
@@ -176,8 +177,26 @@ borra automáticamente. El PR debe estar al día con `main` antes de fusionarse.
 **Nada llega a producción sin pasar el CI.** Vercel no despliega por su cuenta
 (`vercel.json` → `git.deploymentEnabled: false`); lo hace el job `deploy` de
 `.github/workflows/ci.yml`, que solo corre en `main` y solo si lint, tipos y todas las pruebas
-pasaron. Ese job ejecuta `pnpm vercel-build` (migraciones + categorías + build) y publica con
-`vercel deploy --prebuilt --prod`. Así, tampoco una migración rota llega a la base de producción.
+pasaron. Ese job ejecuta `pnpm vercel-build` (migraciones + categorías + build), así que tampoco
+una migración rota llega a la base de producción.
+
+**Cada versión se prueba antes de recibir tráfico** (smoke tests, `scripts/smoke.mjs`):
+
+1. Se publica **sin dominio** (`vercel deploy --prebuilt --prod --skip-domain`): queda en su propia
+   URL y los usuarios siguen en la versión anterior.
+2. Smoke tests contra esa URL. Si fallan, el job se detiene: el dominio nunca cambió.
+3. Se le pasa el dominio (`vercel promote`, instantáneo, sin recompilar).
+4. Smoke tests contra el dominio real. Si fallan, **vuelve sola a la versión anterior**
+   (`vercel rollback`) y el job queda en rojo.
+
+Los chequeos (segundos, sin costo, sin iniciar sesión ni guardar datos): `/login`, `/privacidad` y
+`/eliminar-datos` cargan; `/api/health` confirma la conexión a la base, que tiene todas las
+migraciones y que no falta ninguna variable de entorno (responde solo `ok`/`error`; el detalle
+queda en los logs de Vercel); y el webhook rechaza un token y una firma falsos. Para correrlos a
+mano: `pnpm smoke https://finanzas-mvp-wp-bot.vercel.app`.
+
+> **Las migraciones no se deshacen con el rollback**: corren en el build, antes de los smoke tests.
+> Por eso deben ser compatibles con la versión anterior del código (ver CLAUDE.md).
 
 **Solo se despliega si cambió algo que afecta la app.** El job `changes` compara `main` con el
 **último commit desplegado con éxito** (no con el anterior, para no perder cambios de un despliegue
@@ -195,6 +214,7 @@ Secretos necesarios en GitHub (*Settings → Secrets and variables → Actions*)
 | `VERCEL_TOKEN` | vercel.com → Account Settings → Tokens |
 | `VERCEL_ORG_ID` | Vercel → Team Settings → General → Team ID (`team_…`) |
 | `VERCEL_PROJECT_ID` | Vercel → proyecto → Settings → General → Project ID (`prj_…`) |
+| `VERCEL_AUTOMATION_BYPASS_SECRET` | Vercel → proyecto → Settings → Deployment Protection → Protection Bypass for Automation. Deja entrar a los smoke tests a la URL propia de cada versión, que Vercel protege |
 
 Variables de la app en Vercel (*Settings → Environment Variables*): `DATABASE_URL` y
 `DATABASE_URL_UNPOOLED` (las crea Neon), `BETTER_AUTH_SECRET`, `ANTHROPIC_API_KEY` y las
