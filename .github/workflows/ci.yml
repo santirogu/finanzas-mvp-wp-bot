@@ -4,6 +4,9 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Botón "Run workflow" en Actions: corre los checks y despliega siempre (por ejemplo,
+  # después de cambiar variables de entorno en Vercel). Solo desde main.
+  workflow_dispatch:
 
 # En PRs, un push nuevo cancela la corrida anterior. En main nunca se cancela:
 # podría cortar un despliegue a mitad de una migración.
@@ -105,13 +108,61 @@ jobs:
           echo "Solo minúsculas, números y guiones simples. Ejemplo: feature/notas-de-voz"
           exit 1
 
-  # Solo se despliega si el job anterior pasó por completo, y solo desde main.
+  # Decide si hace falta desplegar comparando con el último commit desplegado con éxito
+  # (no con el commit anterior: si un despliegue falló, sus cambios siguen pendientes).
+  changes:
+    name: Detectar cambios de la app
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      deployments: read
+    outputs:
+      deploy: ${{ steps.decide.outputs.deploy }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Decidir si desplegar
+        id: decide
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "Despliegue manual: se despliega."
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Último despliegue a producción cuyo estado final fue "success".
+          last=""
+          for id in $(gh api "repos/${{ github.repository }}/deployments?environment=production&per_page=30" --jq '.[].id'); do
+            state=$(gh api "repos/${{ github.repository }}/deployments/$id/statuses" --jq '.[0].state')
+            if [ "$state" = "success" ]; then
+              last=$(gh api "repos/${{ github.repository }}/deployments/$id" --jq '.sha')
+              break
+            fi
+          done
+
+          if [ -z "$last" ] || ! git cat-file -e "$last^{commit}" 2>/dev/null; then
+            echo "No se encontró el último despliegue en el historial: se despliega por seguridad."
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Último despliegue exitoso: $last"
+          git diff --name-only "$last" "${{ github.sha }}" | tee changed.txt | node scripts/deploy-needed.mjs | tee decision.txt
+          { echo "### ¿Desplegar a producción?"; echo; echo '```'; cat decision.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
+  # Solo se despliega si las pruebas pasaron y hubo cambios que afectan la app, y solo desde main.
   # Vercel no despliega por su cuenta (vercel.json → git.deploymentEnabled: false),
   # así que ni el código ni las migraciones llegan a producción sin pasar el CI.
   deploy:
     name: Desplegar a producción
-    needs: checks
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [checks, changes]
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && needs.changes.outputs.deploy == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment:
