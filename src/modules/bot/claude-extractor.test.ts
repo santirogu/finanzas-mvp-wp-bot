@@ -15,7 +15,7 @@ vi.mock("@anthropic-ai/sdk", async (importOriginal) => {
   return { ...actual, default: FakeAnthropic };
 });
 
-const { APIError, AnthropicError } = await import("@anthropic-ai/sdk");
+const { APIConnectionError, APIError, AnthropicError } = await import("@anthropic-ai/sdk");
 const { claudeExtractor } = await import("./claude-extractor");
 
 const input = {
@@ -269,32 +269,23 @@ describe("claudeExtractor · credenciales y respuestas incompletas", () => {
     });
   });
 
-  it("guarda el estado HTTP y el mensaje de error de la API", async () => {
-    const error = new APIError(
-      529,
-      { error: { type: "overloaded_error" } },
-      "Overloaded",
-      new Headers(),
+  it("guarda el estado HTTP y el mensaje de error de la API, sin repetir el estado", async () => {
+    sdk.parse.mockRejectedValue(
+      new APIError(529, { error: { type: "overloaded_error" } }, "Overloaded", new Headers()),
     );
-    sdk.parse.mockRejectedValue(error);
 
     const result = await claudeExtractor(input);
-    expect(result).toMatchObject({ ok: false, reason: "api_error" });
-    expect(!result.ok && result.detail).toMatch(/^529 /);
+    expect(result).toEqual({
+      ok: false,
+      reason: "api_error",
+      detail: '529 {"error":{"type":"overloaded_error"}}',
+    });
   });
 
-  // Falla conocida: el mensaje del SDK ya empieza con el estado ("529 {...}") y el extractor lo
-  // antepone otra vez ("529 529 {...}"). Se corrige en una rama fix/; luego quitar `.fails`.
-  it.fails("no duplica el estado HTTP en el detalle del error", async () => {
-    const error = new APIError(
-      529,
-      { error: { type: "overloaded_error" } },
-      "Overloaded",
-      new Headers(),
-    );
-    sdk.parse.mockRejectedValue(error);
+  it("si no puede conectarse con la API lo registra sin estado HTTP", async () => {
+    sdk.parse.mockRejectedValue(new APIConnectionError({ message: undefined }));
 
     const result = await claudeExtractor(input);
-    expect(!result.ok && result.detail).toBe(error.message);
+    expect(result).toEqual({ ok: false, reason: "api_error", detail: "Connection error." });
   });
 });
