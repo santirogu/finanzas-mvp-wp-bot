@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -26,8 +27,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="min-h-full flex flex-col font-sans">
         {children}
-        {/* Vercel Web Analytics: visitas anónimas, sin cookies (ver /privacidad). */}
+        {/* Vercel Web Analytics y Speed Insights: visitas y velocidad de carga, anónimas y sin
+            cookies (ver /privacidad). */}
         <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
