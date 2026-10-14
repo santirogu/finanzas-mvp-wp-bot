@@ -19,6 +19,7 @@
     "db:studio": "drizzle-kit studio",
     "db:setup": "pnpm db:migrate && pnpm db:seed",
     "bot:try": "tsx scripts/bot-try.ts",
+    "smoke": "node scripts/smoke.mjs",
     "bot:eval": "tsx scripts/bot-eval.ts",
     "test:int": "vitest run --project integration",
     "test:all": "vitest run",
