@@ -87,7 +87,9 @@ export function releaseNotes({ version, previousTag, commits, repository }) {
 /** git en el directorio actual; devuelve la salida sin espacios al final. */
 function defaultGit(args) {
   // stderr se captura: "no hay tags" es esperable la primera vez y no debe ensuciar el log.
-  return execFileSync("git", args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
+  // Stryker disable next-line ArrayDeclaration,StringLiteral: solo cambia lo que se imprime en el log.
+  const stdio = ["ignore", "pipe", "pipe"];
+  return execFileSync("git", args, { encoding: "utf8", stdio }).trim();
 }
 
 /**

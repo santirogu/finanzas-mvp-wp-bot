@@ -72,6 +72,12 @@ describe("validateHeader · detalles", () => {
     expect(validateHeader("  feat: agregar notas  ")).toEqual({ ok: true });
   });
 
+  it("los espacios alrededor no cuentan para el largo máximo", () => {
+    const title = `feat: ${"a".repeat(66)}`;
+    expect(title).toHaveLength(72);
+    expect(validateHeader(`  ${title}  `)).toEqual({ ok: true });
+  });
+
   it("explica qué tipo no es válido y cuáles se aceptan", () => {
     const result = validateHeader("feature: agregar notas");
     expect(!result.ok && result.errors[0]).toBe(

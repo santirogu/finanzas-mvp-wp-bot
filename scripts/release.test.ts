@@ -272,6 +272,22 @@ describe("runCli", () => {
     expect(outputs).toEqual([]);
   });
 
+  it("con git de verdad lee el historial de este repositorio", () => {
+    // En el CI el checkout es superficial y sin tags: igual debe salir una versión válida.
+    const files: Record<string, string> = {};
+    const logs: string[] = [];
+    const code = runCli(["--notes", "notas.md"], {
+      writeFile: (file: string, text: string) => {
+        files[file] = text;
+      },
+      outputFile: undefined,
+      log: (m: string) => logs.push(m),
+    });
+    expect(code).toBe(0);
+    expect(logs).toEqual([expect.stringMatching(/^(Release v\d+\.\d+\.\d+|Sin cambios desde v\d+\.\d+\.\d+)/)]);
+    if (logs[0].startsWith("Release")) expect(files["notas.md"]).toMatch(/^(Primera versión|###)/);
+  });
+
   it("por defecto toma el repositorio y la salida de las variables del CI", () => {
     vi.stubEnv("GITHUB_OUTPUT", "");
     vi.stubEnv("GITHUB_REPOSITORY", "otro/repo");
