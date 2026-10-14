@@ -20,6 +20,7 @@ export const SKIP_PATTERNS = [
   /^docker\//,
   /^scripts\/(?!seed\.ts$)/, // herramientas de desarrollo (seed.ts sí corre en el despliegue)
   /^(eslint\.config\.mjs|vitest\.config\.mts|docker-compose\.yml|\.env\.example|\.gitignore)$/,
+  /^LICENSE$/,
 ];
 
 /** @param {string[]} files */
