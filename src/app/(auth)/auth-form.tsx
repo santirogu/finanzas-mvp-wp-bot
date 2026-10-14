@@ -59,7 +59,9 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
         {isRegister ? "Empieza a llevar tus cuentas en minutos." : "Bienvenido de nuevo."}
       </p>
 
-      <form onSubmit={onSubmit} className="mt-6 space-y-4">
+      {/* method="post": si se envía antes de que cargue el JavaScript (o si falla), el navegador
+          lo manda por su cuenta; con GET la contraseña quedaría en la URL (historial, logs). */}
+      <form method="post" onSubmit={onSubmit} className="mt-6 space-y-4">
         {isRegister && (
           <label className="block space-y-1.5">
             <span className="text-sm font-medium">Nombre</span>
