@@ -33,7 +33,10 @@ pnpm dev                        # http://localhost:3000
 | Script | Qué hace |
 |---|---|
 | `pnpm dev` / `build` / `start` | Servidor de desarrollo / build de producción / servir build |
-| `pnpm typecheck` · `lint` · `test` | Tipos, ESLint y pruebas unitarias |
+| `pnpm typecheck` · `lint` | Tipos y ESLint |
+| `pnpm test` | Pruebas unitarias (rápidas, sin base de datos) |
+| `pnpm test:int` | Pruebas de integración contra Postgres real (`TEST_DATABASE_URL`) |
+| `pnpm test:coverage` | Todas las pruebas + reporte de cobertura en `coverage/` |
 | `pnpm db:generate` | Genera una migración SQL tras cambiar `src/db/schema/*` |
 | `pnpm db:migrate` | Aplica migraciones pendientes |
 | `pnpm db:seed` | Inserta categorías globales (idempotente) |
@@ -42,6 +45,22 @@ pnpm dev                        # http://localhost:3000
 | `pnpm bot:eval` | Corre el set de ~50 frases de prueba del bot y reporta aciertos, latencia y costo |
 
 > No uses `pnpm setup` (es un comando propio de pnpm que modifica tu shell). El script del proyecto se llama `db:setup`.
+
+## Pruebas y CI
+
+- **Unitarias** (`*.test.ts`): lógica pura — dinero, fechas, intérprete del bot, firma y payload
+  de WhatsApp. No necesitan base de datos.
+- **Integración** (`*.int.test.ts`): contra un Postgres real en la base `finanzas_test`, que se
+  borra y migra al inicio de cada corrida (nunca uses una base que no termine en `_test`). Cubren el
+  flujo completo del bot (vincular, registrar, duplicados, deshacer, errores), las consultas del
+  balance y las Server Actions, incluido que un usuario no pueda ver ni borrar datos de otro.
+  Claude y WhatsApp se simulan: no cuestan dinero.
+- **CI** (`.github/workflows/ci.yml`): en cada push a `main` y en cada PR corre lint, tipos y todas
+  las pruebas con un Postgres efímero. Falla si la cobertura baja del umbral de `vitest.config.mts`.
+- **Evaluación del bot** (`pnpm bot:eval`): 50 frases contra la API real de Claude. Tiene costo,
+  por eso no corre en CI.
+
+Con Docker, `pnpm db:up` crea también la base `finanzas_test` la primera vez.
 
 ## Estructura
 

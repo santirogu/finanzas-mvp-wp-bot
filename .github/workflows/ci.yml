@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Si llega un push nuevo a la misma rama, cancela la corrida anterior.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Lint, tipos y pruebas
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: finanzas
+          POSTGRES_PASSWORD: finanzas
+          POSTGRES_DB: finanzas_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U finanzas"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      TEST_DATABASE_URL: postgres://finanzas:finanzas@localhost:5432/finanzas_test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Tipos
+        run: pnpm typecheck
+
+      - name: Pruebas unitarias y de integración con cobertura
+        run: pnpm test:coverage
+
+      - name: Resumen de cobertura
+        if: always()
+        run: |
+          node -e '
+            const fs = require("fs");
+            const file = "coverage/coverage-summary.json";
+            if (!fs.existsSync(file)) process.exit(0);
+            const t = JSON.parse(fs.readFileSync(file, "utf8")).total;
+            const row = (k, label) => `| ${label} | ${t[k].pct}% | ${t[k].covered}/${t[k].total} |`;
+            const md = ["### Cobertura", "", "| Métrica | % | Cubierto |", "|---|---|---|",
+              row("lines", "Líneas"), row("statements", "Sentencias"),
+              row("functions", "Funciones"), row("branches", "Ramas")].join("\n");
+            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, md + "\n");
+          '
+
+      - name: Guardar reporte de cobertura
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/
+          retention-days: 14
