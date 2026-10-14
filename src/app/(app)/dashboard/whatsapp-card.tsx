@@ -3,6 +3,7 @@ import { unlinkWhatsAppAction } from "@/modules/whatsapp/actions";
 import { getLinkForUser } from "@/modules/whatsapp/link";
 import { maskPhone } from "@/modules/whatsapp/phone";
 import { WhatsAppConnect } from "./whatsapp-connect";
+import { envVar } from "@/lib/env";
 
 export async function WhatsAppCard() {
   const user = await requireUser();
@@ -37,7 +38,7 @@ export async function WhatsAppCard() {
         </div>
       ) : (
         <WhatsAppConnect
-          botNumber={process.env.WHATSAPP_DISPLAY_NUMBER?.replace(/\D/g, "") || null}
+          botNumber={envVar("WHATSAPP_DISPLAY_NUMBER")?.replace(/\D/g, "") || null}
           showSimulator={process.env.NODE_ENV !== "production"}
         />
       )}

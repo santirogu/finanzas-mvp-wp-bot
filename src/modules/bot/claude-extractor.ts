@@ -3,6 +3,7 @@ import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { z } from "zod";
 import type { CategoryNames, RawTransaction } from "./normalize";
 import { buildSystemPrompt, buildUserMessage } from "./prompt";
+import { envVar } from "@/lib/env";
 
 // Modelo configurable por entorno. Por defecto Claude Opus 5.5 con esfuerzo bajo
 // (una extracción corta no necesita razonar mucho). Para abaratar se puede usar
@@ -34,7 +35,12 @@ export type ExtractionInput = {
 
 export type ExtractionResult =
   | { ok: true; transactions: RawTransaction[]; reply: string | null; usage: Usage }
-  | { ok: false; reason: "refusal" | "invalid_output" | "api_error"; detail?: string; usage?: Usage };
+  | {
+      ok: false;
+      reason: "refusal" | "invalid_output" | "api_error";
+      detail?: string;
+      usage?: Usage;
+    };
 
 export type Usage = { model: string; inputTokens: number; outputTokens: number };
 
@@ -43,7 +49,7 @@ export type Extractor = (input: ExtractionInput) => Promise<ExtractionResult>;
 let client: Anthropic | null = null;
 function getClient() {
   // Toma ANTHROPIC_API_KEY del entorno. Timeout corto: es una conversación de WhatsApp.
-  client ??= new Anthropic({ timeout: 30_000, maxRetries: 2 });
+  client ??= new Anthropic({ apiKey: envVar("ANTHROPIC_API_KEY"), timeout: 30_000, maxRetries: 2 });
   return client;
 }
 
@@ -73,10 +79,20 @@ export const claudeExtractor: Extractor = async ({ text, today, categories }) =>
     };
 
     if (response.stop_reason === "refusal") {
-      return { ok: false, reason: "refusal", detail: response.stop_details?.category ?? undefined, usage };
+      return {
+        ok: false,
+        reason: "refusal",
+        detail: response.stop_details?.category ?? undefined,
+        usage,
+      };
     }
     if (!response.parsed_output) {
-      return { ok: false, reason: "invalid_output", detail: `stop_reason=${response.stop_reason}`, usage };
+      return {
+        ok: false,
+        reason: "invalid_output",
+        detail: `stop_reason=${response.stop_reason}`,
+        usage,
+      };
     }
     return {
       ok: true,
@@ -86,7 +102,11 @@ export const claudeExtractor: Extractor = async ({ text, today, categories }) =>
     };
   } catch (error) {
     if (error instanceof Anthropic.APIError) {
-      return { ok: false, reason: "api_error", detail: `${error.status ?? ""} ${error.message}`.trim() };
+      return {
+        ok: false,
+        reason: "api_error",
+        detail: `${error.status ?? ""} ${error.message}`.trim(),
+      };
     }
     // Errores del SDK antes de llamar a la API, p. ej. si falta ANTHROPIC_API_KEY.
     if (error instanceof Anthropic.AnthropicError) {

@@ -1,12 +1,13 @@
 import "server-only";
+import { envVar } from "@/lib/env";
 
-const GRAPH_VERSION = process.env.WHATSAPP_GRAPH_VERSION || "v23.0";
+const GRAPH_VERSION = envVar("WHATSAPP_GRAPH_VERSION") || "v23.0";
 
 export type SendResult = { ok: true } | { ok: false; error: string };
 export type Sender = (to: string, body: string) => Promise<SendResult>;
 
 export function isWhatsAppConfigured() {
-  return Boolean(process.env.WHATSAPP_ACCESS_TOKEN && process.env.WHATSAPP_PHONE_NUMBER_ID);
+  return Boolean(envVar("WHATSAPP_ACCESS_TOKEN") && envVar("WHATSAPP_PHONE_NUMBER_ID"));
 }
 
 /** Envía un mensaje de texto con la WhatsApp Cloud API. */
@@ -17,11 +18,11 @@ export const sendWhatsAppText: Sender = async (to, body) => {
     return { ok: true };
   }
 
-  const url = `https://graph.facebook.com/${GRAPH_VERSION}/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`;
+  const url = `https://graph.facebook.com/${GRAPH_VERSION}/${envVar("WHATSAPP_PHONE_NUMBER_ID")}/messages`;
   const response = await fetch(url, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
+      Authorization: `Bearer ${envVar("WHATSAPP_ACCESS_TOKEN")}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
