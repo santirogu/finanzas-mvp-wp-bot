@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   checkSchemaDrift,
   classifyGenerate,
+  drizzleKit,
   diffSnapshots,
   restore,
   snapshot,
@@ -141,6 +142,62 @@ describe("checkSchemaDrift", () => {
     expect(result.errors).not.toContain("at run"); // sin el stack trace
   });
 
+  it("genera la migración de prueba con un nombre fijo", () => {
+    const calls: string[][] = [];
+    checkSchemaDrift({
+      dir,
+      drizzleKit: (args: string[]) => {
+        calls.push(args);
+        return { status: 0, output: "No schema changes" };
+      },
+      log: () => {},
+      error: () => {},
+    });
+    expect(calls).toEqual([["check"], ["generate", "--name", "schema_drift"]]);
+  });
+
+  it("muestra solo el SQL pendiente (no los snapshots JSON) y cómo generar la migración", () => {
+    const result = run({
+      generate: () => {
+        writeFileSync(join(dir, "0001_schema_drift.sql"), "ALTER TABLE a ADD b int;");
+        writeFileSync(join(dir, "meta", "0001_snapshot.json"), '{"version":"7"}');
+        return { status: 0, output: "" };
+      },
+    });
+
+    expect(result.errors).toContain("SQL pendiente (0001_schema_drift.sql):\n\nALTER TABLE a ADD b int;\n");
+    expect(result.errors).not.toContain('{"version":"7"}');
+    expect(result.errors).toContain(
+      "Genera la migración y súbela en el mismo PR:\n" +
+        "  pnpm db:generate --name <descripcion>   (p. ej. --name agregar-presupuestos)\n" +
+        "  git add drizzle/",
+    );
+  });
+
+  it("explica cómo resolver un renombre y resume el error: sin stack trace ni ruido, máximo 5 líneas", () => {
+    const output = [
+      "No config path provided, using default 'drizzle.config.ts'",
+      "Reading config file 'drizzle.config.ts'",
+      "Error: Interactive prompts require a TTY terminal",
+      "    at run (bin.cjs:1:1)",
+      "   ",
+      "línea 2",
+      "dato: at hora",
+      "falló Reading config",
+      "línea 5",
+      "línea 6",
+    ].join("\n");
+    const result = run({ generate: () => ({ status: 0, output }) });
+
+    expect(result.errors).toBe(
+      "✗ drizzle-kit no pudo comparar el esquema: necesita que decidas algo (por ejemplo, si una\n" +
+        "  columna o tabla se renombró o es nueva) o falló.\n\n" +
+        "  Genera la migración en tu terminal y responde sus preguntas:\n" +
+        "    pnpm db:generate --name <descripcion>\n\n" +
+        "Detalle:\nError: Interactive prompts require a TTY terminal\nlínea 2\ndato: at hora\nfalló Reading config\nlínea 5",
+    );
+  });
+
   it("falla si las migraciones existentes no son consistentes", () => {
     const generate = vi.fn();
     const result = run({ check: { status: 1, output: "Error: migration collision" }, generate });
@@ -149,5 +206,56 @@ describe("checkSchemaDrift", () => {
     expect(result.errors).toContain("no son consistentes");
     expect(result.errors).toContain("migration collision");
     expect(generate).not.toHaveBeenCalled();
+  });
+});
+
+describe("drizzleKit", () => {
+  it("corre drizzle-kit sin terminal, con timeout, y devuelve su salida sin colores", () => {
+    const spawn = vi.fn().mockReturnValue({
+      status: 0,
+      stdout: "\x1b[32mNo schema changes\x1b[0m",
+      stderr: "\x1b[33maviso\x1b[0m",
+    });
+
+    expect(drizzleKit(["generate", "--name", "x"], spawn)).toEqual({
+      status: 0,
+      output: "No schema changes\naviso",
+    });
+    expect(spawn).toHaveBeenCalledWith("pnpm", ["exec", "drizzle-kit", "generate", "--name", "x"], {
+      encoding: "utf8",
+      input: "",
+      timeout: 120_000,
+    });
+  });
+
+  it("tolera que el proceso no devuelva salida (p. ej. si se cortó por timeout)", () => {
+    const spawn = vi.fn().mockReturnValue({ status: null, stdout: null, stderr: null });
+    expect(drizzleKit(["check"], spawn)).toEqual({ status: null, output: "\n" });
+  });
+});
+
+describe("snapshot · detalles", () => {
+  it("ignora entradas que no son archivos ni carpetas (p. ej. enlaces simbólicos rotos)", async () => {
+    const { symlinkSync } = await import("node:fs");
+    // "0-…" queda primero al listar: si se intentara leer, cortaría el recorrido antes del resto.
+    symlinkSync(join(dir, "no-existe"), join(dir, "0-enlace-roto"));
+    expect(snapshot(dir)).toEqual({
+      "0000_init.sql": "CREATE TABLE a ();",
+      [join("meta", "_journal.json")]: '{"entries":[1]}',
+    });
+  });
+
+  it("propaga errores distintos a 'la carpeta no existe'", () => {
+    const file = join(dir, "0000_init.sql");
+    expect(() => snapshot(file)).toThrow(); // es un archivo, no una carpeta (ENOTDIR)
+  });
+
+  it("ordena los archivos agregados y modificados", () => {
+    const before = { "b.sql": "1", "a.sql": "1" };
+    const after = { "b.sql": "2", "a.sql": "2", "d.sql": "x", "c.sql": "x" };
+    expect(diffSnapshots(before, after)).toEqual({
+      added: ["c.sql", "d.sql"],
+      modified: ["a.sql", "b.sql"],
+    });
   });
 });

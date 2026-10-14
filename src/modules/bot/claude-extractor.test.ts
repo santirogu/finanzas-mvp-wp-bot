@@ -15,7 +15,7 @@ vi.mock("@anthropic-ai/sdk", async (importOriginal) => {
   return { ...actual, default: FakeAnthropic };
 });
 
-const { APIError, AnthropicError } = await import("@anthropic-ai/sdk");
+const { APIConnectionError, APIError, AnthropicError } = await import("@anthropic-ai/sdk");
 const { claudeExtractor } = await import("./claude-extractor");
 
 const input = {
@@ -186,5 +186,106 @@ describe("claudeExtractor", () => {
     sdk.parse.mockRejectedValue(new TypeError("boom"));
 
     await expect(claudeExtractor(input)).rejects.toThrow("boom");
+  });
+});
+
+describe("claudeExtractor · contrato con Claude", () => {
+  async function format() {
+    sdk.parse.mockResolvedValue(response());
+    await claudeExtractor(input);
+    return sdk.parse.mock.calls.at(-1)![0].output_config.format;
+  }
+
+  it("envía el esquema JSON exacto que Claude debe cumplir", async () => {
+    const { type, schema } = await format();
+    expect(type).toBe("json_schema");
+    expect(schema).toMatchObject({
+      type: "object",
+      required: ["transactions", "reply"],
+      additionalProperties: false,
+      properties: {
+        transactions: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: ["type", "amount", "description", "category", "date"],
+            properties: {
+              type: { type: "string", description: '{enum: ["income","expense"]}' },
+              amount: {
+                type: "number",
+                description: "Monto en pesos colombianos: número entero, sin separadores",
+              },
+              description: { type: "string", description: "Qué fue, en 1 a 5 palabras" },
+              category: {
+                type: "string",
+                description: "Una de las categorías de su tipo, o 'Otros'",
+              },
+              date: { type: "string", description: "Fecha del movimiento, YYYY-MM-DD" },
+            },
+          },
+        },
+        reply: {
+          description: "Respuesta al usuario cuando no hay transacciones; null si las hay",
+          anyOf: [expect.anything(), { type: "null" }],
+        },
+      },
+    });
+  });
+
+  it("rechaza respuestas de Claude que no cumplen el esquema (p. ej. un tipo desconocido)", async () => {
+    const { parse } = await format();
+    const valid = { transactions: [zapatos], reply: null };
+    expect(parse(JSON.stringify(valid))).toEqual(valid);
+    expect(
+      parse(JSON.stringify({ ...valid, transactions: [{ ...zapatos, type: "income" }] })),
+    ).toBeTruthy();
+    expect(() =>
+      parse(JSON.stringify({ ...valid, transactions: [{ ...zapatos, type: "transfer" }] })),
+    ).toThrow();
+    expect(() => parse(JSON.stringify({ transactions: [] }))).toThrow();
+  });
+});
+
+describe("claudeExtractor · credenciales y respuestas incompletas", () => {
+  it("con ANTHROPIC_AUTH_TOKEN (sin API key) sí llama a Claude", async () => {
+    vi.stubEnv("ANTHROPIC_API_KEY", "");
+    vi.stubEnv("ANTHROPIC_AUTH_TOKEN", "token-oauth");
+    sdk.parse.mockResolvedValue(response());
+
+    expect(await claudeExtractor(input)).toMatchObject({ ok: true });
+  });
+
+  it("un rechazo sin detalles no rompe el extractor", async () => {
+    sdk.parse.mockResolvedValue(
+      response({ stop_reason: "refusal", stop_details: null, parsed_output: null }),
+    );
+
+    expect(await claudeExtractor(input)).toEqual({
+      ok: false,
+      reason: "refusal",
+      detail: undefined,
+      usage: { model: "claude-haiku-5-5", inputTokens: 1686, outputTokens: 59 },
+    });
+  });
+
+  it("guarda el estado HTTP y el mensaje de error de la API, sin repetir el estado", async () => {
+    sdk.parse.mockRejectedValue(
+      new APIError(529, { error: { type: "overloaded_error" } }, "Overloaded", new Headers()),
+    );
+
+    const result = await claudeExtractor(input);
+    expect(result).toEqual({
+      ok: false,
+      reason: "api_error",
+      detail: '529 {"error":{"type":"overloaded_error"}}',
+    });
+  });
+
+  it("si no puede conectarse con la API lo registra sin estado HTTP", async () => {
+    sdk.parse.mockRejectedValue(new APIConnectionError({ message: undefined }));
+
+    const result = await claudeExtractor(input);
+    expect(result).toEqual({ ok: false, reason: "api_error", detail: "Connection error." });
   });
 });

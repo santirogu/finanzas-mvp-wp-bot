@@ -1,12 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { monthRange } from "@/lib/dates";
 import {
+  aiUnavailableReply,
   balanceReply,
+  errorReply,
   helpReply,
   linkedReply,
+  linkInvalidReply,
+  linkRateLimitedReply,
   notLinkedReply,
   registeredReply,
   undoReply,
+  unsupportedTypeReply,
 } from "./replies";
 
 const range = monthRange(2026, 10);
@@ -114,5 +119,40 @@ describe("mensajes de vinculación y ayuda", () => {
         " ",
       ),
     ).toBe("Listo, eliminé:\n🗑️ Café — $ 6.500");
+  });
+});
+
+describe("textos fijos del bot", () => {
+  // Protege los textos que ve el usuario: un cambio accidental (o un texto vacío) rompe esta prueba.
+  it("ayuda", () => {
+    expect(helpReply("Ana Pérez")).toBe(
+      [
+        "Hola Ana 👋 Escríbeme tus ingresos y gastos como se los contarías a alguien:",
+        "",
+        "• _me compré unos zapatos de $500.000_",
+        "• _almuerzo 25 mil y taxi 12 mil_",
+        "• _me pagaron la quincena 2.100.000_",
+        "",
+        "También entiendo:",
+        "• *balance* — cómo vas este mes",
+        "• *deshacer* — borra el último registro",
+      ].join("\n"),
+    );
+  });
+
+  it("errores y vinculación", () => {
+    expect(linkInvalidReply).toBe(
+      "Ese código no es válido o ya venció. Genera uno nuevo en el dashboard.",
+    );
+    expect(linkRateLimitedReply).toBe(
+      "Demasiados intentos fallidos. Espera una hora antes de volver a intentar.",
+    );
+    expect(unsupportedTypeReply).toBe("Por ahora solo entiendo mensajes de texto ✍️");
+    expect(errorReply).toBe(
+      "Tuve un problema procesando tu mensaje 😕 Intenta de nuevo en un momento.",
+    );
+    expect(aiUnavailableReply).toBe(
+      "Por ahora solo entiendo *balance*, *deshacer* y *ayuda*. Muy pronto podrás registrar gastos escribiendo normal ✍️",
+    );
   });
 });

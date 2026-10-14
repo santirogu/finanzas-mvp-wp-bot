@@ -41,15 +41,36 @@ export function summarize(report) {
   ].join("\n");
 }
 
-function main(path = "reports/mutation/mutation.json") {
-  if (!existsSync(path)) {
-    console.log(`No existe ${path}: Stryker no generó reporte.`);
+/**
+ * Imprime el resumen y lo agrega al resumen de la corrida de GitHub (GITHUB_STEP_SUMMARY).
+ *
+ * @param {string} [path]
+ * @param {{
+ *   exists?: (path: string) => boolean,
+ *   read?: (path: string) => string,
+ *   log?: (line: string) => void,
+ *   summaryFile?: string,
+ *   append?: (file: string, text: string) => void,
+ * }} [options]
+ */
+export function runCli(
+  path = "reports/mutation/mutation.json",
+  {
+    exists = existsSync,
+    read = (file) => readFileSync(file, "utf8"),
+    log = console.log,
+    summaryFile = process.env.GITHUB_STEP_SUMMARY,
+    append = appendFileSync,
+  } = {},
+) {
+  if (!exists(path)) {
+    log(`No existe ${path}: Stryker no generó reporte.`);
     return;
   }
-  const markdown = summarize(JSON.parse(readFileSync(path, "utf8")));
-  console.log(markdown);
-  if (process.env.GITHUB_STEP_SUMMARY)
-    appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${markdown}\n`);
+  const markdown = summarize(JSON.parse(read(path)));
+  log(markdown);
+  if (summaryFile) append(summaryFile, `${markdown}\n`);
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) main(process.argv[2]);
+// Stryker disable next-line all: punto de entrada de la línea de comandos; se prueba con la función exportada y lo ejercita el CI.
+if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) runCli(process.argv[2]);

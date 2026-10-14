@@ -1,7 +1,7 @@
 name: Mutation testing
 
 # Stryker introduce cambios pequeños en el código y verifica que las pruebas unitarias los
-# detecten. Tarda ~20 minutos en GitHub, así que corre solo a pedido (no es check obligatorio):
+# detecten. Tarda ~40 minutos en GitHub, así que corre solo a pedido (no es check obligatorio):
 #   · en un PR, al ponerle la etiqueta "mutation-testing" (y en cada push mientras la tenga);
 #   · a mano: Actions → Mutation testing → Run workflow;
 #   · cada lunes sobre main, para detectar si el puntaje fue bajando.

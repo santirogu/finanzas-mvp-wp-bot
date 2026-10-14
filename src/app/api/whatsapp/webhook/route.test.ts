@@ -152,3 +152,51 @@ describe("POST · mensajes entrantes", () => {
     expect(mocks.afterCallbacks).toHaveLength(0);
   });
 });
+
+describe("respuestas y registros del webhook", () => {
+  it("responde con textos claros en cada caso", async () => {
+    const forbidden = await verify({ "hub.mode": "subscribe", "hub.verify_token": "otro" });
+    expect(await forbidden.text()).toBe("Forbidden");
+
+    const unsigned = await post(payload([]), null);
+    expect(await unsigned.text()).toBe("Invalid signature");
+
+    const badJson = await post("no es json");
+    expect(await badJson.text()).toBe("Bad request");
+
+    const ok = await post(payload([]));
+    expect(ok.status).toBe(200);
+    expect(await ok.text()).toBe("OK");
+  });
+
+  it("si Meta no envía challenge, responde vacío", async () => {
+    const res = await verify({ "hub.mode": "subscribe", "hub.verify_token": "token-secreto" });
+    expect(res.status).toBe(200);
+    expect(await res.text()).toBe("");
+  });
+
+  it("registra si la firma falló por cabecera faltante o por falta de App Secret", async () => {
+    await post(payload([]), null);
+    expect(console.warn).toHaveBeenLastCalledWith("[whatsapp] firma inválida", {
+      cabeceraPresente: false,
+      appSecretConfigurado: true,
+    });
+
+    vi.stubEnv("WHATSAPP_APP_SECRET", "");
+    await post(payload([]));
+    expect(console.warn).toHaveBeenLastCalledWith("[whatsapp] firma inválida", {
+      cabeceraPresente: true,
+      appSecretConfigurado: false,
+    });
+  });
+
+  it("registra cuántos mensajes llegaron y de qué tipo", async () => {
+    await post(
+      payload([textMessage("wamid.A", "hola"), { ...textMessage("wamid.B", ""), type: "audio" }]),
+    );
+    expect(console.info).toHaveBeenCalledWith("[whatsapp] webhook recibido", {
+      mensajes: 2,
+      tipos: ["text", "audio"],
+    });
+  });
+});

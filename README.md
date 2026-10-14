@@ -37,7 +37,7 @@ pnpm dev                        # http://localhost:3000
 | `pnpm test` | Pruebas unitarias (rápidas, sin base de datos) |
 | `pnpm test:int` | Pruebas de integración contra Postgres real (`TEST_DATABASE_URL`) |
 | `pnpm test:coverage` | Todas las pruebas + reporte de cobertura en `coverage/` |
-| `pnpm test:mutation` | Mutation testing con Stryker; reporte en `reports/mutation/` (~7 minutos) |
+| `pnpm test:mutation` | Mutation testing con Stryker; reporte en `reports/mutation/` (~8 minutos) |
 | `pnpm db:generate` | Genera una migración SQL tras cambiar `src/db/schema/*` |
 | `pnpm db:migrate` | Aplica migraciones pendientes |
 | `pnpm db:check-drift` | Verifica que cada cambio del esquema tenga su migración (lo corre el CI) |
@@ -64,8 +64,10 @@ pnpm dev                        # http://localhost:3000
   las pruebas con un Postgres efímero. Falla si la cobertura baja del umbral de `vitest.config.mts`.
 - **Mutation testing** (`pnpm test:mutation`, [StrykerJS](https://stryker-mutator.io)): introduce
   cambios pequeños en la lógica (cambia `>` por `>=`, borra condiciones, vacía textos) y verifica que
-  alguna prueba unitaria falle. El puntaje es el % de mutantes detectados; el reporte HTML queda en
-  `reports/mutation/index.html`. Tarda ~7 minutos en local y ~20 en GitHub (cada mutante corre la
+  alguna prueba unitaria falle. El puntaje es el % de mutantes detectados (~95 %; lo que sobrevive
+  son mutantes equivalentes, que no cambian el comportamiento). Muta `src/lib`, los módulos del bot,
+  WhatsApp y transacciones, el webhook y los scripts del CI. El reporte HTML queda en
+  `reports/mutation/index.html`. Tarda ~8 minutos en local y ~40 en GitHub (cada mutante corre la
   suite unitaria completa), así que corre **a pedido**: en un PR al ponerle la etiqueta
   `mutation-testing`, con *Actions → Mutation testing → Run workflow*, y **cada lunes** sobre `main`.
   Falla si el puntaje baja del umbral `break` de `stryker.config.mjs`, pero no bloquea el merge.

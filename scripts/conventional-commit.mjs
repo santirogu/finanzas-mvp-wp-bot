@@ -38,30 +38,34 @@ export function validateHeader(
   if (scope !== undefined && !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(scope)) {
     errors.push(`Ámbito "${scope}" no válido: minúsculas, números y guiones (ej. "whatsapp").`);
   }
-  if (!description.trim()) {
-    errors.push("Falta la descripción después de los dos puntos.");
-  } else {
-    const first = description[0];
-    if (first !== first.toLocaleLowerCase("es")) {
-      errors.push('La descripción debe empezar en minúscula (ej. "agregar…", no "Agregar…").');
-    }
-    if (/[.。]$/.test(description)) errors.push("La descripción no debe terminar en punto.");
-    if (description !== description.trim()) errors.push("Sobran espacios al inicio o al final.");
+  // La descripción nunca llega vacía: la línea ya viene recortada y "feat: " no cumple el formato.
+  const first = description[0];
+  if (first !== first.toLocaleLowerCase("es")) {
+    errors.push('La descripción debe empezar en minúscula (ej. "agregar…", no "Agregar…").');
   }
+  if (/[.。]$/.test(description)) errors.push("La descripción no debe terminar en punto.");
+  if (description !== description.trim()) errors.push("Sobran espacios al inicio o al final.");
   if (header.length > maxLength) {
     errors.push(`Máximo ${maxLength} caracteres (tiene ${header.length}).`);
   }
   return errors.length ? { ok: false, errors } : { ok: true };
 }
 
-function main(argv) {
+/**
+ * Ejecuta la validación desde la línea de comandos y devuelve el código de salida.
+ * La lectura de archivos y la salida se reciben como parámetros para poder probarla.
+ */
+export function runCli(
+  argv,
+  { readFile = (path) => readFileSync(path, "utf8"), error = console.error } = {},
+) {
   let maxLength = MAX_HEADER_LENGTH;
   if (argv[0] === "--max-length") {
     maxLength = Number(argv[1]) || MAX_HEADER_LENGTH;
     argv = argv.slice(2);
   }
   const fromFile = argv[0] === "--file";
-  const raw = fromFile ? readFileSync(argv[1], "utf8") : argv.join(" ");
+  const raw = fromFile ? readFile(argv[1]) : argv.join(" ");
   // En el archivo del commit, git agrega comentarios que empiezan por "#".
   const text = raw
     .split("\n")
@@ -72,14 +76,16 @@ function main(argv) {
   if (result.ok) return 0;
 
   const label = fromFile ? "El mensaje del commit" : "El título del PR";
-  console.error(`✗ ${label} no sigue Conventional Commits:\n  "${text.split("\n")[0]}"\n`);
-  for (const error of result.errors) console.error(`  • ${error}`);
-  console.error(
+  error(`✗ ${label} no sigue Conventional Commits:\n  "${text.split("\n")[0]}"\n`);
+  for (const message of result.errors) error(`  • ${message}`);
+  error(
     `\nEjemplos válidos:\n  feat(bot): registrar gastos desde notas de voz\n  fix(whatsapp): reintentar el envío si Meta responde 500\n  docs: explicar el flujo de pull requests\n\nTipos: ${TYPES.join(", ")}. Más detalles en CLAUDE.md.`,
   );
   return 1;
 }
 
+// Stryker disable next-line all: punto de entrada de la línea de comandos; se prueba con la función exportada y lo ejercita el CI.
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
-  process.exit(main(process.argv.slice(2)));
+  // Stryker disable next-line all
+  process.exit(runCli(process.argv.slice(2)));
 }

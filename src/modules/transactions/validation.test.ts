@@ -76,3 +76,16 @@ describe("newTransactionSchema", () => {
     expect(errorsOf({ ...base, type: "transfer" })).toHaveProperty("type");
   });
 });
+
+describe("newTransactionSchema · ingresos y mensajes", () => {
+  it("acepta ingresos", () => {
+    expect(newTransactionSchema.parse({ ...base, type: "income" }).type).toBe("income");
+  });
+
+  it("explica que la categoría debe elegirse de la lista", () => {
+    expect(errorsOf({ ...base, categoryId: "ropa" })).toHaveProperty(
+      "categoryId",
+      "Selecciona una categoría",
+    );
+  });
+});
