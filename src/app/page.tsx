@@ -22,6 +22,11 @@ export default function Home() {
           Iniciar sesión
         </Link>
       </div>
+      <p className="mt-16 text-xs text-muted">
+        <Link href="/privacidad" className="underline underline-offset-2 hover:text-foreground">
+          Política de privacidad
+        </Link>
+      </p>
     </main>
   );
 }
