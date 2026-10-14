@@ -92,7 +92,9 @@ const server = createServer(async (request, response) => {
 
     json(response, 404, { error: `ruta desconocida: ${request.method} ${url.pathname}` });
   } catch (error) {
-    json(response, 500, { error: String(error) });
+    // El detalle va a la consola (lo muestra Playwright); la respuesta no expone el error.
+    console.error("[servicios falsos]", error);
+    json(response, 500, { error: "error interno del servidor falso" });
   }
 });
 
