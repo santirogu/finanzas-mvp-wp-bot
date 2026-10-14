@@ -1,6 +1,8 @@
 # Dependabot abre PRs para actualizar dependencias. Las alertas y los PRs de seguridad se activan
 # aparte, en Settings → Code security. Los títulos siguen Conventional Commits:
 #   chore(deps): …  /  chore(deps-dev): …  /  ci(deps): …
+# Ojo: Dependabot decide si escribe "Bump" o "bump" copiando su último commit en main. Si un PR
+# llega con "Bump", el check "Título del PR" falla: edita el título a "bump" antes del merge.
 version: 2
 updates:
   - package-ecosystem: npm # incluye pnpm (lee pnpm-lock.yaml)
@@ -15,6 +17,12 @@ updates:
       prefix: chore
       include: scope
     labels: [dependencias]
+    ignore:
+      # Los tipos de Node deben coincidir con el Node que corre la app (22, el del CI): con los de
+      # una versión mayor, el typecheck aceptaría APIs que no existen en ese Node.
+      # Al subir de versión de Node, actualiza @types/node a mano en el mismo PR.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
     groups:
       # Las versiones menores y parches van juntas en un solo PR; las mayores, por separado.
       menores-y-parches:
