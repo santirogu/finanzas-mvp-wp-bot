@@ -23,6 +23,27 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+describe("sendWhatsAppText · dirección de la API", () => {
+  it("con WHATSAPP_API_URL local, envía al servidor falso de las pruebas E2E", async () => {
+    vi.stubEnv("WHATSAPP_API_URL", "http://localhost:3101/graph/");
+    fetchMock.mockResolvedValue(new Response("{}", { status: 200 }));
+    const { sendWhatsAppText } = await loadClient();
+
+    await sendWhatsAppText("573001112233", "Hola");
+    expect(fetchMock.mock.calls[0][0]).toBe("http://localhost:3101/graph/v26.0/1418230944702354/messages");
+  });
+
+  it("ignora una WHATSAPP_API_URL que no es local: el token nunca va a otro host", async () => {
+    vi.stubEnv("WHATSAPP_API_URL", "https://atacante.example/graph");
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    fetchMock.mockResolvedValue(new Response("{}", { status: 200 }));
+    const { sendWhatsAppText } = await loadClient();
+
+    await sendWhatsAppText("573001112233", "Hola");
+    expect(fetchMock.mock.calls[0][0]).toBe("https://graph.facebook.com/v26.0/1418230944702354/messages");
+  });
+});
+
 describe("sendWhatsAppText", () => {
   it("envía el texto a la Graph API v26.0 con el token sin saltos de línea", async () => {
     fetchMock.mockResolvedValue(new Response("{}", { status: 200 }));

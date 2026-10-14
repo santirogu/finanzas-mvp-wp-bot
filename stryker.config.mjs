@@ -15,7 +15,7 @@ const config = {
   // (*.tsx) tampoco se mutan: casi todo su código son clases de Tailwind y textos, y su
   // comportamiento lo cubren las pruebas de componentes y las E2E.
   mutate: [
-    "src/lib/{money,dates,email-typo,env,app-url,session,health,auth-errors,security-headers}.ts",
+    "src/lib/{money,dates,email-typo,env,app-url,session,health,auth-errors,security-headers,service-url}.ts",
     "src/modules/bot/{commands,normalize,interpret,replies,prompt,claude-extractor}.ts",
     "src/modules/whatsapp/{signature,payload,phone,client,actions}.ts",
     "src/modules/transactions/validation.ts",

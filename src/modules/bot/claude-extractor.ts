@@ -4,6 +4,7 @@ import { z } from "zod";
 import type { CategoryNames, RawTransaction } from "./normalize";
 import { buildSystemPrompt, buildUserMessage } from "./prompt";
 import { envVar } from "@/lib/env";
+import { serviceUrl } from "@/lib/service-url";
 
 // Modelo configurable por entorno. Por defecto Claude Haiku 5.5 con esfuerzo bajo:
 // en el set de evaluación acertó 50/50, más rápido y ~40 veces más barato que Opus 5.5.
@@ -49,7 +50,14 @@ export type Extractor = (input: ExtractionInput) => Promise<ExtractionResult>;
 let client: Anthropic | null = null;
 function getClient() {
   // Toma ANTHROPIC_API_KEY del entorno. Timeout corto: es una conversación de WhatsApp.
-  client ??= new Anthropic({ apiKey: envVar("ANTHROPIC_API_KEY"), timeout: 30_000, maxRetries: 2 });
+  // ANTHROPIC_BASE_URL (que el SDK leería solo) únicamente puede apuntar a un servidor local: las
+  // pruebas E2E usan uno falso, y la API key nunca debe ir a otro host.
+  client ??= new Anthropic({
+    apiKey: envVar("ANTHROPIC_API_KEY"),
+    baseURL: serviceUrl("ANTHROPIC_BASE_URL", "https://api.anthropic.com"),
+    timeout: 30_000,
+    maxRetries: 2,
+  });
   return client;
 }
 

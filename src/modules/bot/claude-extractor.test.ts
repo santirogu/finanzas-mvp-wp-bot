@@ -80,9 +80,20 @@ describe("claudeExtractor", () => {
 
     expect(sdk.clientOptions[0]).toEqual({
       apiKey: "sk-ant-prueba",
+      baseURL: "https://api.anthropic.com",
       timeout: 30_000,
       maxRetries: 2,
     });
+  });
+
+  it("con ANTHROPIC_BASE_URL local usa el servidor falso de las pruebas E2E", async () => {
+    vi.resetModules();
+    vi.stubEnv("ANTHROPIC_BASE_URL", "http://localhost:3101/anthropic");
+    const fresh = await import("./claude-extractor");
+    sdk.parse.mockResolvedValue(response());
+    await fresh.claudeExtractor(input);
+
+    expect(sdk.clientOptions.at(-1)).toMatchObject({ baseURL: "http://localhost:3101/anthropic" });
   });
 
   it("usa Haiku 5.5 con esfuerzo bajo, sin fallback de servidor, por defecto", async () => {
