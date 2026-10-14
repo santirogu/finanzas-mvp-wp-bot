@@ -89,16 +89,21 @@ scripts/seed.ts                     Categorías por defecto
 En desarrollo, sin credenciales de Meta, las respuestas se imprimen en la consola. Para probar sin
 WhatsApp, usa el simulador en `/simulador`.
 
-## Despliegue (recomendado)
+## Despliegue en Vercel + Neon
 
-1. **Base de datos:** crea un proyecto en [Supabase](https://supabase.com) o [Neon](https://neon.tech)
-   y copia la URL de conexión *pooled* (Supabase: puerto 6543; Neon: host `-pooler`).
-2. **Migraciones:** `DATABASE_URL=<url> pnpm db:setup`.
-3. **App:** importa el repo en [Vercel](https://vercel.com) y configura `DATABASE_URL`,
-   `BETTER_AUTH_SECRET` (uno nuevo, distinto al local), `BETTER_AUTH_URL` (tu dominio),
-   `ANTHROPIC_API_KEY` y las variables `WHATSAPP_*` de `.env.example`.
-4. **Webhook en Meta:** URL `https://<tu-dominio>/api/whatsapp/webhook`, el mismo
-   `WHATSAPP_VERIFY_TOKEN`, y suscripción al campo `messages`.
+Cada despliegue ejecuta `pnpm vercel-build`: aplica las migraciones pendientes, inserta las
+categorías por defecto (idempotente) y compila la app.
+
+1. **Importar:** en [vercel.com](https://vercel.com) → *Add New → Project* → importa este repo.
+   Agrega `BETTER_AUTH_SECRET` (uno distinto al local). El primer despliegue falla porque aún no
+   hay base de datos: es esperado.
+2. **Base de datos:** en el proyecto → *Storage → Create Database → Neon* → conéctala al proyecto.
+   Vercel crea `DATABASE_URL` (con pooler) y `DATABASE_URL_UNPOOLED` (para migraciones).
+3. **Redesplegar:** *Deployments → … → Redeploy*. La URL pública se detecta sola
+   (`VERCEL_PROJECT_PRODUCTION_URL`); `BETTER_AUTH_URL` solo hace falta con dominio propio.
+4. **Bot:** agrega `ANTHROPIC_API_KEY` y las variables `WHATSAPP_*` de `.env.example`, y redespliega.
+5. **Webhook en Meta:** URL `https://<tu-app>.vercel.app/api/whatsapp/webhook`, el mismo
+   `WHATSAPP_VERIFY_TOKEN` y suscripción al campo `messages`.
 
 ## Roadmap
 

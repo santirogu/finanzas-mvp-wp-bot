@@ -1,4 +1,5 @@
 import { after, type NextRequest } from "next/server";
+import { getAppUrl } from "@/lib/app-url";
 import { claudeExtractor } from "@/modules/bot/claude-extractor";
 import { handleIncomingMessage } from "@/modules/bot/handle-message";
 import { sendWhatsAppText } from "@/modules/whatsapp/client";
@@ -41,7 +42,7 @@ export async function POST(request: NextRequest) {
           await handleIncomingMessage(message, {
             extractor: claudeExtractor,
             send: sendWhatsAppText,
-            appUrl: process.env.BETTER_AUTH_URL ?? "",
+            appUrl: getAppUrl(),
           });
         } catch (error) {
           console.error("[whatsapp] no se pudo procesar", message.id, error);

@@ -1,6 +1,7 @@
 "use server";
 
 import { randomUUID } from "node:crypto";
+import { getAppUrl } from "@/lib/app-url";
 import { requireUser } from "@/lib/session";
 import { claudeExtractor } from "@/modules/bot/claude-extractor";
 import { handleIncomingMessage } from "@/modules/bot/handle-message";
@@ -30,7 +31,7 @@ export async function simulateMessageAction(phone: string, text: string): Promis
     {
       extractor: claudeExtractor,
       send: async () => ({ ok: true }),
-      appUrl: process.env.BETTER_AUTH_URL ?? "",
+      appUrl: getAppUrl(),
     },
   );
 

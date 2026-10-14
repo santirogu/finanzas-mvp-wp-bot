@@ -3,9 +3,13 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
 import { db, schema } from "@/db";
+import { getAppUrl, getVercelOrigins } from "./app-url";
 
 export const auth = betterAuth({
   appName: "Finanzas MVP",
+  baseURL: getAppUrl(),
+  // En Vercel, acepta también la URL propia de cada deployment (previews).
+  trustedOrigins: getVercelOrigins(),
   database: drizzleAdapter(db, {
     provider: "pg",
     schema: {
