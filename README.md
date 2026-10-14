@@ -170,6 +170,14 @@ respetan todas las instancias de Vercel; en memoria cada instancia tendría el s
 `src/lib/rate-limit.int.test.ts` y las E2E. La vinculación de WhatsApp tiene su propio límite: 5
 códigos fallidos por hora y número.
 
+**Bloqueo por cuenta:** el límite por IP no frena a quien reparte los intentos entre muchas IPs.
+Por eso, tras 5 contraseñas equivocadas en 15 minutos, la cuenta queda bloqueada 15 minutos, venga
+el intento de donde venga (ni la contraseña correcta entra; el formulario dice cuánto falta). Se
+cuenta por correo, también para correos que no existen, así que no revela cuáles están registrados.
+Un login correcto reinicia el contador. Implementado con hooks de Better Auth
+(`src/lib/auth.ts`) y la tabla `login_failure` (`src/modules/auth/lockout.ts`). Contra: alguien
+podría bloquear a propósito la cuenta de otra persona; por eso el bloqueo es corto.
+
 ### Versiones forzadas de dependencias
 
 `package.json → pnpm.overrides` fuerza versiones corregidas en dependencias indirectas cuyo paquete

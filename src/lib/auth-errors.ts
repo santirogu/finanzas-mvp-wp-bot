@@ -12,7 +12,13 @@ const MESSAGES: Record<string, string> = {
 // (su mensaje viene en inglés).
 export const TOO_MANY_ATTEMPTS = "Demasiados intentos. Espera unos segundos y vuelve a intentarlo.";
 
+// Bloqueo por cuenta (src/lib/auth.ts): el servidor ya manda el mensaje en español, con los
+// minutos que faltan.
+export const ACCOUNT_LOCKED =
+  "Por seguridad, la cuenta quedó bloqueada por varios intentos fallidos. Intenta más tarde.";
+
 export function authErrorMessage(error: { code?: string; status?: number; message?: string }) {
+  if (error.code === "ACCOUNT_LOCKED") return error.message || ACCOUNT_LOCKED;
   if (error.status === 429) return TOO_MANY_ATTEMPTS;
   return (error.code && MESSAGES[error.code]) || error.message || "Algo salió mal.";
 }

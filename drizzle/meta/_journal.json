@@ -22,6 +22,13 @@
       "when": 1792010832836,
       "tag": "0002_rate_limit",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1792014443635,
+      "tag": "0003_login_failure",
+      "breakpoints": true
     }
   ]
 }

@@ -1,6 +1,6 @@
 import { expect, type Page } from "@playwright/test";
 import { TOO_MANY_ATTEMPTS } from "../src/lib/auth-errors";
-import { PASSWORD, formAlert, newPerson, register, test, uniqueEmail } from "./helpers";
+import { PASSWORD, fakeIp, formAlert, newPerson, register, test, uniqueEmail } from "./helpers";
 
 test.describe("sin sesión", () => {
   for (const path of ["/dashboard", "/ingresos", "/egresos"]) {
@@ -73,6 +73,36 @@ test.describe("límite de intentos (Better Auth)", () => {
     await wrongPasswordAttempts(page, uniqueEmail(), 4);
     await expect(formAlert(page)).toHaveText(TOO_MANY_ATTEMPTS);
     await expect(page).toHaveURL(/\/login$/);
+  });
+});
+
+test.describe("bloqueo por cuenta", () => {
+  // Aunque cada intento salga de otra IP (así se esquiva el límite por IP), tras 5 contraseñas
+  // equivocadas la cuenta queda bloqueada: ni la correcta entra.
+  test("tras 5 intentos fallidos desde IPs distintas bloquea la cuenta y lo explica", async ({ browser }) => {
+    const signup = await newPerson(browser);
+    const { email } = await register(signup);
+    await signup.close();
+
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    await page.goto("/login");
+    await page.getByLabel("Correo").fill(email);
+    for (let i = 0; i < 5; i++) {
+      await context.setExtraHTTPHeaders({ "x-forwarded-for": fakeIp() });
+      await page.getByLabel("Contraseña").fill(`equivocada-${i}-123`);
+      await page.getByRole("button", { name: "Entrar" }).click();
+      await expect(formAlert(page)).toHaveText("Correo o contraseña incorrectos.");
+    }
+
+    await context.setExtraHTTPHeaders({ "x-forwarded-for": fakeIp() });
+    await page.getByLabel("Contraseña").fill(PASSWORD);
+    await page.getByRole("button", { name: "Entrar" }).click();
+    await expect(formAlert(page)).toHaveText(
+      "Por seguridad, la cuenta quedó bloqueada por varios intentos fallidos. Intenta de nuevo en 15 minutos.",
+    );
+    await expect(page).toHaveURL(/\/login$/);
+    await context.close();
   });
 });
 

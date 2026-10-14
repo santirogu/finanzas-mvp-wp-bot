@@ -91,3 +91,13 @@ export const rateLimit = pgTable(
   },
   (t) => [index("rate_limit_last_request_idx").on(t.lastRequest)],
 );
+
+// Intentos fallidos de login por cuenta (no es de Better Auth; ver src/modules/auth/lockout.ts).
+// Va por correo y no por usuario: así se trata igual un correo que no existe y no se revela
+// cuáles están registrados.
+export const loginFailure = pgTable("login_failure", {
+  email: text("email").primaryKey(), // en minúsculas
+  failures: integer("failures").notNull(),
+  firstFailureAt: timestamp("first_failure_at", { withTimezone: true }).notNull(),
+  lockedUntil: timestamp("locked_until", { withTimezone: true }),
+});

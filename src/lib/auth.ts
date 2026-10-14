@@ -1,9 +1,11 @@
 import "server-only";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { APIError, createAuthMiddleware, isAPIError } from "better-auth/api";
 import { nextCookies } from "better-auth/next-js";
 import { PHASE_PRODUCTION_BUILD } from "next/constants";
 import { db, schema } from "@/db";
+import { clearFailures, lockedUntil, normalizeEmail, recordFailure } from "@/modules/auth/lockout";
 import { getAppUrl, getVercelOrigins } from "./app-url";
 import { envVar } from "./env";
 
@@ -49,6 +51,29 @@ export const auth = betterAuth({
   // registro, y 100 pedidos cada 10 s en el resto. Activo también fuera de producción, para
   // probarlo. La IP sale de x-forwarded-for, que Vercel reemplaza con la IP real del cliente.
   rateLimit: { enabled: true, storage: "database" },
+  // Bloqueo por cuenta tras varios intentos fallidos, venga de la IP que venga
+  // (src/modules/auth/lockout.ts). Se trata igual un correo que no existe: no revela cuáles hay.
+  hooks: {
+    before: createAuthMiddleware(async (ctx) => {
+      if (ctx.path !== "/sign-in/email") return;
+      const email = normalizeEmail(ctx.body?.email);
+      const until = email ? await lockedUntil(email) : null;
+      if (!until) return;
+      const minutes = Math.max(1, Math.ceil((until.getTime() - Date.now()) / 60_000));
+      throw APIError.from("TOO_MANY_REQUESTS", {
+        code: "ACCOUNT_LOCKED",
+        message: `Por seguridad, la cuenta quedó bloqueada por varios intentos fallidos. Intenta de nuevo en ${minutes} ${minutes === 1 ? "minuto" : "minutos"}.`,
+      });
+    }),
+    after: createAuthMiddleware(async (ctx) => {
+      if (ctx.path !== "/sign-in/email") return;
+      const email = normalizeEmail(ctx.body?.email);
+      if (!email) return;
+      const returned = ctx.context.returned;
+      if (!isAPIError(returned)) await clearFailures(email);
+      else if (returned.body?.code === "INVALID_EMAIL_OR_PASSWORD") await recordFailure(email);
+    }),
+  },
   session: {
     // Sesión en cookie httpOnly, válida 30 días y renovada cada 24 h de uso.
     expiresIn: 60 * 60 * 24 * 30,

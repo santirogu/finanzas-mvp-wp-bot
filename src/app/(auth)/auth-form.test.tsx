@@ -62,6 +62,10 @@ describe("AuthForm · login", () => {
   it.each([
     [{ code: "INVALID_EMAIL_OR_PASSWORD", message: "Invalid email or password" }, "Correo o contraseña incorrectos."],
     [{ status: 429, message: "Too many requests. Please try again later." }, TOO_MANY_ATTEMPTS],
+    [
+      { status: 429, code: "ACCOUNT_LOCKED", message: "Por seguridad, la cuenta quedó bloqueada. Intenta de nuevo en 15 minutos." },
+      "Por seguridad, la cuenta quedó bloqueada. Intenta de nuevo en 15 minutos.",
+    ],
   ])("si falla (%o) avisa en español y no navega", async (error, message) => {
     mocks.signIn.mockResolvedValue({ error });
     render(<AuthForm mode="login" />);
