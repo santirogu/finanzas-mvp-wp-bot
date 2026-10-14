@@ -4,7 +4,7 @@ import { filesRequiringDeploy, runCli } from "./deploy-needed.mjs";
 describe("filesRequiringDeploy", () => {
   it.each([
     ["documentación y licencia", ["README.md", "CLAUDE.md", "AGENTS.md", "LICENSE"]],
-    ["workflows de CI", [".github/workflows/ci.yml", ".github/workflows/pull-request.yml"]],
+    ["workflows de CI", [".github/workflows/ci.yml", ".github/workflows/pull-request.yml", ".zap/rules.tsv"]],
     [
       "pruebas",
       [

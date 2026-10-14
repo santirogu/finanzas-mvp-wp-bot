@@ -12,10 +12,23 @@ export const fakeIp = () => `198.18.${randomInt(0, 256)}.${randomInt(1, 255)}`;
 /** `test` de Playwright con una IP propia por prueba. */
 // El segundo parámetro de un fixture suele llamarse `use`; aquí `provide`, para que la regla de
 // hooks de React de ESLint no lo confunda con un hook.
-export const test = base.extend({
+export const test = base.extend<{ cspViolations: string[] }>({
   extraHTTPHeaders: async ({}, provide) => {
     await provide({ "x-forwarded-for": fakeIp() });
   },
+  // En todas las pruebas: si la Content-Security-Policy bloquea algo de la propia app (un script,
+  // un estilo, una fuente), el navegador lo registra en la consola y la prueba falla.
+  cspViolations: [
+    async ({ page }, provide) => {
+      const violations: string[] = [];
+      page.on("console", (message) => {
+        if (/Content Security Policy/i.test(message.text())) violations.push(message.text());
+      });
+      await provide(violations);
+      expect(violations, "violaciones de la Content-Security-Policy").toEqual([]);
+    },
+    { auto: true },
+  ],
 });
 
 /** Otro navegador (otra persona), con su propia sesión e IP. */

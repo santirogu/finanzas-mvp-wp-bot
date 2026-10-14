@@ -1,0 +1,27 @@
+# Reglas del escaneo pasivo de OWASP ZAP (zap-baseline.py -c rules.tsv). Columnas separadas por
+# tabuladores: id de la regla, acción y nombre. FAIL bloquea el CI; WARN se muestra en el reporte
+# pero se acepta (con el porqué); INFO e IGNORE no bloquean. Las reglas que no están aquí quedan
+# en WARN (por defecto de ZAP). Lista de reglas: https://www.zaproxy.org/docs/alerts/
+10038	FAIL	Content Security Policy (CSP) Header Not Set
+10020	FAIL	Missing Anti-clickjacking Header
+10021	FAIL	X-Content-Type-Options Header Missing
+10063	FAIL	Permissions Policy Header Not Set
+10037	FAIL	Server Leaks Information via X-Powered-By
+10036	FAIL	Server Leaks Version Information via Server header
+10010	FAIL	Cookie No HttpOnly Flag
+10054	FAIL	Cookie without SameSite Attribute
+90022	FAIL	Application Error Disclosure
+10023	FAIL	Information Disclosure - Debug Error Messages
+10024	FAIL	Information Disclosure - Sensitive Information in URL
+10062	FAIL	PII Disclosure
+10098	FAIL	Cross-Domain Misconfiguration (CORS)
+10017	FAIL	Cross-Domain JavaScript Source File Inclusion
+10055	WARN	CSP: script-src unsafe-inline. Next 16 lo exige sin nonces y los nonces no son compatibles con el prerenderizado parcial (ver src/lib/security-headers.ts)
+10202	WARN	Absence of Anti-CSRF Tokens. Los formularios de login y registro no se envían como HTML: Better Auth recibe JSON y valida el Origin; las Server Actions de Next también validan el Origin
+10011	WARN	Cookie Without Secure Flag. El escaneo corre en http://localhost; en producción (https) Better Auth marca las cookies como Secure
+90004	WARN	Insufficient Site Isolation Against Spectre. Hay Cross-Origin-Opener-Policy y Cross-Origin-Resource-Policy; falta COEP, que no aporta sin contenido de otros orígenes
+10096	IGNORE	Timestamp Disclosure (números en los bundles de JavaScript)
+10027	IGNORE	Information Disclosure - Suspicious Comments (comentarios de librerías en los bundles)
+10109	IGNORE	Modern Web Application (aviso informativo)
+10049	IGNORE	Storable and Cacheable Content (informativo)
+10015	IGNORE	Re-examine Cache-control Directives (informativo)
