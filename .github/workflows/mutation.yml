@@ -1,0 +1,56 @@
+name: Mutation testing
+
+# Stryker introduce cambios pequeños en el código y verifica que las pruebas unitarias los
+# detecten. Tarda ~20 minutos en GitHub, así que corre solo a pedido (no es check obligatorio):
+#   · en un PR, al ponerle la etiqueta "mutation-testing" (y en cada push mientras la tenga);
+#   · a mano: Actions → Mutation testing → Run workflow;
+#   · cada lunes sobre main, para detectar si el puntaje fue bajando.
+on:
+  pull_request:
+    types: [labeled, synchronize, reopened]
+  workflow_dispatch:
+  schedule:
+    - cron: "0 11 * * 1" # lunes 6:00 a. m. en Bogotá (11:00 UTC)
+
+concurrency:
+  group: mutation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mutation:
+    name: Mutation testing
+    # En PRs, solo si tienen la etiqueta. Al agregar otra etiqueta no se vuelve a correr.
+    if: >-
+      github.event_name != 'pull_request' ||
+      (github.event.action == 'labeled' && github.event.label.name == 'mutation-testing') ||
+      (github.event.action != 'labeled' &&
+        contains(github.event.pull_request.labels.*.name, 'mutation-testing'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Falla si el puntaje queda por debajo de "break" en stryker.config.mjs.
+      - name: Ejecutar Stryker
+        run: pnpm test:mutation
+
+      - name: Resumen del puntaje
+        if: always()
+        run: node scripts/mutation-summary.mjs
+
+      - name: Guardar reporte HTML
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutation-report
+          path: reports/mutation/
+          retention-days: 14

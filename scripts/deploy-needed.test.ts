@@ -5,9 +5,32 @@ describe("filesRequiringDeploy", () => {
   it.each([
     ["documentación y licencia", ["README.md", "CLAUDE.md", "AGENTS.md", "LICENSE"]],
     ["workflows de CI", [".github/workflows/ci.yml", ".github/workflows/pull-request.yml"]],
-    ["pruebas", ["src/lib/money.test.ts", "src/modules/bot/handle-message.int.test.ts", "test/integration/setup.ts"]],
-    ["herramientas de desarrollo", ["scripts/bot-eval.ts", "scripts/meta-subscribe.sh", "scripts/conventional-commit.mjs"]],
-    ["configuración local", ["eslint.config.mjs", "vitest.config.mts", ".env.example", "docker-compose.yml", ".gitignore", ".githooks/commit-msg", "docker/init-test-db.sql"]],
+    [
+      "pruebas",
+      [
+        "src/lib/money.test.ts",
+        "src/modules/bot/handle-message.int.test.ts",
+        "test/integration/setup.ts",
+      ],
+    ],
+    [
+      "herramientas de desarrollo",
+      ["scripts/bot-eval.ts", "scripts/meta-subscribe.sh", "scripts/conventional-commit.mjs"],
+    ],
+    [
+      "configuración local",
+      [
+        "eslint.config.mjs",
+        "vitest.config.mts",
+        "vitest.mutation.config.mts",
+        "stryker.config.mjs",
+        ".env.example",
+        "docker-compose.yml",
+        ".gitignore",
+        ".githooks/commit-msg",
+        "docker/init-test-db.sql",
+      ],
+    ],
   ])("no despliega si solo cambia %s", (_, files) => {
     expect(filesRequiringDeploy(files)).toEqual([]);
   });

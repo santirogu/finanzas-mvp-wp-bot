@@ -37,6 +37,7 @@ pnpm dev                        # http://localhost:3000
 | `pnpm test` | Pruebas unitarias (rápidas, sin base de datos) |
 | `pnpm test:int` | Pruebas de integración contra Postgres real (`TEST_DATABASE_URL`) |
 | `pnpm test:coverage` | Todas las pruebas + reporte de cobertura en `coverage/` |
+| `pnpm test:mutation` | Mutation testing con Stryker; reporte en `reports/mutation/` (~7 minutos) |
 | `pnpm db:generate` | Genera una migración SQL tras cambiar `src/db/schema/*` |
 | `pnpm db:migrate` | Aplica migraciones pendientes |
 | `pnpm db:seed` | Inserta categorías globales (idempotente) |
@@ -57,6 +58,13 @@ pnpm dev                        # http://localhost:3000
   Claude y WhatsApp se simulan: no cuestan dinero.
 - **CI** (`.github/workflows/ci.yml`): en cada push a `main` y en cada PR corre lint, tipos y todas
   las pruebas con un Postgres efímero. Falla si la cobertura baja del umbral de `vitest.config.mts`.
+- **Mutation testing** (`pnpm test:mutation`, [StrykerJS](https://stryker-mutator.io)): introduce
+  cambios pequeños en la lógica (cambia `>` por `>=`, borra condiciones, vacía textos) y verifica que
+  alguna prueba unitaria falle. El puntaje es el % de mutantes detectados; el reporte HTML queda en
+  `reports/mutation/index.html`. Tarda ~7 minutos en local y ~20 en GitHub (cada mutante corre la
+  suite unitaria completa), así que corre **a pedido**: en un PR al ponerle la etiqueta
+  `mutation-testing`, con *Actions → Mutation testing → Run workflow*, y **cada lunes** sobre `main`.
+  Falla si el puntaje baja del umbral `break` de `stryker.config.mjs`, pero no bloquea el merge.
 - **Evaluación del bot** (`pnpm bot:eval`): 50 frases contra la API real de Claude. Tiene costo,
   por eso no corre en CI.
 
