@@ -117,8 +117,10 @@ WhatsApp, usa el simulador en `/simulador`.
 git checkout -b mi-cambio          # 1. trabaja en una rama
 git push -u origin mi-cambio       # 2. súbela
 gh pr create --fill                # 3. abre el PR: el CI corre lint, tipos y pruebas
-gh pr merge --auto --squash        # 4. se fusiona solo cuando el CI pase
 ```
+
+4. Cuando el check **Lint, tipos y pruebas** esté en verde, revisa el PR en GitHub y haz clic en
+   **Merge**. La fusión es siempre manual: el auto-merge está desactivado en el repositorio.
 
 Al fusionarse, el CI vuelve a correr sobre `main` y, si pasa, despliega a producción. La rama se
 borra automáticamente. El PR debe estar al día con `main` antes de fusionarse.
