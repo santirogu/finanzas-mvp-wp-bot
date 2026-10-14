@@ -74,12 +74,15 @@ describe("proxy · matcher", () => {
     }
   });
 
-  // Falla conocida: la exclusión "(?!api|_next/static|…)" compara solo el inicio, así que también
-  // se salta páginas que empiezan igual. Hoy no existe ninguna y requireUser() las protegería
-  // igual, pero el proxy no las redirigiría. Se corrige en una rama fix/; luego quitar `.fails`.
-  it.fails("no se salta páginas que solo empiezan como una ruta excluida", () => {
-    for (const url of ["/apiario", "/api-docs", "/_next/staticos", "/favicon.icono"]) {
+  it("no se salta páginas que solo empiezan como una ruta excluida", () => {
+    for (const url of ["/apiario", "/api-docs", "/_next/staticos", "/_next/imagenes", "/favicon.icono", "/faviconXico"]) {
       expect(runsOn(url), url).toBe(true);
+    }
+  });
+
+  it("excluye también las rutas exactas", () => {
+    for (const url of ["/api", "/api/", "/_next/image"]) {
+      expect(runsOn(url), url).toBe(false);
     }
   });
 });
