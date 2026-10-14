@@ -91,4 +91,8 @@ de Vercel ni muevas las migraciones fuera del job `deploy`.
 - Nunca escribas secretos en el código, en commits ni en el chat; van en `.env` (local) o en
   Vercel. Si el usuario pega una credencial, recuérdale que no lo haga.
 - Las pruebas de integración usan solo `TEST_DATABASE_URL` (base terminada en `_test`).
+- Si cambias `src/db/schema/`, genera la migración en el mismo PR con
+  `pnpm db:generate --name <descripcion>` y revisa el SQL antes de subirlo: el check de CI
+  "Migraciones al día" falla si falta. Si `drizzle-kit` pregunta si una columna se renombró,
+  responde con cuidado (un renombre conserva los datos; "crear" borra la columna vieja).
 - Toda consulta o Server Action filtra por el usuario de la sesión (`src/lib/session.ts`).

@@ -40,6 +40,7 @@ pnpm dev                        # http://localhost:3000
 | `pnpm test:mutation` | Mutation testing con Stryker; reporte en `reports/mutation/` (~7 minutos) |
 | `pnpm db:generate` | Genera una migración SQL tras cambiar `src/db/schema/*` |
 | `pnpm db:migrate` | Aplica migraciones pendientes |
+| `pnpm db:check-drift` | Verifica que cada cambio del esquema tenga su migración (lo corre el CI) |
 | `pnpm db:seed` | Inserta categorías globales (idempotente) |
 | `pnpm db:studio` | Explorador visual de la base de datos |
 | `pnpm bot:try 'texto'` | Muestra cómo interpreta el bot un mensaje (usa la API de Claude). Usa comillas simples si el texto tiene `$` |
@@ -56,6 +57,9 @@ pnpm dev                        # http://localhost:3000
   flujo completo del bot (vincular, registrar, duplicados, deshacer, errores), las consultas del
   balance y las Server Actions, incluido que un usuario no pueda ver ni borrar datos de otro.
   Claude y WhatsApp se simulan: no cuestan dinero.
+- **Schema drift** (`pnpm db:check-drift`): falla si `src/db/schema/` cambió sin su migración en
+  `drizzle/`, mostrando el SQL pendiente, o si `drizzle-kit` necesita una decisión (p. ej. ante un
+  renombre de columna). No necesita base de datos y deja `drizzle/` intacto.
 - **CI** (`.github/workflows/ci.yml`): en cada push a `main` y en cada PR corre lint, tipos y todas
   las pruebas con un Postgres efímero. Falla si la cobertura baja del umbral de `vitest.config.mts`.
 - **Mutation testing** (`pnpm test:mutation`, [StrykerJS](https://stryker-mutator.io)): introduce
