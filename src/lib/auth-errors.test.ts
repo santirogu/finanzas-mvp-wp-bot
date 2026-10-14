@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { TOO_MANY_ATTEMPTS, authErrorMessage } from "./auth-errors";
+import { ACCOUNT_LOCKED, TOO_MANY_ATTEMPTS, authErrorMessage } from "./auth-errors";
 
 describe("authErrorMessage", () => {
   it("traduce los errores conocidos de Better Auth", () => {
@@ -25,6 +25,15 @@ describe("authErrorMessage", () => {
 
   it("el límite de intentos tiene prioridad sobre cualquier código", () => {
     expect(authErrorMessage({ status: 429, code: "INVALID_EMAIL_OR_PASSWORD" })).toBe(TOO_MANY_ATTEMPTS);
+  });
+
+  it("con la cuenta bloqueada muestra el mensaje del servidor (con los minutos que faltan)", () => {
+    const message = "Por seguridad, la cuenta quedó bloqueada por varios intentos fallidos. Intenta de nuevo en 12 minutos.";
+    expect(authErrorMessage({ status: 429, code: "ACCOUNT_LOCKED", message })).toBe(message);
+    expect(authErrorMessage({ status: 429, code: "ACCOUNT_LOCKED" })).toBe(ACCOUNT_LOCKED);
+    expect(ACCOUNT_LOCKED).toBe(
+      "Por seguridad, la cuenta quedó bloqueada por varios intentos fallidos. Intenta más tarde.",
+    );
   });
 
   it("sin traducción, muestra el mensaje del servidor o uno genérico", () => {
