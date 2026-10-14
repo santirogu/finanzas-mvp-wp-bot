@@ -6,7 +6,11 @@ import type { FormState } from "@/modules/transactions/actions";
 // La Server Action se simula: aquí se prueba el formulario (lo que envía y cómo muestra la
 // respuesta). La acción tiene sus propias pruebas de integración.
 const action = vi.hoisted(() => vi.fn<(prev: FormState, data: FormData) => Promise<FormState>>());
-vi.mock("@/modules/transactions/actions", () => ({ createTransactionAction: action }));
+const update = vi.hoisted(() => vi.fn<(prev: FormState, data: FormData) => Promise<FormState>>());
+vi.mock("@/modules/transactions/actions", () => ({
+  createTransactionAction: action,
+  updateTransactionAction: update,
+}));
 
 const { TransactionForm } = await import("./transaction-form");
 
@@ -21,6 +25,7 @@ function renderForm(type: "income" | "expense" = "expense") {
 
 beforeEach(() => {
   action.mockReset();
+  update.mockReset();
 });
 
 describe("TransactionForm", () => {
@@ -154,5 +159,85 @@ describe("TransactionForm", () => {
     expect(await screen.findByRole("button", { name: "Guardando…" })).toBeDisabled();
     finish({ ok: true, message: "Ingreso registrado" });
     expect(await screen.findByRole("button", { name: "Registrar ingreso" })).toBeEnabled();
+  });
+});
+
+describe("TransactionForm · editar", () => {
+  const TX = {
+    id: "00000000-0000-4000-8000-000000000001",
+    amount: 500000,
+    description: "Zapatos",
+    categoryId: "c-ropa",
+    occurredOn: "2026-10-10",
+  };
+  const renderEdit = () =>
+    render(
+      <TransactionForm
+        type="expense"
+        categories={CATEGORIES}
+        today="2026-10-14"
+        transaction={TX}
+        cancelHref="/egresos"
+      />,
+    );
+
+  it("muestra el movimiento con sus datos, el monto con separadores", () => {
+    renderEdit();
+    expect(screen.getByRole("heading", { name: "Editar egreso" })).toBeVisible();
+    expect(screen.getByLabelText(/Monto/)).toHaveValue("500.000");
+    expect(screen.getByLabelText("Descripción")).toHaveValue("Zapatos");
+    expect(screen.getByLabelText("Categoría")).toHaveValue("c-ropa");
+    expect(screen.getByLabelText("Fecha")).toHaveValue("2026-10-10");
+    expect(screen.getByRole("button", { name: "Guardar cambios" })).toBeEnabled();
+    expect(screen.getByRole("link", { name: "Cancelar" })).toHaveAttribute("href", "/egresos");
+  });
+
+  it("envía los cambios con el id a la acción de editar (no a la de registrar)", async () => {
+    update.mockResolvedValue({ ok: false, message: "No encontramos ese movimiento" });
+    renderEdit();
+
+    const amount = screen.getByLabelText(/Monto/);
+    await userEvent.clear(amount);
+    await userEvent.type(amount, "450000");
+    await userEvent.selectOptions(screen.getByLabelText("Categoría"), "c-mercado");
+    await userEvent.click(screen.getByRole("button", { name: "Guardar cambios" }));
+
+    expect(await screen.findByText("No encontramos ese movimiento")).toBeVisible();
+    expect(action).not.toHaveBeenCalled();
+    expect(Object.fromEntries(update.mock.calls[0][1])).toEqual({
+      type: "expense",
+      id: TX.id,
+      amount: "450.000",
+      description: "Zapatos",
+      categoryId: "c-mercado",
+      occurredOn: "2026-10-10",
+    });
+  });
+
+  it("si hay errores, conserva lo escrito en vez de volver a los datos guardados", async () => {
+    update.mockResolvedValue({
+      ok: false,
+      fieldErrors: { amount: "Ingresa un monto mayor que cero" },
+      values: { amount: "0", description: "Otra cosa", categoryId: "c-mercado", occurredOn: "2026-10-12" },
+    });
+    renderEdit();
+    await userEvent.click(screen.getByRole("button", { name: "Guardar cambios" }));
+
+    expect(await screen.findByText("Ingresa un monto mayor que cero")).toBeVisible();
+    expect(screen.getByLabelText("Descripción")).toHaveValue("Otra cosa");
+    expect(screen.getByLabelText("Categoría")).toHaveValue("c-mercado");
+  });
+
+  it("un movimiento sin categoría se muestra con 'Sin categoría'", () => {
+    render(<TransactionForm type="income" categories={CATEGORIES} today="2026-10-14" transaction={{ ...TX, categoryId: null }} />);
+    expect(screen.getByRole("heading", { name: "Editar ingreso" })).toBeVisible();
+    expect(screen.getByLabelText("Categoría")).toHaveValue("");
+    expect(screen.queryByRole("link", { name: "Cancelar" })).not.toBeInTheDocument();
+  });
+
+  it("al registrar uno nuevo no hay id ni botón de cancelar", () => {
+    const { container } = renderForm();
+    expect(container.querySelector('input[name="id"]')).toBeNull();
+    expect(screen.queryByRole("link", { name: "Cancelar" })).not.toBeInTheDocument();
   });
 });

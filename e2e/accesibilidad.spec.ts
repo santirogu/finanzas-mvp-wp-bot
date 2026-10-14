@@ -70,6 +70,14 @@ test.describe("páginas con sesión (y con datos)", () => {
     expect(await seriousViolations(page, { only: "[role=status]" })).toEqual([]);
   });
 
+  test("la página para editar un movimiento tampoco", async ({ page }) => {
+    await visible(page.getByRole("link", { name: "Editar Mercado" })).click();
+    await expect(page).toHaveURL(/\/editar$/);
+    await expect(visible(page.getByRole("heading", { name: "Editar movimiento" }))).toBeVisible();
+    await expect(visible(page.locator("[aria-busy=true]"))).toHaveCount(0);
+    expect(await seriousViolations(page)).toEqual([]);
+  });
+
   test("los errores del formulario tampoco", async ({ page }) => {
     await addTransaction(page, { amount: "0", description: "Inválido" });
     await expect(visible(page.getByText("Ingresa un monto mayor que cero"))).toBeVisible();

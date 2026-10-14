@@ -6,6 +6,7 @@ import { createUser } from "../../../test/integration/factories";
 import {
   getMonthlySummary,
   getTotalsByCategory,
+  getTransaction,
   isCategoryAvailable,
   listCategories,
   listTransactions,
@@ -135,6 +136,34 @@ describe("aislamiento entre usuarios", () => {
       balance: 0,
       count: 0,
     });
+  });
+});
+
+describe("getTransaction", () => {
+  it("devuelve un movimiento propio con lo necesario para editarlo", async () => {
+    const user = await createUser();
+    const ropa = await globalCategory("expense", "Ropa");
+    const tx = await addTx({ userId: user.id, categoryId: ropa.id, amount: 500000, description: "Zapatos" });
+
+    expect(await getTransaction(user.id, tx.id)).toEqual({
+      id: tx.id,
+      type: "expense",
+      amount: 500000,
+      description: "Zapatos",
+      categoryId: ropa.id,
+      occurredOn: "2026-10-15",
+      source: "web",
+    });
+  });
+
+  it("no devuelve movimientos de otro usuario ni eliminados", async () => {
+    const owner = await createUser();
+    const other = await createUser();
+    const tx = await addTx({ userId: owner.id });
+    const deleted = await addTx({ userId: owner.id, deletedAt: new Date() });
+
+    expect(await getTransaction(other.id, tx.id)).toBeNull();
+    expect(await getTransaction(owner.id, deleted.id)).toBeNull();
   });
 });
 

@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 const navigation = vi.hoisted(() => ({ pathname: "/dashboard" }));
 vi.mock("next/navigation", () => ({ usePathname: () => navigation.pathname }));
 
-const { NavTabs } = await import("./nav-tabs");
+const { NavTabs, TabLinks } = await import("./nav-tabs");
 
 describe("NavTabs", () => {
   it("muestra las tres pestañas con sus enlaces", () => {
@@ -34,5 +34,14 @@ describe("NavTabs", () => {
     navigation.pathname = "/simulador";
     render(<NavTabs />);
     for (const link of screen.getAllByRole("link")) expect(link).not.toHaveAttribute("aria-current");
+  });
+});
+
+describe("TabLinks", () => {
+  it("sin ruta (mientras se resuelve) muestra las pestañas sin marcar ninguna", () => {
+    render(<TabLinks pathname={null} />);
+    const links = screen.getAllByRole("link");
+    expect(links.map((l) => l.textContent)).toEqual(["Resumen", "Ingresos", "Egresos"]);
+    for (const link of links) expect(link).not.toHaveAttribute("aria-current");
   });
 });

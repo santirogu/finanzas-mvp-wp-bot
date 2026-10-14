@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "@/db";
-import { category } from "@/db/schema";
+import { category, transaction } from "@/db/schema";
 import type { CurrentUser } from "@/lib/session";
 import { activeTransactions, createUser } from "../../../test/integration/factories";
 
@@ -14,8 +14,16 @@ vi.mock("@/lib/session", () => ({
   }),
 }));
 vi.mock("next/cache", () => ({ refresh: vi.fn() }));
+// redirect() de Next lanza un error especial para cortar la acción: aquí uno con la URL.
+vi.mock("next/navigation", () => ({
+  redirect: vi.fn((url: string) => {
+    throw new Error(`NEXT_REDIRECT ${url}`);
+  }),
+}));
 
-const { createTransactionAction, deleteTransactionAction } = await import("./actions");
+const { createTransactionAction, deleteTransactionAction, updateTransactionAction } = await import(
+  "./actions"
+);
 
 async function signIn() {
   const user = await createUser();
@@ -185,5 +193,161 @@ describe("deleteTransactionAction", () => {
   it("ignora IDs inválidos sin lanzar error", async () => {
     await signIn();
     await expect(deleteTransactionAction(form({ id: "no-es-un-uuid" }))).resolves.toBeUndefined();
+  });
+});
+
+describe("updateTransactionAction", () => {
+  const editForm = (id: string, overrides: Record<string, string> = {}) =>
+    form({ ...validExpense, id, amount: "450.000", description: "Zapatos rebajados", ...overrides });
+
+  async function ownExpense() {
+    const user = await signIn();
+    await createTransactionAction({ ok: false }, form(validExpense));
+    const [tx] = await activeTransactions(user.id);
+    return { user, tx };
+  }
+
+  it("guarda los cambios de un movimiento propio y vuelve a la lista de su tipo", async () => {
+    const { user, tx } = await ownExpense();
+    const [ropa] = await db.select().from(category).where(eq(category.name, "Ropa"));
+
+    await expect(
+      updateTransactionAction({ ok: false }, editForm(tx.id, { categoryId: ropa.id, occurredOn: "2026-10-01" })),
+    ).rejects.toThrow("NEXT_REDIRECT /egresos");
+
+    expect(await activeTransactions(user.id)).toEqual([
+      expect.objectContaining({
+        id: tx.id,
+        type: "expense",
+        amount: 450000,
+        description: "Zapatos rebajados",
+        categoryId: ropa.id,
+        occurredOn: "2026-10-01",
+        source: "web",
+      }),
+    ]);
+  });
+
+  it("un ingreso vuelve a la lista de ingresos", async () => {
+    const user = await signIn();
+    await createTransactionAction({ ok: false }, form({ ...validExpense, type: "income", description: "Sueldo" }));
+    const [tx] = await activeTransactions(user.id);
+
+    await expect(
+      updateTransactionAction({ ok: false }, editForm(tx.id, { type: "income" })),
+    ).rejects.toThrow("NEXT_REDIRECT /ingresos");
+  });
+
+  it("devuelve los errores por campo sin cambiar nada", async () => {
+    const { user, tx } = await ownExpense();
+
+    const state = await updateTransactionAction({ ok: false }, editForm(tx.id, { amount: "0", description: " " }));
+
+    expect(state).toMatchObject({
+      ok: false,
+      fieldErrors: { amount: "Ingresa un monto mayor que cero", description: "Agrega una descripción" },
+    });
+    expect((await activeTransactions(user.id))[0]).toMatchObject({ amount: 500000, description: "Zapatos" });
+  });
+
+  it("no puede editar movimientos de otro usuario", async () => {
+    const { user: owner, tx } = await ownExpense();
+    await signIn(); // ahora la sesión es de otra persona
+
+    const state = await updateTransactionAction({ ok: false }, editForm(tx.id));
+
+    expect(state).toMatchObject({ ok: false, message: "No encontramos ese movimiento" });
+    expect((await activeTransactions(owner.id))[0]).toMatchObject({ amount: 500000, description: "Zapatos" });
+  });
+
+  it("no puede cambiar el tipo de un movimiento (un egreso no pasa a ser ingreso)", async () => {
+    const { user, tx } = await ownExpense();
+
+    const state = await updateTransactionAction({ ok: false }, editForm(tx.id, { type: "income" }));
+
+    expect(state).toMatchObject({ ok: false, message: "No encontramos ese movimiento" });
+    expect((await activeTransactions(user.id))[0]).toMatchObject({ type: "expense", amount: 500000 });
+  });
+
+  it("no puede editar un movimiento eliminado", async () => {
+    const { user, tx } = await ownExpense();
+    await deleteTransactionAction(form({ id: tx.id }));
+
+    const state = await updateTransactionAction({ ok: false }, editForm(tx.id));
+
+    expect(state).toMatchObject({ ok: false, message: "No encontramos ese movimiento" });
+    const [row] = await db.select().from(transaction).where(eq(transaction.id, tx.id));
+    expect(row).toMatchObject({ amount: 500000, userId: user.id });
+  });
+
+  it("rechaza un id inválido y la categoría de otro usuario", async () => {
+    const { user, tx } = await ownExpense();
+    expect(await updateTransactionAction({ ok: false }, editForm("no-es-un-uuid"))).toMatchObject({
+      ok: false,
+      message: "No encontramos ese movimiento",
+    });
+
+    const other = await createUser();
+    const [personal] = await db
+      .insert(category)
+      .values({ userId: other.id, type: "expense", name: "Ajena", emoji: "x" })
+      .returning();
+    expect(await updateTransactionAction({ ok: false }, editForm(tx.id, { categoryId: personal.id }))).toMatchObject({
+      ok: false,
+      fieldErrors: { categoryId: "Categoría inválida" },
+    });
+    expect((await activeTransactions(user.id))[0]).toMatchObject({ categoryId: null });
+  });
+
+  it("ignora campos extra: no cambia el dueño, el origen ni el id externo", async () => {
+    const victim = await createUser();
+    const { user, tx } = await ownExpense();
+
+    await expect(
+      updateTransactionAction(
+        { ok: false },
+        editForm(tx.id, { userId: victim.id, source: "whatsapp", externalId: "wamid.falso:0", currency: "USD" }),
+      ),
+    ).rejects.toThrow("NEXT_REDIRECT");
+
+    expect(await activeTransactions(victim.id)).toEqual([]);
+    expect((await activeTransactions(user.id))[0]).toMatchObject({
+      userId: user.id,
+      source: "web",
+      externalId: null,
+      currency: "COP",
+    });
+  });
+
+  it("también corrige lo que registró el bot, sin perder su origen (deshacer sigue funcionando)", async () => {
+    const user = await signIn();
+    const [botTx] = await db
+      .insert(transaction)
+      .values({
+        userId: user.id,
+        type: "expense",
+        amount: 50000,
+        description: "Mercado",
+        occurredOn: "2026-10-10",
+        source: "whatsapp",
+        externalId: "wamid.bot:0",
+      })
+      .returning();
+
+    await expect(
+      updateTransactionAction({ ok: false }, editForm(botTx.id, { amount: "55.000", description: "Mercado" })),
+    ).rejects.toThrow("NEXT_REDIRECT /egresos");
+
+    expect((await activeTransactions(user.id))[0]).toMatchObject({
+      amount: 55000,
+      source: "whatsapp",
+      externalId: "wamid.bot:0",
+    });
+  });
+
+  it("exige sesión", async () => {
+    await expect(updateTransactionAction({ ok: false }, editForm("00000000-0000-4000-8000-000000000000"))).rejects.toThrow(
+      "NEXT_REDIRECT /login",
+    );
   });
 });
