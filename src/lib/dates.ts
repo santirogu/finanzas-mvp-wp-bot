@@ -44,7 +44,7 @@ export function formatMonthLabel({ year, month }: Pick<MonthRange, "year" | "mon
   return label.charAt(0).toUpperCase() + label.slice(1);
 }
 
-/** "2026-10-13" → "13 oct" */
+/** "2026-10-13" → "13 de oct" */
 export function formatShortDate(isoDate: string): string {
   const [y, m, d] = isoDate.split("-").map(Number);
   return new Intl.DateTimeFormat("es-CO", { day: "numeric", month: "short", timeZone: "UTC" })

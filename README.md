@@ -57,7 +57,10 @@ src/
     auth.ts, session.ts             Config de auth y Data Access Layer (único lugar que lee la sesión)
     money.ts, dates.ts              Formato/parsing de COP y "mes actual" según zona horaria
   modules/transactions/             Consultas, Server Actions y validación de movimientos
-  modules/bot/                      Intérprete de mensajes: comandos fijos + extracción con Claude + validación
+  modules/bot/                      Intérprete de mensajes (comandos fijos + Claude + validación) y flujo completo
+  modules/whatsapp/                 Webhook: firma, payload, envío de mensajes y vinculación de números
+  app/api/whatsapp/webhook          Endpoint que recibe los mensajes de Meta
+  app/(app)/simulador               Chat de prueba del bot (solo en desarrollo)
   proxy.ts                          Redirecciones rápidas según haya cookie de sesión
 scripts/seed.ts                     Categorías por defecto
 ```
@@ -73,18 +76,35 @@ scripts/seed.ts                     Categorías por defecto
 - **`transaction.external_id` único**: guardará el ID del mensaje de WhatsApp para no registrar
   dos veces el mismo gasto si Meta reenvía el webhook.
 
+## Bot de WhatsApp
+
+1. En el dashboard, la tarjeta **WhatsApp → Conectar WhatsApp** genera un código de 6 dígitos
+   (vence en 10 minutos). El usuario lo envía al bot como `VINCULAR 123456` y su número queda
+   asociado a su cuenta.
+2. Cada mensaje llega a `POST /api/whatsapp/webhook`. Se verifica la firma `X-Hub-Signature-256`,
+   se responde 200 de inmediato y el mensaje se procesa después (`after()`).
+3. Se deduplica por el ID del mensaje, se resuelven los comandos fijos (`balance`, `deshacer`,
+   `ayuda`) y el texto libre se interpreta con Claude. El bot responde por WhatsApp.
+
+En desarrollo, sin credenciales de Meta, las respuestas se imprimen en la consola. Para probar sin
+WhatsApp, usa el simulador en `/simulador`.
+
 ## Despliegue (recomendado)
 
 1. **Base de datos:** crea un proyecto en [Supabase](https://supabase.com) o [Neon](https://neon.tech)
    y copia la URL de conexión *pooled* (Supabase: puerto 6543; Neon: host `-pooler`).
 2. **Migraciones:** `DATABASE_URL=<url> pnpm db:setup`.
 3. **App:** importa el repo en [Vercel](https://vercel.com) y configura `DATABASE_URL`,
-   `BETTER_AUTH_SECRET` (uno nuevo, distinto al local) y `BETTER_AUTH_URL` (tu dominio).
+   `BETTER_AUTH_SECRET` (uno nuevo, distinto al local), `BETTER_AUTH_URL` (tu dominio),
+   `ANTHROPIC_API_KEY` y las variables `WHATSAPP_*` de `.env.example`.
+4. **Webhook en Meta:** URL `https://<tu-dominio>/api/whatsapp/webhook`, el mismo
+   `WHATSAPP_VERIFY_TOKEN`, y suscripción al campo `messages`.
 
 ## Roadmap
 
 - [x] **Fase 1:** auth por sesión, dashboard con balance del mes, pestañas de ingresos y egresos.
-- [ ] **Fase 2: bot de WhatsApp.** Webhook de WhatsApp Cloud API (verificación de firma,
-      idempotencia, cola), vinculación del número desde el dashboard, interpretación de mensajes con
-      Claude (salida estructurada) y comandos `balance` / `deshacer`.
+- [x] **Fase 2: bot de WhatsApp.** Webhook (firma, idempotencia), vinculación del número desde el
+      dashboard, interpretación con Claude (salida estructurada), comandos `balance` / `deshacer`
+      y simulador local.
+- [ ] Conectar un número real de WhatsApp y publicar en Vercel.
 - [ ] **Fase 3:** rate limiting, Sentry, CI, política de privacidad y salida a producción en Meta.

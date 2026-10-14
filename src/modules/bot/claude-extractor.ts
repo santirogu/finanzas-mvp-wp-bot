@@ -88,6 +88,10 @@ export const claudeExtractor: Extractor = async ({ text, today, categories }) =>
     if (error instanceof Anthropic.APIError) {
       return { ok: false, reason: "api_error", detail: `${error.status ?? ""} ${error.message}`.trim() };
     }
+    // Errores del SDK antes de llamar a la API, p. ej. si falta ANTHROPIC_API_KEY.
+    if (error instanceof Anthropic.AnthropicError) {
+      return { ok: false, reason: "api_error", detail: error.message };
+    }
     throw error;
   }
 };

@@ -11,6 +11,7 @@ import {
   listTransactions,
 } from "@/modules/transactions/queries";
 import { PageSkeleton } from "../page-skeleton";
+import { WhatsAppCard } from "./whatsapp-card";
 
 export const metadata: Metadata = { title: "Resumen" };
 
@@ -72,36 +73,39 @@ async function Dashboard() {
           />
         </section>
 
-        <section className="card p-4 lg:col-span-2">
-          <h2 className="font-semibold">Gastos por categoría</h2>
-          {byCategory.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted">Sin egresos este mes.</p>
-          ) : (
-            <ul className="mt-4 space-y-3">
-              {byCategory.map((c) => {
-                const pct = summary.expense ? Math.round((c.total / summary.expense) * 100) : 0;
-                return (
-                  <li key={c.name}>
-                    <div className="flex justify-between gap-2 text-sm">
-                      <span className="truncate">
-                        {c.emoji} {c.name}
-                      </span>
-                      <span className="shrink-0 tabular-nums text-muted">
-                        {money(c.total)} · {pct}%
-                      </span>
-                    </div>
-                    <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-background">
-                      <div
-                        className="h-full rounded-full bg-expense"
-                        style={{ width: `${Math.max(pct, 2)}%` }}
-                      />
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </section>
+        <div className="space-y-6 lg:col-span-2">
+          <WhatsAppCard />
+          <section className="card p-4">
+            <h2 className="font-semibold">Gastos por categoría</h2>
+            {byCategory.length === 0 ? (
+              <p className="py-8 text-center text-sm text-muted">Sin egresos este mes.</p>
+            ) : (
+              <ul className="mt-4 space-y-3">
+                {byCategory.map((c) => {
+                  const pct = summary.expense ? Math.round((c.total / summary.expense) * 100) : 0;
+                  return (
+                    <li key={c.name}>
+                      <div className="flex justify-between gap-2 text-sm">
+                        <span className="truncate">
+                          {c.emoji} {c.name}
+                        </span>
+                        <span className="shrink-0 tabular-nums text-muted">
+                          {money(c.total)} · {pct}%
+                        </span>
+                      </div>
+                      <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-background">
+                        <div
+                          className="h-full rounded-full bg-expense"
+                          style={{ width: `${Math.max(pct, 2)}%` }}
+                        />
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
+        </div>
       </div>
     </div>
   );
