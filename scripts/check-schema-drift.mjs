@@ -85,27 +85,36 @@ const errorSummary = (output) =>
     .slice(0, 5)
     .join("\n");
 
-function main() {
-  const check = drizzleKit(["check"]);
+/**
+ * Ejecuta la verificación y devuelve el código de salida (0 = sin drift).
+ * `drizzleKit` y la carpeta se reciben como parámetros para poder probarlo sin drizzle-kit real.
+ */
+export function checkSchemaDrift({
+  dir = MIGRATIONS_DIR,
+  drizzleKit: runDrizzleKit = drizzleKit,
+  log = console.log,
+  error = console.error,
+} = {}) {
+  const check = runDrizzleKit(["check"]);
   if (check.status !== 0) {
-    console.error("✗ Las migraciones de drizzle/ no son consistentes (drizzle-kit check):\n");
-    console.error(errorSummary(check.output));
+    error("✗ Las migraciones de drizzle/ no son consistentes (drizzle-kit check):\n");
+    error(errorSummary(check.output));
     return 1;
   }
 
-  const before = snapshot(MIGRATIONS_DIR);
-  const generate = drizzleKit(["generate", "--name", "schema_drift"]);
-  const after = snapshot(MIGRATIONS_DIR);
+  const before = snapshot(dir);
+  const generate = runDrizzleKit(["generate", "--name", "schema_drift"]);
+  const after = snapshot(dir);
   const diff = diffSnapshots(before, after);
 
   try {
     const verdict = classifyGenerate({ added: diff.added, output: generate.output });
     if (verdict === "ok") {
-      console.log("✓ El esquema (src/db/schema/) coincide con las migraciones de drizzle/.");
+      log("✓ El esquema (src/db/schema/) coincide con las migraciones de drizzle/.");
       return 0;
     }
     if (verdict === "undecided") {
-      console.error(
+      error(
         "✗ drizzle-kit no pudo comparar el esquema: necesita que decidas algo (por ejemplo, si una\n" +
           "  columna o tabla se renombró o es nueva) o falló.\n\n" +
           "  Genera la migración en tu terminal y responde sus preguntas:\n" +
@@ -115,19 +124,19 @@ function main() {
       return 1;
     }
 
-    console.error("✗ Hay cambios en src/db/schema/ sin su migración (schema drift).\n");
+    error("✗ Hay cambios en src/db/schema/ sin su migración (schema drift).\n");
     for (const file of diff.added.filter((f) => f.endsWith(".sql"))) {
-      console.error(`SQL pendiente (${file}):\n\n${after[file]}\n`);
+      error(`SQL pendiente (${file}):\n\n${after[file]}\n`);
     }
-    console.error(
+    error(
       "Genera la migración y súbela en el mismo PR:\n" +
         "  pnpm db:generate --name <descripcion>   (p. ej. --name agregar-presupuestos)\n" +
         "  git add drizzle/",
     );
     return 1;
   } finally {
-    restore(MIGRATIONS_DIR, before, diff);
+    restore(dir, before, diff);
   }
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) process.exit(main());
+if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) process.exit(checkSchemaDrift());

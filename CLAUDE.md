@@ -46,8 +46,9 @@ Responde y escribe en **español** (commits, PRs, comentarios del código y text
    - Los PRs se fusionan solo con **squash and merge**: el **título del PR** se vuelve el commit
      de `main`, y el check **Título del PR** lo valida. El hook `.githooks/commit-msg` (se activa
      con `pnpm install`) valida cada commit local con `scripts/conventional-commit.mjs`.
-4. **Antes de abrir el PR**, en local: `pnpm lint`, `pnpm typecheck`, `pnpm test` y, si tocaste
-   algo que usa la base de datos, `pnpm test:int`. Si agregaste o cambiaste lógica en archivos
+4. **Antes de abrir el PR**, en local, lo mismo que corre el CI: `pnpm lint`, `pnpm typecheck`,
+   `pnpm db:check-drift` y **`pnpm test:coverage`** (unitarias + integración + umbral de cobertura;
+   `pnpm test` solo no valida el umbral). Si agregas código, agrégale pruebas. Si agregaste o cambiaste lógica en archivos
    que muta Stryker (`stryker.config.mjs`), ponle al PR la etiqueta `mutation-testing` (o corre
    `pnpm test:mutation` en local), cubre con pruebas los mutantes sobrevivientes relevantes y
    comunica el puntaje antes de que el dueño fusione. No es un check obligatorio: tarda ~20 minutos. Si cambiaste el prompt o el esquema del bot, propón correr `pnpm bot:eval` (cuesta
