@@ -36,8 +36,25 @@ describe("validateHeader", () => {
     expect(!result.ok && result.errors.join(" ")).toContain(expectedError);
   });
 
+  it("permite otro largo máximo (títulos de Dependabot)", () => {
+    const title = "chore(deps-dev): bump @typescript-eslint/eslint-plugin from 8.10.0 to 8.11.0";
+    expect(validateHeader(title).ok).toBe(false);
+    expect(validateHeader(title, { maxLength: 120 })).toEqual({ ok: true });
+  });
+
+  it("acepta los títulos agrupados de Dependabot", () => {
+    expect(validateHeader("chore(deps): bump the menores-y-parches group with 3 updates")).toEqual({
+      ok: true,
+    });
+    expect(validateHeader("ci(deps): bump the acciones group with 2 updates")).toEqual({
+      ok: true,
+    });
+  });
+
   it("solo valida la primera línea (el cuerpo es libre)", () => {
-    expect(validateHeader("fix: corregir el balance\n\nEl cálculo usaba UTC. Ahora usa Bogotá.")).toEqual({
+    expect(
+      validateHeader("fix: corregir el balance\n\nEl cálculo usaba UTC. Ahora usa Bogotá."),
+    ).toEqual({
       ok: true,
     });
   });

@@ -116,6 +116,17 @@ scripts/seed.ts                     Categorías por defecto
 En desarrollo, sin credenciales de Meta, las respuestas se imprimen en la consola. Para probar sin
 WhatsApp, usa el simulador en `/simulador`.
 
+## Seguridad
+
+Resumen de lo que se revisa de forma automática (detalles y cómo reportar en [SECURITY.md](SECURITY.md)):
+
+| Herramienta | Qué hace | Cuándo | ¿Bloquea? |
+|---|---|---|---|
+| **CodeQL** (`.github/workflows/codeql.yml`) | Análisis estático del código TypeScript y de los workflows (reglas `security-extended`) | Cada PR, cada push a `main` y los miércoles | Sí: el merge se bloquea si un PR agrega alertas altas o críticas |
+| **`pnpm audit`** (job de CI) | Vulnerabilidades conocidas en dependencias de producción | Cada PR y push | Sí, si son altas o críticas |
+| **Dependabot** (`.github/dependabot.yml`) | Alertas y PRs de seguridad, y actualizaciones semanales agrupadas | Lunes y ante cada vulnerabilidad nueva | No: abre PRs que el dueño revisa y fusiona |
+| **Secret scanning + push protection** | Detecta credenciales en el repo y **rechaza pushes** que las contengan | Siempre | Sí |
+
 ## Flujo de trabajo
 
 `main` está protegida: **no acepta pushes directos**, solo Pull Requests con el CI en verde

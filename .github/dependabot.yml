@@ -1,0 +1,36 @@
+# Dependabot abre PRs para actualizar dependencias. Las alertas y los PRs de seguridad se activan
+# aparte, en Settings → Code security. Los títulos siguen Conventional Commits:
+#   chore(deps): …  /  chore(deps-dev): …  /  ci(deps): …
+version: 2
+updates:
+  - package-ecosystem: npm # incluye pnpm (lee pnpm-lock.yaml)
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "07:00"
+      timezone: America/Bogota
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: chore
+      include: scope
+    labels: [dependencias]
+    groups:
+      # Las versiones menores y parches van juntas en un solo PR; las mayores, por separado.
+      menores-y-parches:
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "07:00"
+      timezone: America/Bogota
+    commit-message:
+      prefix: ci
+      include: scope
+    labels: [dependencias]
+    groups:
+      acciones:
+        patterns: ["*"]
