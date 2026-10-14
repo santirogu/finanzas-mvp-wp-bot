@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition, type FormEvent } from "react";
+import { useId, useState, useTransition, type FormEvent } from "react";
 import { authClient } from "@/lib/auth-client";
 import { authErrorMessage } from "@/lib/auth-errors";
 import { suggestEmailCorrection } from "@/lib/email-typo";
@@ -16,6 +16,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
   // Sugerencia de corrección del dominio (solo en registro): "gmal.com" → "gmail.com".
   const [suggestion, setSuggestion] = useState<string | null>(null);
   const [warnedFor, setWarnedFor] = useState<string | null>(null);
+  const suggestionId = useId();
 
   function checkEmail(value: string) {
     const next = isRegister ? suggestEmailCorrection(value) : null;
@@ -68,42 +69,49 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
             <input name="name" required autoComplete="name" className="input" />
           </label>
         )}
-        <label className="block space-y-1.5">
-          <span className="text-sm font-medium">Correo</span>
-          <input
-            name="email"
-            type="email"
-            required
-            autoComplete="email"
-            className="input"
-            value={email}
-            onChange={(e) => {
-              setEmail(e.target.value);
-              setSuggestion(null);
-            }}
-            onBlur={() => checkEmail(email)}
-          />
-          {suggestion && (
-            <span className="block rounded-lg bg-brand/10 px-3 py-2 text-sm">
-              ¿Quisiste decir <strong className="break-all">{suggestion}</strong>?{" "}
-              <button
-                type="button"
-                className="font-medium text-brand underline underline-offset-2"
-                onClick={() => {
-                  setEmail(suggestion);
-                  setSuggestion(null);
-                }}
-              >
-                Sí, corregir
-              </button>
-              {warnedFor === email && (
-                <span className="mt-1 block text-xs text-muted">
-                  Si tu correo está bien escrito, presiona “Crear cuenta” de nuevo.
-                </span>
-              )}
-            </span>
-          )}
-        </label>
+        <div className="space-y-1.5">
+          <label className="block space-y-1.5">
+            <span className="text-sm font-medium">Correo</span>
+            <input
+              name="email"
+              type="email"
+              required
+              autoComplete="email"
+              className="input"
+              value={email}
+              aria-describedby={suggestion ? suggestionId : undefined}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                setSuggestion(null);
+              }}
+              onBlur={() => checkEmail(email)}
+            />
+          </label>
+          {/* Fuera del <label>: si no, el nombre del campo incluiría la sugerencia y su botón.
+              aria-live: el lector de pantalla la anuncia al aparecer. */}
+          <div aria-live="polite">
+            {suggestion && (
+              <p id={suggestionId} className="rounded-lg bg-brand/10 px-3 py-2 text-sm">
+                ¿Quisiste decir <strong className="break-all">{suggestion}</strong>?{" "}
+                <button
+                  type="button"
+                  className="font-medium text-brand underline underline-offset-2"
+                  onClick={() => {
+                    setEmail(suggestion);
+                    setSuggestion(null);
+                  }}
+                >
+                  Sí, corregir
+                </button>
+                {warnedFor === email && (
+                  <span className="mt-1 block text-xs text-muted">
+                    Si tu correo está bien escrito, presiona “Crear cuenta” de nuevo.
+                  </span>
+                )}
+              </p>
+            )}
+          </div>
+        </div>
         <label className="block space-y-1.5">
           <span className="text-sm font-medium">Contraseña</span>
           <input

@@ -27,6 +27,20 @@ test.describe("páginas públicas", () => {
   }
 });
 
+test("el registro con la sugerencia de correo visible tampoco", async ({ page }) => {
+  await page.goto("/registro");
+  const email = page.getByLabel("Correo", { exact: true });
+  await email.fill("ana@gmal.com");
+  await email.blur();
+  await expect(visible(page.getByText(/Quisiste decir/))).toBeVisible();
+
+  // El campo conserva su nombre y la sugerencia queda como su descripción.
+  await expect(page.getByRole("textbox", { name: "Correo", exact: true })).toHaveAccessibleDescription(
+    /Quisiste decir ana@gmail\.com/,
+  );
+  expect(await seriousViolations(page)).toEqual([]);
+});
+
 test.describe("páginas con sesión (y con datos)", () => {
   test.beforeEach(async ({ page }) => {
     await register(page);

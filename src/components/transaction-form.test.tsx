@@ -103,10 +103,7 @@ describe("TransactionForm", () => {
     expect(screen.queryByText(/✓/)).not.toBeInTheDocument();
   });
 
-  // Falla conocida (confirmada también en Chromium): React 19 reinicia el formulario al terminar
-  // la acción y un <select> no toma un defaultValue nuevo después de montarse, así que tras un
-  // error la categoría vuelve a "Sin categoría". Se corrige en una rama fix/; luego quitar `.fails`.
-  it.fails("tras un error también conserva la categoría elegida", async () => {
+  it("tras un error también conserva la categoría elegida", async () => {
     action.mockResolvedValue({
       ok: false,
       fieldErrors: { amount: "Ingresa un monto mayor que cero" },
@@ -121,6 +118,28 @@ describe("TransactionForm", () => {
 
     expect(await screen.findByText("Ingresa un monto mayor que cero")).toBeVisible();
     expect(screen.getByLabelText("Categoría")).toHaveValue("c-mercado");
+  });
+
+  it("después de registrar, la categoría vuelve a 'Sin categoría' para el siguiente", async () => {
+    action.mockResolvedValueOnce({
+      ok: false,
+      fieldErrors: { amount: "Ingresa un monto mayor que cero" },
+      values: { amount: "0", description: "Zapatos", categoryId: "c-ropa", occurredOn: "2026-10-14" },
+    });
+    action.mockResolvedValueOnce({ ok: true, message: "Egreso registrado" });
+    renderForm();
+
+    await userEvent.type(screen.getByLabelText(/Monto/), "0");
+    await userEvent.type(screen.getByLabelText("Descripción"), "Zapatos");
+    await userEvent.selectOptions(screen.getByLabelText("Categoría"), "c-ropa");
+    await userEvent.click(screen.getByRole("button", { name: "Registrar egreso" }));
+    expect(await screen.findByText("Ingresa un monto mayor que cero")).toBeVisible();
+    expect(screen.getByLabelText("Categoría")).toHaveValue("c-ropa");
+
+    await userEvent.type(screen.getByLabelText(/Monto/), "5");
+    await userEvent.click(screen.getByRole("button", { name: "Registrar egreso" }));
+    expect(await screen.findByText("✓ Egreso registrado")).toBeVisible();
+    expect(screen.getByLabelText("Categoría")).toHaveValue("");
   });
 
   it("mientras guarda, desactiva el botón para no registrar dos veces", async () => {
