@@ -70,8 +70,13 @@ pnpm dev                        # http://localhost:3000
   base (`finanzas_e2e_test`): registro, login, ingresos, egresos, balance, borrar y salir (también
   en tamaño de celular), errores del formulario, el límite de intentos de login y que dos usuarios
   no vean los datos del otro. [axe-core](https://github.com/dequelabs/axe-core) revisa cada página
-  (WCAG 2.1 A y AA) y falla ante problemas graves. Sin Claude ni WhatsApp: no cuesta nada. La
-  primera vez instala el navegador: `pnpm exec playwright install chromium`.
+  (WCAG 2.1 A y AA) y falla ante problemas graves. **El bot de WhatsApp de punta a punta**
+  (`e2e/bot-whatsapp.spec.ts`): vincular el número desde el dashboard, registrar un gasto escrito
+  en lenguaje natural, `balance`, `deshacer`, números sin vincular, firmas falsas, mensajes
+  repetidos y audios. Los mensajes llegan al webhook firmados como los manda Meta y la app
+  responde a servidores falsos de WhatsApp y Claude (`e2e/fake-services.mjs`): nada sale a
+  internet, así que no cuesta nada. La primera vez instala el navegador:
+  `pnpm exec playwright install chromium`.
 - **Matriz de autorización** (`src/authorization-matrix.test.ts`): inventario de todas las
   páginas, rutas de API y Server Actions con la protección de cada una. Falla si aparece una entrada
   sin clasificar, una Server Action que no llama a `requireUser()` antes de tocar datos, o una página

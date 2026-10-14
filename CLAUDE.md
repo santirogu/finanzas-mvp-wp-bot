@@ -105,6 +105,9 @@ de Vercel ni muevas las migraciones fuera del job `deploy`.
   migrada. Agrega antes de quitar: para renombrar o borrar una columna o tabla, primero un PR que
   agregue lo nuevo (y el código que lo usa) y, en otro PR posterior, uno que quite lo viejo.
   Nunca renombres ni borres en el mismo PR que cambia el código que lo usa.
+- `WHATSAPP_API_URL` y `ANTHROPIC_BASE_URL` solo existen para las E2E (servidores falsos) y la
+  app solo las acepta si apuntan a `localhost` (`src/lib/service-url.ts`): con cada pedido viaja
+  un token. No las configures en Vercel.
 - Si la app empieza a usar recursos de otro dominio (scripts, fuentes, imágenes, una API desde el
   navegador), agrégalo a la CSP en `src/lib/security-headers.ts` con su prueba: si no, el navegador
   lo bloquea y las E2E fallan.

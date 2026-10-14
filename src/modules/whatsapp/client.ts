@@ -1,5 +1,6 @@
 import "server-only";
 import { envVar } from "@/lib/env";
+import { serviceUrl } from "@/lib/service-url";
 
 const GRAPH_VERSION = envVar("WHATSAPP_GRAPH_VERSION") || "v26.0";
 
@@ -18,7 +19,9 @@ export const sendWhatsAppText: Sender = async (to, body) => {
     return { ok: true };
   }
 
-  const url = `https://graph.facebook.com/${GRAPH_VERSION}/${envVar("WHATSAPP_PHONE_NUMBER_ID")}/messages`;
+  // WHATSAPP_API_URL: solo para las pruebas E2E (un servidor falso en localhost).
+  const base = serviceUrl("WHATSAPP_API_URL", "https://graph.facebook.com");
+  const url = `${base}/${GRAPH_VERSION}/${envVar("WHATSAPP_PHONE_NUMBER_ID")}/messages`;
   const response = await fetch(url, {
     method: "POST",
     headers: {
