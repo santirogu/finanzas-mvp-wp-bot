@@ -79,6 +79,32 @@ jobs:
           path: coverage/
           retention-days: 14
 
+  # Convención de ramas (ver CLAUDE.md). Es un check obligatorio para fusionar PRs.
+  branch-name:
+    name: Nombre de rama
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Validar <tipo>/<descripcion-corta>
+        env:
+          # Se pasa por variable de entorno para no interpolar texto del PR dentro del script.
+          BRANCH: ${{ github.head_ref }}
+        run: |
+          if [[ "$BRANCH" == dependabot/* ]]; then
+            echo "Rama de Dependabot: permitida."
+            exit 0
+          fi
+          pattern='^(feature|fix|hotfix|refactor|test|docs|chore|ci)/[a-z0-9]+(-[a-z0-9]+)*$'
+          if [[ "$BRANCH" =~ $pattern ]]; then
+            echo "✓ '$BRANCH' sigue la convención."
+            exit 0
+          fi
+          echo "::error::La rama '$BRANCH' no sigue la convención <tipo>/<descripcion-corta>."
+          echo "Tipos: feature, fix, hotfix, refactor, test, docs, chore, ci."
+          echo "Solo minúsculas, números y guiones simples. Ejemplo: feature/notas-de-voz"
+          exit 1
+
   # Solo se despliega si el job anterior pasó por completo, y solo desde main.
   # Vercel no despliega por su cuenta (vercel.json → git.deploymentEnabled: false),
   # así que ni el código ni las migraciones llegan a producción sin pasar el CI.
