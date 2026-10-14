@@ -24,7 +24,12 @@ export function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const rawBody = await request.text();
   const appSecret = envVar("WHATSAPP_APP_SECRET") ?? "";
-  if (!isValidSignature(rawBody, request.headers.get("x-hub-signature-256"), appSecret)) {
+  const signature = request.headers.get("x-hub-signature-256");
+  if (!isValidSignature(rawBody, signature, appSecret)) {
+    console.warn("[whatsapp] firma inválida", {
+      cabeceraPresente: Boolean(signature),
+      appSecretConfigurado: Boolean(appSecret),
+    });
     return new Response("Invalid signature", { status: 401 });
   }
 
@@ -36,6 +41,10 @@ export async function POST(request: NextRequest) {
   }
 
   const messages = extractMessages(payload);
+  console.info("[whatsapp] webhook recibido", {
+    mensajes: messages.length,
+    tipos: messages.map((m) => m.type),
+  });
   if (messages.length > 0) {
     after(async () => {
       for (const message of messages) {

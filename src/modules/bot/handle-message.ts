@@ -59,7 +59,15 @@ export async function handleIncomingMessage(
   if (!sent.ok) {
     status = "failed";
     error = [error, `envío: ${sent.error}`].filter(Boolean).join(" · ");
+    console.error("[whatsapp] no se pudo enviar la respuesta", msg.id, sent.error);
   }
+  console.info("[bot] mensaje procesado", {
+    id: msg.id,
+    estado: status,
+    intencion: intent?.kind ?? null,
+    vinculado: Boolean(userId),
+    ...(error ? { error } : {}),
+  });
 
   await db
     .update(whatsappMessage)
