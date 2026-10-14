@@ -14,8 +14,8 @@ export default defineConfig({
   test: {
     coverage: {
       provider: "v8",
-      // Lógica de negocio y servidor (incluidas las Server Actions y el proxy). La interfaz
-      // (páginas y componentes de src/app y src/components) se cubrirá con E2E.
+      // Lógica de negocio y servidor (incluidas las Server Actions y el proxy) y los componentes
+      // de cliente. Las páginas (componentes de servidor) se prueban con las E2E.
       include: [
         "src/lib/**",
         "src/modules/**",
@@ -23,9 +23,16 @@ export default defineConfig({
         "src/app/api/**",
         "src/app/**/actions.ts",
         "src/proxy.ts",
+        "src/components/**",
+        "src/app/**/{auth-form,nav-tabs,whatsapp-connect,page-skeleton}.tsx",
         "scripts/*.mjs",
       ],
-      exclude: ["**/*.test.ts", "src/modules/bot/eval/**", "src/lib/auth-client.ts"],
+      exclude: [
+        "**/*.test.ts",
+        "**/*.test.tsx",
+        "src/modules/bot/eval/**",
+        "src/lib/auth-client.ts",
+      ],
       reporter: ["text", "json-summary", "html"],
       // Piso actual: el CI falla si la cobertura baja. Súbelo a medida que agregues pruebas.
       thresholds: { lines: 85, statements: 85, functions: 80, branches: 80 },
@@ -36,6 +43,15 @@ export default defineConfig({
           name: "unit",
           include: ["src/**/*.test.ts", "scripts/**/*.test.ts"],
           exclude: ["src/**/*.int.test.ts"],
+        },
+      },
+      {
+        // Componentes de React con React Testing Library, en un DOM simulado (jsdom).
+        test: {
+          name: "componentes",
+          include: ["src/**/*.test.tsx"],
+          environment: "jsdom",
+          setupFiles: ["test/components-setup.ts"],
         },
       },
       {
