@@ -21,6 +21,8 @@ const PAGES = {
   "/registro": "pública (con sesión redirige al dashboard)",
   "/privacidad": "pública siempre (la exige Meta)",
   "/eliminar-datos": "pública siempre (la exige Meta)",
+  "/cuenta-eliminada": "pública siempre (se llega justo después de eliminar la cuenta)",
+  "/cuenta": "requiere sesión",
   "/dashboard": "requiere sesión",
   "/ingresos": "requiere sesión",
   "/egresos": "requiere sesión",
@@ -44,6 +46,7 @@ const SERVER_ACTIONS = {
   unlinkWhatsAppAction: "requireUser; solo desvincula el número propio",
   simulateMessageAction: "solo en desarrollo + requireUser",
   signOutAction: "sin sesión no hay nada que cerrar",
+  deleteAccountAction: "requireUser + contraseña + palabra de confirmación; solo la cuenta propia",
 } as const;
 
 // Acciones que no necesitan validar la sesión, con el porqué.
@@ -164,7 +167,7 @@ describe("Server Actions", () => {
       const check = body.search(/await\s+requireUser\(\)/);
       expect(check, `${action.name} no llama a requireUser()`).toBeGreaterThan(-1);
       // Nada toca la base ni el bot antes de validar la sesión.
-      const firstDataAccess = body.search(/\bdb\.|createLinkCode\(|unlinkUser\(|handleIncomingMessage\(|isCategoryAvailable\(|readForm\(/);
+      const firstDataAccess = body.search(/\bdb\.|createLinkCode\(|unlinkUser\(|handleIncomingMessage\(|isCategoryAvailable\(|readForm\(|verifyPassword\(|deleteAccountData\(/);
       expect(firstDataAccess === -1 || check < firstDataAccess, `${action.name} usa datos antes de validar la sesión`).toBe(true);
     }
   });

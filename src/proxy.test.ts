@@ -22,11 +22,11 @@ describe("proxy · sin sesión", () => {
     expect(visit(path)).toBe("sigue");
   });
 
-  it.each(["/privacidad", "/eliminar-datos"])("deja ver %s (página pública)", (path) => {
+  it.each(["/privacidad", "/eliminar-datos", "/cuenta-eliminada"])("deja ver %s (página pública)", (path) => {
     expect(visit(path)).toBe("sigue");
   });
 
-  it.each(["/dashboard", "/ingresos", "/egresos", "/simulador", "/una-ruta-nueva", "/dashboard/algo"])(
+  it.each(["/dashboard", "/ingresos", "/egresos", "/cuenta", "/simulador", "/una-ruta-nueva", "/dashboard/algo"])(
     "manda %s al login",
     (path) => {
       expect(visit(path)).toBe(`${ORIGIN}/login`);
@@ -43,7 +43,7 @@ describe.each(SESSION_COOKIES)("proxy · con sesión (%s)", (cookie) => {
     expect(visit(path, cookie)).toBe(`${ORIGIN}/dashboard`);
   });
 
-  it.each(["/privacidad", "/eliminar-datos"])("deja ver %s", (path) => {
+  it.each(["/privacidad", "/eliminar-datos", "/cuenta-eliminada"])("deja ver %s", (path) => {
     expect(visit(path, cookie)).toBe("sigue");
   });
 

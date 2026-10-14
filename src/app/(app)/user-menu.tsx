@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
@@ -14,6 +15,9 @@ export async function UserMenu() {
   return (
     <div className="flex items-center gap-3 text-sm">
       <span className="hidden text-muted sm:inline">{user.name}</span>
+      <Link href="/cuenta" className="font-medium text-muted hover:text-foreground">
+        Mi cuenta
+      </Link>
       <form action={signOutAction}>
         <button
           type="submit"
