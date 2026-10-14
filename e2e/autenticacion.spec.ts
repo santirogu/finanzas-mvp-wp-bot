@@ -11,6 +11,17 @@ test.describe("sin sesión", () => {
     });
   }
 
+  test("robots.txt es público y pide a los buscadores no entrar a la parte privada", async ({ request }) => {
+    const response = await request.get("/robots.txt", { maxRedirects: 0 });
+    expect(response.status()).toBe(200);
+    expect(response.headers()["content-type"]).toContain("text/plain");
+    const body = await response.text();
+    expect(body).toContain("User-Agent: *");
+    for (const path of ["/dashboard", "/ingresos", "/egresos", "/api/"]) {
+      expect(body).toContain(`Disallow: ${path}`);
+    }
+  });
+
   test("la política de privacidad y la página para eliminar datos son públicas", async ({ page }) => {
     for (const path of ["/privacidad", "/eliminar-datos"]) {
       const response = await page.goto(path);

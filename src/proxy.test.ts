@@ -69,13 +69,14 @@ describe("proxy · matcher", () => {
       "/_next/static/chunks/app.js",
       "/_next/image?url=x",
       "/favicon.ico",
+      "/robots.txt",
     ]) {
       expect(runsOn(url), url).toBe(false);
     }
   });
 
   it("no se salta páginas que solo empiezan como una ruta excluida", () => {
-    for (const url of ["/apiario", "/api-docs", "/_next/staticos", "/_next/imagenes", "/favicon.icono", "/faviconXico"]) {
+    for (const url of ["/apiario", "/api-docs", "/_next/staticos", "/_next/imagenes", "/favicon.icono", "/faviconXico", "/robots.txt.bak", "/robotsXtxt"]) {
       expect(runsOn(url), url).toBe(true);
     }
   });
