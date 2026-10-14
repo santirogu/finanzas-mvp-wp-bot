@@ -45,6 +45,13 @@ export default function PrivacyPage() {
               <strong>Datos técnicos de la sesión:</strong> dirección IP y navegador, usados solo
               para mantener tu sesión segura.
             </li>
+            <li>
+              <strong>Estadísticas de uso anónimas:</strong> con Vercel Web Analytics contamos qué
+              páginas se visitan, desde qué país y ciudad, con qué tipo de dispositivo, sistema
+              operativo y navegador, y desde qué sitio llegaste. No usa cookies, no guarda tu
+              dirección IP ni te identifica: cada visita se reconoce con un código temporal que se
+              descarta a las 24 horas, y solo vemos totales.
+            </li>
           </ul>
         </section>
 
@@ -57,6 +64,7 @@ export default function PrivacyPage() {
               egresos, y responderte.
             </li>
             <li>Detectar errores y mejorar el funcionamiento del servicio.</li>
+            <li>Saber qué partes de la app se usan más, con estadísticas anónimas, para mejorarla.</li>
           </ul>
           <p>No vendemos tus datos ni los usamos para publicidad.</p>
         </section>
@@ -74,8 +82,8 @@ export default function PrivacyPage() {
               interpretarlos (monto, tipo, categoría y fecha).
             </li>
             <li>
-              <strong>Vercel</strong> (alojamiento de la aplicación) y <strong>Neon</strong> (base
-              de datos), donde se almacena la información.
+              <strong>Vercel</strong> (alojamiento de la aplicación y estadísticas de uso
+              anónimas) y <strong>Neon</strong> (base de datos), donde se almacena la información.
             </li>
           </ul>
           <p>Estos proveedores pueden procesar datos fuera de Colombia, incluido Estados Unidos.</p>

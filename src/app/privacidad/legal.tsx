@@ -1,7 +1,7 @@
 // Contenido legal compartido entre /privacidad y /eliminar-datos.
 
 export const CONTACT_EMAIL = "santiagorock000@gmail.com";
-export const LEGAL_UPDATED_AT = "13 de octubre de 2026";
+export const LEGAL_UPDATED_AT = "14 de octubre de 2026";
 
 export const legalProseClass =
   "mt-8 space-y-8 leading-relaxed [&_h2]:text-lg [&_h2]:font-semibold [&_li]:mt-1 [&_p]:mt-2 [&_ul]:mt-2 [&_ul]:list-disc [&_ul]:pl-5";
