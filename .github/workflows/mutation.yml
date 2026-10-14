@@ -1,10 +1,16 @@
 name: Mutation testing
 
-# Corre en cada PR (check obligatorio en la regla "Proteger main"). Stryker introduce cambios
-# pequeños en el código y verifica que las pruebas unitarias los detecten. Tarda varios minutos.
+# Stryker introduce cambios pequeños en el código y verifica que las pruebas unitarias los
+# detecten. Tarda ~20 minutos en GitHub, así que corre solo a pedido (no es check obligatorio):
+#   · en un PR, al ponerle la etiqueta "mutation-testing" (y en cada push mientras la tenga);
+#   · a mano: Actions → Mutation testing → Run workflow;
+#   · cada lunes sobre main, para detectar si el puntaje fue bajando.
 on:
   pull_request:
+    types: [labeled, synchronize, reopened]
   workflow_dispatch:
+  schedule:
+    - cron: "0 11 * * 1" # lunes 6:00 a. m. en Bogotá (11:00 UTC)
 
 concurrency:
   group: mutation-${{ github.ref }}
@@ -13,6 +19,12 @@ concurrency:
 jobs:
   mutation:
     name: Mutation testing
+    # En PRs, solo si tienen la etiqueta. Al agregar otra etiqueta no se vuelve a correr.
+    if: >-
+      github.event_name != 'pull_request' ||
+      (github.event.action == 'labeled' && github.event.label.name == 'mutation-testing') ||
+      (github.event.action != 'labeled' &&
+        contains(github.event.pull_request.labels.*.name, 'mutation-testing'))
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:

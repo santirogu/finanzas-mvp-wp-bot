@@ -48,9 +48,9 @@ Responde y escribe en **español** (commits, PRs, comentarios del código y text
      con `pnpm install`) valida cada commit local con `scripts/conventional-commit.mjs`.
 4. **Antes de abrir el PR**, en local: `pnpm lint`, `pnpm typecheck`, `pnpm test` y, si tocaste
    algo que usa la base de datos, `pnpm test:int`. Si agregaste o cambiaste lógica en archivos
-   que muta Stryker (`stryker.config.mjs`), corre `pnpm test:mutation` y cubre con pruebas los
-   mutantes sobrevivientes relevantes: el check **Mutation testing** falla si el puntaje baja del
-   umbral. Si cambiaste el prompt o el esquema del bot, propón correr `pnpm bot:eval` (cuesta
+   que muta Stryker (`stryker.config.mjs`), ponle al PR la etiqueta `mutation-testing` (o corre
+   `pnpm test:mutation` en local), cubre con pruebas los mutantes sobrevivientes relevantes y
+   comunica el puntaje antes de que el dueño fusione. No es un check obligatorio: tarda ~20 minutos. Si cambiaste el prompt o el esquema del bot, propón correr `pnpm bot:eval` (cuesta
    créditos de la API: pide confirmación).
 5. **Abre un Pull Request hacia `main`.** El título sigue el punto 3 (descripción en español) y
    la descripción sigue `.github/pull_request_template.md`: encabezados en inglés, contenido en

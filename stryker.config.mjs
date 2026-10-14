@@ -26,7 +26,7 @@ const config = {
   tempDirName: ".stryker-tmp",
   cleanTempDir: "always",
   timeoutMS: 15000,
-  // break: el check "Mutation testing" falla por debajo. Puntaje base al agregarlo: 76,8 %.
+  // break: la corrida falla por debajo (no bloquea el merge). Puntaje base al agregarlo: 76,8 %.
   thresholds: { high: 85, low: 70, break: 75 },
 };
 
