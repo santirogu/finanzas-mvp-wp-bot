@@ -5,11 +5,11 @@ import type { CategoryNames, RawTransaction } from "./normalize";
 import { buildSystemPrompt, buildUserMessage } from "./prompt";
 import { envVar } from "@/lib/env";
 
-// Modelo configurable por entorno. Por defecto Claude Opus 5.5 con esfuerzo bajo
-// (una extracción corta no necesita razonar mucho). Para abaratar se puede usar
-// BOT_MODEL=claude-haiku-5-5 después de comparar ambos con `pnpm bot:eval`.
-const botModel = () => process.env.BOT_MODEL || "claude-opus-5-5";
-const botEffort = () => (process.env.BOT_EFFORT || "low") as "low" | "medium" | "high";
+// Modelo configurable por entorno. Por defecto Claude Haiku 5.5 con esfuerzo bajo:
+// en el set de evaluación acertó 50/50, más rápido y ~40 veces más barato que Opus 5.5.
+// Para cambiarlo: BOT_MODEL=claude-opus-5-5 (y comparar antes con `pnpm bot:eval`).
+export const botModel = () => envVar("BOT_MODEL") || "claude-haiku-5-5";
+const botEffort = () => (envVar("BOT_EFFORT") || "low") as "low" | "medium" | "high";
 
 const extractionSchema = z.object({
   transactions: z.array(

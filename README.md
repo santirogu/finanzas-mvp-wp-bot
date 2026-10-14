@@ -38,7 +38,7 @@ pnpm dev                        # http://localhost:3000
 | `pnpm db:migrate` | Aplica migraciones pendientes |
 | `pnpm db:seed` | Inserta categorías globales (idempotente) |
 | `pnpm db:studio` | Explorador visual de la base de datos |
-| `pnpm bot:try "texto"` | Muestra cómo interpreta el bot un mensaje (usa la API de Claude) |
+| `pnpm bot:try 'texto'` | Muestra cómo interpreta el bot un mensaje (usa la API de Claude). Usa comillas simples si el texto tiene `$` |
 | `pnpm bot:eval` | Corre el set de ~50 frases de prueba del bot y reporta aciertos, latencia y costo |
 
 > No uses `pnpm setup` (es un comando propio de pnpm que modifica tu shell). El script del proyecto se llama `db:setup`.

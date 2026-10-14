@@ -1,12 +1,12 @@
 // Evalúa el intérprete del bot contra el set de frases de src/modules/bot/eval/cases.ts.
 // Llama a la API de Claude (tiene costo). Uso:
 //   pnpm bot:eval                                 → modelo por defecto
-//   pnpm bot:eval --model claude-haiku-5-5        → comparar otro modelo
+//   pnpm bot:eval --model claude-opus-5-5         → comparar otro modelo
 //   pnpm bot:eval --effort medium --only zapatos  → filtrar casos por texto
 import "dotenv/config";
 import { parseArgs } from "node:util";
 import { DEFAULT_CATEGORIES } from "../src/modules/transactions/default-categories";
-import { claudeExtractor } from "../src/modules/bot/claude-extractor";
+import { botModel, claudeExtractor } from "../src/modules/bot/claude-extractor";
 import { EVAL_CASES, EVAL_TODAY, type EvalCase } from "../src/modules/bot/eval/cases";
 import { interpretMessage, type BotIntent } from "../src/modules/bot/interpret";
 
@@ -62,7 +62,7 @@ function grade(c: EvalCase, intent: BotIntent): string[] {
 
 async function main() {
   const cases = EVAL_CASES.filter((c) => !args.only || c.text.toLowerCase().includes(args.only.toLowerCase()));
-  const model = process.env.BOT_MODEL || "claude-opus-5-5";
+  const model = botModel();
   console.log(`Modelo: ${model} · esfuerzo: ${process.env.BOT_EFFORT || "low"} · casos: ${cases.length}\n`);
 
   const results: { c: EvalCase; problems: string[]; ms: number; intent: BotIntent }[] = [];
