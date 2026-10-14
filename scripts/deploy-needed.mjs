@@ -16,10 +16,11 @@ export const SKIP_PATTERNS = [
   /^\.githooks\//,
   /^\.claude\//,
   /^test\//, // infraestructura de pruebas
+  /^e2e\//, // pruebas E2E (Playwright)
   /\.test\.tsx?$/, // pruebas unitarias, de integración y de componentes
   /^docker\//,
   /^scripts\/(?!seed\.ts$)/, // herramientas de desarrollo (seed.ts sí corre en el despliegue)
-  /^(eslint\.config\.mjs|vitest(\.mutation)?\.config\.mts|stryker\.config\.mjs|docker-compose\.yml|\.env\.example|\.gitignore)$/,
+  /^(eslint\.config\.mjs|vitest(\.mutation)?\.config\.mts|playwright\.config\.ts|stryker\.config\.mjs|docker-compose\.yml|\.env\.example|\.gitignore)$/,
   /^LICENSE$/,
 ];
 

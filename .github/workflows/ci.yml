@@ -96,6 +96,76 @@ jobs:
           path: coverage/
           retention-days: 14
 
+  # Pruebas de punta a punta: un navegador real (Playwright) recorre la app como un usuario, en
+  # escritorio y en celular, y axe-core revisa la accesibilidad. Corre contra un build de
+  # producción local con su propio Postgres; no llama a Claude ni a WhatsApp. Check obligatorio.
+  e2e:
+    name: E2E y accesibilidad
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: finanzas
+          POSTGRES_PASSWORD: finanzas
+          POSTGRES_DB: finanzas_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U finanzas"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      # Las E2E usan la base finanzas_e2e_test de este mismo servidor (ver e2e/database-url.ts).
+      TEST_DATABASE_URL: postgres://finanzas:finanzas@localhost:5432/finanzas_test
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # El navegador se guarda en caché por versión de Playwright (cambia con pnpm-lock.yaml).
+      - name: Caché del navegador de Playwright
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+
+      - name: Instalar Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Compilar la app
+        env:
+          DATABASE_URL: postgres://finanzas:finanzas@localhost:5432/finanzas_e2e_test
+        run: pnpm build
+
+      - name: Pruebas E2E y de accesibilidad
+        env:
+          E2E_SKIP_BUILD: "1"
+        run: pnpm test:e2e
+
+      # Con capturas y trazas de las pruebas que fallaron: pnpm exec playwright show-trace <zip>.
+      - name: Guardar reporte de Playwright
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14
+
   # Convención de ramas (ver CLAUDE.md). Es un check obligatorio para fusionar PRs.
   branch-name:
     name: Nombre de rama
@@ -175,7 +245,7 @@ jobs:
   # así que ni el código ni las migraciones llegan a producción sin pasar el CI.
   deploy:
     name: Desplegar a producción
-    needs: [checks, changes]
+    needs: [checks, e2e, changes]
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && needs.changes.outputs.deploy == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30

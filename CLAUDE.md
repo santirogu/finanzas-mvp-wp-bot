@@ -48,7 +48,8 @@ Responde y escribe en **español** (commits, PRs, comentarios del código y text
      con `pnpm install`) valida cada commit local con `scripts/conventional-commit.mjs`.
 4. **Antes de abrir el PR**, en local, lo mismo que corre el CI: `pnpm lint`, `pnpm typecheck`,
    `pnpm db:check-drift` y **`pnpm test:coverage`** (unitarias + integración + umbral de cobertura;
-   `pnpm test` solo no valida el umbral). Si agregas código, agrégale pruebas. Si agregaste o cambiaste lógica en archivos
+   `pnpm test` solo no valida el umbral). Si cambiaste páginas o componentes, corre también
+   `pnpm test:e2e` (el check "E2E y accesibilidad" es obligatorio). Si agregas código, agrégale pruebas. Si agregaste o cambiaste lógica en archivos
    que muta Stryker (`stryker.config.mjs`), ponle al PR la etiqueta `mutation-testing` (o corre
    `pnpm test:mutation` en local), cubre con pruebas los mutantes sobrevivientes relevantes y
    comunica el puntaje antes de que el dueño fusione. No es un check obligatorio: tarda ~40 minutos en GitHub. Si cambiaste el prompt o el esquema del bot, propón correr `pnpm bot:eval` (cuesta

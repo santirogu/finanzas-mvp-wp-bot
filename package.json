@@ -25,7 +25,8 @@
     "test:all": "vitest run",
     "test:coverage": "vitest run --coverage",
     "prepare": "git config core.hooksPath .githooks || true",
-    "test:mutation": "stryker run"
+    "test:mutation": "stryker run",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.133.0",
@@ -39,6 +40,8 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
+    "@playwright/test": "1.63.0",
     "@stryker-mutator/core": "10.0.0",
     "@tailwindcss/turbopack": "^4",
     "@types/node": "^22.20.5",
