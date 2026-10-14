@@ -1,13 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { CONTACT_EMAIL, DataDeletionSteps, LEGAL_UPDATED_AT, legalProseClass } from "./legal";
 
 export const metadata: Metadata = {
   title: "Política de privacidad",
   description: "Cómo Finanzas MVP trata tus datos personales y cómo solicitar su eliminación.",
 };
-
-const CONTACT_EMAIL = "santiagorock000@gmail.com";
-const UPDATED_AT = "13 de octubre de 2026";
 
 export default function PrivacyPage() {
   return (
@@ -16,9 +14,9 @@ export default function PrivacyPage() {
         ← Finanzas MVP
       </Link>
       <h1 className="mt-4 text-3xl font-semibold tracking-tight">Política de privacidad</h1>
-      <p className="mt-2 text-sm text-muted">Última actualización: {UPDATED_AT}</p>
+      <p className="mt-2 text-sm text-muted">Última actualización: {LEGAL_UPDATED_AT}</p>
 
-      <div className="mt-8 space-y-8 leading-relaxed [&_h2]:text-lg [&_h2]:font-semibold [&_li]:mt-1 [&_p]:mt-2 [&_ul]:mt-2 [&_ul]:list-disc [&_ul]:pl-5">
+      <div className={legalProseClass}>
         <section>
           <p>
             Finanzas MVP es una aplicación para registrar ingresos y egresos personales desde la web
@@ -106,24 +104,7 @@ export default function PrivacyPage() {
 
         <section id="eliminar-datos">
           <h2>Cómo eliminar tus datos</h2>
-          <ul>
-            <li>
-              <strong>Desconectar WhatsApp:</strong> en el dashboard, tarjeta WhatsApp →
-              “Desvincular número”. El bot deja de asociar tus mensajes a tu cuenta.
-            </li>
-            <li>
-              <strong>Eliminar tu cuenta y todos tus datos:</strong> envía un correo a{" "}
-              <a
-                href={`mailto:${CONTACT_EMAIL}?subject=Eliminar%20mi%20cuenta`}
-                className="text-brand underline"
-              >
-                {CONTACT_EMAIL}
-              </a>{" "}
-              desde el correo con el que te registraste, con el asunto “Eliminar mi cuenta”.
-              Borraremos tu cuenta, tus movimientos y tus mensajes en un plazo máximo de 30 días y
-              te confirmaremos por correo.
-            </li>
-          </ul>
+          <DataDeletionSteps />
         </section>
 
         <section>

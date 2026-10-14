@@ -3,7 +3,7 @@ import { getSessionCookie } from "better-auth/cookies";
 
 const PUBLIC_ONLY = ["/", "/login", "/registro"];
 // Páginas visibles con o sin sesión (Meta exige que la política de privacidad sea pública).
-const ALWAYS_PUBLIC = ["/privacidad"];
+const ALWAYS_PUBLIC = ["/privacidad", "/eliminar-datos"];
 
 // Chequeo optimista (solo mira si existe la cookie) para redirigir rápido.
 // La validación real de la sesión ocurre en src/lib/session.ts.
