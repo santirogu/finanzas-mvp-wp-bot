@@ -263,6 +263,14 @@ fallido) y `scripts/deploy-needed.mjs` decide: si todos los archivos cambiados s
 workflows, pruebas o herramientas de desarrollo, no despliega; cualquier otro archivo, incluido uno
 nuevo o desconocido, despliega. La decisión queda explicada en el resumen de cada corrida.
 
+**Cada despliegue exitoso publica una [release](https://github.com/santirogu/finanzas-mvp-wp-bot/releases)**
+(job `release`, `scripts/release.mjs`). La versión sale de los Conventional Commits desde la release
+anterior: un `feat` sube la menor (1.2.0 → 1.3.0), un `!` (cambio incompatible) la mayor
+(1.2.0 → 2.0.0) y cualquier otro cambio el parche (1.2.0 → 1.2.1); la primera fue la 1.0.0. Las
+notas agrupan los cambios por tipo con el número de cada PR. La versión vive en los tags de git
+(`v1.2.0`), no en `package.json`. Los cambios que no despliegan (docs, CI, pruebas) entran en la
+release del siguiente despliegue; un despliegue fallido no publica release.
+
 **Despliegue manual:** *Actions → CI → Run workflow* (rama `main`) corre los checks y despliega
 siempre. Úsalo después de cambiar variables de entorno en Vercel.
 

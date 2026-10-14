@@ -41,6 +41,9 @@ Responde y escribe en **español** (commits, PRs, comentarios del código y text
    - Ámbitos sugeridos: `bot`, `whatsapp`, `web`, `auth`, `db`, `transacciones`, `deps`.
    - Máximo 72 caracteres en la primera línea. Un `!` antes de los dos puntos marca un cambio
      incompatible: `feat(auth)!: exigir verificación del correo`.
+   - El tipo decide la versión de la release que se publica sola al desplegar
+     (`scripts/release.mjs`): `feat` sube la menor, `!` la mayor, el resto el parche. Elige el
+     tipo con cuidado y usa `!` solo si el cambio de verdad rompe algo para quien usa la app.
    - Ejemplos: `feat(bot): registrar gastos desde notas de voz`,
      `fix(whatsapp): ignorar saltos de línea en el token`, `docs: explicar el flujo de PRs`.
    - Los PRs se fusionan solo con **squash and merge**: el **título del PR** se vuelve el commit
@@ -81,7 +84,9 @@ Responde y escribe en **español** (commits, PRs, comentarios del código y text
 El merge a `main` dispara el CI y, solo si pasa y cambió algo que afecta la app (ver
 `scripts/deploy-needed.mjs`), el despliegue a producción, incluidas las migraciones. La versión
 nueva se publica sin dominio, pasa los smoke tests (`scripts/smoke.mjs`) y solo entonces recibe el
-dominio; si falla después, vuelve sola a la anterior (README → Despliegue). Si agregas
+dominio; si falla después, vuelve sola a la anterior (README → Despliegue). Si sale bien, el job
+`release` publica la release de GitHub con su tag (`v1.2.0`): no crees tags ni releases a mano ni
+pongas la versión en `package.json`. Si agregas
 archivos que no afectan la app en ejecución (docs, herramientas, configuración de desarrollo),
 agrégalos a `SKIP_PATTERNS` en ese script con su prueba. Nada llega a producción por otro camino: no reactives los despliegues automáticos
 de Vercel ni muevas las migraciones fuera del job `deploy`.
