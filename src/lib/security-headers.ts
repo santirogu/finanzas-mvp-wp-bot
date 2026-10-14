@@ -11,9 +11,9 @@ type Header = { key: string; value: string };
 export function contentSecurityPolicy({ dev = false } = {}): string {
   const directives: Record<string, string[]> = {
     "default-src": ["'self'"],
-    // Solo en desarrollo: 'unsafe-eval' (React lo usa para reconstruir los stack traces) y el
-    // script de depuración de Vercel Web Analytics, que solo escribe en la consola. En
-    // producción la analítica se sirve desde la propia app ('self').
+    // Solo en desarrollo: 'unsafe-eval' (React lo usa para reconstruir los stack traces) y los
+    // scripts de depuración de Vercel Web Analytics y Speed Insights, que solo escriben en la
+    // consola. En producción ambos se sirven desde la propia app ('self').
     "script-src": [
       "'self'",
       "'unsafe-inline'",

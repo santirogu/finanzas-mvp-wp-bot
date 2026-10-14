@@ -52,6 +52,12 @@ export default function PrivacyPage() {
               dirección IP ni te identifica: cada visita se reconoce con un código temporal que se
               descarta a las 24 horas, y solo vemos totales.
             </li>
+            <li>
+              <strong>Velocidad de carga anónima:</strong> con Vercel Speed Insights medimos qué tan
+              rápido carga cada página, junto con el tipo de conexión, de dispositivo, el sistema
+              operativo, el navegador y el país. Tampoco usa cookies ni se asocia a ninguna persona
+              o dirección IP.
+            </li>
           </ul>
         </section>
 
@@ -64,7 +70,10 @@ export default function PrivacyPage() {
               egresos, y responderte.
             </li>
             <li>Detectar errores y mejorar el funcionamiento del servicio.</li>
-            <li>Saber qué partes de la app se usan más, con estadísticas anónimas, para mejorarla.</li>
+            <li>
+              Saber qué partes de la app se usan más y qué tan rápido cargan, con estadísticas
+              anónimas, para mejorarla.
+            </li>
           </ul>
           <p>No vendemos tus datos ni los usamos para publicidad.</p>
         </section>
@@ -82,8 +91,9 @@ export default function PrivacyPage() {
               interpretarlos (monto, tipo, categoría y fecha).
             </li>
             <li>
-              <strong>Vercel</strong> (alojamiento de la aplicación y estadísticas de uso
-              anónimas) y <strong>Neon</strong> (base de datos), donde se almacena la información.
+              <strong>Vercel</strong> (alojamiento de la aplicación, estadísticas de uso y medición
+              de velocidad, anónimas) y <strong>Neon</strong> (base de datos), donde se almacena la
+              información.
             </li>
           </ul>
           <p>Estos proveedores pueden procesar datos fuera de Colombia, incluido Estados Unidos.</p>
