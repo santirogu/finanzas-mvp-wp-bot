@@ -14,6 +14,9 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Reporte HTML de cobertura generado por Vitest.
     "coverage/**",
+    // Reporte y sandbox del mutation testing (Stryker).
+    "reports/**",
+    ".stryker-tmp/**",
   ]),
 ]);
 

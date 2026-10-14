@@ -47,8 +47,11 @@ Responde y escribe en **español** (commits, PRs, comentarios del código y text
      de `main`, y el check **Título del PR** lo valida. El hook `.githooks/commit-msg` (se activa
      con `pnpm install`) valida cada commit local con `scripts/conventional-commit.mjs`.
 4. **Antes de abrir el PR**, en local: `pnpm lint`, `pnpm typecheck`, `pnpm test` y, si tocaste
-   algo que usa la base de datos, `pnpm test:int`. Si cambiaste el prompt o el esquema del bot,
-   propón correr `pnpm bot:eval` (cuesta créditos de la API: pide confirmación).
+   algo que usa la base de datos, `pnpm test:int`. Si agregaste o cambiaste lógica en archivos
+   que muta Stryker (`stryker.config.mjs`), corre `pnpm test:mutation` y cubre con pruebas los
+   mutantes sobrevivientes relevantes: el check **Mutation testing** falla si el puntaje baja del
+   umbral. Si cambiaste el prompt o el esquema del bot, propón correr `pnpm bot:eval` (cuesta
+   créditos de la API: pide confirmación).
 5. **Abre un Pull Request hacia `main`.** El título sigue el punto 3 (descripción en español) y
    la descripción sigue `.github/pull_request_template.md`: encabezados en inglés, contenido en
    español. El check **Descripción del PR** exige contenido real en las tres primeras:

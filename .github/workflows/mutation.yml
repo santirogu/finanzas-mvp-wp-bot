@@ -1,0 +1,44 @@
+name: Mutation testing
+
+# Corre en cada PR (check obligatorio en la regla "Proteger main"). Stryker introduce cambios
+# pequeños en el código y verifica que las pruebas unitarias los detecten. Tarda varios minutos.
+on:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: mutation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mutation:
+    name: Mutation testing
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Falla si el puntaje queda por debajo de "break" en stryker.config.mjs.
+      - name: Ejecutar Stryker
+        run: pnpm test:mutation
+
+      - name: Resumen del puntaje
+        if: always()
+        run: node scripts/mutation-summary.mjs
+
+      - name: Guardar reporte HTML
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutation-report
+          path: reports/mutation/
+          retention-days: 14

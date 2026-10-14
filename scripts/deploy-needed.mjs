@@ -19,7 +19,7 @@ export const SKIP_PATTERNS = [
   /\.test\.ts$/, // pruebas unitarias y de integración
   /^docker\//,
   /^scripts\/(?!seed\.ts$)/, // herramientas de desarrollo (seed.ts sí corre en el despliegue)
-  /^(eslint\.config\.mjs|vitest\.config\.mts|docker-compose\.yml|\.env\.example|\.gitignore)$/,
+  /^(eslint\.config\.mjs|vitest(\.mutation)?\.config\.mts|stryker\.config\.mjs|docker-compose\.yml|\.env\.example|\.gitignore)$/,
   /^LICENSE$/,
 ];
 
