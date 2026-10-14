@@ -20,7 +20,9 @@ jobs:
         env:
           # Se pasa por variable de entorno para no interpolar texto del PR dentro del script.
           TITLE: ${{ github.event.pull_request.title }}
-        run: node scripts/conventional-commit.mjs "$TITLE"
+          # Dependabot nombra los paquetes completos: se le permite un título más largo.
+          MAX_LENGTH: ${{ github.event.pull_request.user.login == 'dependabot[bot]' && '120' || '72' }}
+        run: node scripts/conventional-commit.mjs --max-length "$MAX_LENGTH" "$TITLE"
 
   # La descripción debe seguir .github/pull_request_template.md: Why / What / How.
   pr-description:
@@ -31,6 +33,12 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Validar Why / What / How
+        if: github.event.pull_request.user.login != 'dependabot[bot]'
         env:
           BODY: ${{ github.event.pull_request.body }}
         run: printf '%s' "$BODY" | node scripts/pr-description.mjs
+
+      # Los PRs de Dependabot traen su propia descripción (changelog y notas de la versión).
+      - name: PR de Dependabot
+        if: github.event.pull_request.user.login == 'dependabot[bot]'
+        run: echo "PR automático de Dependabot; su descripción la genera el bot."

@@ -83,6 +83,11 @@ de Vercel ni muevas las migraciones fuera del job `deploy`.
 
 ## Seguridad y datos
 
+- Los PRs de **Dependabot** (`chore(deps): …`, `ci(deps): …`) también los fusiona el dueño. Si te
+  pide revisarlos, verifica el changelog y que el CI pase; si una actualización mayor rompe algo,
+  arréglalo en una rama `fix/` o `chore/` aparte.
+- Si CodeQL marca una alerta en un PR, corrígela en el mismo PR antes de pedir el merge.
+
 - Nunca escribas secretos en el código, en commits ni en el chat; van en `.env` (local) o en
   Vercel. Si el usuario pega una credencial, recuérdale que no lo haga.
 - Las pruebas de integración usan solo `TEST_DATABASE_URL` (base terminada en `_test`).

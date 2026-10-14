@@ -50,6 +50,11 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # Falla ante vulnerabilidades altas o críticas en dependencias de producción. Las de
+      # desarrollo las vigila Dependabot (algunas no tienen versión corregida y bloquearían todo).
+      - name: Auditoría de dependencias
+        run: pnpm audit --prod --audit-level high
+
       - name: Lint
         run: pnpm lint
 
