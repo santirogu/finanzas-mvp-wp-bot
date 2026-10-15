@@ -22,7 +22,7 @@ const config = {
     "src/app/api/{whatsapp/webhook,health}/route.ts",
     "src/app/*/simulador/actions.ts",
     "src/proxy.ts",
-    "scripts/{conventional-commit,deploy-needed,pr-description,check-schema-drift,mutation-summary,smoke}.mjs",
+    "scripts/{conventional-commit,deploy-needed,pr-description,check-schema-drift,mutation-summary,smoke,release}.mjs",
   ],
   reporters: ["clear-text", "progress-append-only", "html", "json"],
   htmlReporter: { fileName: "reports/mutation/index.html" },
