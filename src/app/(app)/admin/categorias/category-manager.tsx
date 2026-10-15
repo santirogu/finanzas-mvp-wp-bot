@@ -2,7 +2,10 @@
 
 import { useActionState, useId, useState, type ReactNode } from "react";
 import { CATEGORY_NAME_MAX, CATEGORY_TYPE_LABELS, DEFAULT_CATEGORY, EMOJI_SUGGESTIONS, type CategoryType } from "@/modules/admin/categories/category-input";
-import { Buttons, CodeField, Dialog, FormError } from "../admin-dialog";
+import { describedBy } from "@/components/field-error";
+import { useFieldErrors } from "@/components/use-field-errors";
+import type { FieldMessages } from "@/lib/field-errors";
+import { Buttons, CODE_FIELD_MESSAGES, CodeField, Dialog, FormError } from "../admin-dialog";
 import {
   archiveCategoryAction,
   createCategoryAction,
@@ -34,6 +37,9 @@ type Open =
   | null;
 
 const movementsLabel = (n: number) => (n === 0 ? "Sin movimientos" : `${n} ${n === 1 ? "movimiento" : "movimientos"}`);
+
+// El error del nombre antes de enviar, en español (en vez del globo del navegador).
+const CATEGORY_MESSAGES: Record<string, FieldMessages> = { name: { required: "Escribe un nombre." } };
 
 export function CategoryManager({ type, categories }: { type: CategoryType; categories: ManagedCategory[] }) {
   const [open, setOpen] = useState<Open>(null);
@@ -276,6 +282,9 @@ function CategoryFormDialog({
 }) {
   const editing = Boolean(category);
   const [state, formAction, busy] = useNotifyingAction(editing ? updateCategoryAction : createCategoryAction, onDone);
+  const { errors, formProps } = useFieldErrors(CATEGORY_MESSAGES);
+  // El del navegador (antes de enviar) o el del servidor (un nombre repetido, p. ej.).
+  const nameMessage = errors.name ?? (state.field === "name" ? state.error : undefined);
   const [emoji, setEmoji] = useState(category?.emoji ?? "");
   const nameError = useId();
   const emojiError = useId();
@@ -285,7 +294,7 @@ function CategoryFormDialog({
   return (
     <Dialog title={category ? `Editar la categoría ${category.name}` : `Nueva categoría de ${kind}`} onClose={onClose}>
       {(ids) => (
-        <form action={formAction} className="space-y-4">
+        <form action={formAction} {...formProps} className="space-y-4">
           <p id={ids.description} className="text-sm text-muted">
             {CATEGORY_TYPE_LABELS[type]} · se aplica de inmediato en los formularios y en el bot.
             {category && category.movements > 0 && " Los movimientos que ya la usan pasan a verse con el nombre nuevo."}
@@ -301,15 +310,15 @@ function CategoryFormDialog({
                 defaultValue={category?.name ?? ""}
                 readOnly={category?.isDefault}
                 autoComplete="off"
-                aria-invalid={state.field === "name" || undefined}
-                aria-describedby={state.field === "name" ? nameError : undefined}
+                aria-invalid={Boolean(nameMessage) || undefined}
+                aria-describedby={describedBy(nameMessage && nameError)}
                 className="input read-only:bg-background read-only:text-muted"
               />
             </label>
             {category?.isDefault && <p className="text-xs text-muted">A &quot;{DEFAULT_CATEGORY}&quot; solo se le puede cambiar el emoji.</p>}
-            {state.field === "name" && (
+            {nameMessage && (
               <p id={nameError} className="text-xs text-danger">
-                {state.error}
+                {nameMessage}
               </p>
             )}
           </div>
@@ -381,15 +390,16 @@ function CodeDialog({
   onDone: (message: string) => void;
 }) {
   const [state, formAction, busy] = useNotifyingAction(action, onDone);
+  const { errors, formProps } = useFieldErrors(CODE_FIELD_MESSAGES);
   return (
     <Dialog title={title} onClose={onClose}>
       {(ids) => (
-        <form action={formAction} className="space-y-4">
+        <form action={formAction} {...formProps} className="space-y-4">
           <p id={ids.description} className="text-sm text-muted">
             {description}
           </p>
           <input type="hidden" name="id" value={id} />
-          <CodeField state={state} />
+          <CodeField state={state} clientError={errors.code} />
           <FormError state={state} />
           <Buttons submit={submit} pending={pending} busy={busy} danger={danger} />
         </form>

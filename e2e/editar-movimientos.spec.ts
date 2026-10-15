@@ -21,7 +21,7 @@ test("corregir un egreso: monto, descripción y categoría @principal", async ({
   await register(page);
   await openTab(page, "Egresos");
   await addTransaction(page, { amount: "500000", description: "Zapatos", category: "Ropa" });
-  await expect(row(page, "Zapatos")).toContainText(/−\$\s500\.000/);
+  await expect(row(page, "Zapatos")).toContainText(/−\$500\.000,00/);
 
   await test.step("abrir el movimiento muestra sus datos", async () => {
     await openEdit(page, "Zapatos");
@@ -38,14 +38,14 @@ test("corregir un egreso: monto, descripción y categoría @principal", async ({
 
     await expect(page).toHaveURL(/\/egresos$/);
     const edited = row(page, "Zapatos rebajados");
-    await expect(edited).toContainText(/−\$\s450\.000/);
+    await expect(edited).toContainText(/−\$450\.000,00/);
     await expect(edited).toContainText("Mercado");
     await expect(visible(page.getByText("1 movimiento este mes"))).toBeVisible();
   });
 
   await test.step("el resumen refleja el monto nuevo", async () => {
     await openTab(page, "Resumen");
-    await expect(visible(page.getByText("Balance del mes")).locator("..")).toContainText(/-\$\s450\.000/);
+    await expect(visible(page.getByText("Balance del mes")).locator("..")).toContainText(/-\$450\.000,00/);
   });
 });
 
@@ -64,7 +64,7 @@ test("cancelar no cambia nada y un error no pierde lo escrito", async ({ page })
 
   await visible(page.getByRole("link", { name: "Cancelar" })).click();
   await expect(page).toHaveURL(/\/ingresos$/);
-  await expect(row(page, "Sueldo")).toContainText(/\+\$\s2\.000\.000/);
+  await expect(row(page, "Sueldo")).toContainText(/\+\$2\.000\.000,00/);
   await expect(visible(page.getByText("Sueldo corregido"))).toHaveCount(0);
 });
 

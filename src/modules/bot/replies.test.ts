@@ -35,9 +35,9 @@ describe("registeredReply", () => {
     );
     expect(nbsp(text)).toBe(
       [
-        "✅ Egreso registrado: *Zapatos* — $ 500.000 (Ropa)",
+        "✅ Egreso registrado: *Zapatos* — $500.000,00 (Ropa)",
         "",
-        "Balance de octubre: *$ 2.700.000*",
+        "Balance de octubre: *$2.700.000,00*",
         "_Escribe *deshacer* si me equivoqué._",
       ].join("\n"),
     );
@@ -65,8 +65,8 @@ describe("registeredReply", () => {
         { today: "2026-10-13", currency: "COP", balance: 70000, range },
       ),
     );
-    expect(text).toContain("Egreso registrado: *Gasolina* — $ 30.000 (Transporte · 12 de oct)");
-    expect(text).toContain("Ingreso registrado: *Venta* — $ 100.000\n");
+    expect(text).toContain("Egreso registrado: *Gasolina* — $30.000,00 (Transporte · 12 de oct)");
+    expect(text).toContain("Ingreso registrado: *Venta* — $100.000,00\n");
   });
 });
 
@@ -82,9 +82,9 @@ describe("balanceReply", () => {
     ).toBe(
       [
         "📊 *Octubre de 2026*",
-        "Ingresos: $ 3.200.000",
-        "Egresos: $ 500.000",
-        "Balance: *$ 2.700.000*",
+        "Ingresos: $3.200.000,00",
+        "Egresos: $500.000,00",
+        "Balance: *$2.700.000,00*",
       ].join("\n"),
     );
   });
@@ -126,7 +126,7 @@ describe("mensajes de vinculación y ayuda", () => {
         /\u00a0/g,
         " ",
       ),
-    ).toBe("Listo, eliminé:\n🗑️ Café — $ 6.500");
+    ).toBe("Listo, eliminé:\n🗑️ Café — $6.500,00");
   });
 });
 

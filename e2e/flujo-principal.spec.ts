@@ -12,7 +12,7 @@ test("registrarse, llevar ingresos y egresos, ver el balance y salir @principal"
 
   await test.step("una cuenta nueva empieza vacía", async () => {
     await expect(text(page, "Hola, Ana")).toBeVisible();
-    await expect(balance(page)).toContainText("$ 0");
+    await expect(balance(page)).toContainText("$0,00");
     await expect(text(page, "Aún no tienes movimientos este mes.")).toBeVisible();
   });
 
@@ -21,7 +21,7 @@ test("registrarse, llevar ingresos y egresos, ver el balance y salir @principal"
     await addTransaction(page, { amount: "2000000", description: "Pago de nómina", category: "Salario" });
     await expect(text(page, "✓ Ingreso registrado")).toBeVisible();
     await expect(row(page, "Pago de nómina")).toContainText("Salario");
-    await expect(row(page, "Pago de nómina")).toContainText("+$ 2.000.000");
+    await expect(row(page, "Pago de nómina")).toContainText("+$2.000.000,00");
     await expect(text(page, "1 movimiento este mes")).toBeVisible();
   });
 
@@ -29,19 +29,19 @@ test("registrarse, llevar ingresos y egresos, ver el balance y salir @principal"
     await openTab(page, "Egresos");
     await addTransaction(page, { amount: "500000", description: "Zapatos", category: "Ropa" });
     await expect(text(page, "✓ Egreso registrado")).toBeVisible();
-    await expect(row(page, "Zapatos")).toContainText("−$ 500.000");
+    await expect(row(page, "Zapatos")).toContainText("−$500.000,00");
   });
 
   await test.step("el resumen muestra el balance del mes", async () => {
     await openTab(page, "Resumen");
-    await expect(balance(page)).toContainText("$ 1.500.000");
-    await expect(visible(page.getByRole("link", { name: /^Ingresos \$ 2\.000\.000$/ }))).toBeVisible();
-    await expect(visible(page.getByRole("link", { name: /^Egresos \$ 500\.000$/ }))).toBeVisible();
+    await expect(balance(page)).toContainText("$1.500.000,00");
+    await expect(visible(page.getByRole("link", { name: /^Ingresos \$2\.000\.000,00$/ }))).toBeVisible();
+    await expect(visible(page.getByRole("link", { name: /^Egresos \$500\.000,00$/ }))).toBeVisible();
     const recent = visible(page.locator("section", { hasText: "Últimos movimientos" }));
     await expect(recent).toContainText("Pago de nómina");
     await expect(recent).toContainText("Zapatos");
     await expect(visible(page.locator("section", { hasText: "Gastos por categoría" }))).toContainText(
-      /Ropa\s*\$\s500\.000 · 100%/,
+      /Ropa\s*\$500\.000,00 · 100%/,
     );
   });
 
@@ -50,7 +50,7 @@ test("registrarse, llevar ingresos y egresos, ver el balance y salir @principal"
     await visible(page.getByRole("button", { name: "Eliminar Zapatos" })).click();
     await expect(text(page, "No has registrado egresos este mes.")).toBeVisible();
     await openTab(page, "Resumen");
-    await expect(balance(page)).toContainText("$ 2.000.000");
+    await expect(balance(page)).toContainText("$2.000.000,00");
   });
 
   await test.step("salir cierra la sesión", async () => {

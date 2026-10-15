@@ -264,3 +264,25 @@ describe("archivar y eliminar (con código)", () => {
     expect(screen.queryByRole("status")).toBeNull();
   });
 });
+
+describe("CategoryManager · errores de los campos en español", () => {
+  it("crear sin nombre lo dice debajo del campo y no envía", async () => {
+    renderManager();
+    await userEvent.click(screen.getByRole("button", { name: "Nueva categoría" }));
+    await userEvent.click(within(dialog()).getByRole("button", { name: "Crear" }));
+    expect(within(dialog()).getByLabelText("Nombre")).toHaveAccessibleDescription("Escribe un nombre.");
+    expect(actions.createCategoryAction).not.toHaveBeenCalled();
+  });
+
+  it("archivar sin código lo dice y no envía", async () => {
+    renderManager();
+    await userEvent.click(within(row("Mercado")).getByRole("button", { name: "Más acciones para Mercado" }));
+    await userEvent.click(within(row("Mercado")).getByRole("button", { name: /^Archivar/ }));
+    await userEvent.click(within(dialog()).getByRole("button", { name: "Archivar" }));
+    expect(within(dialog()).getByLabelText("Código de Google Authenticator")).toHaveAccessibleDescription(
+      "Escribe el código de 6 dígitos de Google Authenticator.",
+    );
+    expect(actions.archiveCategoryAction).not.toHaveBeenCalled();
+  });
+});
+

@@ -48,8 +48,8 @@ describe("TransactionList", () => {
     expect(expense).toHaveTextContent("👟");
     expect(expense).toHaveTextContent("Zapatos");
     expect(expense).toHaveTextContent("13 de oct · Ropa");
-    expect(within(expense).getByText(/−\$\s500\.000/)).toHaveClass("text-expense");
-    expect(within(income).getByText(/\+\$\s2\.000\.000/)).toHaveClass("text-income");
+    expect(within(expense).getByText(/^−\$500\.000,00$/)).toHaveClass("text-expense");
+    expect(within(income).getByText(/^\+\$2\.000\.000,00$/)).toHaveClass("text-income");
   });
 
   it("marca los movimientos que llegaron por WhatsApp", () => {

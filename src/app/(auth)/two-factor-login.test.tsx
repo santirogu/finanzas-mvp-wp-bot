@@ -109,3 +109,27 @@ describe("TwoFactorLogin", () => {
     expect(onCancel).toHaveBeenCalledOnce();
   });
 });
+
+describe("TwoFactorLogin · errores del código en español", () => {
+  it("vacío, o sin 6 dígitos, lo dice debajo del campo", async () => {
+    render(<TwoFactorLogin onCancel={vi.fn()} />);
+    const input = screen.getByLabelText("Código de 6 dígitos");
+    await submit();
+    expect(input).toHaveAccessibleDescription("Escribe el código de 6 dígitos de Google Authenticator.");
+    await userEvent.type(input, "12a");
+    expect(input).toHaveAccessibleDescription("El código tiene 6 dígitos, solo números.");
+    expect(mocks.verifyTotp).not.toHaveBeenCalled();
+  });
+
+  it("con un código de respaldo pide ese, y no quedan mensajes del modo anterior", async () => {
+    render(<TwoFactorLogin onCancel={vi.fn()} />);
+    await submit();
+    await userEvent.click(screen.getByRole("button", { name: /usar un código de respaldo/ }));
+    const input = screen.getByLabelText("Código de respaldo");
+    expect(input).not.toHaveAttribute("aria-invalid");
+    await submit();
+    expect(input).toHaveAccessibleDescription("Escribe uno de tus códigos de respaldo.");
+    expect(mocks.verifyBackupCode).not.toHaveBeenCalled();
+  });
+});
+

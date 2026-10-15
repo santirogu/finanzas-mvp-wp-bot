@@ -1,7 +1,10 @@
 "use client";
 
 import { useActionState, useId, useState, type ReactNode } from "react";
-import { Buttons, CodeField, Dialog, FormError } from "../../admin-dialog";
+import { describedBy, FieldError } from "@/components/field-error";
+import { useFieldErrors } from "@/components/use-field-errors";
+import { EMAIL_MESSAGE, TOTP_CODE_MESSAGES, type FieldMessages } from "@/lib/field-errors";
+import { Buttons, CODE_FIELD_MESSAGES, CodeField, Dialog, FormError } from "../../admin-dialog";
 import { NOTE_MAX_LENGTH } from "@/modules/admin/shared/filters";
 import {
   deleteAccountByAdminAction,
@@ -38,6 +41,12 @@ export type ActionTarget = {
 
 const sameEmail = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
 const plural = (n: number, one: string, many: string) => (n === 1 ? one : `${n} ${many}`);
+
+// Los errores de los campos de eliminar antes de enviar, en español (en vez del globo del navegador).
+const DELETE_MESSAGES: Record<string, FieldMessages> = {
+  email: { required: "Escribe el correo de la cuenta.", email: EMAIL_MESSAGE },
+  code: TOTP_CODE_MESSAGES,
+};
 
 export function AccountActions({ target }: { target: ActionTarget }) {
   const [open, setOpen] = useState<Kind | null>(null);
@@ -275,17 +284,18 @@ function ConfirmDialog({
     if (result.message) onDone(result.message);
     return result;
   }, {});
+  const { errors, formProps } = useFieldErrors(CODE_FIELD_MESSAGES);
 
   return (
     <Dialog title={title} onClose={onClose}>
       {(ids) => (
-        <form action={formAction} className="space-y-4">
+        <form action={formAction} {...formProps} className="space-y-4">
           <p id={ids.description} className="text-sm text-muted">
             {children}
           </p>
           <input type="hidden" name="userId" value={userId} />
           {extra}
-          <CodeField state={state} />
+          <CodeField state={state} clientError={errors.code} />
           <FormError state={state} />
           <Buttons submit={submit} pending={pending} busy={busy} danger={danger} />
         </form>
@@ -297,14 +307,16 @@ function ConfirmDialog({
 function DeleteDialog({ target, onClose }: { target: ActionTarget; onClose: () => void }) {
   // Con éxito, el servidor lleva a la lista: aquí solo vuelven los errores.
   const [state, formAction, busy] = useActionState<AccountActionState, FormData>(deleteAccountByAdminAction, {});
+  const { errors, formProps } = useFieldErrors(DELETE_MESSAGES);
   const [email, setEmail] = useState("");
   const emailErrorId = useId();
-  const emailInvalid = state.field === "email";
+  // El del navegador (antes de enviar) o el del servidor (otro correo).
+  const emailError = errors.email ?? (state.field === "email" ? state.error : undefined);
 
   return (
     <Dialog title={`¿Eliminar la cuenta de ${target.name}?`} onClose={onClose}>
       {(ids) => (
-        <form action={formAction} className="space-y-4">
+        <form action={formAction} {...formProps} className="space-y-4">
           <p id={ids.description} className="text-sm text-muted">
             Se borran su cuenta, sus movimientos, sus categorías, su WhatsApp y su historial. No se puede deshacer. En el
             historial queda solo “se eliminó una cuenta”.
@@ -322,18 +334,14 @@ function DeleteDialog({ target, onClose }: { target: ActionTarget; onClose: () =
                 autoComplete="off"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
-                aria-invalid={emailInvalid || undefined}
-                aria-describedby={emailInvalid ? emailErrorId : undefined}
+                aria-invalid={Boolean(emailError) || undefined}
+                aria-describedby={describedBy(emailError && emailErrorId)}
                 className="input"
               />
             </label>
-            {emailInvalid && (
-              <p id={emailErrorId} className="text-xs text-danger">
-                {state.error}
-              </p>
-            )}
+            <FieldError id={emailErrorId} message={emailError} />
           </div>
-          <CodeField state={state} />
+          <CodeField state={state} clientError={errors.code} />
           <FormError state={state} />
           <Buttons submit="Eliminar cuenta" pending="Eliminando…" busy={busy} danger disabled={!sameEmail(email, target.email)} />
         </form>

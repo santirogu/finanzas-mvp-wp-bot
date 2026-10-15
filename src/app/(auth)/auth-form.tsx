@@ -3,10 +3,20 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useId, useState, useTransition, type FormEvent } from "react";
+import { describedBy, FieldError } from "@/components/field-error";
+import { useFieldErrors } from "@/components/use-field-errors";
 import { authClient } from "@/lib/auth-client";
 import { authErrorMessage } from "@/lib/auth-errors";
 import { suggestEmailCorrection } from "@/lib/email-typo";
+import type { FieldMessages } from "@/lib/field-errors";
 import { TwoFactorLogin } from "./two-factor-login";
+
+// Los errores de los campos, en español (en vez del globo del navegador).
+const MESSAGES: Record<string, FieldMessages> = {
+  name: { required: "Escribe tu nombre." },
+  email: { required: "Escribe tu correo." },
+  password: { required: "Escribe tu contraseña." },
+};
 
 export function AuthForm({ mode }: { mode: "login" | "register" }) {
   const router = useRouter();
@@ -18,6 +28,10 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
   const [suggestion, setSuggestion] = useState<string | null>(null);
   const [warnedFor, setWarnedFor] = useState<string | null>(null);
   const suggestionId = useId();
+  const nameErrorId = useId();
+  const emailErrorId = useId();
+  const passwordErrorId = useId();
+  const { errors, formProps } = useFieldErrors(MESSAGES);
   // Quien tiene la verificación en dos pasos pasa a un segundo paso después de la contraseña.
   const [needsCode, setNeedsCode] = useState(false);
 
@@ -71,12 +85,22 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
 
       {/* method="post": si se envía antes de que cargue el JavaScript (o si falla), el navegador
           lo manda por su cuenta; con GET la contraseña quedaría en la URL (historial, logs). */}
-      <form method="post" onSubmit={onSubmit} className="mt-6 space-y-4">
+      <form method="post" onSubmit={onSubmit} {...formProps} className="mt-6 space-y-4">
         {isRegister && (
-          <label className="block space-y-1.5">
-            <span className="text-sm font-medium">Nombre</span>
-            <input name="name" required autoComplete="name" className="input" />
-          </label>
+          <div className="space-y-1.5">
+            <label className="block space-y-1.5">
+              <span className="text-sm font-medium">Nombre</span>
+              <input
+                name="name"
+                required
+                autoComplete="name"
+                aria-invalid={Boolean(errors.name) || undefined}
+                aria-describedby={describedBy(errors.name && nameErrorId)}
+                className="input"
+              />
+            </label>
+            <FieldError id={nameErrorId} message={errors.name} />
+          </div>
         )}
         <div className="space-y-1.5">
           <label className="block space-y-1.5">
@@ -88,7 +112,8 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
               autoComplete="email"
               className="input"
               value={email}
-              aria-describedby={suggestion ? suggestionId : undefined}
+              aria-invalid={Boolean(errors.email) || undefined}
+              aria-describedby={describedBy(errors.email && emailErrorId, suggestion && suggestionId)}
               onChange={(e) => {
                 setEmail(e.target.value);
                 setSuggestion(null);
@@ -96,6 +121,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
               onBlur={() => checkEmail(email)}
             />
           </label>
+          <FieldError id={emailErrorId} message={errors.email} />
           {/* Fuera del <label>: si no, el nombre del campo incluiría la sugerencia y su botón.
               aria-live: el lector de pantalla la anuncia al aparecer. */}
           <div aria-live="polite">
@@ -121,17 +147,22 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
             )}
           </div>
         </div>
-        <label className="block space-y-1.5">
-          <span className="text-sm font-medium">Contraseña</span>
-          <input
-            name="password"
-            type="password"
-            required
-            minLength={8}
-            autoComplete={isRegister ? "new-password" : "current-password"}
-            className="input"
-          />
-        </label>
+        <div className="space-y-1.5">
+          <label className="block space-y-1.5">
+            <span className="text-sm font-medium">Contraseña</span>
+            <input
+              name="password"
+              type="password"
+              required
+              minLength={8}
+              autoComplete={isRegister ? "new-password" : "current-password"}
+              aria-invalid={Boolean(errors.password) || undefined}
+              aria-describedby={describedBy(errors.password && passwordErrorId)}
+              className="input"
+            />
+          </label>
+          <FieldError id={passwordErrorId} message={errors.password} />
+        </div>
 
         {error && (
           <p role="alert" className="rounded-lg bg-expense/10 px-3 py-2 text-sm text-expense">
