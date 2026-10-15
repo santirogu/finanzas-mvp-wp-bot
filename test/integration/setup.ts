@@ -8,6 +8,8 @@ beforeEach(async () => {
   // Las categorías globales (user_id NULL) se conservan.
   await db.execute(sql`delete from "user"`);
   await db.execute(sql`delete from whatsapp_message`);
+  // Los eventos de una cuenta se van con ella; los intentos sin cuenta, no.
+  await db.execute(sql`delete from account_event`);
   await db.execute(sql`delete from verification`);
   await db.execute(sql`delete from rate_limit`);
   await db.execute(sql`delete from login_failure`);

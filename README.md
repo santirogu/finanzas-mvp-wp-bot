@@ -47,7 +47,7 @@ pnpm dev                        # http://localhost:3000
 | `pnpm db:seed` | Inserta categorías globales (idempotente) |
 | `pnpm db:studio` | Explorador visual de la base de datos |
 | `pnpm account:delete <correo>` | Borra una cuenta y todos sus datos, para quien lo pide por correo (ver Seguridad → Borrar datos a pedido) |
-| `pnpm messages:cleanup` | Borra los mensajes de WhatsApp sin dueño de más de 30 días (`--dias N`, mínimo 7) |
+| `pnpm messages:cleanup` | Borra los mensajes de WhatsApp y los intentos fallidos de vinculación de números sin cuenta, de más de 30 días (`--dias N`, mínimo 7) |
 | `pnpm admin:grant <correo>` · `admin:revoke` · `admin:list` | Da o quita el rol de admin, o lista los admins (ver Seguridad → Roles) |
 | `pnpm admin:reset-2fa <correo>` | Reinicia la verificación en dos pasos de un admin que perdió el celular y los códigos de respaldo |
 | `pnpm bot:try 'texto'` | Muestra cómo interpreta el bot un mensaje (usa la API de Claude). Usa comillas simples si el texto tiene `$` |
@@ -251,6 +251,25 @@ la app):
 dos pasos activa) y `pnpm admin:revoke` quita el rol. Sin `--env`, usan la base local de `.env`.
 Después de hacerte admin, la pestaña **Admin** te lleva a configurar la verificación en dos pasos.
 
+### Historial de las cuentas
+
+La tabla `account_event` (`src/modules/account/events.ts`) guarda el historial de registro y
+vinculación de WhatsApp de cada cuenta; lo verá el admin en `/admin`:
+
+| Evento | Cuándo | Detalle |
+|---|---|---|
+| `registered` | Se crea la cuenta (hook de Better Auth) | — |
+| `whatsapp_code_created` | Se genera un código para vincular | Sin el código |
+| `whatsapp_linked` | El bot recibe `VINCULAR` con un código válido | Número completo |
+| `whatsapp_unlinked` | Se desvincula (`by_user`), el número pasa a otra cuenta (`number_moved`) o la cuenta vincula otro número (`number_changed`) | Número |
+| `whatsapp_link_failed` | Código inválido o vencido (`invalid_code`) o demasiados intentos (`rate_limited`) | Número; sin cuenta |
+
+Cada evento se guarda en la misma transacción que el cambio. Se borran con la cuenta (incluidos los
+intentos fallidos desde su número vinculado); los intentos de números sin cuenta, con
+`pnpm messages:cleanup`. La migración `0006` reconstruyó lo que ya había en la base (registros,
+vínculos vigentes e intentos fallidos, con `details.reconstructed`); lo borrado antes no se puede
+recuperar.
+
 ### Borrar datos a pedido
 
 Cada persona puede borrar su cuenta desde **Mi cuenta**. Quien no puede entrar puede pedirlo por
@@ -266,8 +285,8 @@ Antes muestra en qué base de datos va a trabajar (sin la clave) y qué va a bor
 el correo de nuevo para confirmar. No uses SQL a mano: podrías dejar mensajes o intentos fallidos
 sueltos.
 
-`pnpm messages:cleanup` borra los mensajes de WhatsApp **sin dueño**: los de números que nunca se
-vincularon a una cuenta, con más de 30 días (`--dias N` para otro plazo; mínimo 7, porque Meta puede
+`pnpm messages:cleanup` borra los datos **sin dueño**: mensajes de WhatsApp e intentos fallidos de
+vinculación de números que nunca se vincularon a una cuenta, con más de 30 días (`--dias N` para otro plazo; mínimo 7, porque Meta puede
 reenviar un mensaje hasta 7 días después y el registro evita procesarlo dos veces). Pide escribir
 `ELIMINAR` para confirmar.
 
