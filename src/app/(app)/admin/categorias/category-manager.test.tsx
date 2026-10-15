@@ -126,9 +126,13 @@ describe("crear y editar (sin código)", () => {
     expect(within(dialog()).queryByLabelText("Código de Google Authenticator")).toBeNull();
     const name = within(dialog()).getByLabelText("Nombre");
     expect(name).toHaveAttribute("maxlength", "40");
+    // El emoji es opcional y explica qué pasa si se deja vacío.
+    expect(within(dialog()).getByRole("textbox", { name: "Emoji (opcional)" })).toHaveAccessibleDescription(
+      "Toca uno de los sugeridos o escribe otro. Si lo dejas vacío, la categoría se mostrará con un punto (•).",
+    );
     await userEvent.type(name, "Mascotas");
     await userEvent.click(within(dialog()).getByRole("button", { name: "Usar 🐾" }));
-    expect(within(dialog()).getByRole("textbox", { name: /^Emoji \(/ })).toHaveValue("🐾");
+    expect(within(dialog()).getByRole("textbox", { name: "Emoji (opcional)" })).toHaveValue("🐾");
     expect(within(dialog()).getByRole("button", { name: "Usar 🐾" })).toHaveAttribute("aria-pressed", "true");
     await userEvent.click(within(dialog()).getByRole("button", { name: "Crear" }));
 
@@ -145,7 +149,7 @@ describe("crear y editar (sin código)", () => {
     expect(dialog()).toHaveAccessibleDescription(/Los movimientos que ya la usan pasan a verse con el nombre nuevo/);
     const name = within(dialog()).getByLabelText("Nombre");
     expect(name).toHaveValue("Mercado");
-    expect(within(dialog()).getByRole("textbox", { name: /^Emoji \(/ })).toHaveValue("🛒");
+    expect(within(dialog()).getByRole("textbox", { name: "Emoji (opcional)" })).toHaveValue("🛒");
     await userEvent.clear(name);
     await userEvent.type(name, "Salud");
     await userEvent.click(within(dialog()).getByRole("button", { name: "Guardar" }));
@@ -162,7 +166,7 @@ describe("crear y editar (sin código)", () => {
     await userEvent.click(screen.getByRole("button", { name: "Nueva categoría" }));
     await userEvent.type(within(dialog()).getByLabelText("Nombre"), "Aves");
     await userEvent.click(within(dialog()).getByRole("button", { name: "Usar 🐾" }));
-    const emoji = within(dialog()).getByRole("textbox", { name: /^Emoji \(/ });
+    const emoji = within(dialog()).getByRole("textbox", { name: "Emoji (opcional)" });
     await userEvent.clear(emoji);
     await userEvent.type(emoji, "🦜");
     expect(within(dialog()).getByRole("button", { name: "Usar 🐾" })).toHaveAttribute("aria-pressed", "false");
@@ -177,7 +181,9 @@ describe("crear y editar (sin código)", () => {
     await userEvent.type(within(dialog()).getByLabelText("Nombre"), "X");
     await userEvent.click(within(dialog()).getByRole("button", { name: "Crear" }));
     expect(await within(dialog()).findByText("Escribe un solo emoji.")).toBeInTheDocument();
-    expect(within(dialog()).getByRole("textbox", { name: /^Emoji \(/ })).toHaveAccessibleDescription("Escribe un solo emoji.");
+    expect(within(dialog()).getByRole("textbox", { name: "Emoji (opcional)" })).toHaveAccessibleDescription(
+      "Toca uno de los sugeridos o escribe otro. Si lo dejas vacío, la categoría se mostrará con un punto (•). Escribe un solo emoji.",
+    );
   });
 
   it("a Otros solo se le cambia el emoji: el nombre no se puede editar", async () => {

@@ -279,6 +279,7 @@ function CategoryFormDialog({
   const [emoji, setEmoji] = useState(category?.emoji ?? "");
   const nameError = useId();
   const emojiError = useId();
+  const emojiHelp = useId();
   const kind = CATEGORY_TYPE_LABELS[type].toLowerCase();
 
   return (
@@ -314,8 +315,8 @@ function CategoryFormDialog({
           </div>
           <div className="space-y-1.5">
             <label className="block space-y-1.5">
-              <span className="text-sm font-medium">
-                Emoji <span className="font-normal text-muted">(uno solo; vacío es •)</span>
+              <span className="block text-sm font-medium">
+                Emoji <span className="font-normal text-muted">(opcional)</span>
               </span>
               <input
                 name="emoji"
@@ -323,10 +324,13 @@ function CategoryFormDialog({
                 onChange={(event) => setEmoji(event.target.value)}
                 autoComplete="off"
                 aria-invalid={state.field === "emoji" || undefined}
-                aria-describedby={state.field === "emoji" ? emojiError : undefined}
-                className="input w-20 text-center text-lg"
+                aria-describedby={state.field === "emoji" ? `${emojiHelp} ${emojiError}` : emojiHelp}
+                className="input block w-20 text-center text-lg"
               />
             </label>
+            <p id={emojiHelp} className="text-xs text-muted">
+              Toca uno de los sugeridos o escribe otro. Si lo dejas vacío, la categoría se mostrará con un punto (•).
+            </p>
             <div role="group" aria-label="Emojis sugeridos" className="flex flex-wrap gap-1">
               {EMOJI_SUGGESTIONS[type].map((suggestion) => (
                 <button
