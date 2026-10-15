@@ -27,6 +27,7 @@ export default defineConfig({
         "src/components/**",
         "src/app/**/{auth-form,nav-tabs,whatsapp-connect,page-skeleton,delete-account-form}.tsx",
         "scripts/*.mjs",
+        "scripts/delete-data.ts",
       ],
       exclude: [
         "**/*.test.ts",

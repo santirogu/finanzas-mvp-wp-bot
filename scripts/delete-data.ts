@@ -1,0 +1,202 @@
+// Borra datos a pedido, desde la terminal. Lo usa el dueño de la app (ver README → Privacidad):
+//
+//   pnpm account:delete <correo>        una cuenta y todos sus datos, igual que "Eliminar mi
+//                                       cuenta" en la app (para quien lo pide por correo)
+//   pnpm messages:cleanup [--dias 30]   mensajes de WhatsApp sin dueño de más de N días
+//
+// Usa la DATABASE_URL de .env (la base local). Para otra base, como producción:
+// --env <archivo> con su DATABASE_URL (un archivo .env*, que git ignora).
+// Siempre muestra en qué base y qué va a borrar, y pide confirmación antes de borrar.
+
+import { config } from "dotenv";
+import { createInterface } from "node:readline/promises";
+import { parseArgs } from "node:util";
+import { pathToFileURL } from "node:url";
+import type { AccountSummary } from "../src/modules/account/admin";
+import { todayInTimezone } from "../src/lib/dates";
+import { CONFIRMATION_WORD } from "../src/modules/account/confirmation";
+import { maskPhone } from "../src/modules/whatsapp/phone";
+
+/** Meta reintenta un webhook hasta 7 días: hasta entonces el mensaje sirve para no procesarlo dos veces. */
+export const MIN_DAYS = 7;
+export const DEFAULT_DAYS = 30;
+const DAY_MS = 24 * 60 * 60 * 1000;
+// Las fechas de los mensajes sin dueño se muestran en la hora de Colombia (la de la app por defecto).
+const DEFAULT_TIMEZONE = "America/Bogota";
+
+const USAGE = [
+  "Uso:",
+  "  pnpm account:delete [--env <archivo>] <correo>",
+  `  pnpm messages:cleanup [--env <archivo>] [--dias ${DEFAULT_DAYS}]`,
+].join("\n");
+
+export type DataOps = {
+  findAccountByEmail: (email: string) => Promise<AccountSummary | null>;
+  deleteAccountData: (userId: string) => Promise<void>;
+  countOrphanMessages: (before: Date) => Promise<{ messages: number; phones: number }>;
+  deleteOrphanMessages: (before: Date) => Promise<number>;
+  close: () => Promise<void>;
+};
+
+export type Deps = {
+  /** Carga las variables de entorno (de .env o del archivo indicado); devuelve un error si falla. */
+  loadEnv: (file?: string) => string | null;
+  env: () => Record<string, string | undefined>;
+  /** La base de datos se abre recién después de cargar las variables. */
+  openData: () => Promise<DataOps>;
+  ask: (question: string) => Promise<string>;
+  now: () => Date;
+  log: (line: string) => void;
+  error: (line: string) => void;
+};
+
+/** "postgres://usuario:clave@host:5432/base" → "host:5432/base" (nunca muestra la clave). */
+export function describeDatabase(url: string): string {
+  try {
+    const { host, pathname } = new URL(url);
+    return `${host}${pathname}`;
+  } catch {
+    return "(DATABASE_URL no es una URL válida)";
+  }
+}
+
+// Como normalizeEmail (src/modules/auth/lockout.ts), que no se importa aquí: abre la base al cargarse.
+const normalizeEmail = (email: string) => email.trim().toLowerCase();
+const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+
+async function deleteAccount(email: string, data: DataOps, { ask, log, error }: Deps): Promise<number> {
+  const account = await data.findAccountByEmail(email);
+  if (!account) {
+    error(`No hay ninguna cuenta con el correo ${normalizeEmail(email)}. No se borró nada.`);
+    return 1;
+  }
+
+  log(`Cuenta: ${account.name} <${account.email}>, creada el ${todayInTimezone(account.timezone, account.createdAt)}`);
+  log("Se borrará, sin forma de recuperarlo:");
+  log(`  - ${plural(account.transactions, "movimiento", "movimientos")}`);
+  log(`  - ${plural(account.categories, "categoría propia", "categorías propias")}`);
+  log(`  - WhatsApp: ${account.phone ? `${maskPhone(account.phone)} vinculado` : "sin número vinculado"}`);
+  log(`  - ${plural(account.messages, "mensaje", "mensajes")} del bot`);
+  log("  - la cuenta, sus sesiones y sus intentos fallidos de login");
+
+  const answer = await ask("Para confirmar, escribe el correo de la cuenta: ");
+  if (normalizeEmail(answer) !== account.email) {
+    log("El correo no coincide: no se borró nada.");
+    return 1;
+  }
+  await data.deleteAccountData(account.id);
+  log(`✓ Cuenta ${account.email} eliminada con todos sus datos.`);
+  log("Avísale por correo que ya se borró (lo promete la página /eliminar-datos).");
+  return 0;
+}
+
+async function cleanOrphans(days: number, data: DataOps, { ask, now, log }: Deps): Promise<number> {
+  const before = new Date(now().getTime() - days * DAY_MS);
+  const { messages, phones } = await data.countOrphanMessages(before);
+  if (messages === 0) {
+    log(`No hay mensajes sin dueño de más de ${days} días. No se borró nada.`);
+    return 0;
+  }
+
+  log(
+    `Se borrarán ${plural(messages, "mensaje", "mensajes")} de WhatsApp de ` +
+      `${plural(phones, "número", "números")} sin cuenta, recibidos antes del ${todayInTimezone(DEFAULT_TIMEZONE, before)}.`,
+  );
+  const answer = await ask(`Para confirmar, escribe ${CONFIRMATION_WORD}: `);
+  if (answer.trim().toUpperCase() !== CONFIRMATION_WORD) {
+    log("No se confirmó: no se borró nada.");
+    return 1;
+  }
+  const deleted = await data.deleteOrphanMessages(before);
+  log(`✓ ${plural(deleted, "mensaje borrado", "mensajes borrados")}.`);
+  return 0;
+}
+
+/** Corre el comando y devuelve el código de salida. */
+export async function runCli(argv: string[], deps: Deps): Promise<number> {
+  let parsed;
+  try {
+    parsed = parseArgs({
+      args: argv,
+      allowPositionals: true,
+      options: { env: { type: "string" }, dias: { type: "string" } },
+    });
+  } catch (err) {
+    deps.error(`${(err as Error).message}\n${USAGE}`);
+    return 2;
+  }
+  const [command, email, ...extra] = parsed.positionals;
+  const { env: envFile, dias } = parsed.values;
+
+  const isAccount = command === "cuenta" && Boolean(email) && extra.length === 0 && dias === undefined;
+  const isOrphans = command === "huerfanos" && email === undefined;
+  const days = dias === undefined ? DEFAULT_DAYS : Number(dias);
+  if (!isAccount && !isOrphans) {
+    deps.error(USAGE);
+    return 2;
+  }
+  if (isOrphans && !(Number.isInteger(days) && days >= MIN_DAYS)) {
+    deps.error(`--dias debe ser un número entero de ${MIN_DAYS} o más: Meta puede reenviar un mensaje hasta ${MIN_DAYS} días después.`);
+    return 2;
+  }
+
+  const envError = deps.loadEnv(envFile);
+  if (envError) {
+    deps.error(`No se pudo leer ${envFile ?? ".env"}: ${envError}`);
+    return 2;
+  }
+  const url = deps.env().DATABASE_URL;
+  if (!url) {
+    deps.error(`Falta DATABASE_URL en ${envFile ?? ".env"}.`);
+    return 2;
+  }
+  deps.log(`Base de datos: ${describeDatabase(url)}`);
+
+  const data = await deps.openData();
+  try {
+    return isAccount ? await deleteAccount(email, data, deps) : await cleanOrphans(days, data, deps);
+  } finally {
+    await data.close();
+  }
+}
+
+// Stryker disable all: conexión real con la base, el teclado y la terminal; la lógica de arriba
+// se prueba con estas piezas simuladas (scripts/delete-data.test.ts).
+export const realDeps: Deps = {
+  loadEnv: (file) => {
+    // Con --env, el archivo manda aunque la terminal ya tenga una DATABASE_URL.
+    const result = config({ path: file ?? ".env", override: Boolean(file), quiet: true });
+    return file && result.error ? result.error.message : null;
+  },
+  env: () => process.env,
+  openData: async () => {
+    const [{ db }, admin, { deleteAccountData }] = await Promise.all([
+      import("../src/db"),
+      import("../src/modules/account/admin"),
+      import("../src/modules/account/delete-account"),
+    ]);
+    return { ...admin, deleteAccountData, close: () => db.$client.end() };
+  },
+  ask: async (question) => {
+    const rl = createInterface({ input: process.stdin, output: process.stdout });
+    try {
+      return await rl.question(question);
+    } finally {
+      rl.close();
+    }
+  },
+  now: () => new Date(),
+  log: (line) => console.log(line),
+  error: (line) => console.error(line),
+};
+
+if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
+  runCli(process.argv.slice(2), realDeps).then(
+    (code) => process.exit(code),
+    (err) => {
+      console.error(err);
+      process.exit(1);
+    },
+  );
+}
+// Stryker restore all

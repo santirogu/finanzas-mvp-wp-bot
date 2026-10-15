@@ -46,6 +46,8 @@ pnpm dev                        # http://localhost:3000
 | `pnpm db:check-drift` | Verifica que cada cambio del esquema tenga su migración (lo corre el CI) |
 | `pnpm db:seed` | Inserta categorías globales (idempotente) |
 | `pnpm db:studio` | Explorador visual de la base de datos |
+| `pnpm account:delete <correo>` | Borra una cuenta y todos sus datos, para quien lo pide por correo (ver Seguridad → Borrar datos a pedido) |
+| `pnpm messages:cleanup` | Borra los mensajes de WhatsApp sin dueño de más de 30 días (`--dias N`, mínimo 7) |
 | `pnpm bot:try 'texto'` | Muestra cómo interpreta el bot un mensaje (usa la API de Claude). Usa comillas simples si el texto tiene `$` |
 | `pnpm bot:eval` | Corre el set de ~50 frases de prueba del bot y reporta aciertos, latencia y costo |
 
@@ -192,6 +194,34 @@ cuenta por correo, también para correos que no existen, así que no revela cuá
 Un login correcto reinicia el contador. Implementado con hooks de Better Auth
 (`src/lib/auth.ts`) y la tabla `login_failure` (`src/modules/auth/lockout.ts`). Contra: alguien
 podría bloquear a propósito la cuenta de otra persona; por eso el bloqueo es corto.
+
+### Borrar datos a pedido
+
+Cada persona puede borrar su cuenta desde **Mi cuenta**. Quien no puede entrar puede pedirlo por
+correo, y `/eliminar-datos` promete hacerlo en máximo 30 días. Para eso:
+
+```bash
+pnpm account:delete persona@correo.com
+```
+
+Borra lo mismo que el botón de la app (`deleteAccountData`): la cuenta, sus sesiones, movimientos,
+categorías propias, el número vinculado, sus mensajes del bot y sus intentos fallidos de login.
+Antes muestra en qué base de datos va a trabajar (sin la clave) y qué va a borrar, y pide escribir
+el correo de nuevo para confirmar. No uses SQL a mano: podrías dejar mensajes o intentos fallidos
+sueltos.
+
+`pnpm messages:cleanup` borra los mensajes de WhatsApp **sin dueño**: los de números que nunca se
+vincularon a una cuenta, con más de 30 días (`--dias N` para otro plazo; mínimo 7, porque Meta puede
+reenviar un mensaje hasta 7 días después y el registro evita procesarlo dos veces). Pide escribir
+`ELIMINAR` para confirmar.
+
+**Contra producción:** los dos usan la `DATABASE_URL` de `.env` (la base local). Para producción,
+copia la `DATABASE_URL` de Neon (*Dashboard → Connect*) en un archivo `.env.produccion` (git ignora
+todos los `.env*`), pasa `--env .env.produccion` y **borra el archivo al terminar**:
+
+```bash
+pnpm account:delete --env .env.produccion persona@correo.com
+```
 
 ### Versiones forzadas de dependencias
 
