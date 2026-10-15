@@ -63,8 +63,16 @@ test("el admin desbloquea el inicio de sesión y cierra las sesiones de una cuen
 }) => {
   const beto = await personWithWhatsApp(browser, "Beto Acciones", request);
   await lockLogin(beto.email);
+  await test.step("Beto, bloqueado, no puede entrar ni con su contraseña", async () => {
+    await logOut(beto.page);
+    await logIn(beto.page, beto.email);
+    await expect(visible(beto.page.getByRole("alert").filter({ hasText: "quedó bloqueada" }))).toBeVisible();
+    await expect(beto.page).not.toHaveURL(/\/dashboard$/);
+  });
+
   const { secret } = await adminOnAccount(page, beto.email);
   await expect(heading(page, /Beto Acciones/)).toBeVisible();
+  await expect(visible(page.getByText("Todavía no hay acciones del admin sobre esta cuenta."))).toBeVisible();
 
   await test.step("un código equivocado se marca y dice cuántos intentos quedan", async () => {
     await actionsRegion(page).getByRole("button", { name: "Desbloquear" }).click();
@@ -84,7 +92,14 @@ test("el admin desbloquea el inicio de sesión y cierra las sesiones de una cuen
     await expect(visible(page.getByText(/Bloqueada hasta las/))).toHaveCount(0);
   });
 
+  await test.step("Beto ya puede entrar", async () => {
+    await logIn(beto.page, beto.email);
+    await expect(beto.page).toHaveURL(/\/dashboard$/);
+  });
+
   await test.step("el mismo código no sirve para otra acción; el siguiente sí", async () => {
+    // Con la sesión nueva de Beto, aparece "Cerrar sesiones".
+    await page.reload();
     await actionsRegion(page).getByRole("button", { name: "Cerrar sesiones" }).click();
     await confirmWith(page, firstCode, "Cerrar sesiones");
     await expect(dialog(page).getByText("Ese código ya se usó. Espera el siguiente en Google Authenticator.")).toBeVisible();
@@ -132,6 +147,9 @@ test("el admin desvincula el WhatsApp y elimina una cuenta; de ella solo queda '
     // Carla lo ve en su Resumen: puede vincularlo otra vez.
     await carla.page.reload();
     await expect(visible(carla.page.getByRole("button", { name: "Conectar WhatsApp" }))).toBeVisible();
+    // Y el bot ya no registra lo que escriba desde ese número.
+    await sendWhatsApp(request, carla.phone, "gasté 20 mil en almuerzo");
+    expect(await nthReply(request, carla.phone, 2)).toContain("Este número aún no está vinculado a una cuenta");
   });
 
   await test.step("eliminar pide su correo exacto y el código", async () => {
@@ -143,6 +161,8 @@ test("el admin desvincula el WhatsApp y elimina una cuenta; de ella solo queda '
     await expect(submit).toBeDisabled();
     await dialog(page).getByLabel(/Escribe su correo/).fill(carla.email.toUpperCase());
     await expect(submit).toBeEnabled();
+    // Con el botón rojo ya activo (axe no revisa el contraste de los botones desactivados).
+    expect(await seriousViolations(page), "ventana de eliminar, lista para enviar").toEqual([]);
     await confirmWith(page, codeFor(secret, 1), "Eliminar cuenta");
   });
 
@@ -229,6 +249,11 @@ test("en celular y en modo oscuro, las ventanas se ven completas y sin problemas
   ] as const) {
     await region(page).getByRole("button", { name: button }).click();
     await expect(dialog(page)).toBeVisible();
+    if (button === "Eliminar cuenta") {
+      await dialog(page).getByLabel(/Escribe su correo/).fill(eva.email);
+      // Con el botón rojo activo y el mouse encima: también así debe leerse.
+      await dialog(page).getByRole("button", { name: "Eliminar cuenta" }).hover();
+    }
     const box = (await dialog(page).boundingBox())!;
     expect(box.x, button).toBeGreaterThanOrEqual(0);
     expect(box.x + box.width, button).toBeLessThanOrEqual(320);

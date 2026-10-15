@@ -135,6 +135,35 @@ describe("AccountActions", () => {
     expect(codeField()).toHaveValue("");
   });
 
+  it.each([
+    ["Desbloquear", "unlockLoginAction", "Desbloqueando…"],
+    ["Cerrar sesiones", "revokeSessionsAction", "Cerrando…"],
+    ["Desvincular", "unlinkWhatsAppByAdminAction", "Desvinculando…"],
+  ] as const)("mientras '%s' se envía, el botón lo dice y no deja enviar dos veces", async (button, action, pending) => {
+    let finish: (state: object) => void = () => {};
+    actions[action].mockReturnValue(new Promise((resolve) => (finish = resolve)));
+    render(<AccountActions target={target()} />);
+    await userEvent.click(actionsSection().getByRole("button", { name: button }));
+    await userEvent.type(codeField(), "123456");
+    await userEvent.click(within(dialog()).getByRole("button", { name: button }));
+
+    const busy = await within(dialog()).findByRole("button", { name: pending });
+    expect(busy).toBeDisabled();
+    await userEvent.click(busy);
+    expect(actions[action]).toHaveBeenCalledTimes(1);
+    finish({ error: "El código no es correcto. Te quedan 4 intentos.", field: "code" });
+    expect(await within(dialog()).findByRole("button", { name: button })).toBeEnabled();
+  });
+
+  it("al cerrar la ventana con Esc (evento close), se va sin enviar", async () => {
+    render(<AccountActions target={target()} />);
+    await userEvent.click(actionsSection().getByRole("button", { name: "Desvincular" }));
+    (dialog() as HTMLDialogElement).close();
+    expect(await screen.findByRole("region", { name: "Acciones" })).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(actions.unlinkWhatsAppByAdminAction).not.toHaveBeenCalled();
+  });
+
   describe("eliminar", () => {
     async function openDelete() {
       render(<AccountActions target={target()} />);
@@ -161,6 +190,19 @@ describe("AccountActions", () => {
       await userEvent.clear(box.getByLabelText(/Escribe su correo/));
       await userEvent.type(box.getByLabelText(/Escribe su correo/), " BETO@correo.com ");
       expect(submit).toBeEnabled();
+    });
+
+    it("mientras se envía dice 'Eliminando…'", async () => {
+      // Se resuelve al final: React encadena las acciones pendientes y una sin terminar frenaría las demás pruebas.
+      let finish: (state: object) => void = () => {};
+      actions.deleteAccountByAdminAction.mockReturnValue(new Promise((resolve) => (finish = resolve)));
+      const box = await openDelete();
+      await userEvent.type(box.getByLabelText(/Escribe su correo/), "beto@correo.com");
+      await userEvent.type(codeField(), "654321");
+      await userEvent.click(box.getByRole("button", { name: "Eliminar cuenta" }));
+      expect(await box.findByRole("button", { name: "Eliminando…" })).toBeDisabled();
+      finish({ error: "Esta cuenta ya no existe." });
+      expect(await box.findByRole("alert")).toHaveTextContent("Esta cuenta ya no existe.");
     });
 
     it("envía la cuenta, el correo y el código; muestra el error del correo junto al campo", async () => {

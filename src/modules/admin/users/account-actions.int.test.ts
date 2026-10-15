@@ -9,6 +9,7 @@ import {
   loginFailure,
   session,
   transaction,
+  twoFactor,
   user,
   whatsappLink,
   whatsappMessage,
@@ -123,6 +124,17 @@ describe("revokeSessions", () => {
       ok: true,
       message: "Se cerró la sesión de Beto Ruiz.",
     });
+  });
+
+  it("con solo sesiones vencidas tampoco hay nada que cerrar", async () => {
+    const { codeAt } = await seed();
+    const carla = await createUser({ name: "Carla" });
+    await db.insert(session).values({ id: randomUUID(), token: randomUUID(), userId: carla.id, expiresAt: new Date(NOW.getTime() - 1000) });
+    expect(await revokeSessions({ userId: carla.id, code: codeAt(NOW) }, NOW)).toEqual({
+      ok: false,
+      error: "La cuenta ya no tiene sesiones abiertas.",
+    });
+    expect(await sessionsOf(carla.id)).toHaveLength(1);
   });
 
   it("sin sesiones abiertas, avisa sin gastar el código", async () => {
@@ -267,6 +279,17 @@ describe("las cuentas que no se tocan", () => {
       expect(await run(id, codeAt(NOW)), id).toEqual({ ok: false, error: "Esta cuenta ya no existe." });
     }
     expect(await codeUses()).toBe(0);
+  });
+
+  it.each(actions.slice(0, 3))("%s: con un código equivocado no cambia nada y lo cuenta como intento", async (_, run) => {
+    const { admin, ana } = await seed();
+    expect(await run(ana.id, "000000")).toMatchObject({ ok: false, field: "code", error: expect.stringMatching(/^El código no es correcto/) });
+    expect(await lockOf(ana.email)).toHaveLength(1);
+    expect(await sessionsOf(ana.id)).toHaveLength(3);
+    expect(await linkOf(ana.id)).toHaveLength(1);
+    expect(await eventsOf(ana.id)).toEqual([]);
+    const [factor] = await db.select({ failures: twoFactor.failedVerificationCount }).from(twoFactor).where(eq(twoFactor.userId, admin.id));
+    expect(factor.failures).toBe(1);
   });
 
   it.each(actions)("%s: sin admin falla antes de tocar nada", async (_, run) => {
