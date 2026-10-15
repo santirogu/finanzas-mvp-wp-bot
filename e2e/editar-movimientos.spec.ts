@@ -80,7 +80,7 @@ test("nadie puede abrir la edición de un movimiento ajeno", async ({ browser })
   const beto = await newPerson(browser);
   await register(beto, "Beto");
   await beto.goto(editUrl);
-  await expect(beto.getByText(/could not be found|no se encontr/i)).toBeVisible();
+  await expect(visible(beto.getByRole("heading", { name: "No encontramos esta página" }))).toBeVisible();
   await expect(beto.getByText("Secreto de Ana")).toHaveCount(0);
   await expect(beto.getByRole("button", { name: "Guardar cambios" })).toHaveCount(0);
 });

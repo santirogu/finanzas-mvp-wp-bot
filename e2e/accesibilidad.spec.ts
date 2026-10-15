@@ -70,6 +70,12 @@ test.describe("páginas con sesión (y con datos)", () => {
     expect(await seriousViolations(page, { only: "[role=status]" })).toEqual([]);
   });
 
+  test("la página 404 tampoco", async ({ page }) => {
+    await page.goto("/esta-pagina-no-existe");
+    await expect(visible(page.getByRole("heading", { name: "No encontramos esta página" }))).toBeVisible();
+    expect(await seriousViolations(page)).toEqual([]);
+  });
+
   test("Mi cuenta tampoco", async ({ page }) => {
     await visible(page.getByRole("link", { name: "Mi cuenta" })).click();
     await expect(visible(page.getByRole("heading", { name: "Mi cuenta", exact: true }))).toBeVisible();
