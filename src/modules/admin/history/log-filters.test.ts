@@ -63,7 +63,13 @@ describe("configuración", () => {
     expect(EVENT_FILTERS).toEqual([...EVENT_TYPES, "admin"]);
     expect(ADMIN_ACTIONS_FILTER).toBe("admin");
     expect(EVENT_TYPE_FILTER_LABELS.admin).toBe("Acciones del admin");
-    expect(ADMIN_EVENT_TYPES).toEqual(["login_unlocked", "sessions_revoked", "account_deleted"]);
+    expect(ADMIN_EVENT_TYPES).toEqual([
+      "login_unlocked",
+      "sessions_revoked",
+      "account_suspended",
+      "account_reactivated",
+      "account_deleted",
+    ]);
     expect(DATE_PRESETS.map((p) => DATE_PRESET_LABELS[p])).toEqual([
       "Todo",
       "Hoy",
@@ -372,6 +378,9 @@ describe("formatos", () => {
     [{ sessions: 3 }, "3 sesiones"],
     [{ sessions: 0 }, ""],
     [{ reason: "by_user" as const, sessions: 2, reconstructed: true }, "lo desvinculó la persona · 2 sesiones · reconstruido de datos anteriores"],
+    [{ note: "Usa la cuenta de otra persona" }, "motivo: Usa la cuenta de otra persona"],
+    [{ note: "Spam", sessions: 1 }, "motivo: Spam · 1 sesión"],
+    [{ note: "" }, ""],
   ])("eventDetail(%j) = %j", (details, expected) => {
     expect(eventDetail(details)).toBe(expected);
   });
@@ -382,6 +391,8 @@ describe("isAdminAction", () => {
     ["login_unlocked", {}, true],
     ["sessions_revoked", { sessions: 2 }, true],
     ["account_deleted", {}, true],
+    ["account_suspended", { note: "Spam" }, true],
+    ["account_reactivated", {}, true],
     ["whatsapp_unlinked", { reason: "by_admin" }, true],
     ["whatsapp_unlinked", { reason: "by_user" }, false],
     ["whatsapp_unlinked", { reason: "number_moved" }, false],

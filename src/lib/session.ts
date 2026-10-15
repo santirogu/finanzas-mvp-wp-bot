@@ -25,6 +25,8 @@ export const TWO_FACTOR_SETUP_PATH = "/admin/seguridad";
 export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return null;
+  // Al suspenderla se cierran sus sesiones; si quedara alguna (dos pedidos a la vez), no sirve.
+  if (session.user.suspendedAt) return null;
   const { id, name, email, timezone, currency, role, twoFactorEnabled } = session.user;
   return {
     id,

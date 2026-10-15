@@ -20,6 +20,10 @@ export const user = pgTable("user", {
   // Verificación en dos pasos (plugin twoFactor): se activa al confirmar el primer código de
   // Google Authenticator. Obligatoria para entrar a la sección de administración.
   twoFactorEnabled: boolean("two_factor_enabled").notNull().default(false),
+  // Suspendida por el admin (/admin/usuarios): no puede entrar a la web ni usar el bot hasta que la
+  // reactive (src/modules/account/suspension.ts). El motivo es interno: solo lo ve el admin.
+  suspendedAt: timestamp("suspended_at", { withTimezone: true }),
+  suspensionReason: text("suspension_reason"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()

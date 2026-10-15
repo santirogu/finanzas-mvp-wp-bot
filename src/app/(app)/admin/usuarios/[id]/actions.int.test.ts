@@ -20,9 +20,14 @@ vi.mock("@/lib/session", () => ({ requireAdmin: mocks.requireAdmin }));
 vi.mock("next/cache", () => ({ refresh: mocks.refresh }));
 vi.mock("next/navigation", () => ({ redirect: mocks.redirect }));
 
-const { deleteAccountByAdminAction, revokeSessionsAction, unlinkWhatsAppByAdminAction, unlockLoginAction } = await import(
-  "./actions"
-);
+const {
+  deleteAccountByAdminAction,
+  reactivateAccountAction,
+  revokeSessionsAction,
+  suspendAccountAction,
+  unlinkWhatsAppByAdminAction,
+  unlockLoginAction,
+} = await import("./actions");
 
 async function seed() {
   const { admin, codeAt } = await createAdminWithTwoFactor();
@@ -56,11 +61,25 @@ describe("con éxito", () => {
     ["unlockLoginAction", unlockLoginAction, "Se desbloqueó el inicio de sesión de Ana Pérez.", "login_unlocked"],
     ["revokeSessionsAction", revokeSessionsAction, "Se cerró la sesión de Ana Pérez.", "sessions_revoked"],
     ["unlinkWhatsAppByAdminAction", unlinkWhatsAppByAdminAction, "Se desvinculó el WhatsApp de Ana Pérez.", "whatsapp_unlinked"],
+    ["suspendAccountAction", suspendAccountAction, "Se suspendió la cuenta de Ana Pérez.", "account_suspended"],
   ] as const)("%s avisa qué pasó y vuelve a dibujar la página", async (_, action, message, type) => {
     const { ana, code } = await seed();
     expect(await action({}, form({ userId: ana.id, code: code() }))).toEqual({ message });
     expect(mocks.refresh).toHaveBeenCalledTimes(1);
     expect(await db.select({ type: accountEvent.type }).from(accountEvent).where(eq(accountEvent.userId, ana.id))).toEqual([{ type }]);
+  });
+
+  it("suspendAccountAction guarda el motivo del formulario", async () => {
+    const { ana, code } = await seed();
+    await suspendAccountAction({}, form({ userId: ana.id, code: code(), reason: "Spam" }));
+    expect((await db.select({ reason: user.suspensionReason }).from(user).where(eq(user.id, ana.id)))[0].reason).toBe("Spam");
+  });
+
+  it("reactivateAccountAction reactiva y vuelve a dibujar la página", async () => {
+    const { ana, code } = await seed();
+    await db.update(user).set({ suspendedAt: new Date() }).where(eq(user.id, ana.id));
+    expect(await reactivateAccountAction({}, form({ userId: ana.id, code: code() }))).toEqual({ message: "Se reactivó la cuenta de Ana Pérez." });
+    expect(mocks.refresh).toHaveBeenCalledTimes(1);
   });
 
   it("deleteAccountByAdminAction borra la cuenta y lleva a la lista con el aviso", async () => {
@@ -77,9 +96,13 @@ describe("con un error", () => {
     ["unlockLoginAction", unlockLoginAction],
     ["revokeSessionsAction", revokeSessionsAction],
     ["unlinkWhatsAppByAdminAction", unlinkWhatsAppByAdminAction],
+    ["suspendAccountAction", suspendAccountAction],
+    ["reactivateAccountAction", reactivateAccountAction],
     ["deleteAccountByAdminAction", deleteAccountByAdminAction],
   ] as const)("%s devuelve el error junto a su campo, sin redibujar ni redirigir", async (_, action) => {
     const { ana } = await seed();
+    // Para reactivar, la cuenta tiene que estar suspendida (si no, avisa antes de mirar el código).
+    if (action === reactivateAccountAction) await db.update(user).set({ suspendedAt: new Date() }).where(eq(user.id, ana.id));
     expect(await action({}, form({ userId: ana.id, code: "12345", email: ana.email }))).toEqual({
       error: "Escribe los 6 dígitos del código de Google Authenticator.",
       field: "code",
@@ -92,6 +115,8 @@ describe("con un error", () => {
     ["unlockLoginAction", unlockLoginAction],
     ["revokeSessionsAction", revokeSessionsAction],
     ["unlinkWhatsAppByAdminAction", unlinkWhatsAppByAdminAction],
+    ["suspendAccountAction", suspendAccountAction],
+    ["reactivateAccountAction", reactivateAccountAction],
     ["deleteAccountByAdminAction", deleteAccountByAdminAction],
   ] as const)("%s con el formulario vacío no se rompe ni toca nada", async (_, action) => {
     await seed();
@@ -114,6 +139,8 @@ describe("sin admin", () => {
     ["unlockLoginAction", unlockLoginAction],
     ["revokeSessionsAction", revokeSessionsAction],
     ["unlinkWhatsAppByAdminAction", unlinkWhatsAppByAdminAction],
+    ["suspendAccountAction", suspendAccountAction],
+    ["reactivateAccountAction", reactivateAccountAction],
     ["deleteAccountByAdminAction", deleteAccountByAdminAction],
   ] as const)("%s falla antes de tocar nada", async (_, action) => {
     const { ana, code } = await seed();

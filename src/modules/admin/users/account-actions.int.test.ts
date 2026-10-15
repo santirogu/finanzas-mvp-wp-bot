@@ -12,6 +12,7 @@ import {
   twoFactor,
   user,
   whatsappLink,
+  whatsappLinkCode,
   whatsappMessage,
 } from "@/db/schema";
 import { createUser } from "../../../../test/integration/factories";
@@ -22,7 +23,9 @@ import { createAdminWithTwoFactor } from "../../../../test/integration/two-facto
 // solo cambia la elegida. La sesión se simula: la del admin de cada prueba.
 const auth = vi.hoisted(() => ({ requireAdmin: vi.fn() }));
 vi.mock("@/lib/session", () => ({ requireAdmin: auth.requireAdmin }));
-const { deleteAccount, revokeSessions, unlinkWhatsApp, unlockLogin } = await import("./account-actions");
+const { deleteAccount, reactivateAccount, revokeSessions, suspendAccount, unlinkWhatsApp, unlockLogin } = await import(
+  "./account-actions"
+);
 
 const NOW = new Date("2026-10-12T21:00:10Z");
 const DAY = 24 * 60 * 60 * 1000;
@@ -175,6 +178,83 @@ describe("unlinkWhatsApp", () => {
   });
 });
 
+describe("suspendAccount y reactivateAccount", () => {
+  const stateOf = (id: string) =>
+    db
+      .select({ suspendedAt: user.suspendedAt, suspensionReason: user.suspensionReason })
+      .from(user)
+      .where(eq(user.id, id))
+      .then((rows) => rows[0]);
+
+  it("suspende: guarda desde cuándo y el motivo (limpio), cierra sus sesiones y su código pendiente; no toca a nadie más", async () => {
+    const { admin, codeAt, ana, beto } = await seed();
+    await db.insert(whatsappLinkCode).values({ userId: ana.id, codeHash: `hash-${ana.id}`, expiresAt: new Date(NOW.getTime() + 600_000) });
+
+    expect(await suspendAccount({ userId: ana.id, code: codeAt(NOW), reason: "  Usa la cuenta\nde otra   persona " }, NOW)).toEqual({
+      ok: true,
+      message: "Se suspendió la cuenta de Ana Pérez.",
+    });
+    expect(await stateOf(ana.id)).toEqual({ suspendedAt: NOW, suspensionReason: "Usa la cuenta de otra persona" });
+    expect(await sessionsOf(ana.id)).toEqual([]);
+    expect(await db.select().from(whatsappLinkCode).where(eq(whatsappLinkCode.userId, ana.id))).toEqual([]);
+    // Sus datos se conservan: el WhatsApp sigue vinculado (el bot le responde que está suspendida).
+    expect(await linkOf(ana.id)).toHaveLength(1);
+    expect(await eventsOf(ana.id)).toEqual([
+      { type: "account_suspended", phone: null, details: { note: "Usa la cuenta de otra persona", sessions: 2 }, adminId: admin.id },
+    ]);
+    expect(await stateOf(beto.id)).toEqual({ suspendedAt: null, suspensionReason: null });
+    expect(await sessionsOf(beto.id)).toHaveLength(1);
+  });
+
+  it("sin motivo (o solo espacios), no guarda ninguno", async () => {
+    const { codeAt, beto } = await seed();
+    await db.delete(session).where(eq(session.userId, beto.id));
+    expect(await suspendAccount({ userId: beto.id, code: codeAt(NOW), reason: "   " }, NOW)).toMatchObject({ ok: true });
+    expect(await stateOf(beto.id)).toEqual({ suspendedAt: NOW, suspensionReason: null });
+    expect(await eventsOf(beto.id)).toEqual([expect.objectContaining({ type: "account_suspended", details: {} })]);
+  });
+
+  it("una cuenta ya suspendida no se vuelve a suspender (sin gastar el código)", async () => {
+    const { codeAt, ana } = await seed();
+    await db.update(user).set({ suspendedAt: NOW }).where(eq(user.id, ana.id));
+    expect(await suspendAccount({ userId: ana.id, code: codeAt(NOW) }, NOW)).toEqual({ ok: false, error: "La cuenta ya está suspendida." });
+    expect(await codeUses()).toBe(0);
+  });
+
+  it("reactiva: borra la suspensión y su motivo, y lo registra", async () => {
+    const { admin, codeAt, ana } = await seed();
+    await db.update(user).set({ suspendedAt: NOW, suspensionReason: "Spam" }).where(eq(user.id, ana.id));
+    expect(await reactivateAccount({ userId: ana.id, code: codeAt(NOW) }, NOW)).toEqual({
+      ok: true,
+      message: "Se reactivó la cuenta de Ana Pérez.",
+    });
+    expect(await stateOf(ana.id)).toEqual({ suspendedAt: null, suspensionReason: null });
+    expect(await eventsOf(ana.id)).toEqual([{ type: "account_reactivated", phone: null, details: {}, adminId: admin.id }]);
+  });
+
+  it("una cuenta que no está suspendida no se reactiva (sin gastar el código)", async () => {
+    const { codeAt, ana } = await seed();
+    expect(await reactivateAccount({ userId: ana.id, code: codeAt(NOW) }, NOW)).toEqual({ ok: false, error: "La cuenta no está suspendida." });
+    expect(await codeUses()).toBe(0);
+  });
+
+  it("con un código equivocado no suspende ni reactiva", async () => {
+    const { ana, beto } = await seed();
+    await db.update(user).set({ suspendedAt: NOW }).where(eq(user.id, beto.id));
+    expect(await suspendAccount({ userId: ana.id, code: "000000" }, NOW)).toMatchObject({ ok: false, field: "code" });
+    expect(await reactivateAccount({ userId: beto.id, code: "000000" }, NOW)).toMatchObject({ ok: false, field: "code" });
+    expect(await stateOf(ana.id)).toMatchObject({ suspendedAt: null });
+    expect(await stateOf(beto.id)).toMatchObject({ suspendedAt: NOW });
+    expect(await sessionsOf(ana.id)).toHaveLength(3);
+  });
+
+  it("suspendida, las demás acciones siguen disponibles (eliminar, desvincular)", async () => {
+    const { codeAt, ana } = await seed();
+    await db.update(user).set({ suspendedAt: NOW }).where(eq(user.id, ana.id));
+    expect(await unlinkWhatsApp({ userId: ana.id, code: codeAt(NOW) }, NOW)).toMatchObject({ ok: true });
+  });
+});
+
 describe("deleteAccount", () => {
   async function withData(userId: string, phone: string) {
     const [own] = await db.insert(category).values({ userId, name: `Propia ${userId}`, type: "expense" }).returning();
@@ -248,7 +328,9 @@ describe("las cuentas que no se tocan", () => {
     ["unlockLogin", (userId, code) => unlockLogin({ userId, code }, NOW)],
     ["revokeSessions", (userId, code) => revokeSessions({ userId, code }, NOW)],
     ["unlinkWhatsApp", (userId, code) => unlinkWhatsApp({ userId, code }, NOW)],
+    ["suspendAccount", (userId, code) => suspendAccount({ userId, code }, NOW)],
     ["deleteAccount", (userId, code) => deleteAccount({ userId, code, email: "" }, NOW)],
+    ["reactivateAccount", (userId, code) => reactivateAccount({ userId, code }, NOW)],
   ];
 
   it.each(actions)("%s: ni la del propio admin", async (_, run) => {
@@ -270,6 +352,7 @@ describe("las cuentas que no se tocan", () => {
       error: "Las cuentas de admin no se cambian desde aquí: los roles se manejan desde la terminal.",
     });
     expect(await sessionsOf(other.id)).toHaveLength(1);
+    expect((await db.select({ suspendedAt: user.suspendedAt }).from(user).where(eq(user.id, other.id)))[0].suspendedAt).toBeNull();
     expect(await codeUses()).toBe(0);
   });
 
@@ -281,7 +364,7 @@ describe("las cuentas que no se tocan", () => {
     expect(await codeUses()).toBe(0);
   });
 
-  it.each(actions.slice(0, 3))("%s: con un código equivocado no cambia nada y lo cuenta como intento", async (_, run) => {
+  it.each(actions.slice(0, 4))("%s: con un código equivocado no cambia nada y lo cuenta como intento", async (_, run) => {
     const { admin, ana } = await seed();
     expect(await run(ana.id, "000000")).toMatchObject({ ok: false, field: "code", error: expect.stringMatching(/^El código no es correcto/) });
     expect(await lockOf(ana.email)).toHaveLength(1);
@@ -300,6 +383,7 @@ describe("las cuentas que no se tocan", () => {
     expect(await lockOf(ana.email)).toHaveLength(1);
     expect(await sessionsOf(ana.id)).toHaveLength(3);
     expect(await linkOf(ana.id)).toHaveLength(1);
+    expect((await db.select({ suspendedAt: user.suspendedAt }).from(user).where(eq(user.id, ana.id)))[0].suspendedAt).toBeNull();
     expect(await eventsOf(ana.id)).toEqual([]);
   });
 });

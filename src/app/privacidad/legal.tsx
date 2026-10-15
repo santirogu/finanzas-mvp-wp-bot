@@ -1,6 +1,8 @@
 // Contenido legal compartido entre /privacidad y /eliminar-datos.
 
-export const CONTACT_EMAIL = "santiagorock000@gmail.com";
+import { CONTACT_EMAIL } from "@/lib/contact";
+
+export { CONTACT_EMAIL };
 export const LEGAL_UPDATED_AT = "15 de octubre de 2026";
 
 export const legalProseClass =

@@ -7,6 +7,7 @@ import { twoFactor } from "better-auth/plugins";
 import { PHASE_PRODUCTION_BUILD } from "next/constants";
 import { db, schema } from "@/db";
 import { recordEvent } from "@/modules/account/events";
+import { SUSPENDED_MESSAGE, isSuspended } from "@/modules/account/suspension";
 import { clearFailures, lockedUntil, normalizeEmail, recordFailure } from "@/modules/auth/lockout";
 import {
   TWO_FACTOR_DISABLED_PATHS,
@@ -57,6 +58,8 @@ export const auth = betterAuth({
       // input: false → el registro ignora el rol que mande el cliente (queda "user") y
       // "actualizar perfil" lo rechaza. Solo se cambia desde la terminal (pnpm admin:grant).
       role: { type: [...ROLES], required: false, defaultValue: "user", input: false },
+      // Suspendida por el admin: input: false → nadie la cambia con "actualizar perfil".
+      suspendedAt: { type: "date", required: false, input: false },
     },
   },
   // Límite de intentos por IP (contra quien prueba contraseñas a la fuerza), guardado en Postgres.
@@ -104,6 +107,17 @@ export const auth = betterAuth({
   // Historial de la cuenta (src/modules/account/events.ts). Si no se puede guardar el evento, el
   // registro sigue: perder una línea del historial es mejor que impedir crear la cuenta.
   databaseHooks: {
+    // Una cuenta suspendida no puede abrir sesiones (después de la contraseña correcta: a quien no
+    // la sabe no se le revela que la cuenta existe ni que está suspendida).
+    session: {
+      create: {
+        before: async (newSession) => {
+          if (await isSuspended(newSession.userId)) {
+            throw APIError.from("FORBIDDEN", { code: "ACCOUNT_SUSPENDED", message: SUSPENDED_MESSAGE });
+          }
+        },
+      },
+    },
     user: {
       create: {
         after: async (created) => {

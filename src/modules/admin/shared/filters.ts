@@ -23,6 +23,13 @@ const withoutControlChars = (text: string) =>
     .filter((char) => char.charCodeAt(0) >= 32 && char.charCodeAt(0) !== 127)
     .join("");
 
+/** Lo máximo que puede tener una nota del admin (el motivo de una suspensión). */
+export const NOTE_MAX_LENGTH = 300;
+
+/** Una nota del admin en una línea: espacios y saltos de línea seguidos, uno solo; sin caracteres de control. */
+export const cleanNote = (text: string) =>
+  withoutControlChars(text.replace(/\s+/g, " ")).trim().slice(0, NOTE_MAX_LENGTH);
+
 /** La búsqueda de la URL: sin caracteres de control ni espacios en los extremos, de máximo 100 caracteres. */
 export const parseSearch = (params: Params) => withoutControlChars(first(params.q)).trim().slice(0, MAX_SEARCH_LENGTH);
 

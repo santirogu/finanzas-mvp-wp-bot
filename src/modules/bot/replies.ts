@@ -1,4 +1,5 @@
 // Textos que el bot envía por WhatsApp. WhatsApp usa *negrita* y _cursiva_.
+import { CONTACT_EMAIL } from "@/lib/contact";
 import { formatMonthLabel, formatShortDate, type MonthRange } from "@/lib/dates";
 import { formatMoney } from "@/lib/money";
 import type { ParsedTransaction } from "./normalize";
@@ -66,6 +67,9 @@ export const notLinkedReply = (appUrl: string) =>
 
 export const linkedReply = (name: string) =>
   `✅ ¡Listo${name ? `, ${name.split(" ")[0]}` : ""}! Tu WhatsApp quedó vinculado.\n\nPrueba escribiéndome: _gasté 20 mil en almuerzo_`;
+
+// Cuenta suspendida por el admin: no se registra nada y no se dice el motivo.
+export const suspendedReply = `Tu cuenta está suspendida, así que no puedo registrar movimientos. Si crees que es un error, escríbenos a ${CONTACT_EMAIL}.`;
 
 export const linkInvalidReply =
   "Ese código no es válido o ya venció. Genera uno nuevo en el dashboard.";

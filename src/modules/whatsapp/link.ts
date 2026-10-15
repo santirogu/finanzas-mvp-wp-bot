@@ -107,7 +107,7 @@ export async function getLinkForUser(userId: string) {
 
 export async function getUserByPhone(phone: string) {
   const [row] = await db
-    .select({ id: user.id, name: user.name, timezone: user.timezone, currency: user.currency })
+    .select({ id: user.id, name: user.name, timezone: user.timezone, currency: user.currency, suspendedAt: user.suspendedAt })
     .from(whatsappLink)
     .innerJoin(user, eq(user.id, whatsappLink.userId))
     .where(eq(whatsappLink.phone, phone));

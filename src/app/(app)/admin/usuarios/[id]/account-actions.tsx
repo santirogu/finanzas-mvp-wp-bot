@@ -1,19 +1,23 @@
 "use client";
 
 import { useActionState, useId, useState, type ReactNode } from "react";
+import { NOTE_MAX_LENGTH } from "@/modules/admin/shared/filters";
 import {
   deleteAccountByAdminAction,
+  reactivateAccountAction,
   revokeSessionsAction,
+  suspendAccountAction,
   unlinkWhatsAppByAdminAction,
   unlockLoginAction,
   type AccountActionState,
 } from "./actions";
 
-// Las acciones del admin sobre una cuenta: la sección "Acciones" (solo las que aplican) y la "Zona de
-// peligro". Cada botón abre una ventana que explica qué va a pasar y pide el código de Google
-// Authenticator; eliminar pide además escribir el correo. El servidor vuelve a validar todo.
+// Las acciones del admin sobre una cuenta: la sección "Acciones" (solo las que aplican; reactivar, si
+// está suspendida) y la "Zona de peligro" (suspender y eliminar). Cada botón abre una ventana que
+// explica qué va a pasar y pide el código de Google Authenticator; eliminar pide además escribir el
+// correo. El servidor vuelve a validar todo.
 
-type Kind = "unlock" | "sessions" | "whatsapp" | "delete";
+type Kind = "unlock" | "sessions" | "whatsapp" | "suspend" | "reactivate" | "delete";
 type ServerAction = (prev: AccountActionState, formData: FormData) => Promise<AccountActionState>;
 
 export type ActionTarget = {
@@ -25,6 +29,10 @@ export type ActionTarget = {
   openSessions: number;
   /** Su número de WhatsApp, ya con formato, o null si no tiene. */
   phone: string | null;
+  /** Desde cuándo está suspendida ("15 de oct de 2026, 3:00 p. m."), o null si no lo está. */
+  suspendedSince: string | null;
+  /** El motivo que escribió el admin al suspenderla (interno). */
+  suspensionReason: string | null;
 };
 
 const sameEmail = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
@@ -56,8 +64,17 @@ export function AccountActions({ target }: { target: ActionTarget }) {
             {done}
           </p>
         )}
-        {target.lockedUntil || target.openSessions > 0 || target.phone ? (
+        {target.suspendedSince || target.lockedUntil || target.openSessions > 0 || target.phone ? (
           <ul className="divide-y divide-border">
+            {target.suspendedSince && (
+              <ActionRow
+                title="Reactivar la cuenta"
+                // La fecha ya termina en punto ("3:00 p. m.").
+                description={`Suspendida desde el ${target.suspendedSince}${target.suspensionReason ? ` Motivo: ${target.suspensionReason}` : ""}`}
+                button="Reactivar"
+                onClick={() => start("reactivate")}
+              />
+            )}
             {target.lockedUntil && (
               <ActionRow
                 title="Desbloquear el inicio de sesión"
@@ -88,7 +105,16 @@ export function AccountActions({ target }: { target: ActionTarget }) {
         <h2 id="peligro" className="font-semibold text-danger">
           Zona de peligro
         </h2>
-        <ul>
+        <ul className="divide-y divide-border">
+          {!target.suspendedSince && (
+            <ActionRow
+              title="Suspender la cuenta"
+              description="No podrá entrar ni usar el bot hasta que la reactives. Sus datos se conservan."
+              button="Suspender"
+              danger
+              onClick={() => start("suspend")}
+            />
+          )}
           <ActionRow
             title="Eliminar la cuenta"
             description="Borra la cuenta y todos sus datos. No se puede deshacer."
@@ -138,6 +164,35 @@ export function AccountActions({ target }: { target: ActionTarget }) {
         >
           El bot dejará de registrar lo que escriba desde <span className="whitespace-nowrap">{target.phone}</span>. Podrá
           vincularlo otra vez desde su Resumen.
+        </ConfirmDialog>
+      )}
+      {open === "suspend" && (
+        <ConfirmDialog
+          title={`¿Suspender la cuenta de ${target.name}?`}
+          action={suspendAccountAction}
+          submit="Suspender"
+          pending="Suspendiendo…"
+          danger
+          userId={target.id}
+          onClose={close}
+          onDone={finish}
+          extra={<ReasonField />}
+        >
+          No podrá entrar a la web ni registrar movimientos por WhatsApp hasta que la reactives. Se cierran sus
+          sesiones y sus datos se conservan. Al intentar entrar verá que su cuenta está suspendida, sin el motivo.
+        </ConfirmDialog>
+      )}
+      {open === "reactivate" && (
+        <ConfirmDialog
+          title={`¿Reactivar la cuenta de ${target.name}?`}
+          action={reactivateAccountAction}
+          submit="Reactivar"
+          pending="Reactivando…"
+          userId={target.id}
+          onClose={close}
+          onDone={finish}
+        >
+          Podrá volver a entrar y a usar el bot de WhatsApp.
         </ConfirmDialog>
       )}
       {open === "delete" && <DeleteDialog target={target} onClose={close} />}
@@ -231,6 +286,18 @@ function CodeField({ state }: { state: AccountActionState }) {
   );
 }
 
+/** El motivo de una suspensión: opcional e interno (la persona no lo ve). */
+function ReasonField() {
+  return (
+    <label className="block space-y-1.5">
+      <span className="text-sm font-medium">
+        Motivo <span className="font-normal text-muted">(opcional, solo lo ves tú)</span>
+      </span>
+      <textarea name="reason" rows={2} maxLength={NOTE_MAX_LENGTH} className="input" />
+    </label>
+  );
+}
+
 function FormError({ state }: { state: AccountActionState }) {
   // Los errores del código y del correo van junto a su campo; los demás, aquí.
   if (!state.error || state.field) return null;
@@ -273,18 +340,23 @@ function ConfirmDialog({
   action,
   submit,
   pending,
+  danger = false,
   userId,
   onClose,
   onDone,
+  extra,
   children,
 }: {
   title: string;
   action: ServerAction;
   submit: string;
   pending: string;
+  danger?: boolean;
   userId: string;
   onClose: () => void;
   onDone: (message: string) => void;
+  /** Campos además del código (el motivo al suspender). */
+  extra?: ReactNode;
   children: ReactNode;
 }) {
   // Con éxito, la ventana se cierra y la sección muestra el aviso (la página se vuelve a dibujar).
@@ -302,9 +374,10 @@ function ConfirmDialog({
             {children}
           </p>
           <input type="hidden" name="userId" value={userId} />
+          {extra}
           <CodeField state={state} />
           <FormError state={state} />
-          <Buttons submit={submit} pending={pending} busy={busy} />
+          <Buttons submit={submit} pending={pending} busy={busy} danger={danger} />
         </form>
       )}
     </Dialog>

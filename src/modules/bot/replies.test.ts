@@ -10,9 +10,11 @@ import {
   linkRateLimitedReply,
   notLinkedReply,
   registeredReply,
+  suspendedReply,
   undoReply,
   unsupportedTypeReply,
 } from "./replies";
+import { CONTACT_EMAIL } from "@/lib/contact";
 
 const range = monthRange(2026, 10);
 const nbsp = (s: string) => s.replace(/\u00a0/g, " ");
@@ -110,6 +112,12 @@ describe("mensajes de vinculación y ayuda", () => {
 
   it("indica dónde vincular el número", () => {
     expect(notLinkedReply("https://finanzas.test")).toContain("https://finanzas.test/dashboard");
+  });
+
+  it("a una cuenta suspendida le dice que no registra nada y cómo escribirnos, sin el motivo", () => {
+    expect(suspendedReply).toBe(
+      `Tu cuenta está suspendida, así que no puedo registrar movimientos. Si crees que es un error, escríbenos a ${CONTACT_EMAIL}.`,
+    );
   });
 
   it("lista lo que se deshizo", () => {

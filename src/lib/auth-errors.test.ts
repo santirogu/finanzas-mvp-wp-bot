@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { ACCOUNT_LOCKED, TOO_MANY_ATTEMPTS, authErrorMessage } from "./auth-errors";
+import { ACCOUNT_LOCKED, ACCOUNT_SUSPENDED, TOO_MANY_ATTEMPTS, authErrorMessage } from "./auth-errors";
+import { CONTACT_EMAIL } from "./contact";
 
 describe("authErrorMessage", () => {
   it("traduce los errores conocidos de Better Auth", () => {
@@ -25,6 +26,12 @@ describe("authErrorMessage", () => {
 
   it("el límite de intentos tiene prioridad sobre cualquier código", () => {
     expect(authErrorMessage({ status: 429, code: "INVALID_EMAIL_OR_PASSWORD" })).toBe(TOO_MANY_ATTEMPTS);
+  });
+
+  it("con la cuenta suspendida dice cómo escribirnos, sin el motivo", () => {
+    expect(ACCOUNT_SUSPENDED).toBe(`Tu cuenta está suspendida. Si crees que es un error, escríbenos a ${CONTACT_EMAIL}.`);
+    expect(authErrorMessage({ status: 403, code: "ACCOUNT_SUSPENDED", message: "otro texto" })).toBe(ACCOUNT_SUSPENDED);
+    expect(authErrorMessage({ code: "ACCOUNT_SUSPENDED" })).toBe(ACCOUNT_SUSPENDED);
   });
 
   it("con la cuenta bloqueada muestra el mensaje del servidor (con los minutos que faltan)", () => {

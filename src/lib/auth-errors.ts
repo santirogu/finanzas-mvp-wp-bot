@@ -1,6 +1,8 @@
 // Mensajes en español para los errores de Better Auth que se muestran al entrar, registrarse o
 // configurar la verificación en dos pasos.
 
+import { CONTACT_EMAIL } from "./contact";
+
 const MESSAGES: Record<string, string> = {
   INVALID_EMAIL_OR_PASSWORD: "Correo o contraseña incorrectos.",
   USER_ALREADY_EXISTS: "Ya existe una cuenta con ese correo.",
@@ -29,8 +31,12 @@ export const TOO_MANY_ATTEMPTS = "Demasiados intentos. Espera unos segundos y vu
 export const ACCOUNT_LOCKED =
   "Por seguridad, la cuenta quedó bloqueada por varios intentos fallidos. Intenta más tarde.";
 
+// Cuenta suspendida por el admin (src/modules/account/suspension.ts): sin el motivo.
+export const ACCOUNT_SUSPENDED = `Tu cuenta está suspendida. Si crees que es un error, escríbenos a ${CONTACT_EMAIL}.`;
+
 export function authErrorMessage(error: { code?: string; status?: number; message?: string }) {
   if (error.code === "ACCOUNT_LOCKED") return error.message || ACCOUNT_LOCKED;
+  if (error.code === "ACCOUNT_SUSPENDED") return ACCOUNT_SUSPENDED;
   // El bloqueo de la verificación en dos pasos también llega con 429, pero tiene su propio mensaje.
   if (error.code === "ACCOUNT_TEMPORARILY_LOCKED") return MESSAGES.ACCOUNT_TEMPORARILY_LOCKED;
   if (error.status === 429) return TOO_MANY_ATTEMPTS;

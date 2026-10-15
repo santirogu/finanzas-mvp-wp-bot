@@ -98,6 +98,7 @@ describe("listUsers", () => {
         // Su bloqueo ya pasó.
         lockedUntil: null,
         lastSignInAt: null,
+        suspendedAt: null,
       },
       {
         id: beto.id,
@@ -108,6 +109,7 @@ describe("listUsers", () => {
         phone: null,
         lockedUntil: at("2026-10-12T21:05:00Z"),
         lastSignInAt: at("2026-10-11T08:00:00Z"),
+        suspendedAt: null,
       },
       {
         id: ana.id,
@@ -118,6 +120,7 @@ describe("listUsers", () => {
         phone: "573001112233",
         lockedUntil: null,
         lastSignInAt: at("2026-10-05T12:00:00Z"),
+        suspendedAt: null,
       },
     ]);
   });
@@ -127,6 +130,18 @@ describe("listUsers", () => {
     expect(names(await list({ rol: "admin" }))).toEqual(["Beto 100%_real"]);
     expect(names(await list({ rol: "user" }))).toEqual(["Carla Ríos", "Ana Pérez"]);
     expect(names(await list({ rol: "todos" }))).toHaveLength(3);
+  });
+
+  it("filtra las suspendidas, solas o junto con las bloqueadas (las que cumplan las dos)", async () => {
+    const { ana, beto } = await seed();
+    await db.update(user).set({ suspendedAt: at("2026-10-12T15:00:00Z"), suspensionReason: "Spam" }).where(eq(user.id, ana.id));
+    await db.update(user).set({ suspendedAt: at("2026-10-12T16:00:00Z") }).where(eq(user.id, beto.id));
+    const page = await list({ estado: "suspendidas" });
+    expect(names(page)).toEqual(["Beto 100%_real", "Ana Pérez"]);
+    expect(page.users.find((u) => u.name === "Ana Pérez")!.suspendedAt).toEqual(at("2026-10-12T15:00:00Z"));
+    // Beto además tiene el inicio de sesión bloqueado.
+    expect(names(await list({ estado: ["suspendidas", "bloqueadas"] }))).toEqual(["Beto 100%_real"]);
+    expect(await getUserDetail(ana.id, NOW)).toMatchObject({ suspendedAt: at("2026-10-12T15:00:00Z"), suspensionReason: "Spam" });
   });
 
   it("filtra por WhatsApp vinculado o sin vincular", async () => {
@@ -249,6 +264,8 @@ describe("getUserDetail", () => {
       linkedAt: at("2026-10-02T15:01:00Z"),
       lockedUntil: null,
       lastSignInAt: at("2026-10-05T12:00:00Z"),
+      suspendedAt: null,
+      suspensionReason: null,
       twoFactorEnabled: false,
       // Solo la que no ha vencido.
       sessions: [
@@ -374,9 +391,11 @@ describe("getUserDetail", () => {
 
 describe("usersSummary", () => {
   it("cuenta las cuentas y cuántas tienen WhatsApp", async () => {
-    expect(await usersSummary()).toEqual({ total: 0, withWhatsApp: 0 });
-    await seed();
-    expect(await usersSummary()).toEqual({ total: 3, withWhatsApp: 1 });
+    expect(await usersSummary()).toEqual({ total: 0, withWhatsApp: 0, suspended: 0 });
+    const { beto } = await seed();
+    expect(await usersSummary()).toEqual({ total: 3, withWhatsApp: 1, suspended: 0 });
+    await db.update(user).set({ suspendedAt: NOW }).where(eq(user.id, beto.id));
+    expect(await usersSummary()).toEqual({ total: 3, withWhatsApp: 1, suspended: 1 });
   });
 });
 

@@ -1,7 +1,7 @@
 import "server-only";
 import { and, count, eq, gt, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { loginFailure, session, user, whatsappLink } from "@/db/schema";
+import { loginFailure, session, user, whatsappLink, whatsappLinkCode } from "@/db/schema";
 import { hasRole, type Role } from "@/lib/roles";
 import { requireAdmin } from "@/lib/session";
 import { deleteAccountData } from "@/modules/account/delete-account";
@@ -9,9 +9,11 @@ import { recordEvent } from "@/modules/account/events";
 import { normalizeEmail } from "@/modules/auth/lockout";
 import { unlinkUser } from "@/modules/whatsapp/link";
 import { confirmAdminCode } from "../shared/confirm-code";
+import { cleanNote } from "../shared/filters";
 import { isValidUserId } from "./user-filters";
 
-// Las acciones del admin sobre una cuenta (/admin/usuarios/[id]). Cada una:
+// Las acciones del admin sobre una cuenta (/admin/usuarios/[id]): desbloquear, cerrar sesiones,
+// desvincular WhatsApp, suspender, reactivar y eliminar. Cada una:
 //  1. valida el rol (requireAdmin), como toda la capa de datos de administración;
 //  2. revisa la cuenta: que exista, que no sea la del admin ni la de otro admin (los roles solo se
 //     manejan desde la terminal) y que la acción aplique (si no hay nada que hacer, no gasta el código);
@@ -24,7 +26,16 @@ export type AdminActionResult =
   | { ok: true; message: string }
   | { ok: false; error: string; field?: "code" | "email" };
 
-type Target = { id: string; name: string; email: string; role: Role; phone: string | null; locked: boolean; openSessions: number };
+type Target = {
+  id: string;
+  name: string;
+  email: string;
+  role: Role;
+  phone: string | null;
+  locked: boolean;
+  suspended: boolean;
+  openSessions: number;
+};
 
 async function loadTarget(userId: string, adminId: string, now: Date): Promise<Target | { error: string }> {
   if (!isValidUserId(userId)) return { error: "Esta cuenta ya no existe." };
@@ -36,6 +47,7 @@ async function loadTarget(userId: string, adminId: string, now: Date): Promise<T
       role: user.role,
       phone: whatsappLink.phone,
       lockedUntil: loginFailure.lockedUntil,
+      suspendedAt: user.suspendedAt,
     })
     .from(user)
     .leftJoin(whatsappLink, eq(whatsappLink.userId, user.id))
@@ -48,8 +60,8 @@ async function loadTarget(userId: string, adminId: string, now: Date): Promise<T
     .select({ openSessions: count() })
     .from(session)
     .where(and(eq(session.userId, userId), gt(session.expiresAt, now)));
-  const { lockedUntil, ...target } = row;
-  return { ...target, locked: Boolean(lockedUntil && lockedUntil > now), openSessions };
+  const { lockedUntil, suspendedAt, ...target } = row;
+  return { ...target, locked: Boolean(lockedUntil && lockedUntil > now), suspended: suspendedAt !== null, openSessions };
 }
 
 const fail = (error: string, field?: "code" | "email"): AdminActionResult => ({ ok: false, error, ...(field && { field }) });
@@ -103,6 +115,52 @@ export async function unlinkWhatsApp({ userId, code }: AdminActionInput, now = n
 
   await unlinkUser(target.id, { adminId: admin.id });
   return { ok: true, message: `Se desvinculó el WhatsApp de ${target.name}.` };
+}
+
+/**
+ * Suspende la cuenta hasta que el admin la reactive: cierra sus sesiones y su código de vinculación
+ * pendiente; no puede volver a entrar ni usar el bot. Sus datos se conservan. El motivo (opcional)
+ * es interno: queda en la cuenta y en el historial, y la persona no lo ve.
+ */
+export async function suspendAccount(
+  { userId, code, reason = "" }: AdminActionInput & { reason?: string },
+  now = new Date(),
+): Promise<AdminActionResult> {
+  const admin = await requireAdmin();
+  const target = await loadTarget(userId, admin.id, now);
+  if ("error" in target) return fail(target.error);
+  if (target.suspended) return fail("La cuenta ya está suspendida.");
+  const check = await confirmAdminCode(code, now);
+  if (!check.ok) return fail(check.error, "code");
+
+  const note = cleanNote(reason);
+  await db.transaction(async (tx) => {
+    await tx.update(user).set({ suspendedAt: now, suspensionReason: note || null }).where(eq(user.id, target.id));
+    const closed = await tx.delete(session).where(eq(session.userId, target.id)).returning({ expiresAt: session.expiresAt });
+    await tx.delete(whatsappLinkCode).where(eq(whatsappLinkCode.userId, target.id));
+    const sessions = closed.filter((s) => s.expiresAt > now).length;
+    await recordEvent(
+      { type: "account_suspended", userId: target.id, adminId: admin.id, details: { ...(note && { note }), ...(sessions && { sessions }) } },
+      tx,
+    );
+  });
+  return { ok: true, message: `Se suspendió la cuenta de ${target.name}.` };
+}
+
+/** Levanta la suspensión: puede volver a entrar y a usar el bot. */
+export async function reactivateAccount({ userId, code }: AdminActionInput, now = new Date()): Promise<AdminActionResult> {
+  const admin = await requireAdmin();
+  const target = await loadTarget(userId, admin.id, now);
+  if ("error" in target) return fail(target.error);
+  if (!target.suspended) return fail("La cuenta no está suspendida.");
+  const check = await confirmAdminCode(code, now);
+  if (!check.ok) return fail(check.error, "code");
+
+  await db.transaction(async (tx) => {
+    await tx.update(user).set({ suspendedAt: null, suspensionReason: null }).where(eq(user.id, target.id));
+    await recordEvent({ type: "account_reactivated", userId: target.id, adminId: admin.id }, tx);
+  });
+  return { ok: true, message: `Se reactivó la cuenta de ${target.name}.` };
 }
 
 /**
