@@ -150,6 +150,13 @@ de Vercel ni muevas las migraciones fuera del job `deploy`.
   `getCurrentUser` ignora la que les quede y el bot no registra nada. Si agregas otra forma de
   entrar o de usar la app (otro proveedor de login, una API, un comando del bot), revisa
   `isSuspended` (`src/modules/account/suspension.ts`) también ahí, con su prueba.
+- **Formularios**: si un campo tiene `required`, `minLength`, `pattern`, `type="email"` o `max`,
+  el formulario usa `useFieldErrors` (`src/components/use-field-errors.ts`) con sus mensajes en
+  español y muestra cada error debajo de su campo con `FieldError` (fuera del `<label>`, con
+  `aria-invalid` y `aria-describedby`). Nunca el globo del navegador: `src/forms.test.ts` lo exige y
+  las E2E fallan si aparece.
+- **Dinero**: siempre con `formatMoney` (`src/lib/money.ts`), que da "$1.000.000,00" (dos decimales,
+  sin espacio), en la web y en el bot. No uses `toLocaleString` para mostrar montos.
 - **Historial de la cuenta** (`account_event`, README → Historial de las cuentas): si agregas o cambias
   algo del registro o la vinculación de WhatsApp, registra su evento con `recordEvent` en la misma
   transacción, con su prueba.

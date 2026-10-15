@@ -244,3 +244,28 @@ describe("AuthForm · registro", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Ya existe una cuenta con ese correo.");
   });
 });
+
+describe("AuthForm · errores de los campos en español", () => {
+  it("registro vacío: un mensaje debajo de cada campo, sin enviar, y el cursor en el primero", async () => {
+    render(<AuthForm mode="register" />);
+    await userEvent.click(screen.getByRole("button", { name: "Crear cuenta" }));
+    expect(mocks.signUp).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("Nombre")).toHaveAccessibleDescription("Escribe tu nombre.");
+    expect(email()).toHaveAccessibleDescription("Escribe tu correo.");
+    expect(password()).toHaveAccessibleDescription("Escribe tu contraseña.");
+    expect(screen.getByLabelText("Nombre")).toHaveFocus();
+    // Fuera de la etiqueta: el nombre del campo no cambia.
+    expect(screen.getByLabelText("Nombre")).toHaveAccessibleName("Nombre");
+  });
+
+  it("un correo mal escrito lo dice; al corregirlo, el mensaje se va", async () => {
+    render(<AuthForm mode="login" />);
+    await fillLogin("ana@", "clave-segura-123");
+    await userEvent.click(screen.getByRole("button", { name: "Entrar" }));
+    expect(mocks.signIn).not.toHaveBeenCalled();
+    expect(email()).toHaveAccessibleDescription("Revisa el correo: debe verse como nombre@correo.com.");
+    await userEvent.type(email(), "gmail.com");
+    expect(email()).not.toHaveAttribute("aria-invalid");
+  });
+});
+

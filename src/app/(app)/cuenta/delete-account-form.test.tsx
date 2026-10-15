@@ -72,3 +72,26 @@ describe("DeleteAccountForm", () => {
     expect(await screen.findByText("Contraseña incorrecta")).toBeVisible();
   });
 });
+
+describe("DeleteAccountForm · errores de los campos en español", () => {
+  it("sin la contraseña lo dice debajo del campo y no envía", async () => {
+    render(<DeleteAccountForm />);
+    await userEvent.type(screen.getByLabelText(/Escribe ELIMINAR/), "ELIMINAR");
+    await userEvent.click(button());
+    expect(action).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("Tu contraseña")).toHaveAccessibleDescription("Escribe tu contraseña.");
+    expect(screen.getByLabelText("Tu contraseña")).toHaveFocus();
+  });
+
+  it("los errores del servidor también van debajo de su campo", async () => {
+    action.mockResolvedValue({ fieldErrors: { password: "Contraseña incorrecta" } });
+    render(<DeleteAccountForm />);
+    await userEvent.type(screen.getByLabelText("Tu contraseña"), "otra-clave");
+    await userEvent.type(screen.getByLabelText(/Escribe ELIMINAR/), "ELIMINAR");
+    await userEvent.click(button());
+    expect(await screen.findByText("Contraseña incorrecta")).toBeInTheDocument();
+    expect(screen.getByLabelText("Tu contraseña")).toHaveAccessibleDescription("Contraseña incorrecta");
+    expect(screen.getByLabelText("Tu contraseña")).toHaveAttribute("aria-invalid", "true");
+  });
+});
+

@@ -36,25 +36,25 @@ test("vincular el número desde el dashboard y llevar las cuentas por WhatsApp",
   await test.step("un gasto escrito como a una persona queda registrado en la web", async () => {
     await sendWhatsApp(request, phone, "me compré unos zapatos de $500.000");
     const reply = await nthReply(request, phone, 2);
-    expect(reply).toMatch(/✅ Egreso registrado: \*Zapatos\* — \$\s500\.000 \(Ropa\)/);
-    expect(reply).toMatch(/Balance de [a-z]+: \*-\$\s500\.000\*/);
+    expect(reply).toMatch(/✅ Egreso registrado: \*Zapatos\* — \$500\.000,00 \(Ropa\)/);
+    expect(reply).toMatch(/Balance de [a-z]+: \*-\$500\.000,00\*/);
 
     await openTab(page, "Egresos");
     const row = visible(page.getByRole("listitem").filter({ hasText: "Zapatos" }));
     await expect(row).toContainText("Ropa · vía WhatsApp");
-    await expect(row).toContainText(/−\$\s500\.000/);
+    await expect(row).toContainText(/−\$500\.000,00/);
   });
 
   await test.step("balance responde con los totales del mes", async () => {
     await sendWhatsApp(request, phone, "balance");
     const reply = await nthReply(request, phone, 3);
-    expect(reply).toMatch(/Ingresos: \$\s0/);
-    expect(reply).toMatch(/Egresos: \$\s500\.000/);
+    expect(reply).toMatch(/Ingresos: \$0,00/);
+    expect(reply).toMatch(/Egresos: \$500\.000,00/);
   });
 
   await test.step("deshacer borra lo último registrado por WhatsApp, también en la web", async () => {
     await sendWhatsApp(request, phone, "deshacer");
-    expect(await nthReply(request, phone, 4)).toMatch(/Listo, eliminé:\n🗑️ Zapatos — \$\s500\.000/);
+    expect(await nthReply(request, phone, 4)).toMatch(/Listo, eliminé:\n🗑️ Zapatos — \$500\.000,00/);
     await page.reload();
     await expect(visible(page.getByText("No has registrado egresos este mes."))).toBeVisible();
   });

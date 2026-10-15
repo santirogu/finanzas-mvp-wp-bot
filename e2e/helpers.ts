@@ -14,7 +14,7 @@ export const fakeIp = () => `198.18.${randomInt(0, 256)}.${randomInt(1, 255)}`;
 /** `test` de Playwright con una IP propia por prueba. */
 // El segundo parámetro de un fixture suele llamarse `use`; aquí `provide`, para que la regla de
 // hooks de React de ESLint no lo confunda con un hook.
-export const test = base.extend<{ cspViolations: string[] }>({
+export const test = base.extend<{ cspViolations: string[]; nativeValidation: void }>({
   extraHTTPHeaders: async ({}, provide) => {
     await provide({ "x-forwarded-for": fakeIp() });
   },
@@ -28,6 +28,31 @@ export const test = base.extend<{ cspViolations: string[] }>({
       });
       await provide(violations);
       expect(violations, "violaciones de la Content-Security-Policy").toEqual([]);
+    },
+    { auto: true },
+  ],
+  // En todas las pruebas: ningún formulario deja ver el globo de validación del navegador (sale en
+  // su idioma, "Please fill out this field."). Los errores van en español debajo de cada campo
+  // (useFieldErrors cancela el evento "invalid"); si alguno no lo cancela, la prueba falla.
+  nativeValidation: [
+    async ({ page }, provide) => {
+      await page.addInitScript(() => {
+        const counter = window as unknown as { __nativeValidation: string[] };
+        counter.__nativeValidation = [];
+        document.addEventListener(
+          "invalid",
+          (event) =>
+            setTimeout(() => {
+              if (!event.defaultPrevented) counter.__nativeValidation.push((event.target as HTMLInputElement).name);
+            }),
+          true,
+        );
+      });
+      await provide();
+      const shown = await page
+        .evaluate(() => (window as unknown as { __nativeValidation?: string[] }).__nativeValidation ?? [])
+        .catch(() => []);
+      expect(shown, "campos con el globo de validación del navegador").toEqual([]);
     },
     { auto: true },
   ],

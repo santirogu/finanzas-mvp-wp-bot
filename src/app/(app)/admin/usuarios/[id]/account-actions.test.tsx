@@ -305,3 +305,17 @@ describe("AccountActions", () => {
     });
   });
 });
+
+describe("AccountActions · errores del código en español", () => {
+  it("sin código, o sin 6 dígitos, lo dice debajo del campo y no envía", async () => {
+    render(<AccountActions target={target()} />);
+    await userEvent.click(actionsSection().getByRole("button", { name: "Desbloquear" }));
+    await userEvent.click(within(dialog()).getByRole("button", { name: "Desbloquear" }));
+    expect(codeField()).toHaveAccessibleDescription("Escribe el código de 6 dígitos de Google Authenticator.");
+    expect(codeField()).toHaveAttribute("aria-invalid", "true");
+    await userEvent.type(codeField(), "12a");
+    expect(codeField()).toHaveAccessibleDescription("El código tiene 6 dígitos, solo números.");
+    expect(actions.unlockLoginAction).not.toHaveBeenCalled();
+  });
+});
+

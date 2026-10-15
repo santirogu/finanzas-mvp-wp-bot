@@ -86,6 +86,11 @@ pnpm dev                        # http://localhost:3000
   responde a servidores falsos de WhatsApp y Claude (`e2e/fake-services.mjs`): nada sale a
   internet, así que no cuesta nada. La primera vez instala el navegador:
   `pnpm exec playwright install chromium`.
+- **Errores de los formularios**: en español, debajo de cada campo y nunca el globo del navegador
+  (que sale en su idioma, "Please fill out this field."). Los traduce `src/lib/field-errors.ts` y
+  los muestra `useFieldErrors`; `src/forms.test.ts` exige que todo formulario con campos validados lo
+  use, y el fixture `nativeValidation` de `e2e/helpers.ts` hace fallar cualquier E2E en la que
+  aparezca el globo.
 - **Matriz de autorización** (`src/authorization-matrix.test.ts`): inventario de todas las
   páginas, rutas de API y Server Actions con la protección de cada una. Falla si aparece una entrada
   sin clasificar, una Server Action que no llama a `requireUser()` antes de tocar datos, o una página

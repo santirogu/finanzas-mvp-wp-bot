@@ -69,8 +69,9 @@ body {
 }
 
 @layer components {
+  /* Con un error (aria-invalid), el borde va en rojo. */
   .input {
-    @apply w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20;
+    @apply w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 aria-invalid:border-danger aria-invalid:focus:ring-danger/20;
   }
 
   /* Al pasar el mouse se oscurece: con opacidad se mezclaría con el fondo y el texto perdería

@@ -1,9 +1,12 @@
 "use client";
 
-import { useState, useTransition, type FormEvent } from "react";
+import { useId, useState, useTransition, type FormEvent } from "react";
+import { describedBy, FieldError } from "@/components/field-error";
 import { QrCode } from "@/components/qr-code";
+import { useFieldErrors } from "@/components/use-field-errors";
 import { authClient } from "@/lib/auth-client";
 import { authErrorMessage } from "@/lib/auth-errors";
+import { TOTP_CODE_MESSAGES, type FieldMessages } from "@/lib/field-errors";
 import { manualKeyFromUri } from "@/modules/auth/two-factor-rules";
 import { finishTwoFactorSetupAction } from "./actions";
 
@@ -13,6 +16,12 @@ type Step = { name: "password" } | { name: "scan"; totpURI: string; backupCodes:
  * Configurar la verificación en dos pasos, una sola vez: (1) confirmar la contraseña, (2) escanear el
  * QR con Google Authenticator y escribir el primer código, (3) guardar los códigos de respaldo.
  */
+// Los errores de los campos, en español (en vez del globo del navegador).
+const MESSAGES: Record<string, FieldMessages> = {
+  password: { required: "Escribe tu contraseña." },
+  code: TOTP_CODE_MESSAGES,
+};
+
 export function TwoFactorSetup({
   // Carga completa (no navegación del router de Next): la cookie de sesión acaba de cambiar y el
   // router todavía recuerda que /admin redirigía aquí.
@@ -22,6 +31,10 @@ export function TwoFactorSetup({
   onDone?: () => void;
 }) {
   const [step, setStep] = useState<Step>({ name: "password" });
+  // Cada paso es un formulario nuevo: al cambiar de paso no quedan mensajes del anterior.
+  const { errors, reset, formProps } = useFieldErrors(MESSAGES);
+  const passwordErrorId = useId();
+  const codeErrorId = useId();
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -38,6 +51,7 @@ export function TwoFactorSetup({
         return;
       }
       setStep({ name: "scan", totpURI: data.totpURI, backupCodes: data.backupCodes ?? [] });
+      reset();
     });
   }
 
@@ -53,6 +67,7 @@ export function TwoFactorSetup({
       }
       await finishTwoFactorSetupAction();
       setStep({ name: "codes", backupCodes });
+      reset();
     });
   }
 
@@ -65,17 +80,28 @@ export function TwoFactorSetup({
   if (step.name === "password") {
     return (
       // key: cada paso es un formulario nuevo (nada del anterior, como lo escrito, pasa al siguiente).
-      <form key="password" method="post" onSubmit={onPassword} className="card space-y-4 p-4">
+      <form key="password" method="post" onSubmit={onPassword} {...formProps} className="card space-y-4 p-4">
         <div className="space-y-1 text-sm">
           <h3 className="font-semibold">Paso 1 de 3: confirma que eres tú</h3>
           <p className="text-muted">
             Necesitas Google Authenticator (o cualquier app de códigos) instalada en tu celular.
           </p>
         </div>
-        <label className="block space-y-1.5">
-          <span className="text-sm font-medium">Tu contraseña</span>
-          <input name="password" type="password" required autoComplete="current-password" className="input" />
-        </label>
+        <div className="space-y-1.5">
+          <label className="block space-y-1.5">
+            <span className="text-sm font-medium">Tu contraseña</span>
+            <input
+              name="password"
+              type="password"
+              required
+              autoComplete="current-password"
+              aria-invalid={Boolean(errors.password) || undefined}
+              aria-describedby={describedBy(errors.password && passwordErrorId)}
+              className="input"
+            />
+          </label>
+          <FieldError id={passwordErrorId} message={errors.password} />
+        </div>
         {alert}
         <button type="submit" disabled={pending} className="btn-primary">
           {pending ? "Un momento…" : "Continuar"}
@@ -87,7 +113,7 @@ export function TwoFactorSetup({
   if (step.name === "scan") {
     const manualKey = manualKeyFromUri(step.totpURI);
     return (
-      <form key="scan" method="post" onSubmit={(e) => onCode(e, step.backupCodes)} className="card space-y-4 p-4">
+      <form key="scan" method="post" onSubmit={(e) => onCode(e, step.backupCodes)} {...formProps} className="card space-y-4 p-4">
         <div className="space-y-1 text-sm">
           <h3 className="font-semibold">Paso 2 de 3: escanea el código</h3>
           <p className="text-muted">
@@ -104,18 +130,23 @@ export function TwoFactorSetup({
             </p>
           </div>
         )}
-        <label className="block space-y-1.5">
-          <span className="text-sm font-medium">Código de 6 dígitos</span>
-          <input
-            name="code"
-            required
-            autoComplete="one-time-code"
-            inputMode="numeric"
-            pattern="\s*(\d\s*){6}"
-            maxLength={7}
-            className="input font-mono tracking-widest"
-          />
-        </label>
+        <div className="space-y-1.5">
+          <label className="block space-y-1.5">
+            <span className="text-sm font-medium">Código de 6 dígitos</span>
+            <input
+              name="code"
+              required
+              autoComplete="one-time-code"
+              inputMode="numeric"
+              pattern="\s*(\d\s*){6}"
+              maxLength={7}
+              aria-invalid={Boolean(errors.code) || undefined}
+              aria-describedby={describedBy(errors.code && codeErrorId)}
+              className="input font-mono tracking-widest"
+            />
+          </label>
+          <FieldError id={codeErrorId} message={errors.code} />
+        </div>
         {alert}
         <button type="submit" disabled={pending} className="btn-primary">
           {pending ? "Verificando…" : "Activar la verificación"}

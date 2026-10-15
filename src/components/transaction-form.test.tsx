@@ -253,3 +253,36 @@ describe("TransactionForm · editar", () => {
     expect(screen.queryByRole("link", { name: "Cancelar" })).not.toBeInTheDocument();
   });
 });
+
+describe("TransactionForm · errores de los campos en español", () => {
+  it("sin monto ni descripción lo dice debajo de cada uno, sin enviar", async () => {
+    renderForm();
+    await userEvent.click(screen.getByRole("button", { name: "Registrar egreso" }));
+    expect(action).not.toHaveBeenCalled();
+    expect(screen.getByLabelText(/^Monto/)).toHaveAccessibleDescription("Escribe el monto.");
+    expect(screen.getByLabelText("Descripción")).toHaveAccessibleDescription('Escribe una descripción, por ejemplo "Almuerzo".');
+    expect(screen.getByLabelText(/^Monto/)).toHaveFocus();
+  });
+
+  it("sin fecha, o con una futura, lo dice", async () => {
+    renderForm();
+    const date = screen.getByLabelText("Fecha");
+    await userEvent.clear(date);
+    await userEvent.click(screen.getByRole("button", { name: "Registrar egreso" }));
+    expect(date).toHaveAccessibleDescription("Elige la fecha.");
+    await userEvent.type(date, "2026-10-20");
+    expect(date).toHaveAccessibleDescription("La fecha no puede ser después de hoy.");
+  });
+
+  it("los errores del servidor también van debajo de su campo, enlazados", async () => {
+    action.mockResolvedValue({ ok: false, fieldErrors: { amount: "Ingresa un monto mayor que cero" }, values: { amount: "0", description: "X" } });
+    renderForm();
+    await userEvent.type(screen.getByLabelText(/^Monto/), "0");
+    await userEvent.type(screen.getByLabelText("Descripción"), "X");
+    await userEvent.click(screen.getByRole("button", { name: "Registrar egreso" }));
+    expect(await screen.findByText("Ingresa un monto mayor que cero")).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Monto/)).toHaveAccessibleDescription("Ingresa un monto mayor que cero");
+    expect(screen.getByLabelText(/^Monto/)).toHaveAttribute("aria-invalid", "true");
+  });
+});
+

@@ -1,6 +1,8 @@
 "use client";
 
 import { useId, type ReactNode } from "react";
+import { FieldError } from "@/components/field-error";
+import { TOTP_CODE_MESSAGES, type FieldMessages } from "@/lib/field-errors";
 
 // Las piezas de las ventanas de confirmación de la administración (Usuarios, Categorías): la ventana
 // modal, el campo del código de Google Authenticator, los errores y los botones. El estado de cada
@@ -71,10 +73,16 @@ export function Buttons({ submit, pending, busy, danger = false, disabled = fals
 }
 
 
-export function CodeField({ state }: { state: DialogState }) {
+/** Los mensajes del campo del código antes de enviar, para useFieldErrors de cada ventana. */
+export const CODE_FIELD_MESSAGES: Record<string, FieldMessages> = { code: TOTP_CODE_MESSAGES };
+
+/**
+ * El campo del código de Google Authenticator. Muestra el error del navegador (`clientError`, antes
+ * de enviar) o, si no hay, el del servidor (un código equivocado).
+ */
+export function CodeField({ state, clientError }: { state: DialogState; clientError?: string }) {
   const errorId = useId();
-  const invalid = state.field === "code";
-  // El error va fuera de la etiqueta (si no, cambiaría el nombre del campo), enlazado como descripción.
+  const message = clientError ?? (state.field === "code" ? state.error : undefined);
   return (
     <div className="space-y-1.5">
       <label className="block space-y-1.5">
@@ -84,18 +92,15 @@ export function CodeField({ state }: { state: DialogState }) {
           required
           inputMode="numeric"
           autoComplete="one-time-code"
+          pattern="\s*(\d\s*){6}"
           maxLength={7}
           placeholder="000000"
-          aria-invalid={invalid || undefined}
-          aria-describedby={invalid ? errorId : undefined}
+          aria-invalid={Boolean(message) || undefined}
+          aria-describedby={message ? errorId : undefined}
           className="input font-mono tracking-[0.3em]"
         />
       </label>
-      {invalid && (
-        <p id={errorId} className="text-xs text-danger">
-          {state.error}
-        </p>
-      )}
+      <FieldError id={errorId} message={message} />
     </div>
   );
 }

@@ -138,7 +138,7 @@ describe("handleIncomingMessage · registro de movimientos", () => {
       categoryId: ropa[0].id,
     });
     expect(sender.sent[0].body).toContain("Egreso registrado: *Zapatos*");
-    expect(sender.sent[0].body.replace(/ /g, " ")).toContain("*$ 1.500.000*");
+    expect(sender.sent[0].body.replace(/ /g, " ")).toContain("*$1.500.000,00*");
     expect(await loggedMessage(msg.id)).toMatchObject({ status: "processed", userId: user.id });
   });
 
@@ -248,9 +248,9 @@ describe("handleIncomingMessage · comandos", () => {
     await handleIncomingMessage(incoming("balance"), d);
 
     const body = sender.sent[0].body.replace(/ /g, " ");
-    expect(body).toContain("Ingresos: $ 1.000.000");
-    expect(body).toContain("Egresos: $ 300.000");
-    expect(body).toContain("Balance: *$ 700.000*");
+    expect(body).toContain("Ingresos: $1.000.000,00");
+    expect(body).toContain("Egresos: $300.000,00");
+    expect(body).toContain("Balance: *$700.000,00*");
     // Los movimientos del otro usuario siguen intactos.
     expect(await activeTransactions(other.id)).toHaveLength(2);
     expect(await activeTransactions(user.id)).toHaveLength(2);

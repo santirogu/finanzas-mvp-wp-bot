@@ -130,3 +130,24 @@ describe("TwoFactorSetup · paso 3 (códigos de respaldo)", () => {
     expect(mocks.done).toHaveBeenCalledOnce();
   });
 });
+
+describe("TwoFactorSetup · errores de los campos en español", () => {
+  it("sin la contraseña, y después sin el código, lo dice debajo de cada campo", async () => {
+    render(<TwoFactorSetup onDone={mocks.done} />);
+    await userEvent.click(screen.getByRole("button", { name: "Continuar" }));
+    expect(mocks.enable).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("Tu contraseña")).toHaveAccessibleDescription("Escribe tu contraseña.");
+
+    await userEvent.type(screen.getByLabelText("Tu contraseña"), "clave-segura-123");
+    await userEvent.click(screen.getByRole("button", { name: "Continuar" }));
+    const code = await screen.findByLabelText("Código de 6 dígitos");
+    // El paso nuevo empieza sin mensajes.
+    expect(code).not.toHaveAttribute("aria-invalid");
+    await userEvent.click(screen.getByRole("button", { name: "Activar la verificación" }));
+    expect(code).toHaveAccessibleDescription("Escribe el código de 6 dígitos de Google Authenticator.");
+    await userEvent.type(code, "123");
+    expect(code).toHaveAccessibleDescription("El código tiene 6 dígitos, solo números.");
+    expect(mocks.verifyTotp).not.toHaveBeenCalled();
+  });
+});
+

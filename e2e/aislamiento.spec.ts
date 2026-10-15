@@ -13,7 +13,7 @@ test("los movimientos de un usuario no aparecen en la cuenta de otro", async ({ 
   await register(beto, "Beto");
 
   await expect(visible(beto.getByText("Aún no tienes movimientos este mes."))).toBeVisible();
-  await expect(visible(beto.getByText("Balance del mes")).locator("..")).toContainText("$ 0");
+  await expect(visible(beto.getByText("Balance del mes")).locator("..")).toContainText("$0,00");
   await openTab(beto, "Egresos");
   await expect(visible(beto.getByText("No has registrado egresos este mes."))).toBeVisible();
   await expect(visible(beto.getByText("Secreto de Ana"))).toHaveCount(0);

@@ -1,12 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState, useEffect, useId, useRef } from "react";
+import type { FieldMessages } from "@/lib/field-errors";
 import {
   createTransactionAction,
   updateTransactionAction,
   type FormState,
 } from "@/modules/transactions/actions";
+import { describedBy, FieldError } from "./field-error";
+import { useFieldErrors } from "./use-field-errors";
 
 type CategoryOption = { id: string; name: string; emoji: string; archived?: boolean };
 
@@ -17,6 +20,13 @@ export type TransactionToEdit = {
   description: string;
   categoryId: string | null;
   occurredOn: string;
+};
+
+// Los errores de los campos antes de enviar, en español (en vez del globo del navegador).
+const MESSAGES: Record<string, FieldMessages> = {
+  amount: { required: "Escribe el monto." },
+  description: { required: 'Escribe una descripción, por ejemplo "Almuerzo".' },
+  occurredOn: { required: "Elige la fecha.", max: "La fecha no puede ser después de hoy." },
 };
 
 export function TransactionForm({
@@ -45,19 +55,27 @@ export function TransactionForm({
     if (state.ok) amountRef.current?.focus();
   }, [state]);
 
-  const errors = state.fieldErrors ?? {};
+  // Los del navegador (antes de enviar, en español) y, si no hay, los del servidor.
+  const { errors: fieldErrors, formProps } = useFieldErrors(MESSAGES);
+  const serverErrors = state.fieldErrors ?? {};
+  const errorOf = (name: keyof NonNullable<FormState["fieldErrors"]>) => fieldErrors[name] ?? serverErrors[name];
+  const ids = { amount: useId(), description: useId(), categoryId: useId(), occurredOn: useId() };
+  const aria = (name: keyof typeof ids) => ({
+    "aria-invalid": Boolean(errorOf(name)) || undefined,
+    "aria-describedby": describedBy(errorOf(name) && ids[name]),
+  });
   // Lo que devolvió el servidor tras un error; si no, los datos del movimiento que se edita.
   const values = state.values ?? (transaction ? valuesOf(transaction) : {});
   const isIncome = type === "income";
   const noun = isIncome ? "ingreso" : "egreso";
 
   return (
-    <form action={formAction} className="card space-y-4 p-4 sm:p-5">
+    <form action={formAction} {...formProps} className="card space-y-4 p-4 sm:p-5">
       <h2 className="font-semibold">{editing ? `Editar ${noun}` : `Nuevo ${noun}`}</h2>
       <input type="hidden" name="type" value={type} />
       {transaction && <input type="hidden" name="id" value={transaction.id} />}
 
-      <Field label="Monto" error={errors.amount}>
+      <Field label="Monto" error={errorOf("amount")} errorId={ids.amount}>
         <div className="relative">
           <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-muted">
             $
@@ -69,6 +87,7 @@ export function TransactionForm({
             placeholder="500.000"
             defaultValue={values.amount}
             required
+            {...aria("amount")}
             className="input pl-7 tabular-nums"
             onChange={(e) => {
               // Muestra separadores de miles mientras se escribe: 500000 → 500.000
@@ -79,19 +98,20 @@ export function TransactionForm({
         </div>
       </Field>
 
-      <Field label="Descripción" error={errors.description}>
+      <Field label="Descripción" error={errorOf("description")} errorId={ids.description}>
         <input
           name="description"
           required
           maxLength={140}
           defaultValue={values.description}
           placeholder={isIncome ? "Pago de nómina" : "Zapatos"}
+          {...aria("description")}
           className="input"
         />
       </Field>
 
       <div className="grid grid-cols-2 gap-3">
-        <Field label="Categoría" error={errors.categoryId}>
+        <Field label="Categoría" error={errorOf("categoryId")} errorId={ids.categoryId}>
           {/* key: React 19 reinicia el formulario al terminar la acción y un <select> no toma un
               defaultValue nuevo después de montarse; con la key se vuelve a montar con la
               categoría que había elegido la persona (si no, tras un error volvería a "Sin
@@ -99,6 +119,7 @@ export function TransactionForm({
           <select
             key={values.categoryId ?? ""}
             name="categoryId"
+            {...aria("categoryId")}
             className="input"
             defaultValue={values.categoryId ?? ""}
           >
@@ -111,8 +132,16 @@ export function TransactionForm({
             ))}
           </select>
         </Field>
-        <Field label="Fecha" error={errors.occurredOn}>
-          <input name="occurredOn" type="date" defaultValue={values.occurredOn ?? today} max={today} required className="input" />
+        <Field label="Fecha" error={errorOf("occurredOn")} errorId={ids.occurredOn}>
+          <input
+            name="occurredOn"
+            type="date"
+            defaultValue={values.occurredOn ?? today}
+            max={today}
+            required
+            {...aria("occurredOn")}
+            className="input"
+          />
         </Field>
       </div>
 
@@ -146,20 +175,25 @@ function valuesOf(transaction: TransactionToEdit): Record<string, string> {
   };
 }
 
+/** Un campo con su etiqueta y, debajo, su error (fuera de la etiqueta: si no, cambiaría su nombre). */
 function Field({
   label,
   error,
+  errorId,
   children,
 }: {
   label: string;
   error?: string;
+  errorId: string;
   children: React.ReactNode;
 }) {
   return (
-    <label className="block space-y-1.5">
-      <span className="text-sm font-medium">{label}</span>
-      {children}
-      {error && <span className="block text-xs text-expense">{error}</span>}
-    </label>
+    <div className="space-y-1.5">
+      <label className="block space-y-1.5">
+        <span className="text-sm font-medium">{label}</span>
+        {children}
+      </label>
+      <FieldError id={errorId} message={error} />
+    </div>
   );
 }
