@@ -1,6 +1,10 @@
 // Tablas requeridas por Better Auth (user, session, account, verification, rateLimit).
 // Si cambias la configuración de Better Auth, revisa que estos campos sigan coincidiendo.
-import { bigint, boolean, index, integer, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { bigint, boolean, index, integer, pgEnum, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { ROLES } from "../../lib/roles";
+
+// Rol de cada cuenta (src/lib/roles.ts). La base solo acepta estos valores.
+export const userRole = pgEnum("user_role", ROLES);
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -10,6 +14,8 @@ export const user = pgTable("user", {
   image: text("image"),
   timezone: text("timezone").notNull().default("America/Bogota"),
   currency: text("currency").notNull().default("COP"),
+  // Toda cuenta nace como "user"; "admin" solo se da desde la terminal (pnpm admin:grant).
+  role: userRole("role").notNull().default("user"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()

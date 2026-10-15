@@ -1,17 +1,6 @@
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { AccountSummary } from "../src/modules/account/admin";
-import {
-  DEFAULT_DAYS,
-  MIN_DAYS,
-  describeDatabase,
-  realDeps,
-  runCli,
-  type DataOps,
-  type Deps,
-} from "./delete-data";
+import { DEFAULT_DAYS, MIN_DAYS, runCli, type DataOps, type Deps } from "./delete-data";
 
 const NOW = new Date("2026-10-14T12:00:00Z");
 const DAY = 24 * 60 * 60 * 1000;
@@ -21,6 +10,7 @@ const ANA: AccountSummary = {
   name: "Ana Pérez",
   email: "ana@correo.com",
   timezone: "America/Bogota",
+  role: "user",
   // En Colombia todavía es el 1 de septiembre (en UTC ya es el 2).
   createdAt: new Date("2026-09-02T03:00:00Z"),
   transactions: 23,
@@ -57,19 +47,6 @@ function setup({
   const run = (...argv: string[]) => runCli(argv, deps);
   return { run, data, deps, logs, errors };
 }
-
-describe("describeDatabase", () => {
-  it("muestra el servidor y la base, nunca el usuario ni la clave", () => {
-    expect(describeDatabase("postgres://usuario:clave@ep-x.neon.tech:5432/neondb?sslmode=require")).toBe(
-      "ep-x.neon.tech:5432/neondb",
-    );
-    expect(describeDatabase("postgres://localhost/finanzas")).toBe("localhost/finanzas");
-  });
-
-  it("no rompe ni muestra nada si la URL no es válida", () => {
-    expect(describeDatabase("clave-pegada-por-error")).toBe("(DATABASE_URL no es una URL válida)");
-  });
-});
 
 describe("runCli · argumentos", () => {
   it.each([
@@ -161,6 +138,15 @@ describe("runCli · cuenta", () => {
       "Avísale por correo que ya se borró (lo promete la página /eliminar-datos).",
     ]);
     expect(logs.join("\n")).not.toContain("clave-secreta");
+  });
+
+  it("avisa si la cuenta es admin", async () => {
+    const { run, logs } = setup({ account: { ...ANA, role: "admin" }, answer: "ana@correo.com" });
+    expect(await run("cuenta", "ana@correo.com")).toBe(0);
+    expect(logs.slice(1, 3)).toEqual([
+      "Cuenta: Ana Pérez <ana@correo.com>, creada el 2026-09-01",
+      "⚠️  Es admin: con la cuenta se pierde también ese acceso.",
+    ]);
   });
 
   it("en singular y sin número vinculado", async () => {
@@ -262,30 +248,5 @@ describe("runCli · mensajes sin dueño", () => {
       expect(data.deleteOrphanMessages).not.toHaveBeenCalled();
       expect(logs.at(-1)).toBe("No se confirmó: no se borró nada.");
     }
-  });
-});
-
-describe("realDeps.loadEnv", () => {
-  afterEach(() => {
-    vi.unstubAllEnvs();
-  });
-
-  it("con --env, la DATABASE_URL del archivo manda sobre la de la terminal", () => {
-    vi.stubEnv("DATABASE_URL", "postgres://localhost/de-la-terminal");
-    const dir = mkdtempSync(join(tmpdir(), "delete-data-"));
-    const file = join(dir, ".env.produccion");
-    writeFileSync(file, "DATABASE_URL=postgres://db.neon.tech/produccion\n");
-    try {
-      expect(realDeps.loadEnv(file)).toBeNull();
-      expect(realDeps.env().DATABASE_URL).toBe("postgres://db.neon.tech/produccion");
-    } finally {
-      rmSync(dir, { recursive: true });
-    }
-  });
-
-  it("si el archivo de --env no existe, devuelve el error", () => {
-    vi.stubEnv("DATABASE_URL", "postgres://localhost/de-la-terminal");
-    expect(realDeps.loadEnv(join(tmpdir(), "no-existe", ".env.produccion"))).toMatch(/ENOENT/);
-    expect(realDeps.env().DATABASE_URL).toBe("postgres://localhost/de-la-terminal");
   });
 });

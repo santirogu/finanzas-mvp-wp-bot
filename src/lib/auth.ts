@@ -8,6 +8,7 @@ import { db, schema } from "@/db";
 import { clearFailures, lockedUntil, normalizeEmail, recordFailure } from "@/modules/auth/lockout";
 import { getAppUrl, getVercelOrigins } from "./app-url";
 import { envVar } from "./env";
+import { ROLES } from "./roles";
 
 // El build corre en GitHub Actions, que no recibe los secretos de Vercel. Better Auth exige
 // un secreto al inicializarse, así que durante el build se usa uno provisional que nunca
@@ -43,6 +44,9 @@ export const auth = betterAuth({
     additionalFields: {
       timezone: { type: "string", required: false, defaultValue: "America/Bogota", input: false },
       currency: { type: "string", required: false, defaultValue: "COP", input: false },
+      // input: false → el registro ignora el rol que mande el cliente (queda "user") y
+      // "actualizar perfil" lo rechaza. Solo se cambia desde la terminal (pnpm admin:grant).
+      role: { type: [...ROLES], required: false, defaultValue: "user", input: false },
     },
   },
   // Límite de intentos por IP (contra quien prueba contraseñas a la fuerza), guardado en Postgres.
