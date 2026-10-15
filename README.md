@@ -48,6 +48,7 @@ pnpm dev                        # http://localhost:3000
 | `pnpm db:studio` | Explorador visual de la base de datos |
 | `pnpm account:delete <correo>` | Borra una cuenta y todos sus datos, para quien lo pide por correo (ver Seguridad → Borrar datos a pedido) |
 | `pnpm messages:cleanup` | Borra los mensajes de WhatsApp sin dueño de más de 30 días (`--dias N`, mínimo 7) |
+| `pnpm admin:grant <correo>` · `admin:revoke` · `admin:list` | Da o quita el rol de admin, o lista los admins (ver Seguridad → Roles) |
 | `pnpm bot:try 'texto'` | Muestra cómo interpreta el bot un mensaje (usa la API de Claude). Usa comillas simples si el texto tiene `$` |
 | `pnpm bot:eval` | Corre el set de ~50 frases de prueba del bot y reporta aciertos, latencia y costo |
 
@@ -194,6 +195,39 @@ cuenta por correo, también para correos que no existen, así que no revela cuá
 Un login correcto reinicia el contador. Implementado con hooks de Better Auth
 (`src/lib/auth.ts`) y la tabla `login_failure` (`src/modules/auth/lockout.ts`). Contra: alguien
 podría bloquear a propósito la cuenta de otra persona; por eso el bloqueo es corto.
+
+### Roles
+
+Hay dos roles (`src/lib/roles.ts`), guardados en la columna `user.role`:
+
+| Rol | Quién | Qué ve |
+|---|---|---|
+| `user` | Toda cuenta al registrarse | Resumen, Ingresos, Egresos y Mi cuenta |
+| `admin` | Solo quien lo recibe desde la terminal | Todo lo de `user` y la sección de administración |
+
+- **No hay usuario ni contraseña de admin por defecto.** El rol se le da a una cuenta que ya
+  existe, desde la terminal, y solo puede hacerlo quien tiene la `DATABASE_URL`. Así no queda
+  nada en el código (el repositorio es público) ni en Vercel.
+- **Nadie puede darse el rol desde la app:** en Better Auth el campo tiene `input: false`, así que
+  el registro ignora el rol que mande el cliente y "actualizar perfil" lo rechaza
+  (`FIELD_NOT_ALLOWED`). La base solo acepta `user` o `admin` (tipo `user_role`). No se usa el plugin
+  `admin` de Better Auth: agregaría endpoints (suplantar usuarios, cambiar contraseñas ajenas) que
+  no hacen falta.
+- **En el servidor:** las páginas y acciones de administración llaman a `requireAdmin()`
+  (`src/lib/session.ts`): sin sesión llevan al login y sin el rol responden 404, para no revelar que
+  la sección existe. El rol se lee de la base en cada pedido: quitarlo surte efecto en el siguiente
+  clic. La matriz de autorización falla si una página o acción de admin no llama a `requireAdmin()`.
+
+**Hacerse admin** (en la terminal, dentro de la carpeta del proyecto, con la cuenta ya registrada en
+la app):
+
+1. Copia la `DATABASE_URL` de producción de Neon (*Dashboard → Connect*) en un archivo
+   `.env.produccion`: una sola línea `DATABASE_URL=...`. Git ignora los `.env*`.
+2. Corre `pnpm admin:grant --env .env.produccion tu-correo@...` y escribe el correo para confirmar.
+3. Borra el archivo: `rm .env.produccion`.
+
+`pnpm admin:list --env .env.produccion` muestra quiénes son admin y `pnpm admin:revoke` quita el
+rol. Sin `--env`, los tres usan la base local de `.env`.
 
 ### Borrar datos a pedido
 

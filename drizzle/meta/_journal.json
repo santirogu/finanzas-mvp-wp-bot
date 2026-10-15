@@ -29,6 +29,13 @@
       "when": 1792014443635,
       "tag": "0003_login_failure",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792029836586,
+      "tag": "0004_roles-de-usuario",
+      "breakpoints": true
     }
   ]
 }

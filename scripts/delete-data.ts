@@ -4,18 +4,16 @@
 //                                       cuenta" en la app (para quien lo pide por correo)
 //   pnpm messages:cleanup [--dias 30]   mensajes de WhatsApp sin dueño de más de N días
 //
-// Usa la DATABASE_URL de .env (la base local). Para otra base, como producción:
-// --env <archivo> con su DATABASE_URL (un archivo .env*, que git ignora).
+// Base de datos: la de .env o la de --env <archivo> (ver scripts/db-cli.ts).
 // Siempre muestra en qué base y qué va a borrar, y pide confirmación antes de borrar.
 
-import { config } from "dotenv";
-import { createInterface } from "node:readline/promises";
 import { parseArgs } from "node:util";
 import { pathToFileURL } from "node:url";
 import type { AccountSummary } from "../src/modules/account/admin";
 import { todayInTimezone } from "../src/lib/dates";
 import { CONFIRMATION_WORD } from "../src/modules/account/confirmation";
 import { maskPhone } from "../src/modules/whatsapp/phone";
+import { exitWith, normalizeEmail, prepareDatabase, realTerminal, type Terminal } from "./db-cli";
 
 /** Meta reintenta un webhook hasta 7 días: hasta entonces el mensaje sirve para no procesarlo dos veces. */
 export const MIN_DAYS = 7;
@@ -38,30 +36,12 @@ export type DataOps = {
   close: () => Promise<void>;
 };
 
-export type Deps = {
-  /** Carga las variables de entorno (de .env o del archivo indicado); devuelve un error si falla. */
-  loadEnv: (file?: string) => string | null;
-  env: () => Record<string, string | undefined>;
+export type Deps = Terminal & {
   /** La base de datos se abre recién después de cargar las variables. */
   openData: () => Promise<DataOps>;
-  ask: (question: string) => Promise<string>;
   now: () => Date;
-  log: (line: string) => void;
-  error: (line: string) => void;
 };
 
-/** "postgres://usuario:clave@host:5432/base" → "host:5432/base" (nunca muestra la clave). */
-export function describeDatabase(url: string): string {
-  try {
-    const { host, pathname } = new URL(url);
-    return `${host}${pathname}`;
-  } catch {
-    return "(DATABASE_URL no es una URL válida)";
-  }
-}
-
-// Como normalizeEmail (src/modules/auth/lockout.ts), que no se importa aquí: abre la base al cargarse.
-const normalizeEmail = (email: string) => email.trim().toLowerCase();
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 async function deleteAccount(email: string, data: DataOps, { ask, log, error }: Deps): Promise<number> {
@@ -72,6 +52,7 @@ async function deleteAccount(email: string, data: DataOps, { ask, log, error }: 
   }
 
   log(`Cuenta: ${account.name} <${account.email}>, creada el ${todayInTimezone(account.timezone, account.createdAt)}`);
+  if (account.role === "admin") log("⚠️  Es admin: con la cuenta se pierde también ese acceso.");
   log("Se borrará, sin forma de recuperarlo:");
   log(`  - ${plural(account.transactions, "movimiento", "movimientos")}`);
   log(`  - ${plural(account.categories, "categoría propia", "categorías propias")}`);
@@ -140,17 +121,7 @@ export async function runCli(argv: string[], deps: Deps): Promise<number> {
     return 2;
   }
 
-  const envError = deps.loadEnv(envFile);
-  if (envError) {
-    deps.error(`No se pudo leer ${envFile ?? ".env"}: ${envError}`);
-    return 2;
-  }
-  const url = deps.env().DATABASE_URL;
-  if (!url) {
-    deps.error(`Falta DATABASE_URL en ${envFile ?? ".env"}.`);
-    return 2;
-  }
-  deps.log(`Base de datos: ${describeDatabase(url)}`);
+  if (!prepareDatabase(envFile, deps)) return 2;
 
   const data = await deps.openData();
   try {
@@ -160,15 +131,10 @@ export async function runCli(argv: string[], deps: Deps): Promise<number> {
   }
 }
 
-// Stryker disable all: conexión real con la base, el teclado y la terminal; la lógica de arriba
-// se prueba con estas piezas simuladas (scripts/delete-data.test.ts).
+// Stryker disable all: conexión real con la base y la terminal; la lógica de arriba se prueba con
+// piezas simuladas (scripts/delete-data.test.ts).
 export const realDeps: Deps = {
-  loadEnv: (file) => {
-    // Con --env, el archivo manda aunque la terminal ya tenga una DATABASE_URL.
-    const result = config({ path: file ?? ".env", override: Boolean(file), quiet: true });
-    return file && result.error ? result.error.message : null;
-  },
-  env: () => process.env,
+  ...realTerminal,
   openData: async () => {
     const [{ db }, admin, { deleteAccountData }] = await Promise.all([
       import("../src/db"),
@@ -177,26 +143,10 @@ export const realDeps: Deps = {
     ]);
     return { ...admin, deleteAccountData, close: () => db.$client.end() };
   },
-  ask: async (question) => {
-    const rl = createInterface({ input: process.stdin, output: process.stdout });
-    try {
-      return await rl.question(question);
-    } finally {
-      rl.close();
-    }
-  },
   now: () => new Date(),
-  log: (line) => console.log(line),
-  error: (line) => console.error(line),
 };
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
-  runCli(process.argv.slice(2), realDeps).then(
-    (code) => process.exit(code),
-    (err) => {
-      console.error(err);
-      process.exit(1);
-    },
-  );
+  exitWith(runCli(process.argv.slice(2), realDeps));
 }
 // Stryker restore all

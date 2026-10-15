@@ -52,6 +52,19 @@ const SERVER_ACTIONS = {
 // Acciones que no necesitan validar la sesión, con el porqué.
 const ACTIONS_WITHOUT_SESSION = ["signOutAction"];
 
+// Páginas privadas que no validan la sesión ellas mismas, con el porqué.
+const PAGES_WITHOUT_SESSION_CHECK: Record<string, string> = {
+  "/simulador": "solo en desarrollo y no muestra datos: cada mensaje valida la sesión en simulateMessageAction",
+};
+
+// Administración: páginas cuya regla empieza con ADMIN_RULE y acciones cuya regla empieza con
+// "requireAdmin". Deben validar el rol en el servidor con requireAdmin() (src/lib/session.ts).
+const ADMIN_RULE = "requiere sesión de admin";
+// Módulos con datos de todas las cuentas: solo los pueden usar archivos que llamen a requireAdmin().
+const ADMIN_DATA_MODULES = /from\s+["']@\/modules\/account\/admin["']/;
+// Los únicos archivos que comparan roles; el resto usa requireAdmin() o hasRole().
+const ROLE_CHECK_FILES = ["src/lib/roles.ts", "src/lib/session.ts"];
+
 // ── Lectura del código ────────────────────────────────────────────────────────────────────────
 
 function walk(dir: string): string[] {
@@ -106,19 +119,36 @@ function serverActions() {
   return actions;
 }
 
-/** ¿El archivo, o lo que importa con rutas relativas o "@/", llama a requireUser()? */
-function reachesRequireUser(file: string, seen = new Set<string>()): boolean {
-  if (seen.has(file)) return false;
+const SESSION_MODULE = join(ROOT, "src/lib/session.ts");
+
+/** Una llamada a fn() (no su definición: "function fn()" no cuenta). */
+const callsTo = (fn: string) => new RegExp(`(?<!function\\s+)\\b${fn}\\(\\)`);
+
+const isServerActionsFile = (source: string) => /^\s*["']use server["']/.test(source);
+
+/**
+ * ¿El archivo, o lo que importa con rutas relativas o "@/", llama a alguna de esas funciones?
+ * No cuenta lo que no protege al archivo que importa:
+ *  - src/lib/session.ts, donde se definen (y requireAdmin llama a requireUser);
+ *  - los archivos de Server Actions: cada acción valida su propia llamada, no la página que la usa.
+ */
+function reachesCall(file: string, fns: string[], seen = new Set<string>()): boolean {
+  if (seen.has(file) || file === SESSION_MODULE) return false;
   seen.add(file);
   const source = read(file);
-  if (/\brequireUser\(\)/.test(source)) return true;
+  if (seen.size > 1 && isServerActionsFile(source)) return false;
+  if (fns.some((fn) => callsTo(fn).test(source))) return true;
   for (const [, spec] of source.matchAll(/from\s+["'](\.{1,2}\/[^"']+|@\/[^"']+)["']/g)) {
     const base = spec.startsWith("@/") ? join(ROOT, "src", spec.slice(2)) : resolve(dirname(file), spec);
     const target = [`${base}.tsx`, `${base}.ts`, join(base, "index.ts")].find((c) => sourceFiles.includes(c));
-    if (target && reachesRequireUser(target, seen)) return true;
+    if (target && reachesCall(target, fns, seen)) return true;
   }
   return false;
 }
+
+// requireAdmin también valida la sesión (llama a requireUser).
+const reachesRequireUser = (file: string) => reachesCall(file, ["requireUser", "requireAdmin"]);
+const reachesRequireAdmin = (file: string) => reachesCall(file, ["requireAdmin"]);
 
 // ── Pruebas ───────────────────────────────────────────────────────────────────────────────────
 
@@ -154,9 +184,68 @@ describe("páginas", () => {
   });
 
   it("las privadas validan la sesión en el servidor (requireUser), no solo en el proxy", () => {
-    for (const file of pageFiles.filter((f) => privatePages.includes(routeOf(f)))) {
+    const checked = pageFiles.filter((f) => privatePages.includes(routeOf(f)) && !(routeOf(f) in PAGES_WITHOUT_SESSION_CHECK));
+    expect(checked.length).toBeGreaterThan(0);
+    for (const file of checked) {
       expect(reachesRequireUser(file), routeOf(file)).toBe(true);
     }
+  });
+
+  it("las excepciones son páginas privadas que existen", () => {
+    for (const path of Object.keys(PAGES_WITHOUT_SESSION_CHECK)) expect(privatePages, path).toContain(path);
+  });
+});
+
+describe("administración", () => {
+  const adminPages = Object.entries(PAGES)
+    .filter(([, rule]) => (rule as string).startsWith(ADMIN_RULE))
+    .map(([path]) => path);
+  const adminActions = Object.entries(SERVER_ACTIONS)
+    .filter(([, rule]) => (rule as string).startsWith("requireAdmin"))
+    .map(([name]) => name);
+
+  it("toda página bajo /admin está clasificada como de admin", () => {
+    for (const file of pageFiles.filter((f) => /^\/admin(\/|$)/.test(routeOf(f)))) {
+      expect(adminPages, routeOf(file)).toContain(routeOf(file));
+    }
+  });
+
+  it("las páginas de admin validan el rol en el servidor (requireAdmin)", () => {
+    for (const file of pageFiles.filter((f) => adminPages.includes(routeOf(f)))) {
+      expect(reachesRequireAdmin(file), routeOf(file)).toBe(true);
+    }
+  });
+
+  it("las Server Actions de admin llaman a requireAdmin() antes de hacer cualquier cosa", () => {
+    for (const action of serverActions().filter((a) => adminActions.includes(a.name))) {
+      const check = action.body.search(/await\s+requireAdmin\(\)/);
+      expect(check, `${action.name} no llama a requireAdmin()`).toBeGreaterThan(-1);
+      const firstDataAccess = action.body.search(/\bdb\.|readForm\(|from\(|setRole\(/);
+      expect(firstDataAccess === -1 || check < firstDataAccess, `${action.name} usa datos antes de validar el rol`).toBe(true);
+    }
+  });
+
+  it("los datos de todas las cuentas solo se usan desde archivos que llaman a requireAdmin()", () => {
+    const offenders = sourceFiles
+      .filter((f) => f.startsWith(APP))
+      .filter((f) => ADMIN_DATA_MODULES.test(read(f)) && !callsTo("requireAdmin").test(read(f)))
+      .map((f) => relative(ROOT, f));
+    expect(offenders).toEqual([]);
+  });
+
+  it("solo src/lib/roles.ts y session.ts comparan roles (el resto usa requireAdmin o hasRole)", () => {
+    const offenders = sourceFiles
+      .filter((f) => !ROLE_CHECK_FILES.includes(relative(ROOT, f)))
+      .filter((f) => /\brole\s*[!=]==?\s*["'`]|["'`](admin|user)["`']\s*[!=]==?\s*\w*\.?role\b/.test(read(f)))
+      .map((f) => relative(ROOT, f));
+    expect(offenders).toEqual([]);
+  });
+
+  it("requireAdmin solo se define en src/lib/session.ts", () => {
+    const definitions = sourceFiles
+      .filter((f) => /function\s+requireAdmin\b|requireAdmin\s*=/.test(read(f)))
+      .map((f) => relative(ROOT, f));
+    expect(definitions).toEqual(["src/lib/session.ts"]);
   });
 });
 

@@ -33,6 +33,7 @@ async function signIn() {
     email: user.email,
     timezone: user.timezone,
     currency: user.currency,
+    role: user.role,
   };
   return user;
 }

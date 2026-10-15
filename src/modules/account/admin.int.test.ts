@@ -37,6 +37,7 @@ describe("findAccountByEmail", () => {
       name: "Ana",
       email: "ana@test.local",
       timezone: "America/Bogota",
+      role: "user",
       createdAt: expect.any(Date),
       transactions: 2,
       categories: 1,

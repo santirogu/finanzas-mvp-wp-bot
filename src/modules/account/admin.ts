@@ -1,7 +1,8 @@
 import "server-only";
-import { and, count, countDistinct, eq, isNull, lt, notExists } from "drizzle-orm";
+import { and, asc, count, countDistinct, eq, isNull, lt, notExists } from "drizzle-orm";
 import { db } from "@/db";
 import { category, transaction, user, whatsappLink, whatsappMessage } from "@/db/schema";
+import type { Role } from "@/lib/roles";
 import { normalizeEmail } from "@/modules/auth/lockout";
 import { accountMessages } from "./delete-account";
 
@@ -13,6 +14,7 @@ export type AccountSummary = {
   name: string;
   email: string;
   timezone: string;
+  role: Role;
   createdAt: Date;
   transactions: number;
   categories: number;
@@ -28,6 +30,7 @@ export async function findAccountByEmail(email: string): Promise<AccountSummary 
       name: user.name,
       email: user.email,
       timezone: user.timezone,
+      role: user.role,
       createdAt: user.createdAt,
     })
     .from(user)
@@ -81,4 +84,41 @@ export async function deleteOrphanMessages(before: Date): Promise<number> {
     .where(orphanMessages(before))
     .returning({ id: whatsappMessage.id });
   return deleted.length;
+}
+
+// ── Roles (pnpm admin:grant / admin:revoke / admin:list) ───────────────────────────────────────
+
+export type AccountRole = {
+  id: string;
+  name: string;
+  email: string;
+  timezone: string;
+  role: Role;
+  createdAt: Date;
+};
+
+const accountRoleColumns = {
+  id: user.id,
+  name: user.name,
+  email: user.email,
+  timezone: user.timezone,
+  role: user.role,
+  createdAt: user.createdAt,
+};
+
+/** La cuenta de ese correo con su rol, o null si no existe. */
+export async function findAccountRole(email: string): Promise<AccountRole | null> {
+  const [account] = await db.select(accountRoleColumns).from(user).where(eq(user.email, normalizeEmail(email)));
+  return account ?? null;
+}
+
+/** Cambia el rol de una cuenta; devuelve false si la cuenta ya no existe. */
+export async function setRole(userId: string, role: Role): Promise<boolean> {
+  const updated = await db.update(user).set({ role }).where(eq(user.id, userId)).returning({ id: user.id });
+  return updated.length === 1;
+}
+
+/** Las cuentas con rol de admin, de la más antigua a la más nueva. */
+export async function listAdmins(): Promise<AccountRole[]> {
+  return db.select(accountRoleColumns).from(user).where(eq(user.role, "admin")).orderBy(asc(user.createdAt));
 }

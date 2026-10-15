@@ -25,6 +25,7 @@ async function signIn(user: Awaited<ReturnType<typeof createUser>>) {
     email: user.email,
     timezone: user.timezone,
     currency: user.currency,
+    role: user.role,
   };
 }
 
