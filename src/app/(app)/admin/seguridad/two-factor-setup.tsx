@@ -67,7 +67,7 @@ export function TwoFactorSetup({
       // key: cada paso es un formulario nuevo (nada del anterior, como lo escrito, pasa al siguiente).
       <form key="password" method="post" onSubmit={onPassword} className="card space-y-4 p-4">
         <div className="space-y-1 text-sm">
-          <h2 className="font-semibold">Paso 1 de 3: confirma que eres tú</h2>
+          <h3 className="font-semibold">Paso 1 de 3: confirma que eres tú</h3>
           <p className="text-muted">
             Necesitas Google Authenticator (o cualquier app de códigos) instalada en tu celular.
           </p>
@@ -89,7 +89,7 @@ export function TwoFactorSetup({
     return (
       <form key="scan" method="post" onSubmit={(e) => onCode(e, step.backupCodes)} className="card space-y-4 p-4">
         <div className="space-y-1 text-sm">
-          <h2 className="font-semibold">Paso 2 de 3: escanea el código</h2>
+          <h3 className="font-semibold">Paso 2 de 3: escanea el código</h3>
           <p className="text-muted">
             En Google Authenticator toca <strong>+</strong> → <strong>Escanear un código QR</strong> y apunta
             la cámara aquí. Luego escribe el código de 6 dígitos que aparece.
@@ -127,7 +127,7 @@ export function TwoFactorSetup({
   return (
     <section className="card space-y-4 p-4">
       <div className="space-y-1 text-sm">
-        <h2 className="font-semibold">Paso 3 de 3: guarda tus códigos de respaldo</h2>
+        <h3 className="font-semibold">Paso 3 de 3: guarda tus códigos de respaldo</h3>
         <p>
           ✓ La verificación en dos pasos quedó activa y cerramos tus otras sesiones abiertas.
         </p>

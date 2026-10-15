@@ -70,7 +70,7 @@ describe("finishTwoFactorSetupAction", () => {
     await signIn("ana@test.local");
 
     as(here);
-    await expect(finishTwoFactorSetupAction()).rejects.toThrow("NEXT_REDIRECT:/admin/verificacion");
+    await expect(finishTwoFactorSetupAction()).rejects.toThrow("NEXT_REDIRECT:/admin/seguridad");
     expect(await sessionsOf(ana.id)).toHaveLength(2);
   });
 

@@ -224,7 +224,7 @@ Hay dos roles (`src/lib/roles.ts`), guardados en la columna `user.role`:
 **Verificación en dos pasos (solo admins).** Plugin `twoFactor` de Better Auth con Google
 Authenticator (o cualquier app TOTP); reglas propias en `src/modules/auth/two-factor-rules.ts`:
 
-- **Configuración, una vez** (`/admin/verificacion`, adonde lleva la pestaña Admin si falta):
+- **Configuración, una vez** (`/admin/seguridad`, adonde lleva la pestaña Admin si falta):
   contraseña → QR (dibujado en la app, sin servicios externos; también se muestra la clave para
   escribirla a mano) → primer código → 10 códigos de respaldo de un solo uso. Al activarla se
   cierran las demás sesiones de la cuenta. La clave y los códigos se guardan cifrados.
@@ -251,16 +251,46 @@ la app):
 dos pasos activa) y `pnpm admin:revoke` quita el rol. Sin `--env`, usan la base local de `.env`.
 Después de hacerte admin, la pestaña **Admin** te lleva a configurar la verificación en dos pasos.
 
+### Sección de administración
+
+La pestaña **Admin** (solo para admins) abre `/admin`, organizada en **módulos**. Todos comparten un
+marco (`src/app/(app)/admin/layout.tsx`): el título y una subnavegación con chips (Inicio y los
+módulos activos). **Inicio** muestra una tarjeta por módulo, con un resumen de los activos; los que
+vienen aparecen como "Pronto".
+
+| Módulo | Ruta | Estado |
+|---|---|---|
+| Historial | `/admin/historial` | Activo: registro y vinculación de WhatsApp |
+| Usuarios | `/admin/usuarios` | Pronto |
+| Bot de WhatsApp | `/admin/bot` | Pronto |
+| Categorías | `/admin/categorias` | Pronto (de ingresos y egresos, editables solo por el admin) |
+| Salud del sistema | `/admin/salud` | Pronto |
+| Configuración | `/admin/configuracion` | Pronto |
+| Seguridad | `/admin/seguridad` | Activo: la verificación en dos pasos del admin |
+
+- **Registro único** (`src/modules/admin/modules.ts`): de ahí salen la subnavegación y las tarjetas.
+  Una prueba exige que cada módulo activo tenga su página y que no haya páginas de admin fuera del
+  registro.
+- **Autorización en tres lugares:** cada página y acción llama a `requireAdmin()`, y también cada
+  consulta de `src/modules/admin/` (la capa de datos), así que ninguna página puede mostrar esos
+  datos aunque olvide validar. El marco valida el rol antes de dibujarse: a quien no es admin no le
+  llegan ni el título ni los nombres de los módulos (recibe el 404). La matriz de autorización falla
+  si alguna de las tres falta.
+- **Rutas viejas** (`/admin?…` del historial y `/admin/verificacion`): redirigen a las nuevas
+  (`next.config.ts`).
+- Las consultas de los comandos de terminal están en `src/modules/account/terminal.ts`: no validan
+  sesión y la app no las puede importar.
+
 ### Historial de las cuentas
 
 La tabla `account_event` (`src/modules/account/events.ts`) guarda el historial de registro y
-vinculación de WhatsApp de cada cuenta. El admin lo ve en **`/admin`** (pestaña Admin) como línea de
+vinculación de WhatsApp de cada cuenta. El admin lo ve en **`/admin/historial`** como línea de
 tiempo de todas las cuentas, agrupada por día ("Hoy", "Ayer", "10 de octubre"…) y en hora de
 Colombia: cada evento es una frase con su ícono ("Beto vinculó su WhatsApp +57 300…"). Arriba, la
 búsqueda (nombre, correo o número, escrito como sea) y el botón **Filtros**, con chips de tipo de
 evento (varios a la vez) y de fecha (Hoy, Últimos 7 días, Últimos 30 días, Todo o un rango
 personalizado); los filtros activos se quitan con su ✕ y tocar un nombre muestra solo esa cuenta.
-Se ven 50 eventos y "Ver más antiguos" suma de a 50, hasta 500 (`src/modules/admin/`). Los filtros
+Se ven 50 eventos y "Ver más antiguos" suma de a 50, hasta 500 (`src/modules/admin/history/`). Los filtros
 van en la URL (`next/form`) y se validan antes de consultar. `/privacidad` explica qué ve el
 administrador.
 

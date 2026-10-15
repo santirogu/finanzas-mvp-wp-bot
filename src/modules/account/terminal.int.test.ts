@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { db } from "@/db";
 import { accountEvent, category, transaction, user, whatsappLink, whatsappMessage } from "@/db/schema";
 import { createUser } from "../../../test/integration/factories";
-import { countOrphanData, deleteOrphanData, findAccountByEmail } from "./admin";
+import { countOrphanData, deleteOrphanData, findAccountByEmail } from "./terminal";
 import { deleteAccountData } from "./delete-account";
 
 const DAY = 24 * 60 * 60 * 1000;

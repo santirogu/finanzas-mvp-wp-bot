@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { AccountRole } from "../src/modules/account/admin";
+import type { AccountRole } from "../src/modules/account/terminal";
 import { runCli, type Deps, type RoleOps } from "./admin";
 
 const ANA: AccountRole = {

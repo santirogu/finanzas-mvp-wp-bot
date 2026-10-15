@@ -5,9 +5,10 @@ import { requireAdminRole } from "@/lib/session";
 import { PageSkeleton } from "../../page-skeleton";
 import { TwoFactorSetup } from "./two-factor-setup";
 
-export const metadata: Metadata = { title: "Verificación en dos pasos" };
+export const metadata: Metadata = { title: "Seguridad · Administración" };
 
-// Única página de administración que no exige la verificación en dos pasos: es donde se configura.
+// Seguridad: la única página de administración que no exige la verificación en dos pasos, porque es
+// donde se configura (requireAdminRole).
 export default function TwoFactorSetupPage() {
   return (
     <Suspense fallback={<PageSkeleton />}>
@@ -20,11 +21,8 @@ async function Setup() {
   const user = await requireAdminRole();
 
   return (
-    <div className="mx-auto max-w-xl space-y-6">
-      <div>
-        <p className="text-sm text-muted">Administración</p>
-        <h1 className="text-2xl font-semibold tracking-tight">Verificación en dos pasos</h1>
-      </div>
+    <div className="space-y-4">
+      <h2 className="text-lg font-semibold">Verificación en dos pasos</h2>
       {user.twoFactorEnabled ? (
         <section className="card space-y-2 p-4 text-sm">
           <p className="font-semibold">✓ Está activa</p>

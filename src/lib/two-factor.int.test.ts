@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { db } from "@/db";
 import { loginFailure, session, twoFactor, user } from "@/db/schema";
-import { findAccountRole, resetTwoFactor } from "@/modules/account/admin";
+import { findAccountRole, resetTwoFactor } from "@/modules/account/terminal";
 import { TWO_FACTOR_DISABLED_PATHS, TWO_FACTOR_LOCKOUT } from "@/modules/auth/two-factor-rules";
 import {
   Jar,

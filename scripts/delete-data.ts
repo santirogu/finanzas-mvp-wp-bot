@@ -10,7 +10,7 @@
 
 import { parseArgs } from "node:util";
 import { pathToFileURL } from "node:url";
-import type { AccountSummary, OrphanCounts } from "../src/modules/account/admin";
+import type { AccountSummary, OrphanCounts } from "../src/modules/account/terminal";
 import { todayInTimezone } from "../src/lib/dates";
 import { CONFIRMATION_WORD } from "../src/modules/account/confirmation";
 import { maskPhone } from "../src/modules/whatsapp/phone";
@@ -144,7 +144,7 @@ export const realDeps: Deps = {
   openData: async () => {
     const [{ db }, admin, { deleteAccountData }] = await Promise.all([
       import("../src/db"),
-      import("../src/modules/account/admin"),
+      import("../src/modules/account/terminal"),
       import("../src/modules/account/delete-account"),
     ]);
     return { ...admin, deleteAccountData, close: () => db.$client.end() };

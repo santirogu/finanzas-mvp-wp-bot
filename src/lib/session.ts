@@ -18,7 +18,7 @@ export type CurrentUser = {
 };
 
 /** Donde un admin configura la verificación en dos pasos. */
-export const TWO_FACTOR_SETUP_PATH = "/admin/verificacion";
+export const TWO_FACTOR_SETUP_PATH = "/admin/seguridad";
 
 // Data Access Layer: único punto donde se lee la sesión. Todo acceso a datos
 // del usuario debe pasar por aquí para no confiar en lo que envía el cliente.

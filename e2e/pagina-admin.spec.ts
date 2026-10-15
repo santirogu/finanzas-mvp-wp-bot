@@ -17,10 +17,12 @@ const search = (page: Page) => visible(page.getByRole("searchbox", { name: "Busc
 const filtersButton = (page: Page) => visible(page.getByRole("button", { name: /^Filtros/ }));
 const summary = (page: Page, text: string) => visible(page.getByText(text, { exact: true }));
 
-/** Un admin con la verificación lista, en /admin. */
+/** Un admin con la verificación lista, en el Historial (desde la subnavegación). */
 async function adminReady(page: Page) {
   await newAdmin(page);
   await setUpTwoFactor(page);
+  await visible(page.getByRole("navigation", { name: "Secciones de administración" }).getByRole("link", { name: "Historial" })).click();
+  await expect(page).toHaveURL(/\/admin\/historial$/);
 }
 
 async function searchFor(page: Page, text: string) {
@@ -107,7 +109,7 @@ test("el admin ve el historial de otras cuentas como línea de tiempo y lo filtr
     await visible(page.getByRole("link", { name: /^Quitar filtro: Desde el/ })).click();
     await expect(summary(page, "2 eventos")).toBeVisible();
     await visible(page.getByRole("link", { name: "Quitar todo" })).click();
-    await expect(page).toHaveURL(/\/admin$/);
+    await expect(page).toHaveURL(/\/admin\/historial$/);
     await expect(search(page)).toHaveValue("");
     await expect(filtersButton(page)).toHaveAccessibleName("Filtros");
   });
@@ -170,6 +172,7 @@ test("en modo oscuro tampoco hay problemas de accesibilidad", async ({ page }) =
 
 test("filtros raros en la URL no rompen la página ni muestran datos de más", async ({ page }) => {
   await adminReady(page);
+  // Por la ruta vieja (/admin?…): se redirige al Historial con los mismos parámetros.
   for (const query of [
     "?tipo=otra_cosa&tipo=__proto__&mostrar=-5",
     "?fecha=personalizado&desde=2026-02-31&hasta=ayer",
@@ -178,7 +181,8 @@ test("filtros raros en la URL no rompen la página ni muestran datos de más", a
   ]) {
     const response = await page.goto(`/admin${query}`);
     expect(response?.status(), query).toBe(200);
-    await expect(heading(page, "Administración"), query).toBeVisible();
+    await expect(page, query).toHaveURL(/\/admin\/historial\?/);
+    await expect(heading(page, "Registro y vinculación de WhatsApp"), query).toBeVisible();
   }
   await page.goto(`/admin?q=${encodeURIComponent("' or '1'='1")}`);
   await expect(summary(page, "No hay eventos con estos filtros.")).toBeVisible();

@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { NO_FILTERS, type LogFilters } from "@/modules/admin/log-filters";
+import { NO_FILTERS, type LogFilters } from "@/modules/admin/history/log-filters";
 
 // next/form necesita el router de Next: aquí es un <form> común (su envío se espía).
 vi.mock("next/form", () => ({
@@ -112,8 +112,8 @@ describe("FilterBar", () => {
     expect(screen.getByRole("button", { name: "Buscar" })).toHaveAttribute("type", "submit");
   });
 
-  it("el formulario va a /admin", () => {
+  it("el formulario va a /admin/historial", () => {
     render(<FilterBar filters={f()} panelOpen={false} />);
-    expect(document.querySelector("form")).toHaveAttribute("action", "/admin");
+    expect(document.querySelector("form")).toHaveAttribute("action", "/admin/historial");
   });
 });

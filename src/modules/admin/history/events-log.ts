@@ -3,10 +3,12 @@ import { and, count, desc, eq, ilike, inArray, or, sql, type SQL } from "drizzle
 import { db } from "@/db";
 import { accountEvent, user } from "@/db/schema";
 import { todayInTimezone } from "@/lib/dates";
+import { requireAdmin } from "@/lib/session";
 import { ADMIN_LOG_TIMEZONE, dateRange, escapeLike, searchDigits, type LogFilters } from "./log-filters";
 
-// El historial de /admin: todas las cuentas, de lo más nuevo a lo más viejo. Solo se usa detrás de
-// requireAdmin (la matriz de autorización lo exige).
+// El historial de /admin/historial: todas las cuentas, de lo más nuevo a lo más viejo. Cada consulta
+// valida el rol ella misma (requireAdmin), además de la página que la usa: así no hay forma de
+// mostrar estos datos desde una página que lo olvidó. La matriz de autorización lo exige.
 
 export type LogEntry = {
   id: string;
@@ -53,6 +55,7 @@ export async function listAccountEvents(
   filters: LogFilters,
   today = todayInTimezone(ADMIN_LOG_TIMEZONE),
 ): Promise<LogPage> {
+  await requireAdmin();
   const condition = where(filters, today);
   const [{ total }] = await db
     .select({ total: count() })
@@ -84,4 +87,19 @@ export async function listAccountEvents(
     total,
     hasMore: total > rows.length,
   };
+}
+
+/** El resumen de la tarjeta de Inicio: cuántos eventos hubo hoy (en Colombia) y cuántos fallaron. */
+export async function historySummary(
+  today = todayInTimezone(ADMIN_LOG_TIMEZONE),
+): Promise<{ today: number; failedToday: number }> {
+  await requireAdmin();
+  const [row] = await db
+    .select({
+      today: count(),
+      failedToday: sql<number>`count(*) filter (where ${accountEvent.type} = 'whatsapp_link_failed')::int`,
+    })
+    .from(accountEvent)
+    .where(where({ types: [], date: "hoy", from: null, to: null, search: "", limit: 1 }, today));
+  return row;
 }

@@ -15,8 +15,10 @@ import type { Role } from "@/lib/roles";
 import { normalizeEmail } from "@/modules/auth/lockout";
 import { accountEvents, accountMessages } from "./delete-account";
 
-// Consultas para el comando de terminal scripts/delete-data.ts (lo usa el dueño de la app, no la
-// web): muestran qué se va a borrar antes de pedir la confirmación.
+// Consultas de los comandos de terminal (scripts/delete-data.ts y scripts/admin.ts): las usa el
+// dueño de la app desde su computador, nunca la web (no validan ninguna sesión; la matriz de
+// autorización impide importarlas desde src/app). Muestran qué se va a borrar o cambiar antes de
+// pedir la confirmación.
 
 export type AccountSummary = {
   id: string;

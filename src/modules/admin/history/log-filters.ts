@@ -1,8 +1,11 @@
-// El historial de /admin: filtros que vienen en la URL, días, textos y formatos. Sin base de datos
-// (lo que la consulta está en src/modules/admin/events-log.ts).
+// El historial de /admin/historial: filtros que vienen en la URL, días, textos y formatos. Sin base
+// de datos (la consulta está en src/modules/admin/history/events-log.ts).
 
 import type { AccountEventDetails } from "@/db/schema";
 import { todayInTimezone } from "@/lib/dates";
+
+/** La página del historial (src/app/(app)/admin/historial). */
+export const HISTORY_PATH = "/admin/historial";
 
 /** Cuántos eventos se muestran al principio y cuántos suma "Ver más antiguos". */
 export const ADMIN_LOG_PAGE_SIZE = 50;
@@ -123,7 +126,7 @@ export function logHref(filters: LogFilters): string {
   if (filters.search) params.set("q", filters.search);
   if (filters.limit > ADMIN_LOG_PAGE_SIZE) params.set("mostrar", String(filters.limit));
   const query = params.toString();
-  return query ? `/admin?${query}` : "/admin";
+  return query ? `${HISTORY_PATH}?${query}` : HISTORY_PATH;
 }
 
 /** Cuántos filtros hay activos (cada tipo cuenta uno, la fecha y la búsqueda otro). */

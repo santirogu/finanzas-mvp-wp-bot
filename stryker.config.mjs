@@ -17,7 +17,7 @@ const config = {
   mutate: [
     "src/lib/{money,dates,email-typo,env,app-url,session,health,auth-errors,security-headers,service-url,roles,expired-session}.ts",
     "src/modules/auth/two-factor-rules.ts",
-    "src/modules/admin/log-filters.ts",
+    "src/modules/admin/{modules,history/log-filters}.ts",
     "src/modules/bot/{commands,normalize,interpret,replies,prompt,claude-extractor}.ts",
     "src/modules/whatsapp/{signature,payload,phone,client,actions}.ts",
     "src/modules/transactions/validation.ts",
