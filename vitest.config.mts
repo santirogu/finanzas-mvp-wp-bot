@@ -25,7 +25,7 @@ export default defineConfig({
         "src/proxy.ts",
         "src/app/robots.ts",
         "src/components/**",
-        "src/app/**/{auth-form,nav-tabs,whatsapp-connect,page-skeleton,delete-account-form,user-menu}.tsx",
+        "src/app/**/{auth-form,two-factor-login,two-factor-setup,expired-session-notice,nav-tabs,whatsapp-connect,page-skeleton,delete-account-form,user-menu}.tsx",
         "scripts/*.mjs",
         "scripts/{delete-data,admin,db-cli}.ts",
       ],
@@ -43,7 +43,7 @@ export default defineConfig({
       {
         test: {
           name: "unit",
-          include: ["src/**/*.test.ts", "scripts/**/*.test.ts"],
+          include: ["src/**/*.test.ts", "scripts/**/*.test.ts", "test/**/*.test.ts"],
           exclude: ["src/**/*.int.test.ts"],
         },
       },

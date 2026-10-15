@@ -6,6 +6,7 @@ import { useId, useState, useTransition, type FormEvent } from "react";
 import { authClient } from "@/lib/auth-client";
 import { authErrorMessage } from "@/lib/auth-errors";
 import { suggestEmailCorrection } from "@/lib/email-typo";
+import { TwoFactorLogin } from "./two-factor-login";
 
 export function AuthForm({ mode }: { mode: "login" | "register" }) {
   const router = useRouter();
@@ -17,6 +18,8 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
   const [suggestion, setSuggestion] = useState<string | null>(null);
   const [warnedFor, setWarnedFor] = useState<string | null>(null);
   const suggestionId = useId();
+  // Quien tiene la verificación en dos pasos pasa a un segundo paso después de la contraseña.
+  const [needsCode, setNeedsCode] = useState(false);
 
   function checkEmail(value: string) {
     const next = isRegister ? suggestEmailCorrection(value) : null;
@@ -40,7 +43,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
     }
 
     startTransition(async () => {
-      const { error } = isRegister
+      const { data, error } = isRegister
         ? await authClient.signUp.email({ name, email, password })
         : await authClient.signIn.email({ email, password });
 
@@ -48,10 +51,16 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
         setError(authErrorMessage(error));
         return;
       }
+      if (data && "twoFactorRedirect" in data && data.twoFactorRedirect) {
+        setNeedsCode(true);
+        return;
+      }
       router.replace("/dashboard");
       router.refresh();
     });
   }
+
+  if (needsCode) return <TwoFactorLogin onCancel={() => setNeedsCode(false)} />;
 
   return (
     <div className="card w-full max-w-sm p-6 sm:p-8">

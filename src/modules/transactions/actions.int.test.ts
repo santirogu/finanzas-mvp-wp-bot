@@ -34,6 +34,7 @@ async function signIn() {
     timezone: user.timezone,
     currency: user.currency,
     role: user.role,
+    twoFactorEnabled: user.twoFactorEnabled,
   };
   return user;
 }

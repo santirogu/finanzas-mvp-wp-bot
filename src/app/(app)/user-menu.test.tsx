@@ -18,6 +18,7 @@ const ANA: CurrentUser = {
   timezone: "America/Bogota",
   currency: "COP",
   role: "user",
+  twoFactorEnabled: false,
 };
 
 beforeEach(() => {

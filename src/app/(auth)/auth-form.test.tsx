@@ -4,15 +4,24 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TOO_MANY_ATTEMPTS } from "@/lib/auth-errors";
 
 // Better Auth y el router se simulan: se prueba qué envía el formulario y qué muestra.
-type Result = { error: { code?: string; status?: number; message?: string } | null };
+type Result = {
+  data?: Record<string, unknown> | null;
+  error: { code?: string; status?: number; message?: string } | null;
+};
 const mocks = vi.hoisted(() => ({
   signIn: vi.fn<(body: unknown) => Promise<Result>>(),
   signUp: vi.fn<(body: unknown) => Promise<Result>>(),
+  verifyTotp: vi.fn<(body: unknown) => Promise<Result>>(),
+  verifyBackupCode: vi.fn<(body: unknown) => Promise<Result>>(),
   replace: vi.fn(),
   refresh: vi.fn(),
 }));
 vi.mock("@/lib/auth-client", () => ({
-  authClient: { signIn: { email: mocks.signIn }, signUp: { email: mocks.signUp } },
+  authClient: {
+    signIn: { email: mocks.signIn },
+    signUp: { email: mocks.signUp },
+    twoFactor: { verifyTotp: mocks.verifyTotp, verifyBackupCode: mocks.verifyBackupCode },
+  },
 }));
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: mocks.replace, refresh: mocks.refresh }),
@@ -106,6 +115,51 @@ describe("AuthForm · login", () => {
     await userEvent.type(email(), "ana@gmal.com");
     await userEvent.tab();
     expect(screen.queryByText(/Quisiste decir/)).not.toBeInTheDocument();
+  });
+});
+
+describe("AuthForm · verificación en dos pasos", () => {
+  it("si la cuenta la tiene activa, después de la contraseña pide el código y no entra todavía", async () => {
+    mocks.signIn.mockResolvedValue({ data: { twoFactorRedirect: true, twoFactorMethods: ["totp"] }, error: null });
+    render(<AuthForm mode="login" />);
+    await fillLogin();
+    await userEvent.click(screen.getByRole("button", { name: "Entrar" }));
+
+    expect(await screen.findByRole("heading", { name: "Verificación en dos pasos" })).toBeVisible();
+    expect(screen.getByLabelText("Código de 6 dígitos")).toHaveFocus();
+    expect(mocks.replace).not.toHaveBeenCalled();
+  });
+
+  it("con el código correcto entra al dashboard", async () => {
+    mocks.signIn.mockResolvedValue({ data: { twoFactorRedirect: true }, error: null });
+    mocks.verifyTotp.mockResolvedValue({ data: {}, error: null });
+    render(<AuthForm mode="login" />);
+    await fillLogin();
+    await userEvent.click(screen.getByRole("button", { name: "Entrar" }));
+    await userEvent.type(await screen.findByLabelText("Código de 6 dígitos"), "123 456");
+    await userEvent.click(screen.getByRole("button", { name: "Verificar" }));
+
+    expect(mocks.verifyTotp).toHaveBeenCalledWith({ code: "123456" });
+    expect(mocks.replace).toHaveBeenCalledWith("/dashboard");
+  });
+
+  it("'Volver a iniciar sesión' regresa al formulario de correo y contraseña", async () => {
+    mocks.signIn.mockResolvedValue({ data: { twoFactorRedirect: true }, error: null });
+    render(<AuthForm mode="login" />);
+    await fillLogin();
+    await userEvent.click(screen.getByRole("button", { name: "Entrar" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Volver a iniciar sesión" }));
+    expect(screen.getByRole("heading", { name: "Inicia sesión" })).toBeVisible();
+  });
+
+  it("al registrarse nunca hay segundo paso", async () => {
+    mocks.signUp.mockResolvedValue({ data: { user: {} }, error: null });
+    render(<AuthForm mode="register" />);
+    await userEvent.type(screen.getByLabelText("Nombre"), "Ana");
+    await userEvent.type(email(), "ana@gmail.com");
+    await userEvent.type(password(), "clave-segura-123");
+    await userEvent.click(screen.getByRole("button", { name: "Crear cuenta" }));
+    expect(mocks.replace).toHaveBeenCalledWith("/dashboard");
   });
 });
 

@@ -1,0 +1,111 @@
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+type Result = { data?: unknown; error: { code?: string; status?: number; message?: string } | null };
+const mocks = vi.hoisted(() => ({
+  verifyTotp: vi.fn<(body: unknown) => Promise<Result>>(),
+  verifyBackupCode: vi.fn<(body: unknown) => Promise<Result>>(),
+  replace: vi.fn(),
+  refresh: vi.fn(),
+}));
+vi.mock("@/lib/auth-client", () => ({
+  authClient: { twoFactor: { verifyTotp: mocks.verifyTotp, verifyBackupCode: mocks.verifyBackupCode } },
+}));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: mocks.replace, refresh: mocks.refresh }) }));
+
+const { TwoFactorLogin } = await import("./two-factor-login");
+
+const submit = () => userEvent.click(screen.getByRole("button", { name: "Verificar" }));
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  mocks.verifyTotp.mockResolvedValue({ data: {}, error: null });
+  mocks.verifyBackupCode.mockResolvedValue({ data: {}, error: null });
+});
+
+describe("TwoFactorLogin", () => {
+  it("no se envía un código que no tenga 6 dígitos", async () => {
+    render(<TwoFactorLogin onCancel={vi.fn()} />);
+    await userEvent.type(screen.getByLabelText("Código de 6 dígitos"), "12345");
+    await submit();
+    expect(mocks.verifyTotp).not.toHaveBeenCalled();
+  });
+
+  it("pide el código de 6 dígitos con el teclado numérico y autocompletado de códigos", () => {
+    render(<TwoFactorLogin onCancel={vi.fn()} />);
+    const input = screen.getByLabelText("Código de 6 dígitos");
+    expect(input).toHaveAttribute("inputmode", "numeric");
+    expect(input).toHaveAttribute("autocomplete", "one-time-code");
+    expect(input).toBeRequired();
+    expect(input).toHaveFocus();
+    expect(screen.getByText(/Abre Google Authenticator/)).toBeVisible();
+  });
+
+  it("verifica el código sin espacios y entra al dashboard", async () => {
+    render(<TwoFactorLogin onCancel={vi.fn()} />);
+    await userEvent.type(screen.getByLabelText("Código de 6 dígitos"), "123 456");
+    await submit();
+    expect(mocks.verifyTotp).toHaveBeenCalledWith({ code: "123456" });
+    expect(mocks.verifyBackupCode).not.toHaveBeenCalled();
+    expect(mocks.replace).toHaveBeenCalledWith("/dashboard");
+    expect(mocks.refresh).toHaveBeenCalled();
+  });
+
+  it("con un código incorrecto muestra el error en español y no entra", async () => {
+    mocks.verifyTotp.mockResolvedValue({ error: { status: 401, code: "INVALID_CODE", message: "Invalid code" } });
+    render(<TwoFactorLogin onCancel={vi.fn()} />);
+    await userEvent.type(screen.getByLabelText("Código de 6 dígitos"), "000000");
+    await submit();
+    expect(await screen.findByRole("alert")).toHaveTextContent("Código incorrecto");
+    expect(mocks.replace).not.toHaveBeenCalled();
+  });
+
+  it("con la verificación bloqueada lo explica", async () => {
+    mocks.verifyTotp.mockResolvedValue({ error: { status: 429, code: "ACCOUNT_TEMPORARILY_LOCKED" } });
+    render(<TwoFactorLogin onCancel={vi.fn()} />);
+    await userEvent.type(screen.getByLabelText("Código de 6 dígitos"), "000000");
+    await submit();
+    expect(await screen.findByRole("alert")).toHaveTextContent("bloqueada 15 minutos");
+  });
+
+  it("sin el celular, se puede usar un código de respaldo (y volver)", async () => {
+    mocks.verifyTotp.mockResolvedValue({ error: { status: 401, code: "INVALID_CODE" } });
+    render(<TwoFactorLogin onCancel={vi.fn()} />);
+    await userEvent.type(screen.getByLabelText("Código de 6 dígitos"), "000000");
+    await submit();
+    expect(await screen.findByRole("alert")).toBeVisible();
+
+    await userEvent.click(screen.getByRole("button", { name: /usar un código de respaldo/ }));
+    // Al cambiar de modo se borra el error y el campo cambia.
+    expect(screen.queryByRole("alert")).toBeNull();
+    const input = screen.getByLabelText("Código de respaldo");
+    expect(input).toHaveAttribute("inputmode", "text");
+    expect(input).toHaveValue("");
+    await userEvent.type(input, "AbCdE-12345");
+    await submit();
+    expect(mocks.verifyBackupCode).toHaveBeenCalledWith({ code: "AbCdE-12345" });
+    expect(mocks.replace).toHaveBeenCalledWith("/dashboard");
+
+    await userEvent.click(screen.getByRole("button", { name: "Usar Google Authenticator" }));
+    expect(screen.getByLabelText("Código de 6 dígitos")).toBeVisible();
+  });
+
+  it("mientras verifica, el botón queda desactivado", async () => {
+    let finish!: (r: Result) => void;
+    mocks.verifyTotp.mockReturnValue(new Promise((resolve) => (finish = resolve)));
+    render(<TwoFactorLogin onCancel={vi.fn()} />);
+    await userEvent.type(screen.getByLabelText("Código de 6 dígitos"), "123456");
+    await submit();
+    expect(screen.getByRole("button", { name: "Verificando…" })).toBeDisabled();
+    finish({ error: { code: "INVALID_CODE" } });
+    expect(await screen.findByRole("alert")).toBeVisible();
+  });
+
+  it("'Volver a iniciar sesión' avisa al formulario", async () => {
+    const onCancel = vi.fn();
+    render(<TwoFactorLogin onCancel={onCancel} />);
+    await userEvent.click(screen.getByRole("button", { name: "Volver a iniciar sesión" }));
+    expect(onCancel).toHaveBeenCalledOnce();
+  });
+});

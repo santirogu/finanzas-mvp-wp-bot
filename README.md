@@ -49,6 +49,7 @@ pnpm dev                        # http://localhost:3000
 | `pnpm account:delete <correo>` | Borra una cuenta y todos sus datos, para quien lo pide por correo (ver Seguridad → Borrar datos a pedido) |
 | `pnpm messages:cleanup` | Borra los mensajes de WhatsApp sin dueño de más de 30 días (`--dias N`, mínimo 7) |
 | `pnpm admin:grant <correo>` · `admin:revoke` · `admin:list` | Da o quita el rol de admin, o lista los admins (ver Seguridad → Roles) |
+| `pnpm admin:reset-2fa <correo>` | Reinicia la verificación en dos pasos de un admin que perdió el celular y los códigos de respaldo |
 | `pnpm bot:try 'texto'` | Muestra cómo interpreta el bot un mensaje (usa la API de Claude). Usa comillas simples si el texto tiene `$` |
 | `pnpm bot:eval` | Corre el set de ~50 frases de prueba del bot y reporta aciertos, latencia y costo |
 
@@ -203,7 +204,7 @@ Hay dos roles (`src/lib/roles.ts`), guardados en la columna `user.role`:
 | Rol | Quién | Qué ve |
 |---|---|---|
 | `user` | Toda cuenta al registrarse | Resumen, Ingresos, Egresos y Mi cuenta |
-| `admin` | Solo quien lo recibe desde la terminal | Todo lo de `user` y la sección de administración |
+| `admin` | Solo quien lo recibe desde la terminal | Todo lo de `user` y la sección de administración (pestaña **Admin**), con verificación en dos pasos obligatoria |
 
 - **No hay usuario ni contraseña de admin por defecto.** El rol se le da a una cuenta que ya
   existe, desde la terminal, y solo puede hacerlo quien tiene la `DATABASE_URL`. Así no queda
@@ -214,9 +215,29 @@ Hay dos roles (`src/lib/roles.ts`), guardados en la columna `user.role`:
   `admin` de Better Auth: agregaría endpoints (suplantar usuarios, cambiar contraseñas ajenas) que
   no hacen falta.
 - **En el servidor:** las páginas y acciones de administración llaman a `requireAdmin()`
-  (`src/lib/session.ts`): sin sesión llevan al login y sin el rol responden 404, para no revelar que
-  la sección existe. El rol se lee de la base en cada pedido: quitarlo surte efecto en el siguiente
-  clic. La matriz de autorización falla si una página o acción de admin no llama a `requireAdmin()`.
+  (`src/lib/session.ts`): sin sesión llevan al login, sin el rol responden 404 (para no revelar que
+  la sección existe) y sin la verificación en dos pasos llevan a configurarla. El rol se lee de la
+  base en cada pedido: quitarlo surte efecto en el siguiente clic. Solo la página donde se configura
+  la verificación usa `requireAdminRole()` (el rol sin la verificación). La matriz de autorización
+  falla si una página o acción de admin no los usa así.
+
+**Verificación en dos pasos (solo admins).** Plugin `twoFactor` de Better Auth con Google
+Authenticator (o cualquier app TOTP); reglas propias en `src/modules/auth/two-factor-rules.ts`:
+
+- **Configuración, una vez** (`/admin/verificacion`, adonde lleva la pestaña Admin si falta):
+  contraseña → QR (dibujado en la app, sin servicios externos; también se muestra la clave para
+  escribirla a mano) → primer código → 10 códigos de respaldo de un solo uso. Al activarla se
+  cierran las demás sesiones de la cuenta. La clave y los códigos se guardan cifrados.
+- **Login:** después de la contraseña se pide el código (o uno de respaldo). Sin "recordar este
+  dispositivo". 5 códigos incorrectos seguidos la bloquean 15 minutos (más el límite de 3 intentos
+  cada 10 s por IP); las contraseñas equivocadas al activarla cuentan para el bloqueo del login.
+- **No se desactiva desde la app:** `disable`, `get-totp-uri`, `generate-backup-codes` y OTP están
+  apagados (404), y solo un admin puede activarla. Si se pierde el celular: un código de respaldo; si
+  tampoco, `pnpm admin:reset-2fa --env .env.produccion <correo>` la reinicia y cierra sus sesiones.
+- **Sesión cerrada en otro lado** (al activarla, al reiniciarla, al borrar la cuenta): el navegador
+  conserva la cookie vieja. `requireUser` manda a `/login?sesion=vencida`, donde el proxy la borra
+  y el login avisa "Tu sesión se cerró" (`src/lib/expired-session.ts`); sin eso, el proxy y el
+  dashboard se mandaban el uno al otro sin fin.
 
 **Hacerse admin** (en la terminal, dentro de la carpeta del proyecto, con la cuenta ya registrada en
 la app):
@@ -226,8 +247,9 @@ la app):
 2. Corre `pnpm admin:grant --env .env.produccion tu-correo@...` y escribe el correo para confirmar.
 3. Borra el archivo: `rm .env.produccion`.
 
-`pnpm admin:list --env .env.produccion` muestra quiénes son admin y `pnpm admin:revoke` quita el
-rol. Sin `--env`, los tres usan la base local de `.env`.
+`pnpm admin:list --env .env.produccion` muestra quiénes son admin (y si tienen la verificación en
+dos pasos activa) y `pnpm admin:revoke` quita el rol. Sin `--env`, usan la base local de `.env`.
+Después de hacerte admin, la pestaña **Admin** te lleva a configurar la verificación en dos pasos.
 
 ### Borrar datos a pedido
 

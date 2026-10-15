@@ -8,6 +8,7 @@ const ANA: AccountRole = {
   email: "ana@correo.com",
   timezone: "America/Bogota",
   role: "user",
+  twoFactorEnabled: false,
   // En Colombia todavía es el 1 de septiembre (en UTC ya es el 2).
   createdAt: new Date("2026-09-02T03:00:00Z"),
 };
@@ -17,6 +18,7 @@ const USAGE = [
   "  pnpm admin:grant [--env <archivo>] <correo>",
   "  pnpm admin:revoke [--env <archivo>] <correo>",
   "  pnpm admin:list [--env <archivo>]",
+  "  pnpm admin:reset-2fa [--env <archivo>] <correo>",
 ].join("\n");
 
 function setup({
@@ -24,6 +26,7 @@ function setup({
   admins = [] as AccountRole[],
   answer = "",
   updated = true,
+  reset = { sessionsClosed: 2 } as { sessionsClosed: number } | null,
   env = { DATABASE_URL: "postgres://usuario:clave-secreta@db.neon.tech:5432/finanzas" } as Record<string, string>,
 } = {}) {
   const logs: string[] = [];
@@ -32,6 +35,7 @@ function setup({
     findAccountRole: vi.fn(async () => account),
     setRole: vi.fn(async () => updated),
     listAdmins: vi.fn(async () => admins),
+    resetTwoFactor: vi.fn(async () => reset),
     close: vi.fn(async () => {}),
   } satisfies RoleOps;
   const deps = {
@@ -56,6 +60,8 @@ describe("argumentos", () => {
     [["promote", "a@b.co"]],
     [["grant", "a@b.co", "--rol", "admin"]],
     [["grant", "--env"]],
+    [["reset-2fa"]],
+    [["reset-2fa", "a@b.co", "otro@b.co"]],
   ])("con %j explica el uso y no abre la base", async (argv) => {
     const { run, deps, errors } = setup();
     expect(await run(...argv)).toBe(2);
@@ -194,10 +200,10 @@ describe("admin:revoke", () => {
 });
 
 describe("admin:list", () => {
-  it("muestra los admins con su fecha de creación", async () => {
+  it("muestra los admins con su fecha de creación y si tienen la verificación en dos pasos", async () => {
     const { run, deps, data, logs } = setup({
       admins: [
-        { ...ANA, role: "admin" },
+        { ...ANA, role: "admin", twoFactorEnabled: true },
         { ...ANA, id: "b", name: "Beto", email: "beto@correo.com", role: "admin", createdAt: new Date("2026-10-01T15:00:00Z") },
       ],
     });
@@ -205,8 +211,8 @@ describe("admin:list", () => {
     expect(logs).toEqual([
       "Base de datos: db.neon.tech:5432/finanzas",
       "Admins (2):",
-      "  - Ana Pérez <ana@correo.com>, creada el 2026-09-01",
-      "  - Beto <beto@correo.com>, creada el 2026-10-01",
+      "  - Ana Pérez <ana@correo.com>, creada el 2026-09-01 · verificación en dos pasos activa",
+      "  - Beto <beto@correo.com>, creada el 2026-10-01 · verificación en dos pasos pendiente",
     ]);
     expect(deps.ask).not.toHaveBeenCalled();
     expect(data.setRole).not.toHaveBeenCalled();
@@ -217,5 +223,63 @@ describe("admin:list", () => {
     const { run, logs } = setup();
     expect(await run("list", "--env", ".env.produccion")).toBe(0);
     expect(logs.at(-1)).toBe("No hay ningún admin. Para crear uno: pnpm admin:grant <correo>.");
+  });
+});
+
+describe("admin:reset-2fa", () => {
+  const WITH_2FA = { ...ANA, role: "admin" as const, twoFactorEnabled: true };
+
+  it("explica qué pasa, pide el correo y reinicia la verificación", async () => {
+    const { run, data, deps, logs, errors } = setup({ account: WITH_2FA, answer: " ANA@correo.com" });
+
+    expect(await run("reset-2fa", "ana@correo.com")).toBe(0);
+
+    expect(deps.ask).toHaveBeenCalledWith("Para confirmar, escribe el correo de la cuenta: ");
+    expect(data.resetTwoFactor).toHaveBeenCalledWith("user-ana");
+    expect(data.setRole).not.toHaveBeenCalled();
+    expect(data.close).toHaveBeenCalledOnce();
+    expect(errors).toEqual([]);
+    expect(logs).toEqual([
+      "Base de datos: db.neon.tech:5432/finanzas",
+      "Cuenta: Ana Pérez <ana@correo.com>, creada el 2026-09-01",
+      "Verificación en dos pasos: activa → desactivada (se borran la clave y los códigos de respaldo)",
+      "Se cierran todas sus sesiones. Para volver a administrar tendrá que entrar y configurarla de nuevo.",
+      "✓ Verificación en dos pasos de ana@correo.com reiniciada. Sesiones cerradas: 2.",
+    ]);
+  });
+
+  it.each(["", "no", "ana@correo.co"])("sin confirmar (%j) no reinicia nada", async (answer) => {
+    const { run, data, logs } = setup({ account: WITH_2FA, answer });
+    expect(await run("reset-2fa", "ana@correo.com")).toBe(1);
+    expect(data.resetTwoFactor).not.toHaveBeenCalled();
+    expect(logs.at(-1)).toBe("El correo no coincide: no se cambió nada.");
+  });
+
+  it("si no la tiene activa, lo dice y no pregunta nada", async () => {
+    const { run, data, deps, logs } = setup({ account: { ...WITH_2FA, twoFactorEnabled: false } });
+    expect(await run("reset-2fa", "ana@correo.com")).toBe(0);
+    expect(logs.at(-1)).toBe("ana@correo.com no tiene la verificación en dos pasos activa. No se cambió nada.");
+    expect(deps.ask).not.toHaveBeenCalled();
+    expect(data.resetTwoFactor).not.toHaveBeenCalled();
+  });
+
+  it("si la cuenta no existe, lo dice", async () => {
+    const { run, data, errors } = setup({ account: null });
+    expect(await run("reset-2fa", " Nadie@Correo.com")).toBe(1);
+    expect(errors).toEqual(["No hay ninguna cuenta con el correo nadie@correo.com. No se cambió nada."]);
+    expect(data.resetTwoFactor).not.toHaveBeenCalled();
+  });
+
+  it("si la cuenta se borra mientras se confirmaba, lo dice", async () => {
+    const { run, errors, logs } = setup({ account: WITH_2FA, answer: "ana@correo.com", reset: null });
+    expect(await run("reset-2fa", "ana@correo.com")).toBe(1);
+    expect(errors).toEqual(["La cuenta ya no existe (¿se borró mientras tanto?). No se cambió nada."]);
+    expect(logs.join("\n")).not.toContain("✓");
+  });
+
+  it("acepta --env", async () => {
+    const { run, deps } = setup({ account: WITH_2FA, answer: "ana@correo.com" });
+    expect(await run("reset-2fa", "--env", ".env.produccion", "ana@correo.com")).toBe(0);
+    expect(deps.loadEnv).toHaveBeenCalledWith(".env.produccion");
   });
 });

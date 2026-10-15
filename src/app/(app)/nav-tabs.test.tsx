@@ -37,6 +37,34 @@ describe("NavTabs", () => {
   });
 });
 
+describe("NavTabs · pestaña Admin", () => {
+  it("sin el permiso no aparece", () => {
+    navigation.pathname = "/dashboard";
+    render(<NavTabs />);
+    expect(screen.queryByRole("link", { name: "Admin" })).toBeNull();
+  });
+
+  it("para un admin aparece al final y lleva a /admin", () => {
+    navigation.pathname = "/dashboard";
+    render(<NavTabs showAdmin />);
+    const links = screen.getAllByRole("link");
+    expect(links.map((l) => l.textContent)).toEqual(["Resumen", "Ingresos", "Egresos", "Admin"]);
+    expect(screen.getByRole("link", { name: "Admin" })).toHaveAttribute("href", "/admin");
+  });
+
+  it.each(["/admin", "/admin/verificacion"])("se marca en %s", (pathname) => {
+    navigation.pathname = pathname;
+    render(<NavTabs showAdmin />);
+    expect(screen.getByRole("link", { name: "Admin" })).toHaveAttribute("aria-current", "page");
+  });
+
+  it.each(["/administrador", "/dashboard"])("no se marca en %s", (pathname) => {
+    navigation.pathname = pathname;
+    render(<NavTabs showAdmin />);
+    expect(screen.getByRole("link", { name: "Admin" })).not.toHaveAttribute("aria-current");
+  });
+});
+
 describe("TabLinks", () => {
   it("sin ruta (mientras se resuelve) muestra las pestañas sin marcar ninguna", () => {
     render(<TabLinks pathname={null} />);

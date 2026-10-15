@@ -1,5 +1,7 @@
+import { execFileSync } from "node:child_process";
 import { randomInt, randomUUID } from "node:crypto";
 import { test as base, expect, type Browser, type Locator, type Page } from "@playwright/test";
+import { e2eDatabaseUrl } from "./database-url";
 
 /**
  * IP de prueba distinta para cada navegador. Better Auth limita los intentos de login y registro
@@ -94,3 +96,29 @@ export async function openTab(page: Page, tab: "Resumen" | "Ingresos" | "Egresos
 
 /** Mensaje de error del formulario (Next también tiene un role="alert" vacío para anunciar rutas). */
 export const formAlert = (page: Page) => page.locator("form").getByRole("alert");
+
+/**
+ * Corre un comando de terminal de administración (pnpm admin:grant, admin:revoke, admin:reset-2fa)
+ * contra la base de las E2E y confirma escribiendo el correo, como lo hace el dueño en producción.
+ */
+export function adminCommand(command: "grant" | "revoke" | "reset-2fa", email: string) {
+  return execFileSync("pnpm", ["-s", `admin:${command}`, email], {
+    input: `${email}\n`,
+    encoding: "utf8",
+    env: { ...process.env, DATABASE_URL: e2eDatabaseUrl() },
+  });
+}
+
+/** Inicia sesión desde el formulario (primer paso: correo y contraseña). */
+export async function logIn(page: Page, email: string, password = PASSWORD) {
+  await page.goto("/login");
+  await page.getByLabel("Correo").fill(email);
+  await page.getByLabel("Contraseña").fill(password);
+  await page.getByRole("button", { name: "Entrar" }).click();
+}
+
+/** Cierra sesión con el botón del encabezado. */
+export async function logOut(page: Page) {
+  await visible(page.getByRole("button", { name: "Salir" })).click();
+  await expect(page).toHaveURL(/\/login$/);
+}
