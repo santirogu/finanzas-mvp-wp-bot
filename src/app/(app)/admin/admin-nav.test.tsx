@@ -15,14 +15,18 @@ describe("AdminNav", () => {
     expect(links.map((l) => [l.textContent, l.getAttribute("href")])).toEqual([
       ["Inicio", "/admin"],
       ["Historial", "/admin/historial"],
+      ["Usuarios", "/admin/usuarios"],
       ["Seguridad", "/admin/seguridad"],
     ]);
-    expect(screen.queryByText("Usuarios")).toBeNull();
+    expect(screen.queryByText("Bot de WhatsApp")).toBeNull();
   });
 
   it.each([
     ["/admin", "Inicio"],
     ["/admin/historial", "Historial"],
+    ["/admin/usuarios", "Usuarios"],
+    // El detalle de una cuenta sigue en Usuarios.
+    ["/admin/usuarios/abc123", "Usuarios"],
     ["/admin/seguridad", "Seguridad"],
   ])("en %s marca %s como la página actual (y solo esa)", (pathname, current) => {
     navigation.pathname = pathname;

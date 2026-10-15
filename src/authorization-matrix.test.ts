@@ -30,6 +30,8 @@ const PAGES = {
   "/movimientos/[id]/editar": "requiere sesión; solo movimientos propios (los demás dan 404)",
   "/admin": "requiere sesión de admin con la verificación en dos pasos activa (requireAdmin); Inicio de la administración",
   "/admin/historial": "requiere sesión de admin con la verificación en dos pasos activa (requireAdmin)",
+  "/admin/usuarios": "requiere sesión de admin con la verificación en dos pasos activa (requireAdmin)",
+  "/admin/usuarios/[id]": "requiere sesión de admin con la verificación en dos pasos activa (requireAdmin); un id inválido o inexistente da 404",
   "/admin/seguridad": "requiere sesión de admin; es donde se configura la verificación en dos pasos (requireAdminRole)",
 } as const;
 
@@ -259,7 +261,9 @@ describe("administración", () => {
   );
 
   it("la capa de datos de administración existe y la regla la encuentra", () => {
-    expect(adminDataFiles.map((f) => relative(ROOT, f))).toContain("src/modules/admin/history/events-log.ts");
+    expect(adminDataFiles.map((f) => relative(ROOT, f))).toEqual(
+      expect.arrayContaining(["src/modules/admin/history/events-log.ts", "src/modules/admin/users/users.ts"]),
+    );
   });
 
   it("cada consulta de administración llama a requireAdmin() antes de tocar la base", () => {

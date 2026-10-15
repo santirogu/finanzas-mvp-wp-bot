@@ -20,10 +20,13 @@ test("Inicio muestra una tarjeta por módulo: los activos con su resumen y los q
   const history = cards(page).filter({ hasText: "Historial" });
   await expect(history.getByRole("link")).toHaveAttribute("href", "/admin/historial");
   await expect(history).toContainText(/\d+ eventos? hoy · \d+ intentos? fallidos?/);
+  const users = cards(page).filter({ hasText: "Usuarios" });
+  await expect(users.getByRole("link")).toHaveAttribute("href", "/admin/usuarios");
+  await expect(users).toContainText(/\d+ cuentas? · \d+ con WhatsApp/);
   const security = cards(page).filter({ hasText: "Seguridad" });
   await expect(security.getByRole("link")).toHaveAttribute("href", "/admin/seguridad");
   await expect(security).toContainText("Verificación en dos pasos activa");
-  for (const name of ["Usuarios", "Bot de WhatsApp", "Categorías", "Salud del sistema", "Configuración"]) {
+  for (const name of ["Bot de WhatsApp", "Categorías", "Salud del sistema", "Configuración"]) {
     const card = cards(page).filter({ hasText: name });
     await expect(card, name).toContainText("Pronto");
     await expect(card.getByRole("link"), name).toHaveCount(0);
@@ -35,9 +38,10 @@ test("la subnavegación lleva a cada módulo y marca dónde se está; la pestañ
   await newAdmin(page);
   await setUpTwoFactor(page);
 
-  await expect(subnav(page).getByRole("link")).toHaveText(["Inicio", "Historial", "Seguridad"]);
+  await expect(subnav(page).getByRole("link")).toHaveText(["Inicio", "Historial", "Usuarios", "Seguridad"]);
   for (const [name, url] of [
     ["Historial", /\/admin\/historial$/],
+    ["Usuarios", /\/admin\/usuarios$/],
     ["Seguridad", /\/admin\/seguridad$/],
     ["Inicio", /\/admin$/],
   ] as const) {
@@ -68,7 +72,7 @@ test("un admin sin la verificación ve el marco pero solo puede entrar a Segurid
   await newAdmin(page);
   await expect(page).toHaveURL(/\/admin\/seguridad$/);
   await expect(chip(page, "Seguridad")).toHaveAttribute("aria-current", "page");
-  for (const path of ["/admin", "/admin/historial"]) {
+  for (const path of ["/admin", "/admin/historial", "/admin/usuarios", "/admin/usuarios/cualquiera"]) {
     await page.goto(path);
     await expect(page, path).toHaveURL(/\/admin\/seguridad$/);
   }
@@ -76,7 +80,7 @@ test("un admin sin la verificación ve el marco pero solo puede entrar a Segurid
 
 test("a un usuario normal no le llega nada de la administración: ni el marco ni los nombres de los módulos", async ({ page }) => {
   await register(page);
-  for (const path of ["/admin", "/admin/historial", "/admin/seguridad"]) {
+  for (const path of ["/admin", "/admin/historial", "/admin/usuarios", "/admin/seguridad"]) {
     const response = await page.goto(path);
     await expect(visible(page.getByRole("heading", { name: "No encontramos esta página" })), path).toBeVisible();
     const html = (await response!.text()) + (await page.content());

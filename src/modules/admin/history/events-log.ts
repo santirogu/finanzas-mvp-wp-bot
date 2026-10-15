@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { accountEvent, user } from "@/db/schema";
 import { todayInTimezone } from "@/lib/dates";
 import { requireAdmin } from "@/lib/session";
+import { inDayRange } from "../shared/sql";
 import { ADMIN_LOG_TIMEZONE, dateRange, escapeLike, searchDigits, type LogFilters } from "./log-filters";
 
 // El historial de /admin/historial: todas las cuentas, de lo más nuevo a lo más viejo. Cada consulta
@@ -22,15 +23,9 @@ export type LogEntry = {
 
 export type LogPage = { entries: LogEntry[]; total: number; hasMore: boolean };
 
-/** Medianoche de ese día en Colombia, como instante (para comparar con created_at sin perder el índice). */
-const startOfDay = (day: string) => sql`(${day}::date)::timestamp at time zone ${ADMIN_LOG_TIMEZONE}`;
-
 function where(filters: LogFilters, today: string): SQL | undefined {
-  const { from, to } = dateRange(filters, today);
-  const conditions: (SQL | undefined)[] = [];
+  const conditions: (SQL | undefined)[] = inDayRange(accountEvent.createdAt, dateRange(filters, today));
   if (filters.types.length > 0) conditions.push(inArray(accountEvent.type, filters.types));
-  if (from) conditions.push(sql`${accountEvent.createdAt} >= ${startOfDay(from)}`);
-  if (to) conditions.push(sql`${accountEvent.createdAt} < ${startOfDay(to)} + interval '1 day'`);
   if (filters.search) {
     const text = `%${escapeLike(filters.search)}%`;
     const digits = searchDigits(filters.search);

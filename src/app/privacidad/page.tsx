@@ -47,8 +47,8 @@ export default function PrivacyPage() {
               usado.
             </li>
             <li>
-              <strong>Datos técnicos de la sesión:</strong> dirección IP y navegador, usados solo
-              para mantener tu sesión segura.
+              <strong>Datos técnicos de la sesión:</strong> dirección IP (si es IPv6, solo la parte
+              que identifica la red) y navegador, usados solo para mantener tu sesión segura.
             </li>
             <li>
               <strong>Estadísticas de uso anónimas:</strong> con Vercel Web Analytics contamos qué
@@ -76,10 +76,12 @@ export default function PrivacyPage() {
             </li>
             <li>Detectar errores y mejorar el funcionamiento del servicio.</li>
             <li>
-              Dar soporte y proteger las cuentas: el administrador de la app puede ver el historial
-              de registro y vinculación de WhatsApp de cada cuenta (fechas, nombre, correo y número),
-              con un acceso protegido con verificación en dos pasos. No ve tus ingresos, egresos ni
-              mensajes.
+              Dar soporte y proteger las cuentas: el administrador de la app puede ver los datos de
+              cada cuenta (nombre, correo, rol, fecha de registro, número de WhatsApp y si el inicio
+              de sesión está bloqueado por intentos fallidos), sus sesiones abiertas (navegador,
+              sistema operativo, dirección IP y fechas) y su historial de registro y vinculación de
+              WhatsApp, con un acceso protegido con verificación en dos pasos. No ve tus ingresos,
+              egresos ni mensajes.
             </li>
             <li>
               Saber qué partes de la app se usan más y qué tan rápido cargan, con estadísticas

@@ -38,7 +38,13 @@ export const ADMIN_MODULES: readonly AdminModule[] = [
     description: "Registro y vinculación de WhatsApp de cada cuenta",
     status: "activo",
   },
-  { id: "usuarios", label: "Usuarios", href: "/admin/usuarios", description: "Cuentas, roles y estado", status: "pronto" },
+  {
+    id: "usuarios",
+    label: "Usuarios",
+    href: "/admin/usuarios",
+    description: "Cuentas, sesiones y estado",
+    status: "activo",
+  },
   {
     id: "bot",
     label: "Bot de WhatsApp",
