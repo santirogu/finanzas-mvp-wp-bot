@@ -136,8 +136,10 @@ de Vercel ni muevas las migraciones fuera del job `deploy`.
      `src/modules/admin/shared/` (filtros de la URL, fechas, formatos) y `ChipFilterBar` y
      `ActiveFilters` (`src/app/(app)/admin/`);
   4. si el módulo cambia datos (usuarios, categorías, configuración…), sus Server Actions con
-     `requireAdmin()` y un registro de qué admin hizo qué (auditoría): se construye con el primero de
-     estos módulos;
+     `requireAdmin()`, confirmadas con el código de Google Authenticator (`confirmAdminCode` de
+     `src/modules/admin/shared/confirm-code.ts`; nunca `auth.api.verifyTOTP`, que no limita intentos
+     con la sesión abierta), y registradas en `account_event` con `adminId` en la misma transacción
+     (auditoría: README → Usuarios);
   5. su resumen en la tarjeta de Inicio, si aplica, y pruebas unitarias, de integración, E2E y de
      accesibilidad.
 - **Historial de la cuenta** (`account_event`, README → Historial de las cuentas): si agregas o cambias

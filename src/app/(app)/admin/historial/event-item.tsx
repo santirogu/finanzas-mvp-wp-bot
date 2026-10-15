@@ -7,6 +7,7 @@ import {
   formatEventHour,
   formatEventTime,
   formatPhone,
+  isAdminAction,
   logHref,
   type LogFilters,
 } from "@/modules/admin/history/log-filters";
@@ -31,7 +32,12 @@ const ICON_PATHS: Record<LogEntry["type"], ReactNode> = {
   whatsapp_linked: <path d="M8 12l4-4M7 9.5 5.5 11a2.5 2.5 0 0 0 3.5 3.5L10.5 13M13 10.5 14.5 9A2.5 2.5 0 0 0 11 5.5L9.5 7" />,
   whatsapp_unlinked: <path d="M7 9.5 5.5 11a2.5 2.5 0 0 0 3.5 3.5L10.5 13M13 10.5 14.5 9A2.5 2.5 0 0 0 11 5.5L9.5 7M4 4l12 12" />,
   whatsapp_link_failed: <path d="M10 3.5 2.5 16.5h15L10 3.5zM10 8.5v3.5M10 14.25v.01" />,
+  login_unlocked: <path d="M5.5 9.5h9v7h-9zM7.5 9.5V7a2.5 2.5 0 0 1 4.9-.7M10 12.5v1.5" />,
+  sessions_revoked: <path d="M8 4H5v12h3M12.5 13.5 16 10l-3.5-3.5M16 10H8.5" />,
+  account_deleted: <path d="M4.5 6h11M8 6V4.5h4V6M6 6l.7 10h6.6L14 6M8.5 9v4.5M11.5 9v4.5" />,
 };
+
+const ADMIN_COLOR = "bg-admin-surface text-admin";
 
 const ICON_COLORS: Record<LogEntry["type"], string> = {
   registered: "bg-brand/10 text-brand",
@@ -39,6 +45,10 @@ const ICON_COLORS: Record<LogEntry["type"], string> = {
   whatsapp_linked: "bg-income/10 text-income",
   whatsapp_unlinked: "bg-expense/10 text-expense",
   whatsapp_link_failed: "bg-danger/10 text-danger",
+  // Lo que hizo el admin va en su color (como la etiqueta Admin).
+  login_unlocked: ADMIN_COLOR,
+  sessions_revoked: ADMIN_COLOR,
+  account_deleted: ADMIN_COLOR,
 };
 
 /**
@@ -60,10 +70,13 @@ export function EventItem({ entry, filters, inAccount = false }: { entry: LogEnt
   );
   const phone = entry.phone ? <span className="whitespace-nowrap font-mono text-[0.8125rem]">{formatPhone(entry.phone)}</span> : null;
   const detail = eventDetail(entry.details);
+  const color = isAdminAction(entry) ? ADMIN_COLOR : ICON_COLORS[entry.type];
+  // De una cuenta que eliminó el admin no queda ningún dato.
+  const where = entry.type === "account_deleted" ? "Sin datos de la cuenta" : (entry.account?.email ?? "Sin cuenta");
 
   return (
     <li className="flex gap-3 py-3">
-      <span className={`flex size-8 flex-none items-center justify-center rounded-full ${ICON_COLORS[entry.type]}`} aria-hidden>
+      <span className={`flex size-8 flex-none items-center justify-center rounded-full ${color}`} aria-hidden>
         <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="size-4">
           {ICON_PATHS[entry.type]}
         </svg>
@@ -72,7 +85,7 @@ export function EventItem({ entry, filters, inAccount = false }: { entry: LogEnt
         <p className="text-sm leading-snug">{sentence(entry, who, phone)}</p>
         <p className="mt-0.5 break-words text-xs text-muted">
           {/* "correo · detalle · " antes de la hora (lo que no haya, se omite). */}
-          {[...[inAccount ? "" : (entry.account?.email ?? "Sin cuenta"), detail].filter(Boolean), ""].join(" · ")}
+          {[...[inAccount ? "" : where, detail].filter(Boolean), ""].join(" · ")}
           <time dateTime={entry.createdAt.toISOString()} title={formatEventTime(entry.createdAt)}>
             {inAccount ? formatEventTime(entry.createdAt) : formatEventHour(entry.createdAt)}
           </time>
@@ -84,6 +97,8 @@ export function EventItem({ entry, filters, inAccount = false }: { entry: LogEnt
 
 /** Qué pasó, como frase: "Beto vinculó su WhatsApp +57 300 111 2233". */
 function sentence(entry: LogEntry, who: ReactNode, phone: ReactNode): ReactNode {
+  // Si la cuenta del admin ya no existe, no se sabe su nombre.
+  const admin = entry.admin?.name ?? "Un admin";
   switch (entry.type) {
     case "registered":
       return <>{who} se registró</>;
@@ -92,12 +107,16 @@ function sentence(entry: LogEntry, who: ReactNode, phone: ReactNode): ReactNode 
     case "whatsapp_linked":
       return <>{who} vinculó su WhatsApp {phone}</>;
     case "whatsapp_unlinked":
-      return entry.details.reason === "by_user" ? (
-        <>{who} desvinculó su WhatsApp {phone}</>
-      ) : (
-        <>Se desvinculó el WhatsApp {phone} de {who}</>
-      );
+      if (entry.details.reason === "by_user") return <>{who} desvinculó su WhatsApp {phone}</>;
+      if (entry.details.reason === "by_admin") return <>{admin} desvinculó el WhatsApp {phone} de {who}</>;
+      return <>Se desvinculó el WhatsApp {phone} de {who}</>;
     case "whatsapp_link_failed":
       return <>Intento fallido de vinculación desde {phone}</>;
+    case "login_unlocked":
+      return <>{admin} desbloqueó el inicio de sesión de {who}</>;
+    case "sessions_revoked":
+      return <>{admin} cerró las sesiones de {who}</>;
+    case "account_deleted":
+      return <>{admin} eliminó una cuenta</>;
   }
 }

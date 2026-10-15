@@ -261,7 +261,7 @@ vienen aparecen como "Pronto".
 | Módulo | Ruta | Estado |
 |---|---|---|
 | Historial | `/admin/historial` | Activo: registro y vinculación de WhatsApp |
-| Usuarios | `/admin/usuarios` | Activo: cuentas, sesiones y estado (solo consulta) |
+| Usuarios | `/admin/usuarios` | Activo: cuentas, sesiones y estado; desbloquear, cerrar sesiones, desvincular WhatsApp y eliminar |
 | Bot de WhatsApp | `/admin/bot` | Pronto |
 | Categorías | `/admin/categorias` | Pronto (de ingresos y egresos, editables solo por el admin) |
 | Salud del sistema | `/admin/salud` | Pronto |
@@ -297,9 +297,24 @@ Cada cuenta abre su detalle (`/admin/usuarios/<id>`): rol, registro, último ini
 (desde cuándo), bloqueo, la verificación en dos pasos si es admin, sus **sesiones abiertas**
 (navegador y sistema, como "Safari · iOS", dirección IP y fechas) y sus últimos 10 eventos, con un
 enlace a su historial completo. Better Auth guarda las IPv6 recortadas a la red (/64), así que se
-muestran así: `2800:e2:4a:1234::/64`. Por ahora solo se consulta: las acciones (desbloquear, cerrar
-sesiones, desvincular WhatsApp, eliminar y suspender) vienen después, cada una confirmada con el
-código de Google Authenticator.
+muestran así: `2800:e2:4a:1234::/64`.
+
+**Acciones** (en el detalle; solo las que aplican, y nunca en la cuenta propia ni en la de otro admin:
+los roles siguen solo en la terminal):
+
+| Acción | Qué hace | Queda en el historial |
+|---|---|---|
+| Desbloquear el inicio de sesión | Borra el bloqueo por contraseñas equivocadas (`login_failure`) | `login_unlocked` |
+| Cerrar todas sus sesiones | Borra sus sesiones: tiene que volver a entrar. Su WhatsApp sigue | `sessions_revoked` (cuántas) |
+| Desvincular su WhatsApp | Lo mismo que hace la persona desde su Resumen | `whatsapp_unlinked` con `by_admin` |
+| Eliminar la cuenta | Lo mismo que `pnpm account:delete`; además pide escribir su correo | Solo `account_deleted`, sin datos de la cuenta |
+
+Cada una se confirma en una ventana con el **código de Google Authenticator** del admin
+(`src/modules/admin/shared/confirm-code.ts`). No se usa `auth.api.verifyTOTP`: con la sesión abierta,
+Better Auth no cuenta los intentos fallidos y acepta el mismo código varias veces. Aquí, los códigos
+equivocados suman al mismo contador que el inicio de sesión (5 seguidos bloquean las acciones **y** el
+inicio de sesión del admin por 15 minutos) y cada código sirve una sola vez (tabla `admin_code_use`): dos
+acciones seguidas necesitan esperar el código siguiente. No acepta códigos de respaldo.
 
 Lo que **no** se muestra, a propósito: montos, movimientos, mensajes del bot y el token de las
 sesiones (la consulta ni siquiera lo lee). El último inicio de sesión sale de las sesiones guardadas:
@@ -326,6 +341,11 @@ administrador.
 | `whatsapp_linked` | El bot recibe `VINCULAR` con un código válido | Número completo |
 | `whatsapp_unlinked` | Se desvincula (`by_user`), el número pasa a otra cuenta (`number_moved`) o la cuenta vincula otro número (`number_changed`) | Número |
 | `whatsapp_link_failed` | Código inválido o vencido (`invalid_code`) o demasiados intentos (`rate_limited`) | Número; sin cuenta |
+| `login_unlocked`, `sessions_revoked`, `account_deleted` | Acciones del admin en `/admin/usuarios` (y `whatsapp_unlinked` con `by_admin`) | `admin_id`: quién lo hizo |
+
+Las acciones del admin llevan `admin_id` (su cuenta) y tienen su chip, **Acciones del admin**, en los
+filtros del Historial; también se ven en el detalle de cada cuenta. Si se borra la cuenta del admin, la
+acción queda sin nombre ("Un admin").
 
 Cada evento se guarda en la misma transacción que el cambio. Se borran con la cuenta (incluidos los
 intentos fallidos desde su número vinculado); los intentos de números sin cuenta, con

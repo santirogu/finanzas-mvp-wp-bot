@@ -2,8 +2,9 @@ import "server-only";
 import { db } from "@/db";
 import { accountEvent, type AccountEventDetails } from "@/db/schema";
 
-// Historial de cada cuenta (tabla account_event): registro y vinculación de WhatsApp. Lo ve el admin
-// en /admin. Cada función que cambia algo de eso registra su evento en la misma transacción.
+// Historial de cada cuenta (tabla account_event): registro y vinculación de WhatsApp, y lo que el
+// admin hizo con ella. Lo ve el admin en /admin. Cada función que cambia algo de eso registra su
+// evento en la misma transacción.
 
 export type AccountEventType = (typeof accountEvent.$inferInsert)["type"];
 
@@ -15,13 +16,15 @@ export type NewAccountEvent = {
   userId: string | null;
   phone?: string | null;
   details?: AccountEventDetails;
+  /** El admin que lo hizo (acciones del admin en /admin/usuarios). */
+  adminId?: string | null;
 };
 
 /** Registra eventos; con `tx`, dentro de esa transacción (se guardan o se pierden con el cambio). */
 export async function recordEvents(events: NewAccountEvent[], tx: Executor = db): Promise<void> {
   if (events.length === 0) return;
   await tx.insert(accountEvent).values(
-    events.map(({ type, userId, phone = null, details = {} }) => ({ type, userId, phone, details })),
+    events.map(({ type, userId, phone = null, details = {}, adminId = null }) => ({ type, userId, phone, details, adminId })),
   );
 }
 

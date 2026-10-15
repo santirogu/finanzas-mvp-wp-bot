@@ -53,6 +53,11 @@ const SERVER_ACTIONS = {
   signOutAction: "sin sesión no hay nada que cerrar",
   deleteAccountAction: "requireUser + contraseña + palabra de confirmación; solo la cuenta propia",
   finishTwoFactorSetupAction: "requireAdmin (con la verificación ya activa); cierra las demás sesiones propias",
+  unlockLoginAction: "requireAdmin + código de Google Authenticator; nunca la cuenta propia ni la de otro admin",
+  revokeSessionsAction: "requireAdmin + código de Google Authenticator; nunca la cuenta propia ni la de otro admin",
+  unlinkWhatsAppByAdminAction: "requireAdmin + código de Google Authenticator; nunca la cuenta propia ni la de otro admin",
+  deleteAccountByAdminAction:
+    "requireAdmin + código de Google Authenticator + escribir el correo; nunca la cuenta propia ni la de otro admin",
 } as const;
 
 // Acciones que no necesitan validar la sesión, con el porqué.
@@ -262,7 +267,12 @@ describe("administración", () => {
 
   it("la capa de datos de administración existe y la regla la encuentra", () => {
     expect(adminDataFiles.map((f) => relative(ROOT, f))).toEqual(
-      expect.arrayContaining(["src/modules/admin/history/events-log.ts", "src/modules/admin/users/users.ts"]),
+      expect.arrayContaining([
+        "src/modules/admin/history/events-log.ts",
+        "src/modules/admin/users/users.ts",
+        "src/modules/admin/users/account-actions.ts",
+        "src/modules/admin/shared/confirm-code.ts",
+      ]),
     );
   });
 

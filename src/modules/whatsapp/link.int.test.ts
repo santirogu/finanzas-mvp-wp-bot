@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { db } from "@/db";
-import { user as userTable, whatsappLink, whatsappLinkCode } from "@/db/schema";
+import { accountEvent, user as userTable, whatsappLink, whatsappLinkCode } from "@/db/schema";
 import { createUser } from "../../../test/integration/factories";
 import {
   consumeLinkCode,
@@ -64,6 +64,28 @@ describe("vinculación de WhatsApp", () => {
     expect(await getLinkForUser(user.id)).toBeNull();
     expect(await getUserByPhone("573001112233")).toBeNull();
     expect(await db.select().from(whatsappLinkCode)).toEqual([]);
+  });
+
+  it("desvincular devuelve el número que tenía (o null) y registra quién fue", async () => {
+    const user = await createUser();
+    const admin = await createUser({ name: "Ana Admin", role: "admin" });
+    await consumeLinkCode("573001112233", (await createLinkCode(user.id)).code);
+
+    expect(await unlinkUser(user.id, { adminId: admin.id })).toBe("573001112233");
+    expect(await unlinkUser(user.id, { adminId: admin.id })).toBeNull();
+
+    const unlinked = await db.select().from(accountEvent).where(eq(accountEvent.type, "whatsapp_unlinked"));
+    expect(unlinked).toEqual([
+      expect.objectContaining({ userId: user.id, phone: "573001112233", details: { reason: "by_admin" }, adminId: admin.id }),
+    ]);
+  });
+
+  it("sin admin, la desvinculó la persona", async () => {
+    const user = await createUser();
+    await consumeLinkCode("573001112233", (await createLinkCode(user.id)).code);
+    await unlinkUser(user.id);
+    const [event] = await db.select().from(accountEvent).where(eq(accountEvent.type, "whatsapp_unlinked"));
+    expect(event).toMatchObject({ details: { reason: "by_user" }, adminId: null });
   });
 
   it("borrar la cuenta borra también su vínculo", async () => {

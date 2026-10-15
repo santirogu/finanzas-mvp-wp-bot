@@ -50,6 +50,13 @@
       "when": 1792034932156,
       "tag": "0006_historial-de-eventos",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1792078249349,
+      "tag": "0007_acciones-del-admin",
+      "breakpoints": true
     }
   ]
 }

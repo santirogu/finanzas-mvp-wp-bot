@@ -81,7 +81,9 @@ export default function PrivacyPage() {
               de sesión está bloqueado por intentos fallidos), sus sesiones abiertas (navegador,
               sistema operativo, dirección IP y fechas) y su historial de registro y vinculación de
               WhatsApp, con un acceso protegido con verificación en dos pasos. No ve tus ingresos,
-              egresos ni mensajes.
+              egresos ni mensajes. Si hace falta (por ejemplo, a tu pedido o para proteger tu cuenta),
+              puede desbloquear tu inicio de sesión, cerrar tus sesiones, desvincular tu WhatsApp o
+              eliminar tu cuenta con todos sus datos; cada acción queda registrada.
             </li>
             <li>
               Saber qué partes de la app se usan más y qué tan rápido cargan, con estadísticas

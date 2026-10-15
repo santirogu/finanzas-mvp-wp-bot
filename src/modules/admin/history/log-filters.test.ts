@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  ADMIN_ACTIONS_FILTER,
+  ADMIN_EVENT_TYPES,
+  EVENT_FILTERS,
   HISTORY_PATH,
+  isAdminAction,
   ADMIN_LOG_MAX,
   ADMIN_LOG_PAGE_SIZE,
   ADMIN_LOG_TIMEZONE,
@@ -55,6 +59,11 @@ describe("configuración", () => {
       "Desvinculaciones",
       "Intentos fallidos",
     ]);
+    // Y al final, el chip de lo que hizo el admin.
+    expect(EVENT_FILTERS).toEqual([...EVENT_TYPES, "admin"]);
+    expect(ADMIN_ACTIONS_FILTER).toBe("admin");
+    expect(EVENT_TYPE_FILTER_LABELS.admin).toBe("Acciones del admin");
+    expect(ADMIN_EVENT_TYPES).toEqual(["login_unlocked", "sessions_revoked", "account_deleted"]);
     expect(DATE_PRESETS.map((p) => DATE_PRESET_LABELS[p])).toEqual([
       "Todo",
       "Hoy",
@@ -78,7 +87,14 @@ describe("parseLogFilters", () => {
     expect(parseLogFilters({ tipo: "whatsapp_linked" }).types).toEqual(["whatsapp_linked"]);
   });
 
-  it.each([["otra_cosa"], ["REGISTERED"], ["__proto__"], ["constructor"], [""]])("ignora el tipo %j", (tipo) => {
+  it("'admin' (las acciones del admin) se combina con los tipos, al final", () => {
+    expect(parseLogFilters({ tipo: "admin" }).types).toEqual(["admin"]);
+    expect(parseLogFilters({ tipo: ["admin", "registered"] }).types).toEqual(["registered", "admin"]);
+    // Los tipos propios del admin no tienen chip: se ven con "admin".
+    expect(parseLogFilters({ tipo: ["login_unlocked", "account_deleted"] }).types).toEqual([]);
+  });
+
+  it.each([["otra_cosa"], ["REGISTERED"], ["__proto__"], ["constructor"], [""], ["ADMIN"]])("ignora el tipo %j", (tipo) => {
     expect(parseLogFilters({ tipo: [tipo, "whatsapp_linked"] }).types).toEqual(["whatsapp_linked"]);
   });
 
@@ -349,7 +365,39 @@ describe("formatos", () => {
     [{ reason: "invalid_code" as const, reconstructed: true }, "código inválido o vencido · reconstruido de datos anteriores"],
     [{ reason: "otro" as never }, ""],
     [{ reason: "otro" as never, reconstructed: true }, "reconstruido de datos anteriores"],
+    [{ reason: "constructor" as never }, ""],
+    // La frase ya dice que fue el admin.
+    [{ reason: "by_admin" as const }, ""],
+    [{ sessions: 1 }, "1 sesión"],
+    [{ sessions: 3 }, "3 sesiones"],
+    [{ sessions: 0 }, ""],
+    [{ reason: "by_user" as const, sessions: 2, reconstructed: true }, "lo desvinculó la persona · 2 sesiones · reconstruido de datos anteriores"],
   ])("eventDetail(%j) = %j", (details, expected) => {
     expect(eventDetail(details)).toBe(expected);
+  });
+});
+
+describe("isAdminAction", () => {
+  it.each([
+    ["login_unlocked", {}, true],
+    ["sessions_revoked", { sessions: 2 }, true],
+    ["account_deleted", {}, true],
+    ["whatsapp_unlinked", { reason: "by_admin" }, true],
+    ["whatsapp_unlinked", { reason: "by_user" }, false],
+    ["whatsapp_unlinked", { reason: "number_moved" }, false],
+    ["registered", {}, false],
+    ["whatsapp_link_failed", { reason: "invalid_code" }, false],
+  ] as const)("%s %j → %s", (type, details, expected) => {
+    expect(isAdminAction({ type, details })).toBe(expected);
+  });
+});
+
+describe("el chip de acciones del admin en la URL", () => {
+  it("va como tipo=admin, cuenta como un filtro y se quita con su ✕", () => {
+    const filters = { ...NO_FILTERS, types: ["whatsapp_unlinked", "admin"] as const } as unknown as LogFilters;
+    expect(logHref(filters)).toBe("/admin/historial?tipo=whatsapp_unlinked&tipo=admin");
+    expect(parseLogFilters({ tipo: ["whatsapp_unlinked", "admin"] })).toEqual(filters);
+    expect(activeFilterCount(filters)).toBe(2);
+    expect(withoutFilter(filters, { type: "admin" }).types).toEqual(["whatsapp_unlinked"]);
   });
 });

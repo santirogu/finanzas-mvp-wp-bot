@@ -12,6 +12,7 @@ import { getUserDetail, type UserDetail } from "@/modules/admin/users/users";
 import { PageSkeleton } from "../../../page-skeleton";
 import { EventItem } from "../../historial/event-item";
 import { AccountBadges, Initial } from "../account-badges";
+import { AccountActions } from "./account-actions";
 
 // Sin el nombre de la cuenta en el título: quedaría en el historial del navegador.
 export const metadata: Metadata = { title: "Cuenta · Administración" };
@@ -29,10 +30,13 @@ export default function UserDetailPage({ params }: PageProps<"/admin/usuarios/[i
 
 async function Account({ id }: { id: string }) {
   // Rol de admin y verificación en dos pasos activa (sin ella, lleva a configurarla).
-  await requireAdmin();
+  const admin = await requireAdmin();
   // Un id inválido o una cuenta que no existe (o se eliminó): el mismo 404.
   const account = await getUserDetail(decodeURIComponent(id));
   if (!account) notFound();
+  // Ni la cuenta propia ni la de otro admin: los roles solo se manejan desde la terminal (el servidor
+  // también lo valida en cada acción).
+  const canAct = account.id !== admin.id && !hasRole(account.role, "admin");
 
   return (
     <div className="space-y-4">
@@ -41,8 +45,42 @@ async function Account({ id }: { id: string }) {
       </Link>
       <Summary account={account} />
       <Sessions account={account} />
+      {canAct && (
+        <>
+          <AccountActions
+            target={{
+              id: account.id,
+              name: account.name,
+              email: account.email,
+              lockedUntil: account.lockedUntil && formatHour(account.lockedUntil),
+              openSessions: account.sessionCount,
+              phone: account.phone && formatPhone(account.phone),
+            }}
+          />
+          <AdminActions account={account} />
+        </>
+      )}
       <Events account={account} />
     </div>
+  );
+}
+
+function AdminActions({ account }: { account: UserDetail }) {
+  return (
+    <section className="card space-y-3 p-4" aria-labelledby="acciones-admin">
+      <h2 id="acciones-admin" className="font-semibold">
+        Acciones del admin
+      </h2>
+      {account.adminActions.length === 0 ? (
+        <p className="text-sm text-muted">Todavía no hay acciones del admin sobre esta cuenta.</p>
+      ) : (
+        <ol aria-label="Acciones del admin" className="divide-y divide-border">
+          {account.adminActions.map((entry) => (
+            <EventItem key={entry.id} entry={entry} inAccount />
+          ))}
+        </ol>
+      )}
+    </section>
   );
 }
 
@@ -143,7 +181,7 @@ function Events({ account }: { account: UserDetail }) {
       {account.events.length === 0 ? (
         <p className="text-sm text-muted">Sin eventos.</p>
       ) : (
-        <ol className="divide-y divide-border">
+        <ol aria-label="Últimos eventos" className="divide-y divide-border">
           {account.events.map((entry) => (
             <EventItem key={entry.id} entry={entry} inAccount />
           ))}

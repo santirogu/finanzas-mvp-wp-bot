@@ -18,6 +18,13 @@ export function base32Decode(input: string): Buffer {
   return Buffer.from(bytes.map((b) => parseInt(b, 2)));
 }
 
+/** Bytes (o texto en UTF-8) → base32 sin relleno, como lo muestra el QR de Better Auth. */
+export function base32Encode(input: string | Buffer): string {
+  const bytes = typeof input === "string" ? Buffer.from(input, "utf8") : input;
+  const bits = [...bytes].map((b) => b.toString(2).padStart(8, "0")).join("");
+  return (bits.match(/.{1,5}/g) ?? []).map((chunk) => BASE32[parseInt(chunk.padEnd(5, "0"), 2)]).join("");
+}
+
 /** El código de 6 dígitos de ese momento (HMAC-SHA1, períodos de 30 s). */
 export function totp(secretBase32: string, now = Date.now(), { digits = 6, period = 30 } = {}): string {
   const counter = Buffer.alloc(8);
