@@ -185,6 +185,38 @@ test("los filtros de rol, WhatsApp, bloqueo y fecha se combinan con la búsqueda
   await carla.context().close();
 });
 
+test("'Ver más cuentas' suma de a 50, conserva la búsqueda y para en 500", async ({ page }) => {
+  // 501 cuentas con un prefijo propio de esta prueba, de la más nueva (001) a la más vieja (501).
+  const prefix = `lote${randomInt(10_000, 99_999)}`;
+  const sql = postgres(e2eDatabaseUrl(), { max: 1, onnotice: () => {} });
+  await sql`
+    insert into "user" (id, name, email, created_at)
+    select ${prefix} || '-' || lpad(g::text, 3, '0'), 'Cuenta ' || ${prefix} || ' ' || lpad(g::text, 3, '0'),
+           ${prefix} || '-' || g || '@finanzas-e2e.test', now() - g * interval '1 minute'
+    from generate_series(1, 501) g`;
+  await sql.end();
+
+  await adminInUsers(page);
+  await searchFor(page, prefix);
+  await expect(summary(page, "501 cuentas")).toBeVisible();
+  await expect(accounts(page)).toHaveCount(50);
+  await expect(accounts(page).first()).toContainText(`Cuenta ${prefix} 001`);
+  await expect(accounts(page).last()).toContainText(`Cuenta ${prefix} 050`);
+
+  await visible(page.getByRole("link", { name: "Ver más cuentas" })).click();
+  await expect(page).toHaveURL(/mostrar=100/);
+  await expect(accounts(page)).toHaveCount(100);
+  await expect(accounts(page).last()).toContainText(`Cuenta ${prefix} 100`);
+  await expect(search(page)).toHaveValue(prefix);
+
+  // En el tope: 500 y un aviso en vez del botón.
+  await page.goto(`/admin/usuarios?q=${prefix}&mostrar=500`);
+  await expect(accounts(page)).toHaveCount(500);
+  await expect(accounts(page).last()).toContainText(`Cuenta ${prefix} 500`);
+  await expect(summary(page, "Se muestran las 500 más nuevas: usa los filtros para encontrar las demás.")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Ver más cuentas" })).toHaveCount(0);
+});
+
 test("ids raros o de cuentas que no existen dan 404; filtros raros no rompen la lista", async ({ page }) => {
   await adminInUsers(page);
   for (const id of ["no-existe", encodeURIComponent("' or 1=1 --"), "a".repeat(80), "%00"]) {

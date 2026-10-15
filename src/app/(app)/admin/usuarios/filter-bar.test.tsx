@@ -115,6 +115,31 @@ describe("UsersFilterBar", () => {
     ]);
   });
 
+  it("un atajo de fecha de registro aplica al instante, con los demás filtros", async () => {
+    render(<UsersFilterBar filters={f({ role: "admin", locked: true })} panelOpen />);
+    await userEvent.click(group("Fecha de registro").getByRole("radio", { name: "Últimos 7 días" }));
+    expect(submitted).toHaveLength(1);
+    expect(Object.fromEntries(submitted[0])).toMatchObject({ fecha: "7d", rol: "admin", estado: "bloqueadas" });
+    expect(submitted[0].get("desde")).toBeNull();
+  });
+
+  it("'Todos' quita el filtro de rol o de WhatsApp", async () => {
+    render(<UsersFilterBar filters={f({ role: "user", whatsapp: true })} panelOpen />);
+    await userEvent.click(group("Rol").getByRole("radio", { name: "Todos" }));
+    await userEvent.click(group("WhatsApp").getByRole("radio", { name: "Todos" }));
+    expect(submitted.map((data) => [data.get("rol"), data.get("whatsapp")])).toEqual([
+      ["todos", "si"],
+      ["todos", "todos"],
+    ]);
+  });
+
+  it("quitar la marca de bloqueo también aplica al instante", async () => {
+    render(<UsersFilterBar filters={f({ locked: true })} panelOpen />);
+    await userEvent.click(group("Estado").getByRole("checkbox", { name: "Inicio de sesión bloqueado" }));
+    expect(submitted).toHaveLength(1);
+    expect(submitted[0].get("estado")).toBeNull();
+  });
+
   it("la fecha de registro personalizada espera a 'Aplicar'", async () => {
     render(<UsersFilterBar filters={f()} panelOpen />);
     await userEvent.click(group("Fecha de registro").getByRole("radio", { name: "Personalizado" }));

@@ -133,6 +133,7 @@ describe("listUsers", () => {
     await seed();
     expect(names(await list({ whatsapp: "si" }))).toEqual(["Ana Pérez"]);
     expect(names(await list({ whatsapp: "no" }))).toEqual(["Carla Ríos", "Beto 100%_real"]);
+    expect(names(await list({ whatsapp: "todos" }))).toHaveLength(3);
   });
 
   it("filtra las cuentas con el inicio de sesión bloqueado ahora (no las que ya se desbloquearon)", async () => {
@@ -151,6 +152,27 @@ describe("listUsers", () => {
     expect(names(await list({ fecha: "personalizado", desde: "2026-10-09", hasta: "2026-10-09" }))).toEqual(["Beto 100%_real"]);
     expect(names(await list({ fecha: "personalizado", desde: "2026-10-10", hasta: "2026-10-11" }))).toEqual([]);
     expect(names(await list({ fecha: "personalizado", hasta: "2026-10-01" }))).toEqual(["Ana Pérez"]);
+  });
+
+  it("'Últimos 30 días' incluye el día 30 (contando hoy) y no el 31, en la hora de Colombia", async () => {
+    await seed();
+    // 13 de septiembre a las 0:00 en Colombia (el día 30) y 12 de septiembre a las 11:59 p. m. (el 31).
+    await createUser({ name: "Día 30", createdAt: at("2026-09-13T05:00:00Z") });
+    await createUser({ name: "Día 31", createdAt: at("2026-09-13T04:59:00Z") });
+    expect(names(await list({ fecha: "30d" }))).toEqual(["Carla Ríos", "Beto 100%_real", "Ana Pérez", "Día 30"]);
+    expect(names(await list({ fecha: "todo" }))).toHaveLength(5);
+  });
+
+  it("el rango personalizado acepta solo 'Desde' y se ordena si viene al revés", async () => {
+    await seed();
+    expect(names(await list({ fecha: "personalizado", desde: "2026-10-10" }))).toEqual(["Carla Ríos"]);
+    expect(names(await list({ fecha: "personalizado", desde: "2026-10-09" }))).toEqual(["Carla Ríos", "Beto 100%_real"]);
+    expect(names(await list({ fecha: "personalizado", desde: "2026-10-12", hasta: "2026-10-09" }))).toEqual([
+      "Carla Ríos",
+      "Beto 100%_real",
+    ]);
+    // Sin ninguna fecha válida, es "Todo".
+    expect(names(await list({ fecha: "personalizado", desde: "2026-02-31" }))).toHaveLength(3);
   });
 
   it("busca por nombre, correo o número (con o sin espacios y +)", async () => {
