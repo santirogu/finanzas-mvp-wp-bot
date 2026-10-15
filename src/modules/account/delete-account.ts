@@ -1,5 +1,5 @@
 import "server-only";
-import { eq, or } from "drizzle-orm";
+import { eq, or, type SQL } from "drizzle-orm";
 import { db } from "@/db";
 import { loginFailure, user, whatsappLink, whatsappMessage } from "@/db/schema";
 
@@ -11,6 +11,16 @@ import { loginFailure, user, whatsappLink, whatsappMessage } from "@/db/schema";
  *    texto), incluidos los que se enviaron desde el número vinculado antes de vincularlo;
  *  - los intentos fallidos de login, que se guardan por correo.
  */
+/**
+ * Los mensajes de WhatsApp de una cuenta: los asociados a ella y, si tiene un número vinculado,
+ * todos los de ese número (también los de antes de vincularlo, que no tienen usuario).
+ */
+export function accountMessages(userId: string, linkedPhone: string | null): SQL | undefined {
+  return linkedPhone
+    ? or(eq(whatsappMessage.userId, userId), eq(whatsappMessage.phone, linkedPhone))
+    : eq(whatsappMessage.userId, userId);
+}
+
 export async function deleteAccountData(userId: string): Promise<void> {
   await db.transaction(async (tx) => {
     const [account] = await tx.select({ email: user.email }).from(user).where(eq(user.id, userId));
@@ -20,13 +30,7 @@ export async function deleteAccountData(userId: string): Promise<void> {
       .from(whatsappLink)
       .where(eq(whatsappLink.userId, userId));
 
-    await tx
-      .delete(whatsappMessage)
-      .where(
-        link
-          ? or(eq(whatsappMessage.userId, userId), eq(whatsappMessage.phone, link.phone))
-          : eq(whatsappMessage.userId, userId),
-      );
+    await tx.delete(whatsappMessage).where(accountMessages(userId, link?.phone ?? null));
     await tx.delete(loginFailure).where(eq(loginFailure.email, account.email.toLowerCase()));
     await tx.delete(user).where(eq(user.id, userId));
   });
