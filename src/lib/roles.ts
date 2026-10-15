@@ -8,6 +8,12 @@
 export const ROLES = ["user", "admin"] as const;
 export type Role = (typeof ROLES)[number];
 
+/** Nombre de cada rol para mostrar en la app. */
+export const ROLE_LABELS: Record<Role, string> = {
+  user: "Usuario",
+  admin: "Administrador",
+};
+
 /** Lo que incluye cada rol: un admin también es usuario. */
 const INCLUDES: Record<Role, readonly Role[]> = {
   user: ["user"],

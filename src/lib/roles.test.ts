@@ -1,9 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { ROLES, hasRole, parseRole } from "./roles";
+import { ROLES, ROLE_LABELS, hasRole, parseRole } from "./roles";
 
 describe("ROLES", () => {
   it("son usuario y admin, en ese orden", () => {
     expect(ROLES).toEqual(["user", "admin"]);
+  });
+});
+
+describe("ROLE_LABELS", () => {
+  it("nombra cada rol en español", () => {
+    expect(ROLE_LABELS).toEqual({ user: "Usuario", admin: "Administrador" });
   });
 });
 
