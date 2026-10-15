@@ -1,9 +1,9 @@
 import { sql } from "drizzle-orm";
 import {
-  bigint,
   check,
   date,
   index,
+  numeric,
   pgEnum,
   pgTable,
   text,
@@ -49,8 +49,9 @@ export const transaction = pgTable(
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
     type: transactionType("type").notNull(),
-    // Monto en la unidad mínima de la moneda (pesos para COP). Nunca float.
-    amount: bigint("amount", { mode: "number" }).notNull(),
+    // Monto en pesos con centavos: decimal exacto en la base (nunca float). 18 dígitos: cabe cualquier
+    // monto que aceptaba la columna anterior (entera); la app limita a MAX_AMOUNT (src/lib/money.ts).
+    amount: numeric("amount", { precision: 18, scale: 2, mode: "number" }).notNull(),
     currency: text("currency").notNull().default("COP"),
     categoryId: uuid("category_id").references(() => category.id, { onDelete: "set null" }),
     description: text("description").notNull(),

@@ -52,6 +52,11 @@ describe("TransactionList", () => {
     expect(within(income).getByText(/^\+\$2\.000\.000,00$/)).toHaveClass("text-income");
   });
 
+  it("muestra los centavos", () => {
+    render(<TransactionList emptyMessage="vacío" items={[row({ amount: 45900.5 })]} />);
+    expect(screen.getByText(/^−\$45\.900,50$/)).toBeVisible();
+  });
+
   it("marca los movimientos que llegaron por WhatsApp", () => {
     render(<TransactionList emptyMessage="vacío" items={[row({ source: "whatsapp" })]} />);
     expect(screen.getByRole("listitem")).toHaveTextContent("Ropa · vía WhatsApp");

@@ -225,7 +225,7 @@ describe("claudeExtractor · contrato con Claude", () => {
               type: { type: "string", description: '{enum: ["income","expense"]}' },
               amount: {
                 type: "number",
-                description: "Monto en pesos colombianos: número entero, sin separadores",
+                description: "Monto en pesos colombianos, con los centavos como decimales (máximo 2) y sin separadores de miles: 25900.5",
               },
               description: { type: "string", description: "Qué fue, en 1 a 5 palabras" },
               category: {

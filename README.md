@@ -51,7 +51,7 @@ pnpm dev                        # http://localhost:3000
 | `pnpm admin:grant <correo>` · `admin:revoke` · `admin:list` | Da o quita el rol de admin, o lista los admins (ver Seguridad → Roles) |
 | `pnpm admin:reset-2fa <correo>` | Reinicia la verificación en dos pasos de un admin que perdió el celular y los códigos de respaldo |
 | `pnpm bot:try 'texto'` | Muestra cómo interpreta el bot un mensaje (usa la API de Claude). Usa comillas simples si el texto tiene `$` |
-| `pnpm bot:eval` | Corre el set de ~50 frases de prueba del bot y reporta aciertos, latencia y costo |
+| `pnpm bot:eval` | Corre el set de ~55 frases de prueba del bot y reporta aciertos, latencia y costo |
 
 > No uses `pnpm setup` (es un comando propio de pnpm que modifica tu shell). El script del proyecto se llama `db:setup`.
 
@@ -110,7 +110,7 @@ pnpm dev                        # http://localhost:3000
   suite unitaria completa), así que corre **a pedido**: en un PR al ponerle la etiqueta
   `mutation-testing`, con *Actions → Mutation testing → Run workflow*, y **cada lunes** sobre `main`.
   Falla si el puntaje baja del umbral `break` de `stryker.config.mjs`, pero no bloquea el merge.
-- **Evaluación del bot** (`pnpm bot:eval`): 50 frases contra la API real de Claude. Tiene costo,
+- **Evaluación del bot** (`pnpm bot:eval`): 56 frases contra la API real de Claude. Tiene costo,
   por eso no corre en CI.
 
 Con Docker, `pnpm db:up` crea también la base `finanzas_test` la primera vez.
@@ -139,7 +139,11 @@ scripts/seed.ts                     Categorías por defecto
 
 ### Decisiones importantes
 
-- **Montos como enteros (`bigint`)** en la unidad mínima de la moneda; nunca `float`.
+- **Montos en pesos con centavos, como decimal exacto** (`numeric(18, 2)`), nunca `float` en la
+  base: las sumas las hace Postgres. En la app son `number` con hasta dos decimales; para sumar o
+  restar en JavaScript, `sumAmounts` y `roundToCents` (`src/lib/money.ts`). Al escribir, el punto
+  separa miles y la coma los centavos ("45.900,50"), en el formulario y en el bot; el tope es
+  `MAX_AMOUNT` (100 mil millones).
 - **"Mes actual" según la zona horaria del usuario** (`America/Bogota` por defecto), para que un
   gasto del 31 a las 10 p. m. no caiga en el mes siguiente por usar UTC.
 - **Todas las consultas filtran por `userId`** obtenido de la sesión en el servidor; cada Server

@@ -49,6 +49,38 @@ test("corregir un egreso: monto, descripción y categoría @principal", async ({
   });
 });
 
+test("los centavos se escriben después de la coma y se corrigen como el resto del monto", async ({ page }) => {
+  await register(page);
+  await openTab(page, "Egresos");
+  const amount = visible(page.getByLabel("Monto"));
+
+  await test.step("se escriben con coma (o con punto, si el teclado no tiene coma)", async () => {
+    // Tecla por tecla, como una persona: el campo pone los puntos de miles y la coma.
+    await amount.pressSequentially("25900,505");
+    await expect(amount).toHaveValue("25.900,50");
+    await amount.clear();
+    await amount.pressSequentially("25900.5");
+    await expect(amount).toHaveValue("25.900,5");
+    await visible(page.getByLabel("Descripción")).fill("Almuerzo");
+    await visible(page.getByRole("button", { name: "Registrar egreso" })).click();
+
+    await expect(row(page, "Almuerzo")).toContainText(/−\$25\.900,50/);
+    await expect(visible(page.getByText("$25.900,50", { exact: true }))).toBeVisible();
+  });
+
+  await test.step("al editar, el monto trae sus centavos", async () => {
+    await openEdit(page, "Almuerzo");
+    await expect(visible(page.getByLabel("Monto"))).toHaveValue("25.900,50");
+    await visible(page.getByLabel("Monto")).fill("25.900,75");
+    await visible(page.getByRole("button", { name: "Guardar cambios" })).click();
+
+    await expect(page).toHaveURL(/\/egresos$/);
+    await expect(row(page, "Almuerzo")).toContainText(/−\$25\.900,75/);
+    await openTab(page, "Resumen");
+    await expect(visible(page.getByText("Balance del mes")).locator("..")).toContainText(/-\$25\.900,75/);
+  });
+});
+
 test("cancelar no cambia nada y un error no pierde lo escrito", async ({ page }) => {
   await register(page);
   await openTab(page, "Ingresos");

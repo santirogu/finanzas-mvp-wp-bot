@@ -40,7 +40,7 @@ describe("TransactionForm", () => {
     expect(screen.getByRole("button", { name: "Registrar egreso" })).toBeEnabled();
   });
 
-  it("formatea el monto con separadores de miles mientras se escribe e ignora lo que no es un dígito", async () => {
+  it("formatea el monto con separadores de miles mientras se escribe e ignora lo que no es un dígito ni un separador", async () => {
     renderForm();
     const amount = screen.getByLabelText(/Monto/);
     await userEvent.type(amount, "500000");
@@ -53,6 +53,28 @@ describe("TransactionForm", () => {
     await userEvent.clear(amount);
     await userEvent.type(amount, "x");
     expect(amount).toHaveValue("");
+  });
+
+  it("acepta centavos después de la coma, máximo dos, con el teclado decimal", async () => {
+    renderForm();
+    const amount = screen.getByLabelText(/Monto/);
+    expect(amount).toHaveAttribute("inputmode", "decimal");
+    await userEvent.type(amount, "45900,505");
+    expect(amount).toHaveValue("45.900,50");
+
+    // Borrar los centavos y la coma deja el monto entero.
+    await userEvent.type(amount, "{Backspace}{Backspace}{Backspace}");
+    expect(amount).toHaveValue("45.900");
+    // Borrar un dígito recalcula los puntos de miles (no los vuelve centavos).
+    await userEvent.type(amount, "{Backspace}");
+    expect(amount).toHaveValue("4.590");
+  });
+
+  it("un punto al final también abre los centavos (el teclado en inglés no tiene coma)", async () => {
+    renderForm();
+    const amount = screen.getByLabelText(/Monto/);
+    await userEvent.type(amount, "45900.5");
+    expect(amount).toHaveValue("45.900,5");
   });
 
   it("ofrece 'Sin categoría' y las categorías con su emoji; la fecha es hoy y no permite fechas futuras", () => {
@@ -78,6 +100,18 @@ describe("TransactionForm", () => {
     );
     expect(screen.getByRole("option", { name: "🎮 Videojuegos (archivada)" })).toHaveAttribute("value", "c-viejo");
     expect(screen.getByRole("option", { name: "👟 Ropa" })).toBeInTheDocument();
+  });
+
+  it("envía el monto con sus centavos", async () => {
+    action.mockResolvedValue({ ok: true, message: "Egreso registrado" });
+    renderForm();
+
+    await userEvent.type(screen.getByLabelText(/Monto/), "25900,5");
+    await userEvent.type(screen.getByLabelText("Descripción"), "Almuerzo");
+    await userEvent.click(screen.getByRole("button", { name: "Registrar egreso" }));
+
+    expect(await screen.findByText("✓ Egreso registrado")).toBeVisible();
+    expect(action.mock.calls[0][1].get("amount")).toBe("25.900,5");
   });
 
   it("envía lo escrito a la Server Action y avisa cuando se registró", async () => {
@@ -202,6 +236,19 @@ describe("TransactionForm · editar", () => {
     expect(screen.getByLabelText("Fecha")).toHaveValue("2026-10-10");
     expect(screen.getByRole("button", { name: "Guardar cambios" })).toBeEnabled();
     expect(screen.getByRole("link", { name: "Cancelar" })).toHaveAttribute("href", "/egresos");
+  });
+
+  it("muestra los centavos del movimiento guardado", () => {
+    render(
+      <TransactionForm
+        type="expense"
+        categories={CATEGORIES}
+        today="2026-10-14"
+        transaction={{ ...TX, amount: 45900.5 }}
+        cancelHref="/egresos"
+      />,
+    );
+    expect(screen.getByLabelText(/Monto/)).toHaveValue("45.900,50");
   });
 
   it("envía los cambios con el id a la acción de editar (no a la de registrar)", async () => {

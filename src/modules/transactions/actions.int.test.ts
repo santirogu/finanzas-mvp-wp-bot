@@ -1,4 +1,4 @@
-import { eq, inArray } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "@/db";
 import { category, transaction } from "@/db/schema";
@@ -74,6 +74,31 @@ describe("createTransactionAction", () => {
         categoryId: null,
       }),
     ]);
+  });
+
+  it("guarda los centavos escritos después de la coma, exactos", async () => {
+    const user = await signIn();
+
+    await createTransactionAction({ ok: false }, form({ ...validExpense, amount: "45.900,50" }));
+    await createTransactionAction({ ok: false }, form({ ...validExpense, amount: "0,01" }));
+
+    expect((await activeTransactions(user.id)).map((t) => t.amount).sort((a, b) => a - b)).toEqual([0.01, 45900.5]);
+    const stored = await db.execute<{ amount: string }>(
+      sql`select amount::text as amount from "transaction" where user_id = ${user.id} order by amount`,
+    );
+    expect(stored.map((row) => row.amount)).toEqual(["0.01", "45900.50"]);
+  });
+
+  it.each([
+    ["45.900,505", "Ingresa un monto mayor que cero"],
+    ["100.000.000.000,01", "El monto no puede pasar de $100.000.000.000,00"],
+  ])("rechaza el monto %j sin guardar nada", async (amount, error) => {
+    const user = await signIn();
+
+    const state = await createTransactionAction({ ok: false }, form({ ...validExpense, amount }));
+
+    expect(state).toMatchObject({ ok: false, fieldErrors: { amount: error } });
+    expect(await activeTransactions(user.id)).toEqual([]);
   });
 
   it("devuelve errores por campo y conserva lo escrito, sin guardar nada", async () => {
@@ -239,6 +264,16 @@ describe("updateTransactionAction", () => {
         source: "web",
       }),
     ]);
+  });
+
+  it("corrige el monto con centavos", async () => {
+    const { user, tx } = await ownExpense();
+
+    await expect(updateTransactionAction({ ok: false }, editForm(tx.id, { amount: "1.250.000,05" }))).rejects.toThrow(
+      "NEXT_REDIRECT /egresos",
+    );
+
+    expect(await activeTransactions(user.id)).toEqual([expect.objectContaining({ id: tx.id, amount: 1250000.05 })]);
   });
 
   it("un ingreso vuelve a la lista de ingresos", async () => {

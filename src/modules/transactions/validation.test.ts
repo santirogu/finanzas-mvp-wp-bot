@@ -17,7 +17,7 @@ const errorsOf = (input: Record<string, unknown>) => {
 };
 
 describe("newTransactionSchema", () => {
-  it("convierte el monto colombiano a entero y la categoría vacía a undefined", () => {
+  it("convierte el monto colombiano a número y la categoría vacía a undefined", () => {
     expect(newTransactionSchema.parse(base)).toEqual({
       type: "expense",
       amount: 500000,
@@ -34,7 +34,20 @@ describe("newTransactionSchema", () => {
     ).toMatchObject({ categoryId: id, description: "Zapatos" });
   });
 
-  it.each(["0", "", "abc"])("rechaza el monto %j", (amount) => {
+  it.each([
+    ["45.900,50", 45900.5],
+    ["45.900,5", 45900.5],
+    ["0,01", 0.01],
+    ["100.000.000.000", 100000000000],
+  ])("acepta centavos y hasta el máximo: %j → %d", (amount, expected) => {
+    expect(newTransactionSchema.parse({ ...base, amount }).amount).toBe(expected);
+  });
+
+  it.each(["100.000.000.000,01", "250.000.000.000"])("rechaza un monto por encima del máximo: %j", (amount) => {
+    expect(errorsOf({ ...base, amount })).toHaveProperty("amount", "El monto no puede pasar de $100.000.000.000,00");
+  });
+
+  it.each(["0", "", "abc", "0,00", "1,500"])("rechaza el monto %j", (amount) => {
     expect(errorsOf({ ...base, amount })).toHaveProperty(
       "amount",
       "Ingresa un monto mayor que cero",

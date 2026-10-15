@@ -3,6 +3,7 @@ import { and, desc, eq, gte, isNull, lt, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { category, transaction, type TransactionType } from "@/db/schema";
 import type { MonthRange } from "@/lib/dates";
+import { roundToCents } from "@/lib/money";
 import { sortCategories } from "./default-categories";
 
 // Todas las consultas reciben el userId ya validado por el Data Access Layer
@@ -26,9 +27,10 @@ export async function getMonthlySummary(userId: string, range: MonthRange) {
     .from(transaction)
     .where(activeInMonth(userId, range));
 
+  // La base suma exacto (numeric); la resta se redondea a centavos para no dejar restos de float.
   const income = Number(row.income);
   const expense = Number(row.expense);
-  return { income, expense, balance: income - expense, count: row.count };
+  return { income, expense, balance: roundToCents(income - expense), count: row.count };
 }
 
 export async function getTotalsByCategory(userId: string, type: TransactionType, range: MonthRange) {

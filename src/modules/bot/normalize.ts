@@ -1,5 +1,6 @@
 // Validación de lo que devuelve la IA antes de tocar la base de datos.
 // La IA propone; este código decide qué es aceptable.
+import { MAX_AMOUNT, roundToCents } from "@/lib/money";
 
 export type TransactionKind = "income" | "expense";
 
@@ -23,7 +24,6 @@ export type ParsedTransaction = {
 
 export type CategoryNames = Record<TransactionKind, readonly string[]>;
 
-const MAX_AMOUNT = 100_000_000_000; // 100 mil millones: por encima, casi seguro es un error de lectura.
 const MAX_DESCRIPTION = 140;
 const MAX_DAYS_BACK = 366;
 
@@ -66,8 +66,9 @@ export function normalizeTransactions(
   const result: ParsedTransaction[] = [];
   for (const item of raw) {
     if (item.type !== "income" && item.type !== "expense") continue;
-    const amount = Math.round(item.amount);
-    if (!Number.isSafeInteger(amount) || amount <= 0 || amount > MAX_AMOUNT) continue;
+    // Pesos con centavos; por encima de MAX_AMOUNT, casi seguro es un error de lectura.
+    const amount = roundToCents(item.amount);
+    if (!Number.isFinite(amount) || amount <= 0 || amount > MAX_AMOUNT) continue;
     const description = normalizeDescription(item.description);
     result.push({
       type: item.type,

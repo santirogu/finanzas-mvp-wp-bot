@@ -142,6 +142,27 @@ describe("handleIncomingMessage · registro de movimientos", () => {
     expect(await loggedMessage(msg.id)).toMatchObject({ status: "processed", userId: user.id });
   });
 
+  it("guarda los centavos que entendió el bot, los muestra y deshacer los lista", async () => {
+    const user = await linkedUser();
+    // La IA puede proponer más de dos decimales: se redondea a centavos.
+    const extractor = fakeExtractor([
+      { type: "expense", amount: 25900.5, description: "Almuerzo", category: "Alimentación" },
+      { type: "expense", amount: 3500.755, description: "Parqueadero", category: "Transporte" },
+    ]);
+    const { deps: d, sender } = deps(extractor);
+
+    await handleIncomingMessage(incoming("almuerzo 25.900,50 y parqueadero 3.500,76"), d);
+
+    expect((await activeTransactions(user.id)).map((t) => t.amount).sort((a, b) => a - b)).toEqual([3500.76, 25900.5]);
+    expect(sender.sent[0].body).toContain("*Almuerzo* — $25.900,50");
+    expect(sender.sent[0].body).toContain("*Parqueadero* — $3.500,76");
+    expect(sender.sent[0].body).toContain("*-$29.401,26*");
+
+    await handleIncomingMessage(incoming("deshacer"), d);
+    expect(sender.sent[1].body).toContain("Almuerzo — $25.900,50");
+    expect(sender.sent[1].body).toContain("Parqueadero — $3.500,76");
+  });
+
   it("registra en la cuenta dueña del número que escribe, nunca en otra", async () => {
     const ana = await linkedUser();
     const beto = await linkedUser("573007777777", "Beto");

@@ -16,7 +16,7 @@ const extractionSchema = z.object({
   transactions: z.array(
     z.object({
       type: z.enum(["income", "expense"]),
-      amount: z.number().describe("Monto en pesos colombianos: número entero, sin separadores"),
+      amount: z.number().describe("Monto en pesos colombianos, con los centavos como decimales (máximo 2) y sin separadores de miles: 25900.5"),
       description: z.string().describe("Qué fue, en 1 a 5 palabras"),
       category: z.string().describe("Una de las categorías de su tipo, o 'Otros'"),
       date: z.string().describe("Fecha del movimiento, YYYY-MM-DD"),

@@ -43,6 +43,15 @@ describe("registeredReply", () => {
     );
   });
 
+  it("confirma con los centavos que se escribieron", () => {
+    const text = registeredReply(
+      [{ type: "expense", amount: 25900.5, description: "Almuerzo", category: "Alimentación", occurredOn: "2026-10-13" }],
+      { today: "2026-10-13", currency: "COP", balance: -25900.5, range },
+    );
+    expect(text).toContain("✅ Egreso registrado: *Almuerzo* — $25.900,50 (Alimentación)");
+    expect(text).toContain("Balance de octubre: *-$25.900,50*");
+  });
+
   it("muestra la fecha cuando no es hoy y lista varios movimientos", () => {
     const text = nbsp(
       registeredReply(
@@ -89,6 +98,12 @@ describe("balanceReply", () => {
     );
   });
 
+  it("con centavos", () => {
+    expect(
+      balanceReply({ income: 100000.5, expense: 45900.25, balance: 54100.25, count: 2 }, { currency: "COP", range }),
+    ).toContain("Ingresos: $100.000,50\nEgresos: $45.900,25\nBalance: *$54.100,25*");
+  });
+
   it("invita a registrar si no hay movimientos", () => {
     expect(
       balanceReply({ income: 0, expense: 0, balance: 0, count: 0 }, { currency: "COP", range }),
@@ -127,6 +142,12 @@ describe("mensajes de vinculación y ayuda", () => {
         " ",
       ),
     ).toBe("Listo, eliminé:\n🗑️ Café — $6.500,00");
+  });
+
+  it("lista lo que se deshizo, con sus centavos", () => {
+    expect(undoReply([{ description: "Café", amount: 6500.5, type: "expense" }], "COP")).toBe(
+      "Listo, eliminé:\n🗑️ Café — $6.500,50",
+    );
   });
 });
 

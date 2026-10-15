@@ -58,6 +58,13 @@ test("vincular el número desde el dashboard y llevar las cuentas por WhatsApp",
     await page.reload();
     await expect(visible(page.getByText("No has registrado egresos este mes."))).toBeVisible();
   });
+
+  await test.step("un monto con centavos se guarda con sus centavos", async () => {
+    await sendWhatsApp(request, phone, "almuerzo 25.900,50");
+    expect(await nthReply(request, phone, 5)).toMatch(/✅ Egreso registrado: \*Almuerzo\* — \$25\.900,50 \(Alimentación\)/);
+    await page.reload();
+    await expect(visible(page.getByRole("listitem").filter({ hasText: "Almuerzo" }))).toContainText(/−\$25\.900,50/);
+  });
 });
 
 test("un número sin vincular recibe instrucciones y no puede usar el bot", async ({ request }) => {
