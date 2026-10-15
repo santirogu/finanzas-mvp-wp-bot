@@ -62,8 +62,16 @@ describe("normalizeTransactions", () => {
   });
 
   it("descarta montos inválidos", () => {
-    const items = [0, -5000, 1e15, Number.NaN].map((amount) => ({ ...base, amount }));
+    // 0,004 se redondea a 0 centavos.
+    const items = [0, 0.004, -5000, -0.01, 1e15, Number.NaN, Number.POSITIVE_INFINITY].map((amount) => ({ ...base, amount }));
     expect(normalizeTransactions(items, ctx)).toEqual([]);
+  });
+
+  it("conserva los centavos y redondea lo que pase de dos decimales", () => {
+    const amounts = [25900.5, 0.01, 0.005, 45900.555, 12500.4999, 0.1 + 0.2].map(
+      (amount) => normalizeTransactions([{ ...base, amount }], ctx)[0].amount,
+    );
+    expect(amounts).toEqual([25900.5, 0.01, 0.01, 45900.56, 12500.5, 0.3]);
   });
 
   it("nunca guarda fechas futuras ni inválidas", () => {
@@ -352,6 +360,8 @@ describe("normalizeTransactions · límites", () => {
 
   it("acepta el monto máximo y rechaza lo que lo supera", () => {
     expect(normalizeTransactions([{ ...base, amount: 100_000_000_000 }], ctx)).toHaveLength(1);
+    expect(normalizeTransactions([{ ...base, amount: 100_000_000_000.004 }], ctx)).toHaveLength(1);
+    expect(normalizeTransactions([{ ...base, amount: 100_000_000_000.01 }], ctx)).toEqual([]);
     expect(normalizeTransactions([{ ...base, amount: 100_000_000_001 }], ctx)).toEqual([]);
   });
 

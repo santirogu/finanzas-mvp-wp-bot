@@ -1,9 +1,12 @@
 import { z } from "zod";
-import { parseAmountInput } from "@/lib/money";
+import { formatMoney, MAX_AMOUNT, parseAmountInput } from "@/lib/money";
 
 export const transactionTypeSchema = z.enum(["income", "expense"]);
 
-// Compartido por el formulario web y, más adelante, por el bot de WhatsApp.
+// Stryker disable next-line StringLiteral: la app solo usa el mensaje del error, no su código
+const amountIssue = (message: string) => ({ code: "custom" as const, message });
+
+// El formulario web. El monto, en pesos con hasta dos decimales (centavos).
 export const newTransactionSchema = z.object({
   type: transactionTypeSchema,
   amount: z
@@ -11,7 +14,11 @@ export const newTransactionSchema = z.object({
     .transform((value, ctx) => {
       const parsed = parseAmountInput(value);
       if (parsed === null) {
-        ctx.addIssue({ code: "custom", message: "Ingresa un monto mayor que cero" });
+        ctx.addIssue(amountIssue("Ingresa un monto mayor que cero"));
+        return z.NEVER;
+      }
+      if (parsed > MAX_AMOUNT) {
+        ctx.addIssue(amountIssue(`El monto no puede pasar de ${formatMoney(MAX_AMOUNT)}`));
         return z.NEVER;
       }
       return parsed;

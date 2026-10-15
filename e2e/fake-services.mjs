@@ -22,6 +22,10 @@ const INTERPRETATIONS = [
     transactions: [{ type: "expense", amount: 500000, description: "Zapatos", category: "Ropa" }],
   },
   {
+    match: /almuerzo/i,
+    transactions: [{ type: "expense", amount: 25900.5, description: "Almuerzo", category: "Alimentación" }],
+  },
+  {
     match: /quincena/i,
     transactions: [{ type: "income", amount: 2100000, description: "Quincena", category: "Salario" }],
   },

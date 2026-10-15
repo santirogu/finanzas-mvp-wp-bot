@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { db } from "@/db";
 import { category, transaction } from "@/db/schema";
@@ -84,6 +84,59 @@ describe("getMonthlySummary", () => {
     await addTx({ userId: user.id, type: "income", amount: 1 });
 
     expect((await getMonthlySummary(user.id, october)).income).toBe(9_000_000_000_001);
+  });
+
+  it("y con centavos", async () => {
+    const user = await createUser();
+    await addTx({ userId: user.id, type: "income", amount: 99_999_999_999.99 });
+    await addTx({ userId: user.id, type: "income", amount: 0.01 });
+
+    expect((await getMonthlySummary(user.id, october)).income).toBe(100_000_000_000);
+  });
+});
+
+describe("montos con centavos", () => {
+  it("se guardan exactos y se suman en la base, sin restos de float", async () => {
+    const user = await createUser();
+    await addTx({ userId: user.id, type: "income", amount: 0.1 });
+    await addTx({ userId: user.id, type: "income", amount: 0.2 });
+    await addTx({ userId: user.id, type: "expense", amount: 45900.5 });
+    await addTx({ userId: user.id, type: "expense", amount: 0.25 });
+
+    expect(await getMonthlySummary(user.id, october)).toEqual({
+      income: 0.3,
+      expense: 45900.75,
+      balance: -45900.45,
+      count: 4,
+    });
+    const stored = await db.execute<{ amount: string }>(
+      sql`select amount::text as amount from "transaction" where user_id = ${user.id} order by amount`,
+    );
+    expect(stored.map((row) => row.amount)).toEqual(["0.10", "0.20", "0.25", "45900.50"]);
+  });
+
+  it("las listas y los totales por categoría traen los centavos", async () => {
+    const user = await createUser();
+    const mercado = await globalCategory("expense", "Mercado");
+    await addTx({ userId: user.id, amount: 120000.5, categoryId: mercado.id });
+    await addTx({ userId: user.id, amount: 0.25, categoryId: mercado.id });
+
+    expect(await getTotalsByCategory(user.id, "expense", october)).toEqual([
+      expect.objectContaining({ name: "Mercado", total: 120000.75 }),
+    ]);
+    expect((await listTransactions(user.id, october)).map((t) => t.amount).sort((a, b) => a - b)).toEqual([0.25, 120000.5]);
+  });
+
+  it("la columna acepta los montos enteros que escribe la versión anterior, y esta los lee con Number()", async () => {
+    // Durante el despliegue la versión anterior sigue atendiendo con la base ya migrada.
+    const user = await createUser();
+    await db.execute(
+      sql`insert into "transaction" (user_id, type, amount, description, occurred_on)
+          values (${user.id}, 'expense', ${500000}::bigint, 'Antes', '2026-10-15')`,
+    );
+    const [row] = await db.execute<{ amount: string }>(sql`select amount from "transaction" where user_id = ${user.id}`);
+    expect(Number(row.amount)).toBe(500000);
+    expect(await getMonthlySummary(user.id, october)).toMatchObject({ expense: 500000 });
   });
 });
 

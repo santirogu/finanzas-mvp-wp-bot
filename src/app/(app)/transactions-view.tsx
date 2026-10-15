@@ -1,7 +1,7 @@
 import { TransactionForm } from "@/components/transaction-form";
 import { TransactionList } from "@/components/transaction-list";
 import { currentMonthRange, formatMonthLabel, todayInTimezone } from "@/lib/dates";
-import { formatMoney } from "@/lib/money";
+import { formatMoney, sumAmounts } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import { listCategories, listTransactions } from "@/modules/transactions/queries";
 
@@ -13,7 +13,7 @@ export async function TransactionsView({ type }: { type: "income" | "expense" })
     listTransactions(user.id, range, { type }),
     listCategories(user.id, type),
   ]);
-  const total = items.reduce((sum, t) => sum + t.amount, 0);
+  const total = sumAmounts(items.map((t) => t.amount));
   const isIncome = type === "income";
 
   return (

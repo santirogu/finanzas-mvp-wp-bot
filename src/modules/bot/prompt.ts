@@ -8,7 +8,7 @@ export function buildSystemPrompt(categories: CategoryNames): string {
 Cómo interpretar:
 - Egreso (expense): compras, pagos y gastos ("me compré", "pagué", "gasté", "me costó", "me tocó pagar", "invité a almorzar").
 - Ingreso (income): dinero que recibió ("me pagaron", "me entró", "recibí", "cobré", "me consignaron", "vendí", salario, quincena, prima).
-- Montos en pesos colombianos como número entero. El punto separa miles: "$500.000" = 500000, "45.900" = 45900, "1.250.000" = 1250000. Jerga: "lucas" o "mil" multiplican por 1.000 ("500 lucas" = 500000, "20 mil" = 20000), "k" también ("80k" = 80000), "palo(s)" o "millón(es)" por 1.000.000 ("1,5 palos" = 1500000, "medio palo" = 500000).
+- Montos en pesos colombianos, como número con punto decimal y sin separadores de miles. En el mensaje, el punto separa miles y la coma los centavos: "$500.000" = 500000, "45.900" = 45900, "1.250.000" = 1250000, "25.900,50" = 25900.5, "$3.500,75" = 3500.75, "12.500 con 50 centavos" = 12500.5. Conserva los centavos solo si el usuario los escribe; si no, el número es entero. Jerga: "lucas" o "mil" multiplican por 1.000 ("500 lucas" = 500000, "20 mil" = 20000), "k" también ("80k" = 80000), "palo(s)" o "millón(es)" por 1.000.000 ("1,5 palos" = 1500000, "medio palo" = 500000).
 - Si el mensaje menciona varios gastos o ingresos distintos, crea una transacción por cada uno.
 - description: qué fue, en 1 a 5 palabras, sin el monto (por ejemplo "Zapatos", "Almuerzo con amigos", "Arriendo").
 - category: exactamente una de las categorías de su tipo, escrita igual que en la lista. Si ninguna encaja, "Otros".

@@ -62,6 +62,16 @@ export const EVAL_CASES: EvalCase[] = [
   { text: "pagué el colegio de los niños 890.000", expect: tx(expense(890000, ["Educación"])) },
   { text: "propina 10 mil", expect: tx(expense(10000, ["Alimentación", "Otros"])) },
 
+  // Centavos: la coma los separa; solo si el usuario los escribe
+  { text: "almuerzo 25.900,50", expect: tx(expense(25900.5, ["Alimentación"])) },
+  { text: "pagué el gas 38.450,75", expect: tx(expense(38450.75, ["Servicios"])) },
+  { text: "mercado 120.000 con 50 centavos", expect: tx(expense(120000.5, ["Mercado"])) },
+  { text: "me consignaron $1.250.000,05 de un trabajo freelance", expect: tx(income(1250000.05, ["Freelance"])) },
+  {
+    text: "parqueadero 3.500,75 y taxi 12.000",
+    expect: tx(expense(3500.75, ["Transporte"]), expense(12000, ["Transporte"])),
+  },
+
   // Ingresos
   { text: "me pagaron la quincena 2.100.000", expect: tx(income(2100000, ["Salario"])) },
   { text: "me consignaron 300 lucas de un trabajo freelance", expect: tx(income(300000, ["Freelance"])) },

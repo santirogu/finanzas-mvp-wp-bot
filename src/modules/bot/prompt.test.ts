@@ -17,6 +17,13 @@ describe("buildSystemPrompt", () => {
     expect(prompt).toContain('"1,5 palos" = 1500000');
   });
 
+  it("explica que la coma separa los centavos", () => {
+    const prompt = buildSystemPrompt(categories);
+    expect(prompt).toContain("el punto separa miles y la coma los centavos");
+    expect(prompt).toContain('"25.900,50" = 25900.5');
+    expect(prompt).toContain("Conserva los centavos solo si el usuario los escribe");
+  });
+
   it("no depende de la fecha, para que se pueda cachear entre mensajes", () => {
     expect(buildSystemPrompt(categories)).toBe(buildSystemPrompt(categories));
     expect(buildSystemPrompt(categories)).not.toMatch(/\d{4}-\d{2}-\d{2}/);

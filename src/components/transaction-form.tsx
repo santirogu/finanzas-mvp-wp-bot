@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useActionState, useEffect, useId, useRef } from "react";
 import type { FieldMessages } from "@/lib/field-errors";
+import { amountInputValue, formatAmountTyping } from "@/lib/money";
 import {
   createTransactionAction,
   updateTransactionAction,
@@ -83,16 +84,15 @@ export function TransactionForm({
           <input
             ref={amountRef}
             name="amount"
-            inputMode="numeric"
+            inputMode="decimal"
             placeholder="500.000"
             defaultValue={values.amount}
             required
             {...aria("amount")}
             className="input pl-7 tabular-nums"
             onChange={(e) => {
-              // Muestra separadores de miles mientras se escribe: 500000 → 500.000
-              const digits = e.target.value.replace(/\D/g, "");
-              e.target.value = digits ? Number(digits).toLocaleString("es-CO") : "";
+              // Puntos de miles mientras se escribe y, tras la coma, hasta dos centavos: 45900,5 → 45.900,5
+              e.target.value = formatAmountTyping(e.target.value);
             }}
           />
         </div>
@@ -165,10 +165,10 @@ export function TransactionForm({
   );
 }
 
-/** Valores del formulario a partir de un movimiento guardado (el monto con separadores). */
+/** Valores del formulario a partir de un movimiento guardado (el monto con separadores y sus centavos). */
 function valuesOf(transaction: TransactionToEdit): Record<string, string> {
   return {
-    amount: transaction.amount.toLocaleString("es-CO"),
+    amount: amountInputValue(transaction.amount),
     description: transaction.description,
     categoryId: transaction.categoryId ?? "",
     occurredOn: transaction.occurredOn,
