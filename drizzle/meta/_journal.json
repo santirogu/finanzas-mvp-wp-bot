@@ -43,6 +43,13 @@
       "when": 1792032613001,
       "tag": "0005_verificacion-dos-pasos",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792034932156,
+      "tag": "0006_historial-de-eventos",
+      "breakpoints": true
     }
   ]
 }

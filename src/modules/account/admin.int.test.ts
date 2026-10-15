@@ -1,9 +1,9 @@
 import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { db } from "@/db";
-import { category, transaction, user, whatsappLink, whatsappMessage } from "@/db/schema";
+import { accountEvent, category, transaction, user, whatsappLink, whatsappMessage } from "@/db/schema";
 import { createUser } from "../../../test/integration/factories";
-import { countOrphanMessages, deleteOrphanMessages, findAccountByEmail } from "./admin";
+import { countOrphanData, deleteOrphanData, findAccountByEmail } from "./admin";
 import { deleteAccountData } from "./delete-account";
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -12,6 +12,16 @@ const daysAgo = (n: number) => new Date(Date.now() - n * DAY);
 async function message(id: string, phone: string, { userId = null as string | null, age = 40 } = {}) {
   await db.insert(whatsappMessage).values({ id, phone, userId, body: "hola", receivedAt: daysAgo(age) });
 }
+
+async function failedAttempt(phone: string, { userId = null as string | null, age = 40 } = {}) {
+  const [row] = await db
+    .insert(accountEvent)
+    .values({ type: "whatsapp_link_failed", userId, phone, details: { reason: "invalid_code" }, createdAt: daysAgo(age) })
+    .returning({ id: accountEvent.id });
+  return row.id;
+}
+
+const eventPhones = async () => (await db.select({ phone: accountEvent.phone }).from(accountEvent)).map((e) => e.phone).sort();
 
 const messageIds = async () => (await db.select({ id: whatsappMessage.id }).from(whatsappMessage)).map((m) => m.id).sort();
 
@@ -30,6 +40,10 @@ describe("findAccountByEmail", () => {
     await message("antes-de-vincular", "573001112233");
     await message("despues", "573001112233", { userId: ana.id });
     await message("otro-numero", "573009998877");
+    // Historial: su registro y un intento fallido desde su número antes de vincularlo (sin cuenta).
+    await db.insert(accountEvent).values({ type: "registered", userId: ana.id });
+    await failedAttempt("573001112233");
+    await failedAttempt("573009998877");
 
     const summary = await findAccountByEmail("  Ana@Test.LOCAL ");
     expect(summary).toEqual({
@@ -43,10 +57,12 @@ describe("findAccountByEmail", () => {
       categories: 1,
       phone: "573001112233",
       messages: 2,
+      events: 2,
     });
 
     await deleteAccountData(ana.id);
     expect(await messageIds()).toEqual(["otro-numero"]);
+    expect(await eventPhones()).toEqual(["573009998877"]);
     expect(await findAccountByEmail("ana@test.local")).toBeNull();
   });
 
@@ -60,6 +76,7 @@ describe("findAccountByEmail", () => {
       categories: 0,
       phone: null,
       messages: 1,
+      events: 0,
     });
   });
 
@@ -70,7 +87,7 @@ describe("findAccountByEmail", () => {
   });
 });
 
-describe("mensajes sin dueño", () => {
+describe("datos sin dueño", () => {
   it("cuenta y borra solo los viejos, sin cuenta y de números no vinculados", async () => {
     const ana = await createUser();
     await db.insert(whatsappLink).values({ userId: ana.id, phone: "573001112233" });
@@ -81,17 +98,24 @@ describe("mensajes sin dueño", () => {
     await message("huerfano-reciente", "573009998877", { age: 5 });
     await message("vinculado-antes", "573001112233");
     await message("con-cuenta", "573006667788", { userId: ana.id });
+    // Intentos fallidos de vinculación: el de un número nuevo cuenta como otro número.
+    await failedAttempt("573009998877");
+    await failedAttempt("573005550000", { age: 45 });
+    await failedAttempt("573009998877", { age: 3 });
+    await failedAttempt("573001112233");
+    await failedAttempt("573006667788", { userId: ana.id });
 
     const before = daysAgo(30);
-    expect(await countOrphanMessages(before)).toEqual({ messages: 3, phones: 2 });
-    expect(await deleteOrphanMessages(before)).toBe(3);
+    expect(await countOrphanData(before)).toEqual({ messages: 3, events: 2, phones: 3 });
+    expect(await deleteOrphanData(before)).toEqual({ messages: 3, events: 2 });
     expect(await messageIds()).toEqual(["con-cuenta", "huerfano-reciente", "vinculado-antes"]);
+    expect(await eventPhones()).toEqual(["573001112233", "573006667788", "573009998877"]);
 
-    expect(await countOrphanMessages(before)).toEqual({ messages: 0, phones: 0 });
-    expect(await deleteOrphanMessages(before)).toBe(0);
+    expect(await countOrphanData(before)).toEqual({ messages: 0, events: 0, phones: 0 });
+    expect(await deleteOrphanData(before)).toEqual({ messages: 0, events: 0 });
   });
 
-  it("no toca cuentas ni otros datos", async () => {
+  it("no toca cuentas, su historial ni otros datos", async () => {
     const ana = await createUser();
     await db.insert(transaction).values({
       userId: ana.id,
@@ -100,11 +124,13 @@ describe("mensajes sin dueño", () => {
       description: "a",
       occurredOn: "2026-10-10",
     });
+    await db.insert(accountEvent).values({ type: "registered", userId: ana.id, createdAt: daysAgo(400) });
     await message("huerfano", "573009998877");
 
-    await deleteOrphanMessages(daysAgo(30));
+    await deleteOrphanData(daysAgo(30));
 
     expect(await db.select().from(user).where(eq(user.id, ana.id))).toHaveLength(1);
     expect(await db.select().from(transaction).where(eq(transaction.userId, ana.id))).toHaveLength(1);
+    expect(await db.select().from(accountEvent).where(eq(accountEvent.userId, ana.id))).toHaveLength(1);
   });
 });

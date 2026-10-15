@@ -3,6 +3,7 @@ import { createHash, randomInt } from "node:crypto";
 import { and, count, eq, gt, or } from "drizzle-orm";
 import { db } from "@/db";
 import { user, whatsappLink, whatsappLinkCode, whatsappMessage } from "@/db/schema";
+import { recordEvent, recordEvents, type NewAccountEvent } from "@/modules/account/events";
 
 const CODE_TTL_MS = 10 * 60 * 1000;
 const MAX_FAILED_ATTEMPTS_PER_HOUR = 5;
@@ -15,13 +16,16 @@ export async function createLinkCode(userId: string) {
   for (let attempt = 0; attempt < 5; attempt++) {
     const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
     try {
-      await db
-        .insert(whatsappLinkCode)
-        .values({ userId, codeHash: hashCode(code), expiresAt })
-        .onConflictDoUpdate({
-          target: whatsappLinkCode.userId,
-          set: { codeHash: hashCode(code), expiresAt },
-        });
+      await db.transaction(async (tx) => {
+        await tx
+          .insert(whatsappLinkCode)
+          .values({ userId, codeHash: hashCode(code), expiresAt })
+          .onConflictDoUpdate({
+            target: whatsappLinkCode.userId,
+            set: { codeHash: hashCode(code), expiresAt },
+          });
+        await recordEvent({ type: "whatsapp_code_created", userId }, tx);
+      });
       return { code, expiresAt };
     } catch (error) {
       // Choque improbable con el código vigente de otro usuario: se genera otro.
@@ -46,7 +50,10 @@ export async function consumeLinkCode(phone: string, code: string): Promise<Link
         gt(whatsappMessage.receivedAt, new Date(Date.now() - 60 * 60 * 1000)),
       ),
     );
-  if (failures >= MAX_FAILED_ATTEMPTS_PER_HOUR) return { ok: false, reason: "rate_limited" };
+  if (failures >= MAX_FAILED_ATTEMPTS_PER_HOUR) {
+    await recordEvent({ type: "whatsapp_link_failed", userId: null, phone, details: { reason: "rate_limited" } });
+    return { ok: false, reason: "rate_limited" };
+  }
 
   return db.transaction(async (tx) => {
     const [pending] = await tx
@@ -58,13 +65,29 @@ export async function consumeLinkCode(phone: string, code: string): Promise<Link
         ),
       )
       .returning({ userId: whatsappLinkCode.userId });
-    if (!pending) return { ok: false, reason: "invalid" } as const;
+    if (!pending) {
+      await recordEvent({ type: "whatsapp_link_failed", userId: null, phone, details: { reason: "invalid_code" } }, tx);
+      return { ok: false, reason: "invalid" } as const;
+    }
 
-    // Un número pertenece a una sola cuenta y una cuenta tiene un solo número.
-    await tx
+    // Un número pertenece a una sola cuenta y una cuenta tiene un solo número: lo que se reemplaza
+    // queda en el historial como desvinculado (el número pasó a otra cuenta, o la cuenta cambió de
+    // número).
+    const replaced = await tx
       .delete(whatsappLink)
-      .where(or(eq(whatsappLink.phone, phone), eq(whatsappLink.userId, pending.userId)));
+      .where(or(eq(whatsappLink.phone, phone), eq(whatsappLink.userId, pending.userId)))
+      .returning({ userId: whatsappLink.userId, phone: whatsappLink.phone });
     await tx.insert(whatsappLink).values({ userId: pending.userId, phone });
+    const events: NewAccountEvent[] = replaced
+      .filter((link) => !(link.userId === pending.userId && link.phone === phone))
+      .map((link) => ({
+        type: "whatsapp_unlinked",
+        userId: link.userId,
+        phone: link.phone,
+        details: { reason: link.userId === pending.userId ? "number_changed" : "number_moved" },
+      }));
+    events.push({ type: "whatsapp_linked", userId: pending.userId, phone });
+    await recordEvents(events, tx);
 
     const [owner] = await tx
       .select({ name: user.name })
@@ -92,6 +115,15 @@ export async function getUserByPhone(phone: string) {
 }
 
 export async function unlinkUser(userId: string) {
-  await db.delete(whatsappLink).where(eq(whatsappLink.userId, userId));
-  await db.delete(whatsappLinkCode).where(eq(whatsappLinkCode.userId, userId));
+  await db.transaction(async (tx) => {
+    const removed = await tx
+      .delete(whatsappLink)
+      .where(eq(whatsappLink.userId, userId))
+      .returning({ phone: whatsappLink.phone });
+    await tx.delete(whatsappLinkCode).where(eq(whatsappLinkCode.userId, userId));
+    await recordEvents(
+      removed.map(({ phone }) => ({ type: "whatsapp_unlinked", userId, phone, details: { reason: "by_user" } })),
+      tx,
+    );
+  });
 }

@@ -1,10 +1,19 @@
 import "server-only";
-import { and, asc, count, countDistinct, eq, isNull, lt, notExists } from "drizzle-orm";
+import { and, asc, count, eq, isNull, lt, notExists } from "drizzle-orm";
 import { db } from "@/db";
-import { category, session, transaction, twoFactor, user, whatsappLink, whatsappMessage } from "@/db/schema";
+import {
+  accountEvent,
+  category,
+  session,
+  transaction,
+  twoFactor,
+  user,
+  whatsappLink,
+  whatsappMessage,
+} from "@/db/schema";
 import type { Role } from "@/lib/roles";
 import { normalizeEmail } from "@/modules/auth/lockout";
-import { accountMessages } from "./delete-account";
+import { accountEvents, accountMessages } from "./delete-account";
 
 // Consultas para el comando de terminal scripts/delete-data.ts (lo usa el dueño de la app, no la
 // web): muestran qué se va a borrar antes de pedir la confirmación.
@@ -20,6 +29,7 @@ export type AccountSummary = {
   categories: number;
   phone: string | null;
   messages: number;
+  events: number;
 };
 
 /** La cuenta de ese correo y cuánto se borraría con ella (lo mismo que deleteAccountData). */
@@ -42,10 +52,11 @@ export async function findAccountByEmail(email: string): Promise<AccountSummary 
     .from(whatsappLink)
     .where(eq(whatsappLink.userId, account.id));
   const phone = link?.phone ?? null;
-  const [[transactions], [categories], [messages]] = await Promise.all([
+  const [[transactions], [categories], [messages], [events]] = await Promise.all([
     db.select({ n: count() }).from(transaction).where(eq(transaction.userId, account.id)),
     db.select({ n: count() }).from(category).where(eq(category.userId, account.id)),
     db.select({ n: count() }).from(whatsappMessage).where(accountMessages(account.id, phone)),
+    db.select({ n: count() }).from(accountEvent).where(accountEvents(account.id, phone)),
   ]);
 
   return {
@@ -54,36 +65,47 @@ export async function findAccountByEmail(email: string): Promise<AccountSummary 
     categories: categories.n,
     phone,
     messages: messages.n,
+    events: events.n,
   };
 }
 
 /**
- * Mensajes de WhatsApp sin dueño, recibidos antes de `before`: no están asociados a ninguna cuenta
- * y su número no está vinculado (si lo está, son de antes de vincularlo y se borran con la cuenta).
+ * Datos sin dueño anteriores a `before`: mensajes de WhatsApp e intentos fallidos de vinculación de
+ * números que no están vinculados a ninguna cuenta. Si el número está vinculado, son de antes de
+ * vincularlo y se borran con la cuenta.
  */
+const unlinked = (phone: typeof whatsappMessage.phone | typeof accountEvent.phone) =>
+  notExists(db.select().from(whatsappLink).where(eq(whatsappLink.phone, phone)));
+
 function orphanMessages(before: Date) {
-  return and(
-    isNull(whatsappMessage.userId),
-    lt(whatsappMessage.receivedAt, before),
-    notExists(db.select().from(whatsappLink).where(eq(whatsappLink.phone, whatsappMessage.phone))),
-  );
+  return and(isNull(whatsappMessage.userId), lt(whatsappMessage.receivedAt, before), unlinked(whatsappMessage.phone));
 }
 
-export async function countOrphanMessages(before: Date): Promise<{ messages: number; phones: number }> {
-  const [row] = await db
-    .select({ messages: count(), phones: countDistinct(whatsappMessage.phone) })
-    .from(whatsappMessage)
-    .where(orphanMessages(before));
-  return row;
+function orphanEvents(before: Date) {
+  return and(isNull(accountEvent.userId), lt(accountEvent.createdAt, before), unlinked(accountEvent.phone));
 }
 
-/** Borra los mensajes sin dueño anteriores a `before` y devuelve cuántos borró. */
-export async function deleteOrphanMessages(before: Date): Promise<number> {
-  const deleted = await db
-    .delete(whatsappMessage)
-    .where(orphanMessages(before))
-    .returning({ id: whatsappMessage.id });
-  return deleted.length;
+export type OrphanCounts = { messages: number; events: number; phones: number };
+
+export async function countOrphanData(before: Date): Promise<OrphanCounts> {
+  const [[messages], [events], messagePhones, eventPhones] = await Promise.all([
+    db.select({ n: count() }).from(whatsappMessage).where(orphanMessages(before)),
+    db.select({ n: count() }).from(accountEvent).where(orphanEvents(before)),
+    db.selectDistinct({ phone: whatsappMessage.phone }).from(whatsappMessage).where(orphanMessages(before)),
+    db.selectDistinct({ phone: accountEvent.phone }).from(accountEvent).where(orphanEvents(before)),
+  ]);
+  // Un mismo número puede tener mensajes e intentos: se cuenta una vez.
+  const phones = new Set([...messagePhones, ...eventPhones].map((row) => row.phone));
+  return { messages: messages.n, events: events.n, phones: phones.size };
+}
+
+/** Borra los datos sin dueño anteriores a `before` y devuelve cuántos borró. */
+export async function deleteOrphanData(before: Date): Promise<{ messages: number; events: number }> {
+  return db.transaction(async (tx) => {
+    const messages = await tx.delete(whatsappMessage).where(orphanMessages(before)).returning({ id: whatsappMessage.id });
+    const events = await tx.delete(accountEvent).where(orphanEvents(before)).returning({ id: accountEvent.id });
+    return { messages: messages.length, events: events.length };
+  });
 }
 
 // ── Roles (pnpm admin:grant / admin:revoke / admin:list / admin:reset-2fa) ──────────────────────

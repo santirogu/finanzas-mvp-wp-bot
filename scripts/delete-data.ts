@@ -2,14 +2,15 @@
 //
 //   pnpm account:delete <correo>        una cuenta y todos sus datos, igual que "Eliminar mi
 //                                       cuenta" en la app (para quien lo pide por correo)
-//   pnpm messages:cleanup [--dias 30]   mensajes de WhatsApp sin dueño de más de N días
+//   pnpm messages:cleanup [--dias 30]   mensajes de WhatsApp e intentos fallidos de vinculación de
+//                                       números sin cuenta, de más de N días
 //
 // Base de datos: la de .env o la de --env <archivo> (ver scripts/db-cli.ts).
 // Siempre muestra en qué base y qué va a borrar, y pide confirmación antes de borrar.
 
 import { parseArgs } from "node:util";
 import { pathToFileURL } from "node:url";
-import type { AccountSummary } from "../src/modules/account/admin";
+import type { AccountSummary, OrphanCounts } from "../src/modules/account/admin";
 import { todayInTimezone } from "../src/lib/dates";
 import { CONFIRMATION_WORD } from "../src/modules/account/confirmation";
 import { maskPhone } from "../src/modules/whatsapp/phone";
@@ -31,8 +32,8 @@ const USAGE = [
 export type DataOps = {
   findAccountByEmail: (email: string) => Promise<AccountSummary | null>;
   deleteAccountData: (userId: string) => Promise<void>;
-  countOrphanMessages: (before: Date) => Promise<{ messages: number; phones: number }>;
-  deleteOrphanMessages: (before: Date) => Promise<number>;
+  countOrphanData: (before: Date) => Promise<OrphanCounts>;
+  deleteOrphanData: (before: Date) => Promise<{ messages: number; events: number }>;
   close: () => Promise<void>;
 };
 
@@ -58,6 +59,7 @@ async function deleteAccount(email: string, data: DataOps, { ask, log, error }: 
   log(`  - ${plural(account.categories, "categoría propia", "categorías propias")}`);
   log(`  - WhatsApp: ${account.phone ? `${maskPhone(account.phone)} vinculado` : "sin número vinculado"}`);
   log(`  - ${plural(account.messages, "mensaje", "mensajes")} del bot`);
+  log(`  - ${plural(account.events, "evento", "eventos")} de su historial (registro y vinculación)`);
   log("  - la cuenta, sus sesiones y sus intentos fallidos de login");
 
   const answer = await ask("Para confirmar, escribe el correo de la cuenta: ");
@@ -73,23 +75,27 @@ async function deleteAccount(email: string, data: DataOps, { ask, log, error }: 
 
 async function cleanOrphans(days: number, data: DataOps, { ask, now, log }: Deps): Promise<number> {
   const before = new Date(now().getTime() - days * DAY_MS);
-  const { messages, phones } = await data.countOrphanMessages(before);
-  if (messages === 0) {
-    log(`No hay mensajes sin dueño de más de ${days} días. No se borró nada.`);
+  const { messages, events, phones } = await data.countOrphanData(before);
+  if (messages === 0 && events === 0) {
+    log(`No hay datos sin dueño de más de ${days} días. No se borró nada.`);
     return 0;
   }
 
   log(
-    `Se borrarán ${plural(messages, "mensaje", "mensajes")} de WhatsApp de ` +
-      `${plural(phones, "número", "números")} sin cuenta, recibidos antes del ${todayInTimezone(DEFAULT_TIMEZONE, before)}.`,
+    `Se borrarán ${plural(messages, "mensaje", "mensajes")} de WhatsApp y ` +
+      `${plural(events, "intento fallido", "intentos fallidos")} de vinculación de ` +
+      `${plural(phones, "número", "números")} sin cuenta, anteriores al ${todayInTimezone(DEFAULT_TIMEZONE, before)}.`,
   );
   const answer = await ask(`Para confirmar, escribe ${CONFIRMATION_WORD}: `);
   if (answer.trim().toUpperCase() !== CONFIRMATION_WORD) {
     log("No se confirmó: no se borró nada.");
     return 1;
   }
-  const deleted = await data.deleteOrphanMessages(before);
-  log(`✓ ${plural(deleted, "mensaje borrado", "mensajes borrados")}.`);
+  const deleted = await data.deleteOrphanData(before);
+  log(
+    `✓ Borrados: ${plural(deleted.messages, "mensaje", "mensajes")} y ` +
+      `${plural(deleted.events, "intento fallido", "intentos fallidos")}.`,
+  );
   return 0;
 }
 

@@ -126,6 +126,9 @@ de Vercel ni muevas las migraciones fuera del job `deploy`.
   (`input: false` en Better Auth) ni crees usuarios o contraseñas de admin por defecto. Solo
   `roles.ts` y `session.ts` comparan roles. No reactives los endpoints de `TWO_FACTOR_DISABLED_PATHS`
   ni ofrezcas "recordar este dispositivo".
+- **Historial de la cuenta** (`account_event`, README → Historial de las cuentas): si agregas o cambias
+  algo del registro o la vinculación de WhatsApp, registra su evento con `recordEvent` en la misma
+  transacción, con su prueba.
 - Para borrar una cuenta a pedido usa `pnpm account:delete <correo>` (README → Borrar datos a
   pedido), nunca SQL a mano. Si agregas una tabla con datos de la persona sin clave foránea en
   cascada hacia `user`, bórrala también en `deleteAccountData` (`src/modules/account/`).

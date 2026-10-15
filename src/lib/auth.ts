@@ -6,6 +6,7 @@ import { nextCookies } from "better-auth/next-js";
 import { twoFactor } from "better-auth/plugins";
 import { PHASE_PRODUCTION_BUILD } from "next/constants";
 import { db, schema } from "@/db";
+import { recordEvent } from "@/modules/account/events";
 import { clearFailures, lockedUntil, normalizeEmail, recordFailure } from "@/modules/auth/lockout";
 import {
   TWO_FACTOR_DISABLED_PATHS,
@@ -99,6 +100,21 @@ export const auth = betterAuth({
         if (session) await recordFailure(normalizeEmail(session.user.email));
       }
     }),
+  },
+  // Historial de la cuenta (src/modules/account/events.ts). Si no se puede guardar el evento, el
+  // registro sigue: perder una línea del historial es mejor que impedir crear la cuenta.
+  databaseHooks: {
+    user: {
+      create: {
+        after: async (created) => {
+          try {
+            await recordEvent({ type: "registered", userId: created.id });
+          } catch (error) {
+            console.error("[historial] no se pudo registrar el evento de registro", created.id, error);
+          }
+        },
+      },
+    },
   },
   // Rutas apagadas (responden 404); ver TWO_FACTOR_DISABLED_PATHS.
   disabledPaths: [...TWO_FACTOR_DISABLED_PATHS],
