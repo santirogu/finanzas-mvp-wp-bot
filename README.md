@@ -44,7 +44,7 @@ pnpm dev                        # http://localhost:3000
 | `pnpm db:generate` | Genera una migración SQL tras cambiar `src/db/schema/*` |
 | `pnpm db:migrate` | Aplica migraciones pendientes |
 | `pnpm db:check-drift` | Verifica que cada cambio del esquema tenga su migración (lo corre el CI) |
-| `pnpm db:seed` | Inserta categorías globales (idempotente) |
+| `pnpm db:seed` | Crea las categorías globales por defecto, solo si la base no tiene ninguna (después se administran en `/admin/categorias`) |
 | `pnpm db:studio` | Explorador visual de la base de datos |
 | `pnpm account:delete <correo>` | Borra una cuenta y todos sus datos, para quien lo pide por correo (ver Seguridad → Borrar datos a pedido) |
 | `pnpm messages:cleanup` | Borra los mensajes de WhatsApp y los intentos fallidos de vinculación de números sin cuenta, de más de 30 días (`--dias N`, mínimo 7) |
@@ -267,7 +267,7 @@ vienen aparecen como "Pronto".
 | Historial | `/admin/historial` | Activo: registro y vinculación de WhatsApp |
 | Usuarios | `/admin/usuarios` | Activo: cuentas, sesiones y estado; desbloquear, cerrar sesiones, desvincular WhatsApp, suspender, reactivar y eliminar |
 | Bot de WhatsApp | `/admin/bot` | Pronto |
-| Categorías | `/admin/categorias` | Pronto (de ingresos y egresos, editables solo por el admin) |
+| Categorías | `/admin/categorias` | Activo: crear, editar, archivar, restaurar y eliminar las de ingresos y egresos |
 | Salud del sistema | `/admin/salud` | Pronto |
 | Configuración | `/admin/configuracion` | Pronto |
 | Seguridad | `/admin/seguridad` | Activo: la verificación en dos pasos del admin |
@@ -334,6 +334,29 @@ Lo que **no** se muestra, a propósito: montos, movimientos, mensajes del bot y 
 sesiones (la consulta ni siquiera lo lee). El último inicio de sesión sale de las sesiones guardadas:
 al cerrar sesión se borra, y entonces dice "Sin sesiones guardadas". `/privacidad` explica qué ve el
 administrador.
+
+### Categorías
+
+Las categorías globales (las de todas las cuentas) se administran en **`/admin/categorias`**, con una
+pestaña para egresos y otra para ingresos: alfabéticas, con **"Otros"** siempre al final, y cuántos
+movimientos usan cada una (el total de todas las cuentas, sin montos ni personas). Los cambios se ven
+de inmediato en los formularios y en el bot (`src/modules/admin/categories/`).
+
+| Acción | Código | Qué hace |
+|---|---|---|
+| Crear, editar | No | Nombre (hasta 40 caracteres, sin repetir dentro del tipo: no importan mayúsculas ni tildes, ni las archivadas) y un emoji (vacío es "•") |
+| Archivar | Sí | Sale de los formularios y el bot no la usa; los movimientos que ya la tienen la conservan (al editar uno, se sigue ofreciendo marcada "(archivada)") |
+| Restaurar | No | Vuelve a los formularios y al bot |
+| Eliminar | Sí | Si tiene movimientos, avisa: pasan a "Otros" de su tipo (los de todas las cuentas, también los eliminados), en la misma transacción |
+
+**"Otros"** es la que usa el bot si ninguna encaja: solo se le cambia el emoji (no se renombra, archiva
+ni elimina). Cada cambio queda en `category_change` con el admin y el nombre y emoji de ese momento
+(así una eliminada se sigue leyendo) y se ve en "Cambios recientes". Las categorías propias de cada
+cuenta (`category.user_id`) no se administran aquí.
+
+`scripts/seed.ts` corre en cada despliegue, pero solo crea las categorías por defecto en una base sin
+ninguna global: si las creara siempre que faltan, volverían las que el admin renombró o eliminó. Una
+categoría nueva para todos se crea desde `/admin/categorias`.
 
 ### Historial de las cuentas
 

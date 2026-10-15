@@ -1,4 +1,5 @@
-// Categorías globales por defecto. Las usa el seed y, como contexto, el bot de WhatsApp.
+// Categorías globales por defecto (las crea el seed en una base nueva; después las administra el admin
+// en /admin/categorias), y lo común a todas: "Otros", cómo se comparan los nombres y el orden.
 export const DEFAULT_CATEGORIES = {
   expense: [
     { name: "Alimentación", emoji: "🍽️" },
@@ -22,3 +23,22 @@ export const DEFAULT_CATEGORIES = {
     { name: "Otros", emoji: "📦" },
   ],
 } as const;
+
+/** La categoría por defecto de cada tipo: la que usa el bot si ninguna encaja. Solo se le cambia el emoji. */
+export const DEFAULT_CATEGORY = "Otros";
+
+/** Un nombre para comparar: sin mayúsculas, tildes ni espacios de más ("Mércado " = "mercado"). */
+export function foldName(name: string): string {
+  return name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+/** ¿Es "Otros", la categoría por defecto? */
+export const isDefaultCategory = (name: string) => foldName(name) === foldName(DEFAULT_CATEGORY);
+
+/** Alfabético (sin importar tildes ni mayúsculas), con "Otros" siempre al final. */
+export function sortCategories<T extends { name: string }>(categories: readonly T[]): T[] {
+  return [...categories].sort((a, b) => {
+    const byDefault = Number(isDefaultCategory(a.name)) - Number(isDefaultCategory(b.name));
+    return byDefault || a.name.localeCompare(b.name, "es", { sensitivity: "base" });
+  });
+}

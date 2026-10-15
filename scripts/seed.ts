@@ -1,19 +1,14 @@
-// Inserta las categorías globales por defecto. Es idempotente: se puede correr varias veces.
+// Crea las categorías globales por defecto, solo si la base no tiene ninguna (ver
+// src/db/seed-categories.ts). Corre en cada despliegue y se puede correr varias veces.
 import "dotenv/config";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { category } from "../src/db/schema";
-import { DEFAULT_CATEGORIES } from "../src/modules/transactions/default-categories";
+import { seedDefaultCategories } from "../src/db/seed-categories";
 
 async function main() {
   const client = postgres(process.env.DATABASE_URL!, { max: 1, prepare: false });
-  const db = drizzle(client);
-
-  const rows = (["expense", "income"] as const).flatMap((type) =>
-    DEFAULT_CATEGORIES[type].map(({ name, emoji }) => ({ type, name, emoji })),
-  );
-  const inserted = await db.insert(category).values(rows).onConflictDoNothing().returning();
-  console.log(`Categorías nuevas: ${inserted.length} (de ${rows.length})`);
+  const created = await seedDefaultCategories(drizzle(client));
+  console.log(created > 0 ? `Categorías por defecto creadas: ${created}` : "Ya hay categorías: no se crea ninguna");
   await client.end();
 }
 

@@ -64,6 +64,13 @@
       "when": 1792083158975,
       "tag": "0008_suspender-cuentas",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1792092363155,
+      "tag": "0009_categorias-admin",
+      "breakpoints": true
     }
   ]
 }

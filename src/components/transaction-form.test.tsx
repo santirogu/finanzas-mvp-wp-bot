@@ -68,6 +68,18 @@ describe("TransactionForm", () => {
     expect(date).toHaveAttribute("max", "2026-10-14");
   });
 
+  it("una categoría archivada (la que ya tenía el movimiento) se marca como tal", () => {
+    render(
+      <TransactionForm
+        type="expense"
+        categories={[...CATEGORIES, { id: "c-viejo", name: "Videojuegos", emoji: "🎮", archived: true }]}
+        today="2026-10-14"
+      />,
+    );
+    expect(screen.getByRole("option", { name: "🎮 Videojuegos (archivada)" })).toHaveAttribute("value", "c-viejo");
+    expect(screen.getByRole("option", { name: "👟 Ropa" })).toBeInTheDocument();
+  });
+
   it("envía lo escrito a la Server Action y avisa cuando se registró", async () => {
     action.mockResolvedValue({ ok: true, message: "Egreso registrado" });
     renderForm();

@@ -1,9 +1,11 @@
+import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { db } from "@/db";
 import { category, transaction } from "@/db/schema";
 import { monthRange } from "@/lib/dates";
 import { createUser } from "../../../test/integration/factories";
 import {
+  getCategoryOption,
   getMonthlySummary,
   getTotalsByCategory,
   getTransaction,
@@ -220,5 +222,46 @@ describe("categorías", () => {
     expect(await isCategoryAvailable(user.id, ropa.id, "expense")).toBe(true);
     expect(await isCategoryAvailable(user.id, ropa.id, "income")).toBe(false);
     expect(await isCategoryAvailable(user.id, secret.id, "expense")).toBe(false);
+  });
+
+  it("las archivadas no se listan; el orden es alfabético con Otros al final", async () => {
+    const user = await createUser();
+    const ropa = await globalCategory("expense", "Ropa");
+    await db.update(category).set({ archivedAt: new Date() }).where(eq(category.id, ropa.id));
+    const names = (await listCategories(user.id, "expense")).map((c) => c.name);
+    expect(names).not.toContain("Ropa");
+    expect(names.at(-1)).toBe("Otros");
+    expect(names[0]).toBe("Alimentación");
+  });
+
+  it("una archivada no se puede usar en un movimiento nuevo, pero sí conservar la que ya tenía uno propio", async () => {
+    const user = await createUser();
+    const other = await createUser();
+    const ropa = await globalCategory("expense", "Ropa");
+    const salud = await globalCategory("expense", "Salud");
+    const mine = await addTx({ userId: user.id, categoryId: ropa.id });
+    const withSalud = await addTx({ userId: user.id, categoryId: salud.id });
+    const theirs = await addTx({ userId: other.id, categoryId: ropa.id });
+    await db.update(category).set({ archivedAt: new Date() }).where(eq(category.id, ropa.id));
+
+    expect(await isCategoryAvailable(user.id, ropa.id, "expense")).toBe(false);
+    expect(await isCategoryAvailable(user.id, ropa.id, "expense", { keepFrom: mine.id })).toBe(true);
+    // No sirve para pasar otro movimiento a la archivada, ni usar el de otra cuenta como excusa.
+    expect(await isCategoryAvailable(user.id, ropa.id, "expense", { keepFrom: withSalud.id })).toBe(false);
+    expect(await isCategoryAvailable(user.id, ropa.id, "expense", { keepFrom: theirs.id })).toBe(false);
+    // Las activas, siempre.
+    expect(await isCategoryAvailable(user.id, salud.id, "expense", { keepFrom: mine.id })).toBe(true);
+  });
+
+  it("getCategoryOption trae la de un movimiento aunque esté archivada (marcada), y nunca una ajena", async () => {
+    const user = await createUser();
+    const other = await createUser();
+    const ropa = await globalCategory("expense", "Ropa");
+    const [secret] = await db.insert(category).values({ userId: other.id, type: "expense", name: "Secreta" }).returning();
+    expect(await getCategoryOption(user.id, ropa.id)).toEqual({ id: ropa.id, name: "Ropa", emoji: "👟", archived: false });
+    await db.update(category).set({ archivedAt: new Date() }).where(eq(category.id, ropa.id));
+    expect(await getCategoryOption(user.id, ropa.id)).toMatchObject({ archived: true });
+    expect(await getCategoryOption(user.id, secret.id)).toBeNull();
+    expect(await getCategoryOption(user.id, null)).toBeNull();
   });
 });

@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "@/db";
 import { category, transaction } from "@/db/schema";
@@ -102,6 +102,17 @@ describe("createTransactionAction", () => {
       { ok: false },
       form({ ...validExpense, categoryId: salario.id }),
     );
+
+    expect(state.fieldErrors?.categoryId).toBe("Categoría inválida");
+    expect(await activeTransactions(user.id)).toEqual([]);
+  });
+
+  it("rechaza una categoría que el admin archivó", async () => {
+    const user = await signIn();
+    const [ropa] = await db.select().from(category).where(eq(category.name, "Ropa"));
+    await db.update(category).set({ archivedAt: new Date() }).where(eq(category.id, ropa.id));
+
+    const state = await createTransactionAction({ ok: false }, form({ ...validExpense, categoryId: ropa.id }));
 
     expect(state.fieldErrors?.categoryId).toBe("Categoría inválida");
     expect(await activeTransactions(user.id)).toEqual([]);
@@ -351,5 +362,21 @@ describe("updateTransactionAction", () => {
     await expect(updateTransactionAction({ ok: false }, editForm("00000000-0000-4000-8000-000000000000"))).rejects.toThrow(
       "NEXT_REDIRECT /login",
     );
+  });
+
+  it("puede conservar la categoría archivada que ya tenía, pero no pasarse a otra archivada", async () => {
+    const { user, tx } = await ownExpense();
+    const [ropa] = await db.select().from(category).where(eq(category.name, "Ropa"));
+    const [salud] = await db.select().from(category).where(eq(category.name, "Salud"));
+    await db.update(transaction).set({ categoryId: ropa.id }).where(eq(transaction.id, tx.id));
+    await db.update(category).set({ archivedAt: new Date() }).where(inArray(category.id, [ropa.id, salud.id]));
+
+    await expect(updateTransactionAction({ ok: false }, editForm(tx.id, { categoryId: ropa.id }))).rejects.toThrow("NEXT_REDIRECT /egresos");
+    expect((await activeTransactions(user.id))[0]).toMatchObject({ categoryId: ropa.id, description: "Zapatos rebajados" });
+
+    expect(await updateTransactionAction({ ok: false }, editForm(tx.id, { categoryId: salud.id }))).toMatchObject({
+      ok: false,
+      fieldErrors: { categoryId: "Categoría inválida" },
+    });
   });
 });

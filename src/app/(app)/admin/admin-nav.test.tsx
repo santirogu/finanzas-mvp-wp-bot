@@ -16,6 +16,7 @@ describe("AdminNav", () => {
       ["Inicio", "/admin"],
       ["Historial", "/admin/historial"],
       ["Usuarios", "/admin/usuarios"],
+      ["Categorías", "/admin/categorias"],
       ["Seguridad", "/admin/seguridad"],
     ]);
     expect(screen.queryByText("Bot de WhatsApp")).toBeNull();
@@ -27,6 +28,7 @@ describe("AdminNav", () => {
     ["/admin/usuarios", "Usuarios"],
     // El detalle de una cuenta sigue en Usuarios.
     ["/admin/usuarios/abc123", "Usuarios"],
+    ["/admin/categorias", "Categorías"],
     ["/admin/seguridad", "Seguridad"],
   ])("en %s marca %s como la página actual (y solo esa)", (pathname, current) => {
     navigation.pathname = pathname;

@@ -1,8 +1,9 @@
 import "server-only";
-import { and, asc, desc, eq, gte, isNull, lt, or, sql } from "drizzle-orm";
+import { and, desc, eq, gte, isNull, lt, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { category, transaction, type TransactionType } from "@/db/schema";
 import type { MonthRange } from "@/lib/dates";
+import { sortCategories } from "./default-categories";
 
 // Todas las consultas reciben el userId ya validado por el Data Access Layer
 // (src/lib/session.ts) y siempre filtran por él.
@@ -96,17 +97,56 @@ export async function getTransaction(userId: string, id: string) {
 
 export type EditableTransaction = NonNullable<Awaited<ReturnType<typeof getTransaction>>>;
 
+/**
+ * Las categorías que puede elegir el usuario (las globales y las suyas), sin las archivadas: las de
+ * los formularios y las que conoce el bot. Alfabéticas, con "Otros" al final.
+ */
 export async function listCategories(userId: string, type: TransactionType) {
-  return db
+  const rows = await db
     .select({ id: category.id, name: category.name, emoji: category.emoji })
     .from(category)
     .where(
-      and(eq(category.type, type), or(isNull(category.userId), eq(category.userId, userId))),
-    )
-    .orderBy(asc(category.name));
+      and(
+        eq(category.type, type),
+        or(isNull(category.userId), eq(category.userId, userId)),
+        isNull(category.archivedAt),
+      ),
+    );
+  return sortCategories(rows);
 }
 
-export async function isCategoryAvailable(userId: string, categoryId: string, type: TransactionType) {
+/**
+ * La categoría de un movimiento, aunque esté archivada: para que al editarlo no se pierda sin querer.
+ * null si no tiene o no es una que pueda ver el usuario.
+ */
+export async function getCategoryOption(userId: string, categoryId: string | null) {
+  if (!categoryId) return null;
+  const [row] = await db
+    .select({ id: category.id, name: category.name, emoji: category.emoji, archivedAt: category.archivedAt })
+    .from(category)
+    .where(and(eq(category.id, categoryId), or(isNull(category.userId), eq(category.userId, userId))));
+  return row ? { id: row.id, name: row.name, emoji: row.emoji, archived: row.archivedAt !== null } : null;
+}
+
+/**
+ * ¿Puede usar esa categoría? Tiene que ser de su tipo, global o suya, y no estar archivada; al
+ * editar un movimiento (`keepFrom`), también vale la archivada que ya tenía.
+ */
+export async function isCategoryAvailable(
+  userId: string,
+  categoryId: string,
+  type: TransactionType,
+  { keepFrom }: { keepFrom?: string } = {},
+) {
+  // La categoría que ya tiene ese movimiento (propio). Va en una consulta aparte: en una subconsulta,
+  // Drizzle escribe las columnas sin su tabla y se confundirían.
+  const [kept] = keepFrom
+    ? await db
+        .select({ categoryId: transaction.categoryId })
+        .from(transaction)
+        .where(and(eq(transaction.id, keepFrom), eq(transaction.userId, userId)))
+    : [];
+  const alreadyThere = kept?.categoryId ? eq(category.id, kept.categoryId) : undefined;
   const [row] = await db
     .select({ id: category.id })
     .from(category)
@@ -115,6 +155,7 @@ export async function isCategoryAvailable(userId: string, categoryId: string, ty
         eq(category.id, categoryId),
         eq(category.type, type),
         or(isNull(category.userId), eq(category.userId, userId)),
+        or(isNull(category.archivedAt), alreadyThere),
       ),
     )
     .limit(1);

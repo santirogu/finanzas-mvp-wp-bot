@@ -17,10 +17,10 @@ const config = {
   mutate: [
     "src/lib/{money,dates,email-typo,env,app-url,session,health,auth-errors,security-headers,service-url,roles,expired-session}.ts",
     "src/modules/auth/two-factor-rules.ts",
-    "src/modules/admin/{modules,history/log-filters,shared/filters,shared/totp,users/user-filters,users/session-info}.ts",
+    "src/modules/admin/{modules,history/log-filters,shared/filters,shared/totp,users/user-filters,users/session-info,categories/category-input}.ts",
     "src/modules/bot/{commands,normalize,interpret,replies,prompt,claude-extractor}.ts",
     "src/modules/whatsapp/{signature,payload,phone,client,actions}.ts",
-    "src/modules/transactions/validation.ts",
+    "src/modules/transactions/{validation,default-categories}.ts",
     "src/app/api/{whatsapp/webhook,health}/route.ts",
     "src/app/*/simulador/actions.ts",
     "src/proxy.ts",

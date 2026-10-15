@@ -32,6 +32,7 @@ const PAGES = {
   "/admin/historial": "requiere sesión de admin con la verificación en dos pasos activa (requireAdmin)",
   "/admin/usuarios": "requiere sesión de admin con la verificación en dos pasos activa (requireAdmin)",
   "/admin/usuarios/[id]": "requiere sesión de admin con la verificación en dos pasos activa (requireAdmin); un id inválido o inexistente da 404",
+  "/admin/categorias": "requiere sesión de admin con la verificación en dos pasos activa (requireAdmin)",
   "/admin/seguridad": "requiere sesión de admin; es donde se configura la verificación en dos pasos (requireAdminRole)",
 } as const;
 
@@ -58,6 +59,11 @@ const SERVER_ACTIONS = {
   unlinkWhatsAppByAdminAction: "requireAdmin + código de Google Authenticator; nunca la cuenta propia ni la de otro admin",
   suspendAccountAction: "requireAdmin + código de Google Authenticator; nunca la cuenta propia ni la de otro admin",
   reactivateAccountAction: "requireAdmin + código de Google Authenticator; nunca la cuenta propia ni la de otro admin",
+  createCategoryAction: "requireAdmin; solo categorías globales, sin repetir nombres",
+  updateCategoryAction: "requireAdmin; solo categorías globales; a \"Otros\" solo el emoji",
+  restoreCategoryAction: "requireAdmin; solo deshace un archivado",
+  archiveCategoryAction: "requireAdmin + código de Google Authenticator; \"Otros\" no se archiva",
+  deleteCategoryAction: "requireAdmin + código de Google Authenticator; sus movimientos pasan a \"Otros\", que no se elimina",
   deleteAccountByAdminAction:
     "requireAdmin + código de Google Authenticator + escribir el correo; nunca la cuenta propia ni la de otro admin",
 } as const;
@@ -274,6 +280,7 @@ describe("administración", () => {
         "src/modules/admin/users/users.ts",
         "src/modules/admin/users/account-actions.ts",
         "src/modules/admin/shared/confirm-code.ts",
+        "src/modules/admin/categories/categories.ts",
       ]),
     );
   });

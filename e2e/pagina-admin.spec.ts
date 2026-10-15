@@ -205,5 +205,6 @@ test("la política de privacidad explica qué ve el administrador", async ({ pag
   await expect(page.getByText(/No ve tus ingresos,\s+egresos ni mensajes/)).toBeVisible();
   await expect(page.getByText(/suspender tu cuenta \(mientras esté suspendida no podrás entrar ni usar el bot/)).toBeVisible();
   await expect(page.getByText(/o eliminarla con todos sus datos; cada acción queda registrada/)).toBeVisible();
+  await expect(page.getByText(/cuántos movimientos usan cada una, en total y\s+sin saber de quién son ni por cuánto/)).toBeVisible();
   await expect(page.getByText(/Los intentos de vinculación desde números que no tienen\s+cuenta se borran a los 30 días/)).toBeVisible();
 });

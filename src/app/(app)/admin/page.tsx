@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { requireAdmin } from "@/lib/session";
+import { categoriesSummary } from "@/modules/admin/categories/categories";
 import { historySummary } from "@/modules/admin/history/events-log";
 import { ADMIN_MODULES, type AdminModuleId } from "@/modules/admin/modules";
 import { usersSummary } from "@/modules/admin/users/users";
@@ -23,7 +24,7 @@ export default function AdminHomePage() {
 async function AdminHome() {
   // Rol de admin y verificación en dos pasos activa (sin ella, lleva a configurarla).
   await requireAdmin();
-  const [history, users] = await Promise.all([historySummary(), usersSummary()]);
+  const [history, users, categories] = await Promise.all([historySummary(), usersSummary(), categoriesSummary()]);
   const summaries: Partial<Record<AdminModuleId, string>> = {
     historial: `${history.today} ${history.today === 1 ? "evento" : "eventos"} hoy · ${history.failedToday} ${
       history.failedToday === 1 ? "intento fallido" : "intentos fallidos"
@@ -33,6 +34,7 @@ async function AdminHome() {
       `${users.withWhatsApp} con WhatsApp`,
       ...(users.suspended > 0 ? [`${users.suspended} ${users.suspended === 1 ? "suspendida" : "suspendidas"}`] : []),
     ].join(" · "),
+    categorias: `${categories.expense} de egresos · ${categories.income} de ingresos`,
     seguridad: "Verificación en dos pasos activa",
   };
 

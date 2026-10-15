@@ -57,7 +57,7 @@ export const ADMIN_MODULES: readonly AdminModule[] = [
     label: "Categorías",
     href: "/admin/categorias",
     description: "Las categorías de ingresos y egresos",
-    status: "pronto",
+    status: "activo",
   },
   {
     id: "salud",
