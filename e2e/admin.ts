@@ -10,7 +10,9 @@ export const heading = (page: Page, name: string | RegExp) => visible(page.getBy
 export const adminTab = (page: Page) => page.getByRole("navigation").getByRole("link", { name: "Admin", exact: true });
 
 export async function seriousViolations(page: Page) {
-  // Sin animaciones a medias: un botón que todavía cambia de color daría un contraste falso.
+  // Sin animaciones a medias: un botón que todavía cambia de color daría un contraste falso. Dos
+  // cuadros antes: una transición que recién empieza todavía no aparece en getAnimations().
+  await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
   await page.waitForFunction(() => document.getAnimations().every((a) => a.playState !== "running"));
   const { violations } = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])

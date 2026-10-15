@@ -1,5 +1,6 @@
 import "server-only";
 import { and, count, desc, eq, gt, ilike, isNotNull, isNull, or, sql, type SQL } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { db } from "@/db";
 import { accountEvent, loginFailure, session, user, whatsappLink } from "@/db/schema";
 import { todayInTimezone } from "@/lib/dates";
@@ -7,7 +8,7 @@ import type { Role } from "@/lib/roles";
 import { requireAdmin } from "@/lib/session";
 import type { LogEntry } from "../history/events-log";
 import { ADMIN_TIMEZONE, dateRange, escapeLike, searchDigits } from "../shared/filters";
-import { inDayRange } from "../shared/sql";
+import { inDayRange, isAdminActionSql } from "../shared/sql";
 import { isValidUserId, type UserFilters } from "./user-filters";
 
 // Usuarios (/admin/usuarios): las cuentas, para consultar. Cada consulta valida el rol ella misma
@@ -47,7 +48,12 @@ export type UserDetail = UserRow & {
   sessionCount: number;
   /** Los últimos eventos de su historial (como mucho DETAIL_EVENTS). */
   events: LogEntry[];
+  /** Las últimas acciones del admin sobre la cuenta (como mucho DETAIL_EVENTS). */
+  adminActions: LogEntry[];
 };
+
+// La cuenta del admin que hizo cada acción.
+const adminUser = alias(user, "admin_user");
 
 const DETAIL_SESSIONS = 20;
 const DETAIL_EVENTS = 10;
@@ -154,25 +160,36 @@ export async function getUserDetail(id: string, now = new Date()): Promise<UserD
     .limit(DETAIL_SESSIONS);
   const [{ sessionCount }] = await db.select({ sessionCount: count() }).from(session).where(open);
 
-  const events = await db
-    .select({
-      id: accountEvent.id,
-      type: accountEvent.type,
-      phone: accountEvent.phone,
-      details: accountEvent.details,
-      createdAt: accountEvent.createdAt,
-    })
-    .from(accountEvent)
-    .where(eq(accountEvent.userId, id))
-    .orderBy(desc(accountEvent.createdAt), desc(accountEvent.id))
-    .limit(DETAIL_EVENTS);
+  const events = (onlyAdminActions: boolean) =>
+    db
+      .select({
+        id: accountEvent.id,
+        type: accountEvent.type,
+        phone: accountEvent.phone,
+        details: accountEvent.details,
+        createdAt: accountEvent.createdAt,
+        adminName: adminUser.name,
+      })
+      .from(accountEvent)
+      .leftJoin(adminUser, eq(adminUser.id, accountEvent.adminId))
+      .where(and(eq(accountEvent.userId, id), onlyAdminActions ? isAdminActionSql() : undefined))
+      .orderBy(desc(accountEvent.createdAt), desc(accountEvent.id))
+      .limit(DETAIL_EVENTS)
+      .then((rows) =>
+        rows.map(({ adminName, ...event }) => ({
+          ...event,
+          account: { name: row.name, email: row.email },
+          admin: adminName !== null ? { name: adminName } : null,
+        })),
+      );
 
   return {
     ...row,
     lockedUntil: activeLock(row.lockedUntil, now),
     sessions,
     sessionCount,
-    events: events.map((event) => ({ ...event, account: { name: row.name, email: row.email } })),
+    events: await events(false),
+    adminActions: await events(true),
   };
 }
 

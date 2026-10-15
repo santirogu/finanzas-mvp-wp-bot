@@ -261,6 +261,7 @@ describe("getUserDetail", () => {
         },
       ],
       sessionCount: 1,
+      adminActions: [],
       events: [
         {
           id: expect.any(String),
@@ -269,6 +270,7 @@ describe("getUserDetail", () => {
           details: {},
           createdAt: at("2026-10-02T15:01:00Z"),
           account: { name: "Ana Pérez", email: "ana@correo.com" },
+          admin: null,
         },
         {
           id: expect.any(String),
@@ -277,9 +279,29 @@ describe("getUserDetail", () => {
           details: {},
           createdAt: at("2026-10-01T15:00:00Z"),
           account: { name: "Ana Pérez", email: "ana@correo.com" },
+          admin: null,
         },
       ],
     });
+  });
+
+  it("trae aparte las acciones del admin sobre la cuenta, con su nombre", async () => {
+    const { ana, beto } = await seed();
+    const admin = await createUser({ name: "Ana Admin", role: "admin" });
+    await db.insert(accountEvent).values([
+      { type: "login_unlocked", userId: ana.id, adminId: admin.id, createdAt: at("2026-10-12T15:00:00Z") },
+      { type: "whatsapp_unlinked", userId: ana.id, adminId: admin.id, phone: "573001112233", details: { reason: "by_admin" }, createdAt: at("2026-10-12T15:01:00Z") },
+      { type: "whatsapp_unlinked", userId: ana.id, phone: "573001112233", details: { reason: "by_user" }, createdAt: at("2026-10-12T15:02:00Z") },
+      { type: "sessions_revoked", userId: beto.id, adminId: admin.id, details: { sessions: 1 } },
+    ]);
+    const detail = await getUserDetail(ana.id, NOW);
+    expect(detail!.adminActions.map((e) => [e.type, e.details.reason, e.admin?.name])).toEqual([
+      ["whatsapp_unlinked", "by_admin", "Ana Admin"],
+      ["login_unlocked", undefined, "Ana Admin"],
+    ]);
+    // En los últimos eventos van todos, también los del admin.
+    expect(detail!.events.map((e) => e.type).slice(0, 3)).toEqual(["whatsapp_unlinked", "whatsapp_unlinked", "login_unlocked"]);
+    expect(detail!.events.find((e) => e.details.reason === "by_user")!.admin).toBeNull();
   });
 
   it("nunca devuelve el token de las sesiones (con él se podría usar la sesión)", async () => {

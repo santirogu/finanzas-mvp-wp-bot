@@ -63,7 +63,8 @@ describe("FilterBar", () => {
     expect(screen.getByRole("checkbox", { name: "Intentos fallidos" })).toBeChecked();
     expect(screen.getByRole("checkbox", { name: "Registros" })).not.toBeChecked();
     expect(screen.getByRole("radio", { name: "Últimos 30 días" })).toBeChecked();
-    expect(screen.getAllByRole("checkbox")).toHaveLength(5);
+    expect(screen.getAllByRole("checkbox")).toHaveLength(6);
+    expect(screen.getByRole("checkbox", { name: "Acciones del admin" })).not.toBeChecked();
     expect(screen.getAllByRole("radio")).toHaveLength(5);
   });
 
@@ -76,6 +77,13 @@ describe("FilterBar", () => {
     expect(submitted[0].get("q")).toBe("ana");
     expect(submitted[0].get("fecha")).toBe("todo");
     expect(submitted[0].get("panel")).toBe("1");
+  });
+
+  it("el chip 'Acciones del admin' se combina con los tipos", async () => {
+    render(<FilterBar filters={f({ types: ["admin"] })} panelOpen />);
+    expect(screen.getByRole("checkbox", { name: "Acciones del admin" })).toBeChecked();
+    await userEvent.click(screen.getByRole("checkbox", { name: "Desvinculaciones" }));
+    expect(submitted[0].getAll("tipo")).toEqual(["whatsapp_unlinked", "admin"]);
   });
 
   it("tocar un atajo de fecha aplica el filtro al instante", async () => {

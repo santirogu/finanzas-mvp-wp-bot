@@ -64,6 +64,7 @@ describe("listAccountEvents", () => {
       details: { reason: "by_user" },
       createdAt: at("2026-10-12T20:00:00Z"),
       account: { name: "Ana Pérez", email: "ana@correo.com" },
+      admin: null,
     });
     // El intento fallido no tiene cuenta.
     expect(page.entries[1].account).toBeNull();
@@ -199,6 +200,64 @@ describe("listAccountEvents", () => {
     const { ana } = await seed();
     await db.delete(user).where(eq(user.id, ana.id));
     expect((await list()).entries.map((e) => e.account?.email ?? null)).toEqual([null, "beto@otro.co"]);
+  });
+});
+
+describe("las acciones del admin", () => {
+  async function seedAdminActions() {
+    const { ana, beto } = await seed();
+    const admin = await createUser({ name: "Ana Admin", email: "admin@correo.com", role: "admin" });
+    await db.insert(accountEvent).values([
+      { type: "login_unlocked", userId: beto.id, adminId: admin.id, createdAt: at("2026-10-12T15:00:00Z") },
+      { type: "sessions_revoked", userId: beto.id, adminId: admin.id, details: { sessions: 2 }, createdAt: at("2026-10-12T15:01:00Z") },
+      {
+        type: "whatsapp_unlinked",
+        userId: ana.id,
+        adminId: admin.id,
+        phone: "573001112233",
+        details: { reason: "by_admin" },
+        createdAt: at("2026-10-12T15:02:00Z"),
+      },
+      { type: "account_deleted", userId: null, adminId: admin.id, createdAt: at("2026-10-12T15:03:00Z") },
+    ]);
+    return { ana, beto, admin };
+  }
+
+  it("el chip 'admin' muestra solo lo que hizo un admin (la desvinculación de Ana por ella misma no), con su nombre", async () => {
+    await seedAdminActions();
+    const page = await list({ tipo: "admin" });
+    expect(types(page)).toEqual(["account_deleted", "whatsapp_unlinked", "sessions_revoked", "login_unlocked"]);
+    expect(page.entries.every((e) => e.admin?.name === "Ana Admin")).toBe(true);
+    // De la cuenta eliminada no hay nada.
+    expect(page.entries[0]).toMatchObject({ type: "account_deleted", account: null, phone: null, details: {} });
+    expect(page.entries[2]).toMatchObject({ details: { sessions: 2 }, account: { name: "Beto 100%_real" } });
+  });
+
+  it("se combina con los tipos de las cuentas (cualquiera de los dos)", async () => {
+    await seedAdminActions();
+    expect(types(await list({ tipo: ["whatsapp_unlinked", "admin"] }))).toEqual([
+      "whatsapp_unlinked",
+      "account_deleted",
+      "whatsapp_unlinked",
+      "sessions_revoked",
+      "login_unlocked",
+    ]);
+    // Desvinculaciones a secas: la de Ana por ella y la del admin.
+    expect((await list({ tipo: "whatsapp_unlinked" })).entries.map((e) => e.details.reason)).toEqual(["by_user", "by_admin"]);
+  });
+
+  it("si la cuenta del admin ya no existe, la acción sigue ahí, sin nombre", async () => {
+    const { admin } = await seedAdminActions();
+    await db.delete(user).where(eq(user.id, admin.id));
+    const page = await list({ tipo: "admin" });
+    expect(types(page)).toHaveLength(4);
+    expect(page.entries.every((e) => e.admin === null)).toBe(true);
+  });
+
+  it("buscar por la cuenta encuentra lo que el admin le hizo; la eliminada no aparece en ninguna búsqueda", async () => {
+    await seedAdminActions();
+    expect(types(await list({ tipo: "admin", q: "Beto" }))).toEqual(["sessions_revoked", "login_unlocked"]);
+    expect(types(await list({ tipo: "admin", q: "admin@correo.com" }))).toEqual([]);
   });
 });
 

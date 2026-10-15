@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { db } from "@/db";
 import {
   account,
+  accountEvent,
   category,
   loginFailure,
   session,
@@ -109,7 +110,26 @@ describe("deleteAccountData", () => {
   });
 
   it("si la cuenta ya no existe, no hace nada", async () => {
-    await expect(deleteAccountData("no-existe")).resolves.toBeUndefined();
+    await expect(deleteAccountData("no-existe")).resolves.toBe(false);
+    await expect(deleteAccountData("no-existe", { deletedBy: "alguien" })).resolves.toBe(false);
+    expect(await db.select().from(accountEvent)).toEqual([]);
+  });
+
+  it("si la borra el admin, queda solo 'account_deleted' con el admin y sin datos de la cuenta", async () => {
+    const id = await fullAccount("eli@test.local", "573005550000");
+    const [admin] = await db.insert(user).values({ id: "admin-1", name: "Ana Admin", email: "admin@test.local", role: "admin" }).returning();
+
+    await expect(deleteAccountData(id, { deletedBy: admin.id })).resolves.toBe(true);
+
+    expect(await db.select({ type: accountEvent.type, userId: accountEvent.userId, phone: accountEvent.phone, adminId: accountEvent.adminId, details: accountEvent.details }).from(accountEvent)).toEqual([
+      { type: "account_deleted", userId: null, phone: null, adminId: "admin-1", details: {} },
+    ]);
+  });
+
+  it("si la borra la propia persona (o el comando), no queda nada en el historial", async () => {
+    const id = await fullAccount("sola@test.local", "573005551111");
+    await expect(deleteAccountData(id)).resolves.toBe(true);
+    expect(await db.select().from(accountEvent)).toEqual([]);
   });
 
   it("borra los intentos fallidos aunque el correo tenga mayúsculas", async () => {

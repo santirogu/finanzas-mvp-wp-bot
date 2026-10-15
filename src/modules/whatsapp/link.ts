@@ -114,16 +114,27 @@ export async function getUserByPhone(phone: string) {
   return row ?? null;
 }
 
-export async function unlinkUser(userId: string) {
-  await db.transaction(async (tx) => {
+/**
+ * Desvincula el número de la cuenta (y borra su código pendiente). La desvincula la propia cuenta o,
+ * con `adminId`, el admin desde /admin/usuarios. Devuelve el número que tenía, o null si no tenía.
+ */
+export async function unlinkUser(userId: string, { adminId }: { adminId?: string } = {}): Promise<string | null> {
+  return db.transaction(async (tx) => {
     const removed = await tx
       .delete(whatsappLink)
       .where(eq(whatsappLink.userId, userId))
       .returning({ phone: whatsappLink.phone });
     await tx.delete(whatsappLinkCode).where(eq(whatsappLinkCode.userId, userId));
     await recordEvents(
-      removed.map(({ phone }) => ({ type: "whatsapp_unlinked", userId, phone, details: { reason: "by_user" } })),
+      removed.map(({ phone }) => ({
+        type: "whatsapp_unlinked",
+        userId,
+        phone,
+        details: { reason: adminId ? "by_admin" : "by_user" },
+        adminId: adminId ?? null,
+      })),
       tx,
     );
+    return removed[0]?.phone ?? null;
   });
 }

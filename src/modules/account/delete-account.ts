@@ -2,6 +2,7 @@ import "server-only";
 import { and, eq, isNull, or, type SQL } from "drizzle-orm";
 import { db } from "@/db";
 import { accountEvent, loginFailure, user, whatsappLink, whatsappMessage } from "@/db/schema";
+import { recordEvent } from "./events";
 
 /**
  * Borra la cuenta y todos sus datos, en una sola transacción. Al borrar el usuario, la base borra
@@ -33,10 +34,14 @@ export function accountEvents(userId: string, linkedPhone: string | null): SQL |
     : eq(accountEvent.userId, userId);
 }
 
-export async function deleteAccountData(userId: string): Promise<void> {
-  await db.transaction(async (tx) => {
+/**
+ * Con `deletedBy` (la eliminó el admin desde /admin/usuarios), en el historial queda solo
+ * "account_deleted" con el admin, sin ningún dato de la cuenta. Devuelve false si no existía.
+ */
+export async function deleteAccountData(userId: string, { deletedBy }: { deletedBy?: string } = {}): Promise<boolean> {
+  return db.transaction(async (tx) => {
     const [account] = await tx.select({ email: user.email }).from(user).where(eq(user.id, userId));
-    if (!account) return;
+    if (!account) return false;
     const [link] = await tx
       .select({ phone: whatsappLink.phone })
       .from(whatsappLink)
@@ -46,5 +51,7 @@ export async function deleteAccountData(userId: string): Promise<void> {
     await tx.delete(accountEvent).where(accountEvents(userId, link?.phone ?? null));
     await tx.delete(loginFailure).where(eq(loginFailure.email, account.email.toLowerCase()));
     await tx.delete(user).where(eq(user.id, userId));
+    if (deletedBy) await recordEvent({ type: "account_deleted", userId: null, adminId: deletedBy }, tx);
+    return true;
   });
 }

@@ -2,7 +2,7 @@
 // de datos (la consulta está en src/modules/admin/history/events-log.ts). Lo común con otros
 // listados de admin (fechas, búsqueda, formatos) está en src/modules/admin/shared/filters.ts.
 
-import type { AccountEventDetails } from "@/db/schema";
+import type { AccountEventDetails, accountEvent } from "@/db/schema";
 import {
   ADMIN_MAX_ROWS,
   ADMIN_PAGE_SIZE,
@@ -44,6 +44,9 @@ export const ADMIN_LOG_MAX = ADMIN_MAX_ROWS;
 /** Las fechas se muestran y filtran en la hora de Colombia. */
 export const ADMIN_LOG_TIMEZONE = ADMIN_TIMEZONE;
 
+type AccountEventType = (typeof accountEvent.$inferSelect)["type"];
+
+/** Los tipos de evento de las cuentas que tienen su chip en los filtros. */
 export const EVENT_TYPES = [
   "registered",
   "whatsapp_code_created",
@@ -53,26 +56,43 @@ export const EVENT_TYPES = [
 ] as const;
 export type EventType = (typeof EVENT_TYPES)[number];
 
-/** Nombre de cada tipo en los filtros. */
-export const EVENT_TYPE_FILTER_LABELS: Record<EventType, string> = {
+/** Los tipos que solo registra una acción del admin (/admin/usuarios). */
+export const ADMIN_EVENT_TYPES = ["login_unlocked", "sessions_revoked", "account_deleted"] as const;
+
+/** El chip "Acciones del admin": todo lo que hizo un admin, sea del tipo que sea. */
+export const ADMIN_ACTIONS_FILTER = "admin";
+
+/** Los chips de tipo: los de las cuentas y el de las acciones del admin. */
+export const EVENT_FILTERS = [...EVENT_TYPES, ADMIN_ACTIONS_FILTER] as const;
+export type EventFilter = (typeof EVENT_FILTERS)[number];
+
+/** Nombre de cada chip de tipo. */
+export const EVENT_TYPE_FILTER_LABELS: Record<EventFilter, string> = {
   registered: "Registros",
   whatsapp_code_created: "Códigos",
   whatsapp_linked: "Vinculaciones",
   whatsapp_unlinked: "Desvinculaciones",
   whatsapp_link_failed: "Intentos fallidos",
+  admin: "Acciones del admin",
 };
 
-const REASON_LABELS: Record<NonNullable<AccountEventDetails["reason"]>, string> = {
-  by_user: "lo desvinculó la persona",
-  number_moved: "el número pasó a otra cuenta",
-  number_changed: "la cuenta vinculó otro número",
-  invalid_code: "código inválido o vencido",
-  rate_limited: "demasiados intentos",
-};
+/** ¿Lo hizo un admin? Sus tipos propios y la desvinculación que hizo él. */
+export function isAdminAction(entry: { type: AccountEventType; details: AccountEventDetails }): boolean {
+  return (ADMIN_EVENT_TYPES as readonly string[]).includes(entry.type) || entry.details.reason === "by_admin";
+}
+
+// La desvinculación por el admin no lleva motivo: la frase ya dice quién fue.
+const REASON_LABELS = new Map<AccountEventDetails["reason"], string>([
+  ["by_user", "lo desvinculó la persona"],
+  ["number_moved", "el número pasó a otra cuenta"],
+  ["number_changed", "la cuenta vinculó otro número"],
+  ["invalid_code", "código inválido o vencido"],
+  ["rate_limited", "demasiados intentos"],
+]);
 
 export type LogFilters = {
   /** Vacío: todos los tipos. */
-  types: EventType[];
+  types: EventFilter[];
   date: DatePreset;
   /** Solo con date "personalizado": días (YYYY-MM-DD) en Colombia, ambos incluidos. */
   from: string | null;
@@ -98,7 +118,7 @@ export const NO_FILTERS: LogFilters = {
  */
 export function parseLogFilters(params: Params): LogFilters {
   const requested = new Set(all(params.tipo));
-  const types = EVENT_TYPES.filter((type) => requested.has(type));
+  const types = EVENT_FILTERS.filter((type) => requested.has(type));
   return { types, ...parseDateFilter(params), search: parseSearch(params), limit: parseLimit(params) };
 }
 
@@ -118,7 +138,7 @@ export const activeFilterCount = (f: LogFilters) =>
   f.types.length + (f.date === "todo" ? 0 : 1) + (f.search ? 1 : 0);
 
 /** Los filtros sin uno de ellos, para la ✕ de su etiqueta (vuelve a los primeros 50). */
-export function withoutFilter(f: LogFilters, remove: { type: EventType } | "date" | "search"): LogFilters {
+export function withoutFilter(f: LogFilters, remove: { type: EventFilter } | "date" | "search"): LogFilters {
   const base = { ...f, limit: ADMIN_LOG_PAGE_SIZE };
   if (remove === "date") return { ...base, date: "todo", from: null, to: null };
   if (remove === "search") return { ...base, search: "" };
@@ -161,10 +181,12 @@ export function groupByDay<T extends { createdAt: Date }>(entries: T[], today: s
   return groups;
 }
 
-/** El detalle de un evento: el motivo y si se reconstruyó. */
+/** El detalle de un evento: el motivo, cuántas sesiones cerró el admin y si se reconstruyó. */
 export function eventDetail(details: AccountEventDetails): string {
   const parts = [];
-  if (details.reason && details.reason in REASON_LABELS) parts.push(REASON_LABELS[details.reason]);
+  const reason = REASON_LABELS.get(details.reason);
+  if (reason) parts.push(reason);
+  if (details.sessions) parts.push(`${details.sessions} ${details.sessions === 1 ? "sesión" : "sesiones"}`);
   if (details.reconstructed) parts.push("reconstruido de datos anteriores");
   return parts.join(" · ");
 }

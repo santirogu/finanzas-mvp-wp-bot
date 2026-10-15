@@ -31,7 +31,7 @@ const USAGE = [
 
 export type DataOps = {
   findAccountByEmail: (email: string) => Promise<AccountSummary | null>;
-  deleteAccountData: (userId: string) => Promise<void>;
+  deleteAccountData: (userId: string) => Promise<unknown>;
   countOrphanData: (before: Date) => Promise<OrphanCounts>;
   deleteOrphanData: (before: Date) => Promise<{ messages: number; events: number }>;
   close: () => Promise<void>;

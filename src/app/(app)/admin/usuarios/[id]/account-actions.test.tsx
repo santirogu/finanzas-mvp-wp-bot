@@ -1,0 +1,221 @@
+import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import type { ActionTarget } from "./account-actions";
+
+// Las Server Actions se simulan: aquí se prueba la interfaz (qué se muestra, qué se envía y cómo
+// responde a cada resultado). Lo que hacen de verdad se prueba en integración y en las E2E.
+const actions = vi.hoisted(() => ({
+  unlockLoginAction: vi.fn(),
+  revokeSessionsAction: vi.fn(),
+  unlinkWhatsAppByAdminAction: vi.fn(),
+  deleteAccountByAdminAction: vi.fn(),
+}));
+vi.mock("./actions", () => actions);
+
+const { AccountActions } = await import("./account-actions");
+
+// jsdom no tiene showModal ni close: lo mínimo para abrir y cerrar la ventana.
+beforeAll(() => {
+  HTMLDialogElement.prototype.showModal = function (this: HTMLDialogElement) {
+    this.setAttribute("open", "");
+  };
+  HTMLDialogElement.prototype.close = function (this: HTMLDialogElement) {
+    this.removeAttribute("open");
+    this.dispatchEvent(new Event("close"));
+  };
+});
+
+beforeEach(() => {
+  for (const action of Object.values(actions)) action.mockReset();
+});
+
+const target = (overrides: Partial<ActionTarget> = {}): ActionTarget => ({
+  id: "cuenta-1",
+  name: "Beto Ruiz",
+  email: "beto@correo.com",
+  lockedUntil: "3:15 p. m.",
+  openSessions: 2,
+  phone: "+57 300 111 2233",
+  ...overrides,
+});
+
+const actionsSection = () => within(screen.getByRole("region", { name: "Acciones" }));
+const dialog = () => screen.getByRole("dialog");
+const codeField = () => within(dialog()).getByLabelText("Código de Google Authenticator");
+
+describe("AccountActions", () => {
+  it("muestra solo las acciones que aplican, cada una con su detalle", () => {
+    render(<AccountActions target={target()} />);
+    const rows = actionsSection().getAllByRole("listitem");
+    expect(rows.map((row) => row.querySelector("p")?.textContent)).toEqual([
+      "Desbloquear el inicio de sesión",
+      "Cerrar todas sus sesiones",
+      "Desvincular su WhatsApp",
+    ]);
+    expect(rows[0]).toHaveTextContent("Bloqueado por contraseñas equivocadas hasta las 3:15 p. m.");
+    expect(rows[1]).toHaveTextContent("2 sesiones abiertas. Su WhatsApp sigue funcionando.");
+    expect(rows[2]).toHaveTextContent("+57 300 111 2233");
+    expect(actionsSection().getByText("Cada una pide el código de Google Authenticator.")).toBeInTheDocument();
+  });
+
+  it("sin bloqueo, sesiones ni WhatsApp lo dice; eliminar siempre está, en la zona de peligro", () => {
+    render(<AccountActions target={target({ lockedUntil: null, openSessions: 0, phone: null })} />);
+    expect(actionsSection().queryAllByRole("button")).toEqual([]);
+    expect(actionsSection().getByText("No tiene nada que desbloquear, cerrar ni desvincular.")).toBeInTheDocument();
+    const danger = within(screen.getByRole("region", { name: "Zona de peligro" }));
+    expect(danger.getByRole("button", { name: "Eliminar cuenta" })).toBeInTheDocument();
+  });
+
+  it("una sola sesión va en singular", () => {
+    render(<AccountActions target={target({ openSessions: 1 })} />);
+    expect(actionsSection().getByText("1 sesión abierta. Su WhatsApp sigue funcionando.")).toBeInTheDocument();
+  });
+
+  it.each([
+    ["Desbloquear", "¿Desbloquear el inicio de sesión de Beto Ruiz?", "Podrá volver a intentar con su contraseña"],
+    ["Cerrar sesiones", "¿Cerrar todas las sesiones de Beto Ruiz?", "Tendrá que volver a iniciar sesión en 2 dispositivos"],
+    ["Desvincular", "¿Desvincular el WhatsApp de Beto Ruiz?", "El bot dejará de registrar lo que escriba desde +57 300 111 2233"],
+  ])("'%s' abre su ventana, con lo que va a pasar y el código", async (button, title, description) => {
+    render(<AccountActions target={target()} />);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    await userEvent.click(actionsSection().getByRole("button", { name: button }));
+    expect(dialog()).toHaveAccessibleName(title);
+    expect(dialog()).toHaveAccessibleDescription(expect.stringContaining(description));
+    expect(codeField()).toHaveAttribute("inputmode", "numeric");
+    expect(codeField()).toHaveAttribute("autocomplete", "one-time-code");
+    expect(codeField()).toBeRequired();
+  });
+
+  it("'Cancelar' cierra la ventana sin enviar nada", async () => {
+    render(<AccountActions target={target()} />);
+    await userEvent.click(actionsSection().getByRole("button", { name: "Desbloquear" }));
+    await userEvent.click(within(dialog()).getByRole("button", { name: "Cancelar" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(actions.unlockLoginAction).not.toHaveBeenCalled();
+  });
+
+  it("envía la cuenta y el código; si el código está mal, lo marca y deja la ventana abierta", async () => {
+    actions.revokeSessionsAction.mockResolvedValue({ error: "El código no es correcto. Te quedan 4 intentos.", field: "code" });
+    render(<AccountActions target={target()} />);
+    await userEvent.click(actionsSection().getByRole("button", { name: "Cerrar sesiones" }));
+    await userEvent.type(codeField(), "123456");
+    await userEvent.click(within(dialog()).getByRole("button", { name: "Cerrar sesiones" }));
+
+    const sent = actions.revokeSessionsAction.mock.calls[0][1] as FormData;
+    expect(Object.fromEntries(sent)).toEqual({ userId: "cuenta-1", code: "123456" });
+    expect(await within(dialog()).findByText("El código no es correcto. Te quedan 4 intentos.")).toBeInTheDocument();
+    expect(codeField()).toHaveAttribute("aria-invalid", "true");
+    expect(codeField()).toHaveAccessibleDescription("El código no es correcto. Te quedan 4 intentos.");
+  });
+
+  it("otros errores van en una alerta", async () => {
+    actions.unlinkWhatsAppByAdminAction.mockResolvedValue({ error: "La cuenta ya no tiene un WhatsApp vinculado." });
+    render(<AccountActions target={target()} />);
+    await userEvent.click(actionsSection().getByRole("button", { name: "Desvincular" }));
+    await userEvent.type(codeField(), "123456");
+    await userEvent.click(within(dialog()).getByRole("button", { name: "Desvincular" }));
+    expect(await within(dialog()).findByRole("alert")).toHaveTextContent("La cuenta ya no tiene un WhatsApp vinculado.");
+    expect(codeField()).not.toHaveAttribute("aria-invalid");
+  });
+
+  it("con éxito, cierra la ventana y avisa qué pasó; al abrir otra, el aviso se va", async () => {
+    actions.unlockLoginAction.mockResolvedValue({ message: "Se desbloqueó el inicio de sesión de Beto Ruiz." });
+    render(<AccountActions target={target()} />);
+    await userEvent.click(actionsSection().getByRole("button", { name: "Desbloquear" }));
+    await userEvent.type(codeField(), "123456");
+    await userEvent.click(within(dialog()).getByRole("button", { name: "Desbloquear" }));
+
+    expect(await actionsSection().findByRole("status")).toHaveTextContent("Se desbloqueó el inicio de sesión de Beto Ruiz.");
+    expect(screen.queryByRole("dialog")).toBeNull();
+
+    await userEvent.click(actionsSection().getByRole("button", { name: "Desvincular" }));
+    expect(actionsSection().queryByRole("status")).toBeNull();
+    // La ventana nueva empieza vacía.
+    expect(codeField()).toHaveValue("");
+  });
+
+  it.each([
+    ["Desbloquear", "unlockLoginAction", "Desbloqueando…"],
+    ["Cerrar sesiones", "revokeSessionsAction", "Cerrando…"],
+    ["Desvincular", "unlinkWhatsAppByAdminAction", "Desvinculando…"],
+  ] as const)("mientras '%s' se envía, el botón lo dice y no deja enviar dos veces", async (button, action, pending) => {
+    let finish: (state: object) => void = () => {};
+    actions[action].mockReturnValue(new Promise((resolve) => (finish = resolve)));
+    render(<AccountActions target={target()} />);
+    await userEvent.click(actionsSection().getByRole("button", { name: button }));
+    await userEvent.type(codeField(), "123456");
+    await userEvent.click(within(dialog()).getByRole("button", { name: button }));
+
+    const busy = await within(dialog()).findByRole("button", { name: pending });
+    expect(busy).toBeDisabled();
+    await userEvent.click(busy);
+    expect(actions[action]).toHaveBeenCalledTimes(1);
+    finish({ error: "El código no es correcto. Te quedan 4 intentos.", field: "code" });
+    expect(await within(dialog()).findByRole("button", { name: button })).toBeEnabled();
+  });
+
+  it("al cerrar la ventana con Esc (evento close), se va sin enviar", async () => {
+    render(<AccountActions target={target()} />);
+    await userEvent.click(actionsSection().getByRole("button", { name: "Desvincular" }));
+    (dialog() as HTMLDialogElement).close();
+    expect(await screen.findByRole("region", { name: "Acciones" })).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(actions.unlinkWhatsAppByAdminAction).not.toHaveBeenCalled();
+  });
+
+  describe("eliminar", () => {
+    async function openDelete() {
+      render(<AccountActions target={target()} />);
+      await userEvent.click(screen.getByRole("button", { name: "Eliminar cuenta" }));
+      return within(dialog());
+    }
+
+    it("explica qué se borra y pide escribir el correo y el código", async () => {
+      const box = await openDelete();
+      expect(dialog()).toHaveAccessibleName("¿Eliminar la cuenta de Beto Ruiz?");
+      expect(dialog()).toHaveAccessibleDescription(
+        "Se borran su cuenta, sus movimientos, sus categorías, su WhatsApp y su historial. No se puede deshacer. En el historial queda solo “se eliminó una cuenta”.",
+      );
+      expect(box.getByLabelText(/Escribe su correo/)).toHaveAttribute("type", "email");
+      expect(codeField()).toBeInTheDocument();
+    });
+
+    it("el botón solo funciona con el correo exacto (sin importar mayúsculas ni espacios)", async () => {
+      const box = await openDelete();
+      const submit = box.getByRole("button", { name: "Eliminar cuenta" });
+      expect(submit).toBeDisabled();
+      await userEvent.type(box.getByLabelText(/Escribe su correo/), "beto@correo.co");
+      expect(submit).toBeDisabled();
+      await userEvent.clear(box.getByLabelText(/Escribe su correo/));
+      await userEvent.type(box.getByLabelText(/Escribe su correo/), " BETO@correo.com ");
+      expect(submit).toBeEnabled();
+    });
+
+    it("mientras se envía dice 'Eliminando…'", async () => {
+      // Se resuelve al final: React encadena las acciones pendientes y una sin terminar frenaría las demás pruebas.
+      let finish: (state: object) => void = () => {};
+      actions.deleteAccountByAdminAction.mockReturnValue(new Promise((resolve) => (finish = resolve)));
+      const box = await openDelete();
+      await userEvent.type(box.getByLabelText(/Escribe su correo/), "beto@correo.com");
+      await userEvent.type(codeField(), "654321");
+      await userEvent.click(box.getByRole("button", { name: "Eliminar cuenta" }));
+      expect(await box.findByRole("button", { name: "Eliminando…" })).toBeDisabled();
+      finish({ error: "Esta cuenta ya no existe." });
+      expect(await box.findByRole("alert")).toHaveTextContent("Esta cuenta ya no existe.");
+    });
+
+    it("envía la cuenta, el correo y el código; muestra el error del correo junto al campo", async () => {
+      actions.deleteAccountByAdminAction.mockResolvedValue({ error: "El correo no coincide con el de la cuenta.", field: "email" });
+      const box = await openDelete();
+      await userEvent.type(box.getByLabelText(/Escribe su correo/), "beto@correo.com");
+      await userEvent.type(codeField(), "654321");
+      await userEvent.click(box.getByRole("button", { name: "Eliminar cuenta" }));
+
+      const sent = actions.deleteAccountByAdminAction.mock.calls[0][1] as FormData;
+      expect(Object.fromEntries(sent)).toEqual({ userId: "cuenta-1", email: "beto@correo.com", code: "654321" });
+      expect(await box.findByText("El correo no coincide con el de la cuenta.")).toBeInTheDocument();
+      expect(box.getByLabelText(/Escribe su correo/)).toHaveAttribute("aria-invalid", "true");
+    });
+  });
+});
