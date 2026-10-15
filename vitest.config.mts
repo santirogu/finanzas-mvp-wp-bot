@@ -25,7 +25,7 @@ export default defineConfig({
         "src/proxy.ts",
         "src/app/robots.ts",
         "src/components/**",
-        "src/app/**/{auth-form,nav-tabs,whatsapp-connect,page-skeleton,delete-account-form}.tsx",
+        "src/app/**/{auth-form,nav-tabs,whatsapp-connect,page-skeleton,delete-account-form,user-menu}.tsx",
         "scripts/*.mjs",
         "scripts/{delete-data,admin,db-cli}.ts",
       ],

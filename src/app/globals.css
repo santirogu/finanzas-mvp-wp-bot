@@ -10,6 +10,10 @@
   --brand-foreground: #ffffff;
   --income: #15803d;
   --expense: #c2410c;
+  /* Etiqueta "Admin": violeta, distinto de la marca (verde azulado), ingresos y egresos. */
+  --admin: #3c3489;
+  --admin-surface: #eeedfe;
+  --admin-border: #afa9ec;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -23,6 +27,9 @@
     --brand-foreground: #062925;
     --income: #4ade80;
     --expense: #fb923c;
+    --admin: #cecbf6;
+    --admin-surface: #3c3489;
+    --admin-border: #7f77dd;
   }
 }
 
@@ -36,6 +43,9 @@
   --color-brand-foreground: var(--brand-foreground);
   --color-income: var(--income);
   --color-expense: var(--expense);
+  --color-admin: var(--admin);
+  --color-admin-surface: var(--admin-surface);
+  --color-admin-border: var(--admin-border);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
