@@ -13,7 +13,7 @@ import { parseArgs } from "node:util";
 import { pathToFileURL } from "node:url";
 import { todayInTimezone } from "../src/lib/dates";
 import type { Role } from "../src/lib/roles";
-import type { AccountRole } from "../src/modules/account/admin";
+import type { AccountRole } from "../src/modules/account/terminal";
 import { exitWith, normalizeEmail, prepareDatabase, realTerminal, type Terminal } from "./db-cli";
 
 const USAGE = [
@@ -159,7 +159,7 @@ export const realDeps: Deps = {
   openData: async () => {
     const [{ db }, { findAccountRole, setRole, listAdmins, resetTwoFactor }] = await Promise.all([
       import("../src/db"),
-      import("../src/modules/account/admin"),
+      import("../src/modules/account/terminal"),
     ]);
     return { findAccountRole, setRole, listAdmins, resetTwoFactor, close: () => db.$client.end() };
   },

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { findAccountRole, resetTwoFactor, setRole } from "@/modules/account/admin";
+import { findAccountRole, resetTwoFactor, setRole } from "@/modules/account/terminal";
 import { enableTwoFactor, makeAdmin, register, signIn, post, type Jar } from "../../test/integration/auth-http";
 import { totp } from "../../test/totp";
 
@@ -51,7 +51,7 @@ describe("requireAdmin con sesiones reales", () => {
     await makeAdmin("ana@test.local");
     as(jar);
 
-    await expect(requireAdmin()).rejects.toThrow("NEXT_REDIRECT:/admin/verificacion");
+    await expect(requireAdmin()).rejects.toThrow("NEXT_REDIRECT:/admin/seguridad");
     expect(await requireAdminRole()).toMatchObject({ role: "admin", twoFactorEnabled: false });
 
     await enableTwoFactor(jar);
@@ -99,7 +99,7 @@ describe("requireAdmin con sesiones reales", () => {
     await expect(requireAdmin()).rejects.toThrow("NEXT_REDIRECT:/login?sesion=vencida");
     const login = await signIn("ana@test.local");
     as(login.jar);
-    await expect(requireAdmin()).rejects.toThrow("NEXT_REDIRECT:/admin/verificacion");
+    await expect(requireAdmin()).rejects.toThrow("NEXT_REDIRECT:/admin/seguridad");
   });
 
   it("el rol de otra cuenta no le sirve a nadie más", async () => {

@@ -3,7 +3,7 @@ import { eq, sql } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { db } from "@/db";
 import { user } from "@/db/schema";
-import { findAccountRole, listAdmins, setRole } from "@/modules/account/admin";
+import { findAccountRole, listAdmins, setRole } from "@/modules/account/terminal";
 import { auth } from "./auth";
 
 // Roles con Better Auth y la base de verdad. Cada prueba intenta un camino para que alguien se dé

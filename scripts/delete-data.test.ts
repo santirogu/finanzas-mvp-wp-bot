@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { AccountSummary } from "../src/modules/account/admin";
+import type { AccountSummary } from "../src/modules/account/terminal";
 import { DEFAULT_DAYS, MIN_DAYS, runCli, type DataOps, type Deps } from "./delete-data";
 
 const NOW = new Date("2026-10-14T12:00:00Z");

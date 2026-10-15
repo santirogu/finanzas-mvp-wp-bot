@@ -2,7 +2,7 @@
 // integración de roles y verificación en dos pasos.
 import { expect } from "vitest";
 import { auth } from "@/lib/auth";
-import { findAccountRole, setRole } from "@/modules/account/admin";
+import { findAccountRole, setRole } from "@/modules/account/terminal";
 import { secretFromUri, totp } from "../totp";
 
 export const PASSWORD = "clave-segura-123";

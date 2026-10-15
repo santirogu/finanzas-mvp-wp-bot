@@ -121,11 +121,23 @@ de Vercel ni muevas las migraciones fuera del job `deploy`.
 - **Roles** (`src/lib/roles.ts`, README → Roles): toda página, acción o consulta de administración
   usa `requireAdmin()` de `src/lib/session.ts` (rol + verificación en dos pasos) y se clasifica en
   `src/authorization-matrix.test.ts` (páginas: "requiere sesión de admin…"; acciones:
-  "requireAdmin…"). `requireAdminRole()` (sin la verificación) es solo para `/admin/verificacion`.
+  "requireAdmin…"). `requireAdminRole()` (sin la verificación) es solo para `/admin/seguridad` y
+  el marco `src/app/(app)/admin/layout.tsx`.
   El rol solo cambia con `pnpm admin:grant` / `admin:revoke`: nunca lo vuelvas editable
   (`input: false` en Better Auth) ni crees usuarios o contraseñas de admin por defecto. Solo
   `roles.ts` y `session.ts` comparan roles. No reactives los endpoints de `TWO_FACTOR_DISABLED_PATHS`
   ni ofrezcas "recordar este dispositivo".
+- **Agregar un módulo de administración** (README → Sección de administración):
+  1. su entrada en `src/modules/admin/modules.ts` (`status: "activo"`);
+  2. su página en `src/app/(app)/admin/<id>/page.tsx`, que llama a `requireAdmin()` y se clasifica
+     en la matriz de autorización como "requiere sesión de admin…";
+  3. sus consultas en `src/modules/admin/<id>/`: cada función exportada es `async` y llama a
+     `requireAdmin()` antes de tocar la base (la matriz lo verifica);
+  4. si el módulo cambia datos (usuarios, categorías, configuración…), sus Server Actions con
+     `requireAdmin()` y un registro de qué admin hizo qué (auditoría): se construye con el primero de
+     estos módulos;
+  5. su resumen en la tarjeta de Inicio, si aplica, y pruebas unitarias, de integración, E2E y de
+     accesibilidad.
 - **Historial de la cuenta** (`account_event`, README → Historial de las cuentas): si agregas o cambias
   algo del registro o la vinculación de WhatsApp, registra su evento con `recordEvent` en la misma
   transacción, con su prueba.

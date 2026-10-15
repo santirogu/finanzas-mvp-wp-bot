@@ -28,8 +28,9 @@ const PAGES = {
   "/egresos": "requiere sesión",
   "/simulador": "requiere sesión; solo en desarrollo",
   "/movimientos/[id]/editar": "requiere sesión; solo movimientos propios (los demás dan 404)",
-  "/admin": "requiere sesión de admin con la verificación en dos pasos activa (requireAdmin)",
-  "/admin/verificacion": "requiere sesión de admin; es donde se configura la verificación en dos pasos (requireAdminRole)",
+  "/admin": "requiere sesión de admin con la verificación en dos pasos activa (requireAdmin); Inicio de la administración",
+  "/admin/historial": "requiere sesión de admin con la verificación en dos pasos activa (requireAdmin)",
+  "/admin/seguridad": "requiere sesión de admin; es donde se configura la verificación en dos pasos (requireAdminRole)",
 } as const;
 
 const API_ROUTES = {
@@ -63,11 +64,14 @@ const PAGES_WITHOUT_SESSION_CHECK: Record<string, string> = {
 // Administración: páginas cuya regla empieza con ADMIN_RULE y acciones cuya regla empieza con
 // "requireAdmin". Deben validar el rol en el servidor con requireAdmin() (src/lib/session.ts).
 const ADMIN_RULE = "requiere sesión de admin";
-// Módulos con datos de todas las cuentas: solo los pueden usar archivos que llamen a requireAdmin().
-const ADMIN_DATA_MODULES = /from\s+["']@\/modules\/(account\/admin|admin\/events-log)["']/;
-// requireAdminRole no exige la verificación en dos pasos: solo lo puede usar la página donde se
-// configura. Todo lo demás de administración usa requireAdmin.
-const ADMIN_ROLE_ONLY_FILES = ["src/app/(app)/admin/verificacion/page.tsx"];
+// La capa de datos de administración: los archivos de src/modules/admin/ que consultan la base.
+const ADMIN_MODULES_DIR = join(ROOT, "src/modules/admin");
+// Las consultas de los comandos de terminal: no validan sesión, nunca se usan desde la app.
+const TERMINAL_MODULE = /from\s+["'](@\/modules\/account\/terminal|[./]+(modules\/account\/)?terminal)["']/;
+// requireAdminRole no exige la verificación en dos pasos: solo lo usan la página donde se configura
+// y el marco de la sección (que solo dibuja el título y la subnavegación). Todo lo demás de
+// administración usa requireAdmin.
+const ADMIN_ROLE_ONLY_FILES = ["src/app/(app)/admin/layout.tsx", "src/app/(app)/admin/seguridad/page.tsx"];
 // Los únicos archivos que comparan roles; el resto usa requireAdmin() o hasRole().
 const ROLE_CHECK_FILES = ["src/lib/roles.ts", "src/lib/session.ts"];
 
@@ -224,12 +228,18 @@ describe("administración", () => {
     }
   });
 
-  it("requireAdminRole (sin la verificación en dos pasos) solo se usa donde se configura", () => {
+  it("requireAdminRole (sin la verificación en dos pasos) solo se usa donde se configura y en el marco", () => {
     const users = sourceFiles
       .filter((f) => relative(ROOT, f) !== "src/lib/session.ts")
       .filter((f) => callsTo("requireAdminRole").test(read(f)) || /\brequireAdminRole\b/.test(read(f)))
-      .map((f) => relative(ROOT, f));
+      .map((f) => relative(ROOT, f))
+      .sort();
     expect(users).toEqual(ADMIN_ROLE_ONLY_FILES);
+  });
+
+  it("el marco de la sección valida el rol antes de dibujarse (a quien no es admin no le llega nada)", () => {
+    const layout = read(join(APP, "(app)/admin/layout.tsx"));
+    expect(layout).toMatch(callsTo("requireAdminRole"));
   });
 
   it("las Server Actions de admin llaman a requireAdmin() antes de hacer cualquier cosa", () => {
@@ -241,10 +251,37 @@ describe("administración", () => {
     }
   });
 
-  it("los datos de todas las cuentas solo se usan desde archivos que llaman a requireAdmin()", () => {
+  // Capa de datos: cada función exportada de un archivo de src/modules/admin/ que consulta la base
+  // valida el rol ella misma, antes de tocar la base. Así ninguna página puede mostrar esos datos
+  // aunque olvide validar (y las páginas validan también: la regla de arriba).
+  const adminDataFiles = sourceFiles.filter(
+    (f) => f.startsWith(ADMIN_MODULES_DIR) && /from\s+["']@\/db["']/.test(read(f)),
+  );
+
+  it("la capa de datos de administración existe y la regla la encuentra", () => {
+    expect(adminDataFiles.map((f) => relative(ROOT, f))).toContain("src/modules/admin/history/events-log.ts");
+  });
+
+  it("cada consulta de administración llama a requireAdmin() antes de tocar la base", () => {
+    for (const file of adminDataFiles) {
+      const parts = read(file).split(/(?=^export\s+async\s+function\s)/m).slice(1);
+      expect(parts.length, relative(ROOT, file)).toBeGreaterThan(0);
+      for (const body of parts) {
+        const name = body.match(/^export\s+async\s+function\s+(\w+)/)?.[1];
+        const check = body.search(/await\s+requireAdmin\(\)/);
+        expect(check, `${name} (${relative(ROOT, file)}) no llama a requireAdmin()`).toBeGreaterThan(-1);
+        const firstDataAccess = body.search(/\bdb\.|\bwhere\(/);
+        expect(firstDataAccess === -1 || check < firstDataAccess, `${name} toca la base antes de validar el rol`).toBe(true);
+      }
+      // Nada de exportar consultas como constantes o funciones sin async (se saltarían la regla).
+      expect(read(file), relative(ROOT, file)).not.toMatch(/^export\s+(const|let|function)\s/m);
+    }
+  });
+
+  it("las consultas de los comandos de terminal no se usan desde la app", () => {
     const offenders = sourceFiles
-      .filter((f) => f.startsWith(APP))
-      .filter((f) => ADMIN_DATA_MODULES.test(read(f)) && !callsTo("requireAdmin").test(read(f)))
+      .filter((f) => !f.endsWith("src/modules/account/terminal.ts"))
+      .filter((f) => TERMINAL_MODULE.test(read(f)))
       .map((f) => relative(ROOT, f));
     expect(offenders).toEqual([]);
   });

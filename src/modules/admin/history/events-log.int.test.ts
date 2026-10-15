@@ -1,9 +1,18 @@
 import { eq } from "drizzle-orm";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "@/db";
 import { accountEvent, user } from "@/db/schema";
-import { createUser } from "../../../test/integration/factories";
-import { listAccountEvents } from "./events-log";
+import { createUser } from "../../../../test/integration/factories";
+
+// Las consultas validan el rol ellas mismas (requireAdmin): aquí la sesión se simula; por defecto,
+// la de un admin con la verificación activa.
+const session = vi.hoisted(() => ({ requireAdmin: vi.fn() }));
+vi.mock("@/lib/session", () => ({ requireAdmin: session.requireAdmin }));
+const { historySummary, listAccountEvents } = await import("./events-log");
+
+beforeEach(() => {
+  session.requireAdmin.mockReset().mockResolvedValue({ id: "admin", role: "admin", twoFactorEnabled: true });
+});
 import { ADMIN_LOG_MAX, ADMIN_LOG_PAGE_SIZE, parseLogFilters } from "./log-filters";
 
 // El historial de /admin con la base de verdad: todas las cuentas, filtros, "ver más" y búsquedas
@@ -188,5 +197,34 @@ describe("listAccountEvents", () => {
     const { ana } = await seed();
     await db.delete(user).where(eq(user.id, ana.id));
     expect((await list()).entries.map((e) => e.account?.email ?? null)).toEqual([null, "beto@otro.co"]);
+  });
+});
+
+describe("historySummary", () => {
+  it("cuenta los eventos de hoy (en Colombia) y cuántos fueron intentos fallidos", async () => {
+    await seed();
+    // El 10 de octubre en Colombia: el intento fallido de las 0:30 a. m. (el registro de Beto fue el 9).
+    expect(await historySummary("2026-10-10")).toEqual({ today: 1, failedToday: 1 });
+    expect(await historySummary("2026-10-12")).toEqual({ today: 1, failedToday: 0 });
+    expect(await historySummary("2026-11-01")).toEqual({ today: 0, failedToday: 0 });
+  });
+});
+
+describe("sin admin no hay datos", () => {
+  it.each([
+    ["sin sesión (lleva al login)", new Error("NEXT_REDIRECT:/login")],
+    ["un usuario (404)", new Error("NEXT_NOT_FOUND")],
+    ["un admin sin verificación (lleva a configurarla)", new Error("NEXT_REDIRECT:/admin/seguridad")],
+  ])("%s: las consultas fallan antes de devolver nada", async (_, error) => {
+    await seed();
+    session.requireAdmin.mockRejectedValue(error);
+    await expect(list()).rejects.toThrow(error.message);
+    await expect(historySummary(TODAY)).rejects.toThrow(error.message);
+  });
+
+  it("cada consulta valida el rol una vez por llamada", async () => {
+    await list();
+    await historySummary(TODAY);
+    expect(session.requireAdmin).toHaveBeenCalledTimes(2);
   });
 });

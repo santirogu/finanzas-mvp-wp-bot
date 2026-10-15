@@ -117,10 +117,10 @@ describe("requireAdmin", () => {
   });
 
   it("un admin sin la verificación en dos pasos va a configurarla", async () => {
-    expect(TWO_FACTOR_SETUP_PATH).toBe("/admin/verificacion");
+    expect(TWO_FACTOR_SETUP_PATH).toBe("/admin/seguridad");
     for (const twoFactorEnabled of [false, undefined, "true"]) {
       mocks.getSession.mockResolvedValue(admin(twoFactorEnabled));
-      await expect(requireAdmin()).rejects.toThrow("NEXT_REDIRECT:/admin/verificacion");
+      await expect(requireAdmin()).rejects.toThrow("NEXT_REDIRECT:/admin/seguridad");
     }
   });
 

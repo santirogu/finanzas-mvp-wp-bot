@@ -7,9 +7,10 @@ import {
   DATE_PRESET_LABELS,
   EVENT_TYPES,
   EVENT_TYPE_FILTER_LABELS,
+  HISTORY_PATH,
   activeFilterCount,
   type LogFilters,
-} from "@/modules/admin/log-filters";
+} from "@/modules/admin/history/log-filters";
 
 // Un "chip" es una casilla (o una opción) de verdad, con su etiqueta como botón redondo: se marca
 // con clic, teclado o lector de pantalla, y el formulario la envía como cualquier otra.
@@ -35,7 +36,7 @@ export function FilterBar({ filters, panelOpen }: { filters: LogFilters; panelOp
   }
 
   return (
-    <Form action="/admin" scroll={false} onChange={onChange} className="space-y-3">
+    <Form action={HISTORY_PATH} scroll={false} onChange={onChange} className="space-y-3">
       <div className="flex gap-2">
         <label className="min-w-0 flex-1">
           <span className="sr-only">Buscar</span>

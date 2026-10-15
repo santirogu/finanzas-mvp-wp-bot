@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  HISTORY_PATH,
   ADMIN_LOG_MAX,
   ADMIN_LOG_PAGE_SIZE,
   ADMIN_LOG_TIMEZONE,
@@ -35,6 +36,10 @@ const NARROW_NBSP = String.fromCharCode(0x202f);
 const NBSP = String.fromCharCode(0xa0);
 
 describe("configuración", () => {
+  it("el historial vive en /admin/historial", () => {
+    expect(HISTORY_PATH).toBe("/admin/historial");
+  });
+
   it("de a 50 eventos, hasta 500, en la hora de Colombia", () => {
     expect(ADMIN_LOG_PAGE_SIZE).toBe(50);
     expect(ADMIN_LOG_MAX).toBe(500);
@@ -161,23 +166,23 @@ describe("parseLogFilters", () => {
 });
 
 describe("logHref", () => {
-  it("sin filtros es /admin", () => {
-    expect(logHref(NO_FILTERS)).toBe("/admin");
+  it("sin filtros es /admin/historial", () => {
+    expect(logHref(NO_FILTERS)).toBe("/admin/historial");
   });
 
   it("repite tipo por cada tipo y omite lo que está por defecto", () => {
     expect(logHref(f({ types: ["registered", "whatsapp_linked"], date: "7d", search: "ana & beto", limit: 100 }))).toBe(
-      "/admin?tipo=registered&tipo=whatsapp_linked&fecha=7d&q=ana+%26+beto&mostrar=100",
+      "/admin/historial?tipo=registered&tipo=whatsapp_linked&fecha=7d&q=ana+%26+beto&mostrar=100",
     );
   });
 
   it("las fechas del rango solo van con 'personalizado'", () => {
     expect(logHref(f({ date: "personalizado", from: "2026-10-01", to: "2026-10-14" }))).toBe(
-      "/admin?fecha=personalizado&desde=2026-10-01&hasta=2026-10-14",
+      "/admin/historial?fecha=personalizado&desde=2026-10-01&hasta=2026-10-14",
     );
-    expect(logHref(f({ date: "personalizado", from: "2026-10-01" }))).toBe("/admin?fecha=personalizado&desde=2026-10-01");
-    expect(logHref(f({ date: "personalizado", to: "2026-10-01" }))).toBe("/admin?fecha=personalizado&hasta=2026-10-01");
-    expect(logHref(f({ date: "hoy", from: "2026-10-01", to: "2026-10-14" }))).toBe("/admin?fecha=hoy");
+    expect(logHref(f({ date: "personalizado", from: "2026-10-01" }))).toBe("/admin/historial?fecha=personalizado&desde=2026-10-01");
+    expect(logHref(f({ date: "personalizado", to: "2026-10-01" }))).toBe("/admin/historial?fecha=personalizado&hasta=2026-10-01");
+    expect(logHref(f({ date: "hoy", from: "2026-10-01", to: "2026-10-14" }))).toBe("/admin/historial?fecha=hoy");
   });
 
   it("lo que arma, parseLogFilters lo lee igual", () => {

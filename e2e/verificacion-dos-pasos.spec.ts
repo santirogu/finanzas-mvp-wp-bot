@@ -11,7 +11,7 @@ test("un admin configura la verificación y desde entonces entra con el código 
   const { secret } = await setUpTwoFactor(page, { checkA11y: true });
 
   // Ya activa, la página de verificación lo dice y no ofrece configurarla otra vez.
-  await page.goto("/admin/verificacion");
+  await page.goto("/admin/seguridad");
   await expect(visible(page.getByText("✓ Está activa"))).toBeVisible();
   await expect(page.getByLabel("Tu contraseña")).toHaveCount(0);
 
@@ -95,21 +95,21 @@ test("pnpm admin:reset-2fa cierra la sesión y obliga a configurarla de nuevo", 
   await expect(page).toHaveURL(/\/dashboard$/);
   // …pero para administrar hay que volver a configurarla.
   await adminTab(page).click();
-  await expect(page).toHaveURL(/\/admin\/verificacion$/);
+  await expect(page).toHaveURL(/\/admin\/seguridad$/);
   await expect(page.getByLabel("Tu contraseña")).toBeVisible();
 });
 
 test("un admin sin la verificación no puede ver la página de administración", async ({ page }) => {
   await newAdmin(page);
   await page.goto("/admin");
-  await expect(page).toHaveURL(/\/admin\/verificacion$/);
+  await expect(page).toHaveURL(/\/admin\/seguridad$/);
   await expect(heading(page, "Administración")).toHaveCount(0);
 });
 
 test("un usuario normal no ve la pestaña Admin y las páginas de administración no existen para él", async ({ page }) => {
   await register(page);
   await expect(adminTab(page)).toHaveCount(0);
-  for (const path of ["/admin", "/admin/verificacion"]) {
+  for (const path of ["/admin", "/admin/historial", "/admin/seguridad"]) {
     await page.goto(path);
     await expect(visible(page.getByRole("heading", { name: "No encontramos esta página" })), path).toBeVisible();
     await expect(page.getByLabel("Tu contraseña")).toHaveCount(0);
@@ -117,7 +117,7 @@ test("un usuario normal no ve la pestaña Admin y las páginas de administració
 });
 
 test("sin sesión, las páginas de administración llevan al login", async ({ page }) => {
-  for (const path of ["/admin", "/admin/verificacion"]) {
+  for (const path of ["/admin", "/admin/historial", "/admin/seguridad"]) {
     await page.goto(path);
     await expect(page, path).toHaveURL(/\/login$/);
   }

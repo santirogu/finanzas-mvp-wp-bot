@@ -30,7 +30,7 @@ export async function newAdmin(page: Page) {
   adminCommand("grant", email);
   await page.reload();
   await adminTab(page).click();
-  await expect(page).toHaveURL(/\/admin\/verificacion$/);
+  await expect(page).toHaveURL(/\/admin\/seguridad$/);
   return email;
 }
 
