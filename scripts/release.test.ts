@@ -265,6 +265,8 @@ describe("runCli", () => {
   });
 
   it("fuera del CI (sin GITHUB_OUTPUT) solo escribe las notas", () => {
+    // Sin stub, el valor por defecto tomaría el GITHUB_OUTPUT real cuando las pruebas corren en el CI.
+    vi.stubEnv("GITHUB_OUTPUT", "");
     const git = fakeGit({ tag: null, log: "feat: algo" });
     const { code, files, outputs } = run(["--notes", "notas.md"], git, { outputFile: undefined });
     expect(code).toBe(0);
@@ -274,13 +276,14 @@ describe("runCli", () => {
 
   it("con git de verdad lee el historial de este repositorio", () => {
     // En el CI el checkout es superficial y sin tags: igual debe salir una versión válida.
+    // Sin GITHUB_OUTPUT, para no escribir en la salida real del job.
+    vi.stubEnv("GITHUB_OUTPUT", "");
     const files: Record<string, string> = {};
     const logs: string[] = [];
     const code = runCli(["--notes", "notas.md"], {
       writeFile: (file: string, text: string) => {
         files[file] = text;
       },
-      outputFile: undefined,
       log: (m: string) => logs.push(m),
     });
     expect(code).toBe(0);
