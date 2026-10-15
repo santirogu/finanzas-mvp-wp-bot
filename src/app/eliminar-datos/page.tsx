@@ -30,7 +30,8 @@ export default function DataDeletionPage() {
           <h2>Qué se elimina</h2>
           <p>
             Tu cuenta (nombre, correo y contraseña), todos tus ingresos y egresos, el número de
-            WhatsApp vinculado y el historial de mensajes enviados al bot.
+            WhatsApp vinculado, el historial de mensajes enviados al bot y el historial de registro
+            y vinculación de tu cuenta.
           </p>
           <p>
             ¿Dudas? Escríbenos a{" "}

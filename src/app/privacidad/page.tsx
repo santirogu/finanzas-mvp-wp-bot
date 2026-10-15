@@ -42,6 +42,11 @@ export default function PrivacyPage() {
               contenido de los mensajes que envías al bot, junto con las respuestas del bot.
             </li>
             <li>
+              <strong>Historial de tu cuenta:</strong> la fecha en que te registraste y la de cada
+              vinculación, desvinculación o intento de vinculación de WhatsApp, con el número
+              usado.
+            </li>
+            <li>
               <strong>Datos técnicos de la sesión:</strong> dirección IP y navegador, usados solo
               para mantener tu sesión segura.
             </li>
@@ -70,6 +75,12 @@ export default function PrivacyPage() {
               egresos, y responderte.
             </li>
             <li>Detectar errores y mejorar el funcionamiento del servicio.</li>
+            <li>
+              Dar soporte y proteger las cuentas: el administrador de la app puede ver el historial
+              de registro y vinculación de WhatsApp de cada cuenta (fechas, nombre, correo y número),
+              con un acceso protegido con verificación en dos pasos. No ve tus ingresos, egresos ni
+              mensajes.
+            </li>
             <li>
               Saber qué partes de la app se usan más y qué tan rápido cargan, con estadísticas
               anónimas, para mejorarla.
@@ -103,8 +114,9 @@ export default function PrivacyPage() {
           <h2>Cuánto tiempo los conservamos</h2>
           <p>
             Conservamos tus datos mientras tu cuenta esté activa. Si eliminas tu cuenta desde la
-            app, tus datos se borran de inmediato; si lo pides por correo, en un plazo máximo de 30
-            días.
+            app, tus datos se borran de inmediato, incluido su historial; si lo pides por correo, en
+            un plazo máximo de 30 días. Los intentos de vinculación desde números que no tienen
+            cuenta se borran a los 30 días.
           </p>
         </section>
 

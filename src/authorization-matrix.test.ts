@@ -64,7 +64,7 @@ const PAGES_WITHOUT_SESSION_CHECK: Record<string, string> = {
 // "requireAdmin". Deben validar el rol en el servidor con requireAdmin() (src/lib/session.ts).
 const ADMIN_RULE = "requiere sesión de admin";
 // Módulos con datos de todas las cuentas: solo los pueden usar archivos que llamen a requireAdmin().
-const ADMIN_DATA_MODULES = /from\s+["']@\/modules\/account\/admin["']/;
+const ADMIN_DATA_MODULES = /from\s+["']@\/modules\/(account\/admin|admin\/events-log)["']/;
 // requireAdminRole no exige la verificación en dos pasos: solo lo puede usar la página donde se
 // configura. Todo lo demás de administración usa requireAdmin.
 const ADMIN_ROLE_ONLY_FILES = ["src/app/(app)/admin/verificacion/page.tsx"];
