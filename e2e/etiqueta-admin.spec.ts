@@ -1,22 +1,12 @@
-import { execFileSync } from "node:child_process";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page } from "@playwright/test";
-import { e2eDatabaseUrl } from "./database-url";
-import { register, test, uniqueEmail, visible } from "./helpers";
+import { adminCommand, register, test, uniqueEmail, visible } from "./helpers";
 
 // La etiqueta "Admin" del encabezado, con el comando real de terminal (pnpm admin:grant / revoke)
 // contra la base de las E2E: el mismo camino que usa el dueño en producción.
 
-/** Corre pnpm admin:<command> y confirma escribiendo el correo, como en la terminal. */
-function adminCommand(command: "grant" | "revoke", email: string) {
-  return execFileSync("pnpm", ["-s", `admin:${command}`, email], {
-    input: `${email}\n`,
-    encoding: "utf8",
-    env: { ...process.env, DATABASE_URL: e2eDatabaseUrl() },
-  });
-}
-
-const badge = (page: Page) => page.getByRole("banner").getByText("Admin", { exact: true });
+// La etiqueta (un <span>), no la pestaña "Admin" del menú, que también está en el encabezado.
+const badge = (page: Page) => page.getByRole("banner").locator("span").filter({ hasText: /^Admin$/ });
 
 test("la etiqueta Admin aparece al dar el rol y desaparece al quitarlo, sin volver a iniciar sesión", async ({ page }) => {
   const email = uniqueEmail();

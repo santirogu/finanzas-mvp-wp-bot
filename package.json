@@ -22,6 +22,7 @@
     "admin:grant": "tsx --conditions=react-server scripts/admin.ts grant",
     "admin:revoke": "tsx --conditions=react-server scripts/admin.ts revoke",
     "admin:list": "tsx --conditions=react-server scripts/admin.ts list",
+    "admin:reset-2fa": "tsx --conditions=react-server scripts/admin.ts reset-2fa",
     "bot:try": "tsx scripts/bot-try.ts",
     "smoke": "node scripts/smoke.mjs",
     "bot:eval": "tsx scripts/bot-eval.ts",
@@ -43,6 +44,7 @@
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "server-only": "^0.0.1",
+    "uqr": "0.1.3",
     "zod": "^4.6.7"
   },
   "devDependencies": {

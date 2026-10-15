@@ -1,4 +1,5 @@
-// Tablas requeridas por Better Auth (user, session, account, verification, rateLimit).
+// Tablas requeridas por Better Auth (user, session, account, verification, rateLimit) y su plugin
+// de verificación en dos pasos (twoFactor).
 // Si cambias la configuración de Better Auth, revisa que estos campos sigan coincidiendo.
 import { bigint, boolean, index, integer, pgEnum, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 import { ROLES } from "../../lib/roles";
@@ -16,6 +17,9 @@ export const user = pgTable("user", {
   currency: text("currency").notNull().default("COP"),
   // Toda cuenta nace como "user"; "admin" solo se da desde la terminal (pnpm admin:grant).
   role: userRole("role").notNull().default("user"),
+  // Verificación en dos pasos (plugin twoFactor): se activa al confirmar el primer código de
+  // Google Authenticator. Obligatoria para entrar a la sección de administración.
+  twoFactorEnabled: boolean("two_factor_enabled").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
@@ -107,3 +111,23 @@ export const loginFailure = pgTable("login_failure", {
   firstFailureAt: timestamp("first_failure_at", { withTimezone: true }).notNull(),
   lockedUntil: timestamp("locked_until", { withTimezone: true }),
 });
+
+// Verificación en dos pasos (plugin twoFactor de Better Auth): una fila por cuenta que la configuró.
+// Better Auth guarda la clave secreta y los códigos de respaldo cifrados con BETTER_AUTH_SECRET.
+export const twoFactor = pgTable(
+  "two_factor",
+  {
+    id: text("id").primaryKey(),
+    secret: text("secret").notNull(),
+    backupCodes: text("backup_codes").notNull(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    // false mientras no se confirma el primer código (configuración a medias).
+    verified: boolean("verified").notNull().default(true),
+    // Intentos fallidos seguidos y bloqueo temporal (accountLockout del plugin).
+    failedVerificationCount: integer("failed_verification_count").notNull().default(0),
+    lockedUntil: timestamp("locked_until", { withTimezone: true }),
+  },
+  (t) => [index("two_factor_user_id_idx").on(t.userId), index("two_factor_secret_idx").on(t.secret)],
+);

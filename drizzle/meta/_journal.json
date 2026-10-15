@@ -36,6 +36,13 @@
       "when": 1792029836586,
       "tag": "0004_roles-de-usuario",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792032613001,
+      "tag": "0005_verificacion-dos-pasos",
+      "breakpoints": true
     }
   ]
 }

@@ -35,7 +35,7 @@ const { deleteAccountAction } = await import("./actions");
 
 async function signIn(email = "ana@test.local") {
   const row = await createUser({ email });
-  mocks.session = { id: row.id, name: row.name, email: row.email, timezone: row.timezone, currency: row.currency, role: row.role };
+  mocks.session = { id: row.id, name: row.name, email: row.email, timezone: row.timezone, currency: row.currency, role: row.role, twoFactorEnabled: row.twoFactorEnabled };
   await db.insert(transaction).values({
     userId: row.id,
     type: "expense",

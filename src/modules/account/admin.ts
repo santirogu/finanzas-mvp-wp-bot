@@ -1,7 +1,7 @@
 import "server-only";
 import { and, asc, count, countDistinct, eq, isNull, lt, notExists } from "drizzle-orm";
 import { db } from "@/db";
-import { category, transaction, user, whatsappLink, whatsappMessage } from "@/db/schema";
+import { category, session, transaction, twoFactor, user, whatsappLink, whatsappMessage } from "@/db/schema";
 import type { Role } from "@/lib/roles";
 import { normalizeEmail } from "@/modules/auth/lockout";
 import { accountMessages } from "./delete-account";
@@ -86,7 +86,7 @@ export async function deleteOrphanMessages(before: Date): Promise<number> {
   return deleted.length;
 }
 
-// ── Roles (pnpm admin:grant / admin:revoke / admin:list) ───────────────────────────────────────
+// ── Roles (pnpm admin:grant / admin:revoke / admin:list / admin:reset-2fa) ──────────────────────
 
 export type AccountRole = {
   id: string;
@@ -94,6 +94,7 @@ export type AccountRole = {
   email: string;
   timezone: string;
   role: Role;
+  twoFactorEnabled: boolean;
   createdAt: Date;
 };
 
@@ -103,6 +104,7 @@ const accountRoleColumns = {
   email: user.email,
   timezone: user.timezone,
   role: user.role,
+  twoFactorEnabled: user.twoFactorEnabled,
   createdAt: user.createdAt,
 };
 
@@ -121,4 +123,24 @@ export async function setRole(userId: string, role: Role): Promise<boolean> {
 /** Las cuentas con rol de admin, de la más antigua a la más nueva. */
 export async function listAdmins(): Promise<AccountRole[]> {
   return db.select(accountRoleColumns).from(user).where(eq(user.role, "admin")).orderBy(asc(user.createdAt));
+}
+
+/**
+ * Reinicia la verificación en dos pasos (si se perdió el celular y los códigos de respaldo): borra
+ * la clave y los códigos, la desactiva y cierra todas las sesiones de la cuenta. Para volver a
+ * administrar hay que entrar con la contraseña y configurarla de nuevo. Devuelve cuántas sesiones
+ * cerró, o null si la cuenta ya no existe.
+ */
+export async function resetTwoFactor(userId: string): Promise<{ sessionsClosed: number } | null> {
+  return db.transaction(async (tx) => {
+    const updated = await tx
+      .update(user)
+      .set({ twoFactorEnabled: false })
+      .where(eq(user.id, userId))
+      .returning({ id: user.id });
+    if (updated.length === 0) return null;
+    await tx.delete(twoFactor).where(eq(twoFactor.userId, userId));
+    const closed = await tx.delete(session).where(eq(session.userId, userId)).returning({ id: session.id });
+    return { sessionsClosed: closed.length };
+  });
 }

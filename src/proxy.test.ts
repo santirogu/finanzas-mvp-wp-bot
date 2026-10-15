@@ -89,3 +89,42 @@ describe("proxy · matcher", () => {
     }
   });
 });
+
+describe("proxy · sesión vencida (cookie vieja)", () => {
+  function visitExpired(path: string, cookie = "better-auth.session_token") {
+    const headers = new Headers({ cookie: `${cookie}=token-viejo` });
+    return proxy(new NextRequest(`${ORIGIN}${path}`, { headers }));
+  }
+
+  it.each(SESSION_COOKIES)("con %s deja ver el login en vez de mandarlo al dashboard (sin círculo)", (cookie) => {
+    expect(getRedirectUrl(visitExpired("/login?sesion=vencida", cookie)) ?? "sigue").toBe("sigue");
+  });
+
+  it("borra todas las cookies de sesión, con Secure en las de prefijo __Secure-", () => {
+    const setCookies = visitExpired("/login?sesion=vencida").headers.getSetCookie();
+    for (const name of ["session_token", "session_data", "dont_remember"]) {
+      const plain = setCookies.find((c) => c.startsWith(`better-auth.${name}=`));
+      const secure = setCookies.find((c) => c.startsWith(`__Secure-better-auth.${name}=`));
+      expect(plain, name).toMatch(new RegExp(`^better-auth\\.${name}=;`));
+      expect(secure, name).toMatch(new RegExp(`^__Secure-better-auth\\.${name}=;`));
+      expect(plain, name).toMatch(/SameSite=lax/i);
+      expect(plain, name).toMatch(/Max-Age=0/i);
+      expect(plain, name).toMatch(/Path=\//i);
+      expect(plain, name).toMatch(/HttpOnly/i);
+      expect(plain, name).not.toMatch(/Secure/);
+      expect(secure, name).toMatch(/Max-Age=0/i);
+      expect(secure, name).toMatch(/; Secure/i);
+    }
+  });
+
+  it.each(["/login?sesion=otra", "/login?vencida=sesion", "/login"])("en %s, con cookie, sigue mandando al dashboard", (path) => {
+    expect(getRedirectUrl(visitExpired(path))).toBe(`${ORIGIN}/dashboard`);
+    expect(visitExpired(path).headers.getSetCookie()).toEqual([]);
+  });
+
+  it("solo aplica al login: en otras páginas el parámetro no borra nada", () => {
+    for (const path of ["/dashboard?sesion=vencida", "/registro?sesion=vencida"]) {
+      expect(visitExpired(path).headers.getSetCookie(), path).toEqual([]);
+    }
+  });
+});

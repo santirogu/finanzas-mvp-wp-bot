@@ -3,7 +3,8 @@
 //
 //   pnpm admin:grant <correo>    da el rol de admin a una cuenta que ya existe
 //   pnpm admin:revoke <correo>   se lo quita (vuelve a ser usuario)
-//   pnpm admin:list              muestra quiénes son admin
+//   pnpm admin:list              muestra quiénes son admin (y si tienen la verificación activa)
+//   pnpm admin:reset-2fa <correo>  reinicia la verificación en dos pasos (celular perdido)
 //
 // Base de datos: la de .env o la de --env <archivo> (ver scripts/db-cli.ts). Antes de cambiar un
 // rol muestra en qué base y qué cuenta, y pide escribir el correo de nuevo.
@@ -20,6 +21,7 @@ const USAGE = [
   "  pnpm admin:grant [--env <archivo>] <correo>",
   "  pnpm admin:revoke [--env <archivo>] <correo>",
   "  pnpm admin:list [--env <archivo>]",
+  "  pnpm admin:reset-2fa [--env <archivo>] <correo>",
 ].join("\n");
 
 const ROLE_NAMES: Record<Role, string> = { user: "usuario", admin: "admin" };
@@ -28,6 +30,7 @@ export type RoleOps = {
   findAccountRole: (email: string) => Promise<AccountRole | null>;
   setRole: (userId: string, role: Role) => Promise<boolean>;
   listAdmins: () => Promise<AccountRole[]>;
+  resetTwoFactor: (userId: string) => Promise<{ sessionsClosed: number } | null>;
   close: () => Promise<void>;
 };
 
@@ -76,6 +79,38 @@ async function changeRole(email: string, role: Role, data: RoleOps, { ask, log, 
   return 0;
 }
 
+async function resetTwoFactor(email: string, data: RoleOps, { ask, log, error }: Deps): Promise<number> {
+  const account = await data.findAccountRole(email);
+  if (!account) {
+    error(`No hay ninguna cuenta con el correo ${normalizeEmail(email)}. No se cambió nada.`);
+    return 1;
+  }
+  if (!account.twoFactorEnabled) {
+    log(`${account.email} no tiene la verificación en dos pasos activa. No se cambió nada.`);
+    return 0;
+  }
+
+  log(`Cuenta: ${describeAccount(account)}`);
+  log("Verificación en dos pasos: activa → desactivada (se borran la clave y los códigos de respaldo)");
+  log("Se cierran todas sus sesiones. Para volver a administrar tendrá que entrar y configurarla de nuevo.");
+
+  const answer = await ask("Para confirmar, escribe el correo de la cuenta: ");
+  if (normalizeEmail(answer) !== account.email) {
+    log("El correo no coincide: no se cambió nada.");
+    return 1;
+  }
+  const result = await data.resetTwoFactor(account.id);
+  if (!result) {
+    error("La cuenta ya no existe (¿se borró mientras tanto?). No se cambió nada.");
+    return 1;
+  }
+  log(`✓ Verificación en dos pasos de ${account.email} reiniciada. Sesiones cerradas: ${result.sessionsClosed}.`);
+  return 0;
+}
+
+const twoFactorStatus = (a: AccountRole) =>
+  a.twoFactorEnabled ? "verificación en dos pasos activa" : "verificación en dos pasos pendiente";
+
 async function listAdmins(data: RoleOps, { log }: Deps): Promise<number> {
   const admins = await data.listAdmins();
   if (admins.length === 0) {
@@ -83,7 +118,7 @@ async function listAdmins(data: RoleOps, { log }: Deps): Promise<number> {
     return 0;
   }
   log(`Admins (${admins.length}):`);
-  for (const admin of admins) log(`  - ${describeAccount(admin)}`);
+  for (const admin of admins) log(`  - ${describeAccount(admin)} · ${twoFactorStatus(admin)}`);
   return 0;
 }
 
@@ -97,9 +132,11 @@ export async function runCli(argv: string[], deps: Deps): Promise<number> {
     return 2;
   }
   const [command, email, ...extra] = parsed.positionals;
-  const changesRole = (command === "grant" || command === "revoke") && Boolean(email) && extra.length === 0;
+  const withEmail = Boolean(email) && extra.length === 0;
+  const changesRole = (command === "grant" || command === "revoke") && withEmail;
+  const resets = command === "reset-2fa" && withEmail;
   const lists = command === "list" && email === undefined;
-  if (!changesRole && !lists) {
+  if (!changesRole && !resets && !lists) {
     deps.error(USAGE);
     return 2;
   }
@@ -108,6 +145,7 @@ export async function runCli(argv: string[], deps: Deps): Promise<number> {
   const data = await deps.openData();
   try {
     if (lists) return await listAdmins(data, deps);
+    if (resets) return await resetTwoFactor(email, data, deps);
     return await changeRole(email, command === "grant" ? "admin" : "user", data, deps);
   } finally {
     await data.close();
@@ -119,11 +157,11 @@ export async function runCli(argv: string[], deps: Deps): Promise<number> {
 export const realDeps: Deps = {
   ...realTerminal,
   openData: async () => {
-    const [{ db }, { findAccountRole, setRole, listAdmins }] = await Promise.all([
+    const [{ db }, { findAccountRole, setRole, listAdmins, resetTwoFactor }] = await Promise.all([
       import("../src/db"),
       import("../src/modules/account/admin"),
     ]);
-    return { findAccountRole, setRole, listAdmins, close: () => db.$client.end() };
+    return { findAccountRole, setRole, listAdmins, resetTwoFactor, close: () => db.$client.end() };
   },
 };
 

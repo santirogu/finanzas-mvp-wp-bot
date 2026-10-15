@@ -119,10 +119,13 @@ de Vercel ni muevas las migraciones fuera del job `deploy`.
 - Si agregas una variable de entorno obligatoria, súmala a `REQUIRED_ENV` en `src/lib/health.ts`
   (y configúrala en Vercel **antes** del merge, o el despliegue se detendrá en los smoke tests).
 - **Roles** (`src/lib/roles.ts`, README → Roles): toda página, acción o consulta de administración
-  usa `requireAdmin()` de `src/lib/session.ts` y se clasifica en `src/authorization-matrix.test.ts`
-  (páginas: "requiere sesión de admin…"; acciones: "requireAdmin…"). El rol solo cambia con
-  `pnpm admin:grant` / `admin:revoke`: nunca lo vuelvas editable (`input: false` en Better Auth) ni
-  crees usuarios o contraseñas de admin por defecto. Solo `roles.ts` y `session.ts` comparan roles.
+  usa `requireAdmin()` de `src/lib/session.ts` (rol + verificación en dos pasos) y se clasifica en
+  `src/authorization-matrix.test.ts` (páginas: "requiere sesión de admin…"; acciones:
+  "requireAdmin…"). `requireAdminRole()` (sin la verificación) es solo para `/admin/verificacion`.
+  El rol solo cambia con `pnpm admin:grant` / `admin:revoke`: nunca lo vuelvas editable
+  (`input: false` en Better Auth) ni crees usuarios o contraseñas de admin por defecto. Solo
+  `roles.ts` y `session.ts` comparan roles. No reactives los endpoints de `TWO_FACTOR_DISABLED_PATHS`
+  ni ofrezcas "recordar este dispositivo".
 - Para borrar una cuenta a pedido usa `pnpm account:delete <correo>` (README → Borrar datos a
   pedido), nunca SQL a mano. Si agregas una tabla con datos de la persona sin clave foránea en
   cascada hacia `user`, bórrala también en `deleteAccountData` (`src/modules/account/`).

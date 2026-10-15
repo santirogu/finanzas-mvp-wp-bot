@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getSessionCookie } from "better-auth/cookies";
+import { EXPIRED_SESSION_PARAM, SESSION_COOKIE_NAMES } from "./lib/expired-session";
 
 const PUBLIC_ONLY = ["/", "/login", "/registro"];
 // Páginas visibles con o sin sesión (Meta exige que la política de privacidad sea pública; a
@@ -13,6 +14,21 @@ export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (ALWAYS_PUBLIC.includes(pathname)) return NextResponse.next();
+  // La sesión ya no sirve (la validó requireUser): se borra la cookie y se muestra el login, en vez
+  // de mandarlo al dashboard por la cookie vieja (ver src/lib/expired-session.ts).
+  if (pathname === "/login" && request.nextUrl.searchParams.get(EXPIRED_SESSION_PARAM.name) === EXPIRED_SESSION_PARAM.value) {
+    const response = NextResponse.next();
+    for (const name of SESSION_COOKIE_NAMES) {
+      response.cookies.set(name, "", {
+        path: "/",
+        maxAge: 0,
+        httpOnly: true,
+        sameSite: "lax",
+        secure: name.startsWith("__Secure-"),
+      });
+    }
+    return response;
+  }
   if (hasSession && PUBLIC_ONLY.includes(pathname)) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }

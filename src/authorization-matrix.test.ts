@@ -28,6 +28,8 @@ const PAGES = {
   "/egresos": "requiere sesión",
   "/simulador": "requiere sesión; solo en desarrollo",
   "/movimientos/[id]/editar": "requiere sesión; solo movimientos propios (los demás dan 404)",
+  "/admin": "requiere sesión de admin con la verificación en dos pasos activa (requireAdmin)",
+  "/admin/verificacion": "requiere sesión de admin; es donde se configura la verificación en dos pasos (requireAdminRole)",
 } as const;
 
 const API_ROUTES = {
@@ -47,6 +49,7 @@ const SERVER_ACTIONS = {
   simulateMessageAction: "solo en desarrollo + requireUser",
   signOutAction: "sin sesión no hay nada que cerrar",
   deleteAccountAction: "requireUser + contraseña + palabra de confirmación; solo la cuenta propia",
+  finishTwoFactorSetupAction: "requireAdmin (con la verificación ya activa); cierra las demás sesiones propias",
 } as const;
 
 // Acciones que no necesitan validar la sesión, con el porqué.
@@ -62,6 +65,9 @@ const PAGES_WITHOUT_SESSION_CHECK: Record<string, string> = {
 const ADMIN_RULE = "requiere sesión de admin";
 // Módulos con datos de todas las cuentas: solo los pueden usar archivos que llamen a requireAdmin().
 const ADMIN_DATA_MODULES = /from\s+["']@\/modules\/account\/admin["']/;
+// requireAdminRole no exige la verificación en dos pasos: solo lo puede usar la página donde se
+// configura. Todo lo demás de administración usa requireAdmin.
+const ADMIN_ROLE_ONLY_FILES = ["src/app/(app)/admin/verificacion/page.tsx"];
 // Los únicos archivos que comparan roles; el resto usa requireAdmin() o hasRole().
 const ROLE_CHECK_FILES = ["src/lib/roles.ts", "src/lib/session.ts"];
 
@@ -146,9 +152,8 @@ function reachesCall(file: string, fns: string[], seen = new Set<string>()): boo
   return false;
 }
 
-// requireAdmin también valida la sesión (llama a requireUser).
-const reachesRequireUser = (file: string) => reachesCall(file, ["requireUser", "requireAdmin"]);
-const reachesRequireAdmin = (file: string) => reachesCall(file, ["requireAdmin"]);
+// requireAdmin y requireAdminRole también validan la sesión (llaman a requireUser).
+const reachesRequireUser = (file: string) => reachesCall(file, ["requireUser", "requireAdmin", "requireAdminRole"]);
 
 // ── Pruebas ───────────────────────────────────────────────────────────────────────────────────
 
@@ -211,9 +216,20 @@ describe("administración", () => {
   });
 
   it("las páginas de admin validan el rol en el servidor (requireAdmin)", () => {
-    for (const file of pageFiles.filter((f) => adminPages.includes(routeOf(f)))) {
-      expect(reachesRequireAdmin(file), routeOf(file)).toBe(true);
+    const checked = pageFiles.filter((f) => adminPages.includes(routeOf(f)));
+    expect(checked.length).toBeGreaterThan(0);
+    for (const file of checked) {
+      const allowed = ADMIN_ROLE_ONLY_FILES.includes(relative(ROOT, file)) ? ["requireAdminRole"] : ["requireAdmin"];
+      expect(reachesCall(file, allowed), routeOf(file)).toBe(true);
     }
+  });
+
+  it("requireAdminRole (sin la verificación en dos pasos) solo se usa donde se configura", () => {
+    const users = sourceFiles
+      .filter((f) => relative(ROOT, f) !== "src/lib/session.ts")
+      .filter((f) => callsTo("requireAdminRole").test(read(f)) || /\brequireAdminRole\b/.test(read(f)))
+      .map((f) => relative(ROOT, f));
+    expect(users).toEqual(ADMIN_ROLE_ONLY_FILES);
   });
 
   it("las Server Actions de admin llaman a requireAdmin() antes de hacer cualquier cosa", () => {
@@ -241,19 +257,19 @@ describe("administración", () => {
     expect(offenders).toEqual([]);
   });
 
-  it("requireAdmin solo se define en src/lib/session.ts", () => {
+  it("requireAdmin y requireAdminRole solo se definen en src/lib/session.ts", () => {
     const definitions = sourceFiles
-      .filter((f) => /function\s+requireAdmin\b|requireAdmin\s*=/.test(read(f)))
+      .filter((f) => /function\s+requireAdmin(Role)?\b|requireAdmin(Role)?\s*=/.test(read(f)))
       .map((f) => relative(ROOT, f));
     expect(definitions).toEqual(["src/lib/session.ts"]);
   });
 });
 
 describe("Server Actions", () => {
-  it("validan la sesión con requireUser() antes de hacer cualquier cosa", () => {
+  it("validan la sesión con requireUser() (o requireAdmin()) antes de hacer cualquier cosa", () => {
     for (const action of serverActions().filter((a) => !ACTIONS_WITHOUT_SESSION.includes(a.name))) {
       const body = action.body;
-      const check = body.search(/await\s+requireUser\(\)/);
+      const check = body.search(/await\s+require(User|Admin)\(\)/);
       expect(check, `${action.name} no llama a requireUser()`).toBeGreaterThan(-1);
       // Nada toca la base ni el bot antes de validar la sesión.
       const firstDataAccess = body.search(/\bdb\.|createLinkCode\(|unlinkUser\(|handleIncomingMessage\(|isCategoryAvailable\(|readForm\(|verifyPassword\(|deleteAccountData\(/);

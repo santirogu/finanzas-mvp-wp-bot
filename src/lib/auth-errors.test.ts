@@ -36,6 +36,34 @@ describe("authErrorMessage", () => {
     );
   });
 
+  it("traduce los errores de la verificación en dos pasos", () => {
+    expect(authErrorMessage({ status: 401, code: "INVALID_CODE", message: "Invalid code" })).toBe(
+      "Código incorrecto. Escribe el código que muestra Google Authenticator ahora.",
+    );
+    expect(authErrorMessage({ status: 401, code: "INVALID_BACKUP_CODE" })).toBe(
+      "Ese código de respaldo no es válido o ya se usó.",
+    );
+    expect(authErrorMessage({ status: 401, code: "INVALID_TWO_FACTOR_COOKIE" })).toBe(
+      "Pasaron más de 10 minutos. Vuelve a escribir tu correo y contraseña.",
+    );
+    expect(authErrorMessage({ status: 401, code: "TOO_MANY_ATTEMPTS_REQUEST_NEW_CODE" })).toBe(
+      "Demasiados intentos en este inicio de sesión. Vuelve a escribir tu correo y contraseña.",
+    );
+    expect(authErrorMessage({ status: 400, code: "INVALID_PASSWORD" })).toBe("Contraseña incorrecta.");
+    expect(authErrorMessage({ status: 400, code: "TOTP_ALREADY_ENABLED" })).toBe(
+      "La verificación en dos pasos ya está activa.",
+    );
+    expect(authErrorMessage({ status: 403, code: "ADMIN_ONLY" })).toBe(
+      "La verificación en dos pasos es solo para administradores.",
+    );
+  });
+
+  it("el bloqueo de la verificación en dos pasos (429) tiene su propio mensaje", () => {
+    expect(authErrorMessage({ status: 429, code: "ACCOUNT_TEMPORARILY_LOCKED", message: "Too many failed..." })).toBe(
+      "Demasiados códigos incorrectos. Por seguridad, la verificación quedó bloqueada 15 minutos.",
+    );
+  });
+
   it("sin traducción, muestra el mensaje del servidor o uno genérico", () => {
     expect(authErrorMessage({ code: "OTRO_CODIGO", message: "Mensaje del servidor" })).toBe("Mensaje del servidor");
     expect(authErrorMessage({ status: 500, message: "Error interno" })).toBe("Error interno");

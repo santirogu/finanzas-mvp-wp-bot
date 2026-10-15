@@ -1,7 +1,15 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import { hasRole } from "@/lib/roles";
+import { requireUser } from "@/lib/session";
 import { NavTabs, TabLinks } from "./nav-tabs";
 import { UserMenu } from "./user-menu";
+
+/** Las pestañas, con "Admin" solo para quien tiene el rol (lo decide el servidor). */
+async function UserNavTabs() {
+  const user = await requireUser();
+  return <NavTabs showAdmin={hasRole(user.role, "admin")} />;
+}
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -17,10 +25,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </Suspense>
         </div>
         <div className="mx-auto max-w-5xl px-4">
-          {/* En rutas con un id en la URL, la ruta actual se conoce recién en cada request
-              (Cache Components): mientras tanto, las pestañas sin ninguna marcada. */}
+          {/* La sesión (¿es admin?) y, en rutas con un id en la URL, la ruta actual se conocen
+              recién en cada request (Cache Components): mientras tanto, las pestañas sin marcar. */}
           <Suspense fallback={<TabLinks pathname={null} />}>
-            <NavTabs />
+            <UserNavTabs />
           </Suspense>
         </div>
       </header>
