@@ -255,10 +255,10 @@ function Buttons({ submit, pending, busy, danger = false, disabled = false }: { 
         type="submit"
         disabled={busy || disabled}
         className={
-          // Al pasar el mouse se oscurece: bajar la opacidad lo mezclaría con el fondo y, en modo oscuro,
+          // Al pasar el mouse se oscurece, como btn-primary: bajar la opacidad lo mezclaría con el fondo y
           // su texto dejaría de leerse bien (contraste).
           danger
-            ? "rounded-lg bg-danger px-4 py-2 text-sm font-medium text-danger-foreground transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
+            ? "rounded-lg bg-danger px-4 py-2 text-sm font-medium text-danger-foreground transition hover:brightness-90 disabled:cursor-not-allowed disabled:opacity-60"
             : "btn-primary"
         }
       >

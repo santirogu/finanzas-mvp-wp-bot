@@ -75,7 +75,11 @@ pnpm dev                        # http://localhost:3000
   base (`finanzas_e2e_test`): registro, login, ingresos, egresos, balance, editar, borrar y salir (también
   en tamaño de celular), errores del formulario, el límite de intentos de login y que dos usuarios
   no vean los datos del otro. [axe-core](https://github.com/dequelabs/axe-core) revisa cada página
-  (WCAG 2.1 A y AA) y falla ante problemas graves. **El bot de WhatsApp de punta a punta**
+  (WCAG 2.1 A y AA) en modo claro y oscuro, con datos y con los botones principales activos y con el
+  mouse encima (axe no revisa el contraste de un botón deshabilitado), y falla ante problemas graves.
+  Por eso los botones se oscurecen al pasar el mouse (`hover:brightness-90`) en vez de bajar su
+  opacidad, y el texto sobre un color sólido usa su token (`--brand-foreground`,
+  `--expense-foreground`, `--danger-foreground`), oscuro en modo oscuro. **El bot de WhatsApp de punta a punta**
   (`e2e/bot-whatsapp.spec.ts`): vincular el número desde el dashboard, registrar un gasto escrito
   en lenguaje natural, `balance`, `deshacer`, números sin vincular, firmas falsas, mensajes
   repetidos y audios. Los mensajes llegan al webhook firmados como los manda Meta y la app
