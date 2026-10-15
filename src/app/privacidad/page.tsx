@@ -87,6 +87,12 @@ export default function PrivacyPage() {
               se conservan) o eliminarla con todos sus datos; cada acción queda registrada.
             </li>
             <li>
+              Mantener las categorías de ingresos y egresos: el administrador puede crearlas, cambiarlas,
+              archivarlas o eliminarlas. Para decidirlo ve cuántos movimientos usan cada una, en total y
+              sin saber de quién son ni por cuánto. Si elimina una categoría, tus movimientos que la
+              tenían pasan a &quot;Otros&quot;; si la archiva, la conservan.
+            </li>
+            <li>
               Saber qué partes de la app se usan más y qué tan rápido cargan, con estadísticas
               anónimas, para mejorarla.
             </li>

@@ -142,6 +142,10 @@ de Vercel ni muevas las migraciones fuera del job `deploy`.
      (auditoría: README → Usuarios);
   5. su resumen en la tarjeta de Inicio, si aplica, y pruebas unitarias, de integración, E2E y de
      accesibilidad.
+- **Categorías** (README → Categorías): las globales las administra el admin; no las crees ni
+  renombres en migraciones o en `scripts/seed.ts` (la semilla solo actúa en una base vacía). "Otros"
+  es la de respaldo del bot y de las eliminadas: no la quites. En los formularios y el bot usa
+  `listCategories` (sin archivadas); al validar una categoría, `isCategoryAvailable`.
 - **Cuentas suspendidas** (README → Usuarios): no abren sesiones (hook de Better Auth),
   `getCurrentUser` ignora la que les quede y el bot no registra nada. Si agregas otra forma de
   entrar o de usar la app (otro proveedor de login, una API, un comando del bot), revisa

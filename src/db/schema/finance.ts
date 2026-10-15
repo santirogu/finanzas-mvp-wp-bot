@@ -16,7 +16,8 @@ import { user } from "./auth";
 export const transactionType = pgEnum("transaction_type", ["income", "expense"]);
 export const transactionSource = pgEnum("transaction_source", ["web", "whatsapp"]);
 
-// Categorías globales (user_id NULL) + futuras categorías propias de cada usuario.
+// Categorías globales (user_id NULL), que administra el admin en /admin/categorias, + futuras
+// categorías propias de cada usuario.
 export const category = pgTable(
   "category",
   {
@@ -25,6 +26,9 @@ export const category = pgTable(
     type: transactionType("type").notNull(),
     name: text("name").notNull(),
     emoji: text("emoji").notNull().default("•"),
+    // Archivada por el admin: no aparece en los formularios ni la usa el bot, pero los movimientos
+    // que ya la tienen la conservan.
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [

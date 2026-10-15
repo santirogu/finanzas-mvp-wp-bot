@@ -2,6 +2,7 @@
 import { sql } from "drizzle-orm";
 import { afterAll, beforeEach } from "vitest";
 import { db } from "@/db";
+import { resetGlobalCategories } from "./categories";
 
 beforeEach(async () => {
   // Borrar usuarios elimina en cascada sesiones, movimientos, categorías propias y vínculos.
@@ -13,6 +14,8 @@ beforeEach(async () => {
   await db.execute(sql`delete from verification`);
   await db.execute(sql`delete from rate_limit`);
   await db.execute(sql`delete from login_failure`);
+  await db.execute(sql`delete from category_change`);
+  await resetGlobalCategories();
 });
 
 afterAll(async () => {

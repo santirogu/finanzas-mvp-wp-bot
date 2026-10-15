@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { db } from "@/db";
 import {
@@ -317,6 +317,30 @@ describe("handleIncomingMessage · comandos", () => {
     const { deps: d, sender } = deps();
     await handleIncomingMessage(incoming("ayuda"), d);
     expect(sender.sent[0].body).toBe(replies.helpReply("Ana Pérez"));
+  });
+});
+
+describe("handleIncomingMessage · categorías", () => {
+  it("no le pasa a la IA las categorías archivadas; si propone una, el movimiento queda en Otros", async () => {
+    const ana = await linkedUser();
+    await db.update(category).set({ archivedAt: new Date() }).where(eq(category.name, "Ropa"));
+    let seen: readonly string[] = [];
+    const extractor = fakeExtractor((input: ExtractionInput) => {
+      seen = input.categories.expense;
+      return {
+        ok: true,
+        reply: null,
+        usage: { model: "fake", inputTokens: 0, outputTokens: 0 },
+        transactions: [{ type: "expense", amount: 80000, description: "Camisa", category: "Ropa", date: input.today.iso }],
+      };
+    });
+    await handleIncomingMessage(incoming("camisa 80 mil"), deps(extractor).deps);
+
+    expect(seen).not.toContain("Ropa");
+    expect(seen.at(-1)).toBe("Otros");
+    const [tx] = await activeTransactions(ana.id);
+    const [otros] = await db.select().from(category).where(and(eq(category.name, "Otros"), eq(category.type, "expense")));
+    expect(tx.categoryId).toBe(otros.id);
   });
 });
 

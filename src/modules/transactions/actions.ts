@@ -77,7 +77,8 @@ export async function updateTransactionAction(
 
   const { values, input, fieldErrors } = readForm(formData);
   if (!input) return { ok: false, fieldErrors, values };
-  if (input.categoryId && !(await isCategoryAvailable(user.id, input.categoryId, input.type))) {
+  // Puede conservar la categoría que ya tenía aunque el admin la haya archivado.
+  if (input.categoryId && !(await isCategoryAvailable(user.id, input.categoryId, input.type, { keepFrom: id.data }))) {
     return { ok: false, fieldErrors: { categoryId: "Categoría inválida" }, values };
   }
 

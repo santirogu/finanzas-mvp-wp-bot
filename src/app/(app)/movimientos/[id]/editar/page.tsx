@@ -5,7 +5,7 @@ import { z } from "zod";
 import { TransactionForm } from "@/components/transaction-form";
 import { todayInTimezone } from "@/lib/dates";
 import { requireUser } from "@/lib/session";
-import { getTransaction, listCategories } from "@/modules/transactions/queries";
+import { getCategoryOption, getTransaction, listCategories } from "@/modules/transactions/queries";
 import { PageSkeleton } from "../../../page-skeleton";
 
 export const metadata: Metadata = { title: "Editar movimiento" };
@@ -28,7 +28,12 @@ async function EditTransaction({ id }: { id: string }) {
   const transaction = z.uuid().safeParse(id).success ? await getTransaction(user.id, id) : null;
   if (!transaction) notFound();
 
-  const categories = await listCategories(user.id, transaction.type);
+  const [active, current] = await Promise.all([
+    listCategories(user.id, transaction.type),
+    getCategoryOption(user.id, transaction.categoryId),
+  ]);
+  // Si el admin archivó su categoría, se sigue ofreciendo (marcada) para no perderla al guardar.
+  const categories = current?.archived ? [...active, current] : active;
   const list = transaction.type === "income" ? "/ingresos" : "/egresos";
 
   return (

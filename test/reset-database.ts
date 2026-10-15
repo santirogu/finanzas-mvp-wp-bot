@@ -3,8 +3,7 @@
 import { drizzle } from "drizzle-orm/postgres-js";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 import postgres from "postgres";
-import { category } from "../src/db/schema";
-import { DEFAULT_CATEGORIES } from "../src/modules/transactions/default-categories";
+import { seedDefaultCategories } from "../src/db/seed-categories";
 
 export async function resetTestDatabase(url: string | undefined, variable: string) {
   if (!url) {
@@ -32,13 +31,6 @@ export async function resetTestDatabase(url: string | undefined, variable: strin
   await client.unsafe("create schema public");
   const db = drizzle(client);
   await migrate(db, { migrationsFolder: "drizzle" });
-  await db
-    .insert(category)
-    .values(
-      (["expense", "income"] as const).flatMap((type) =>
-        DEFAULT_CATEGORIES[type].map(({ name, emoji }) => ({ type, name, emoji })),
-      ),
-    )
-    .onConflictDoNothing();
+  await seedDefaultCategories(db);
   await client.end();
 }

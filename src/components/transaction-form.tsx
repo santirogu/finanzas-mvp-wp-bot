@@ -8,7 +8,7 @@ import {
   type FormState,
 } from "@/modules/transactions/actions";
 
-type CategoryOption = { id: string; name: string; emoji: string };
+type CategoryOption = { id: string; name: string; emoji: string; archived?: boolean };
 
 /** Movimiento a editar; sin él, el formulario registra uno nuevo. */
 export type TransactionToEdit = {
@@ -106,6 +106,7 @@ export function TransactionForm({
             {categories.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.emoji} {c.name}
+                {c.archived && " (archivada)"}
               </option>
             ))}
           </select>
