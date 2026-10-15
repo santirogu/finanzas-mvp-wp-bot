@@ -10,6 +10,8 @@
   --brand-foreground: #ffffff;
   --income: #15803d;
   --expense: #c2410c;
+  /* Errores y alertas (p. ej. intentos fallidos en el historial de /admin). */
+  --danger: #b91c1c;
   /* Etiqueta "Admin": violeta, distinto de la marca (verde azulado), ingresos y egresos. */
   --admin: #3c3489;
   --admin-surface: #eeedfe;
@@ -27,6 +29,7 @@
     --brand-foreground: #062925;
     --income: #4ade80;
     --expense: #fb923c;
+    --danger: #f87171;
     --admin: #cecbf6;
     --admin-surface: #3c3489;
     --admin-border: #7f77dd;
@@ -43,6 +46,7 @@
   --color-brand-foreground: var(--brand-foreground);
   --color-income: var(--income);
   --color-expense: var(--expense);
+  --color-danger: var(--danger);
   --color-admin: var(--admin);
   --color-admin-surface: var(--admin-surface);
   --color-admin-border: var(--admin-border);

@@ -1,126 +1,299 @@
 import { describe, expect, it } from "vitest";
 import {
+  ADMIN_LOG_MAX,
   ADMIN_LOG_PAGE_SIZE,
   ADMIN_LOG_TIMEZONE,
-  EVENT_LABELS,
+  DATE_PRESETS,
+  DATE_PRESET_LABELS,
   EVENT_TYPES,
+  EVENT_TYPE_FILTER_LABELS,
+  NO_FILTERS,
+  activeFilterCount,
+  addDays,
+  dateFilterLabel,
+  dateRange,
+  dayInBogota,
+  dayLabel,
   escapeLike,
   eventDetail,
+  formatEventHour,
   formatEventTime,
   formatPhone,
-  hasFilters,
+  groupByDay,
   logHref,
   normalizeSpaces,
   parseLogFilters,
   searchDigits,
+  showMore,
+  withoutFilter,
+  type LogFilters,
 } from "./log-filters";
 
-const NONE = { type: null, search: "", from: null, to: null, page: 1 };
+const f = (overrides: Partial<LogFilters> = {}): LogFilters => ({ ...NO_FILTERS, ...overrides });
+// Espacios duros que usan algunas versiones de ICU (escritos así para que se vean en el código).
+const NARROW_NBSP = String.fromCharCode(0x202f);
+const NBSP = String.fromCharCode(0xa0);
 
 describe("configuración", () => {
-  it("50 eventos por página, en la hora de Colombia", () => {
+  it("de a 50 eventos, hasta 500, en la hora de Colombia", () => {
     expect(ADMIN_LOG_PAGE_SIZE).toBe(50);
+    expect(ADMIN_LOG_MAX).toBe(500);
     expect(ADMIN_LOG_TIMEZONE).toBe("America/Bogota");
+    expect(NO_FILTERS).toEqual({ types: [], date: "todo", from: null, to: null, search: "", limit: 50 });
   });
 
-  it("cada tipo de evento tiene su nombre en español", () => {
-    expect(EVENT_TYPES).toEqual([
-      "registered",
-      "whatsapp_code_created",
-      "whatsapp_linked",
-      "whatsapp_unlinked",
-      "whatsapp_link_failed",
+  it("los filtros tienen sus nombres en español, en el orden de la maqueta", () => {
+    expect(EVENT_TYPES.map((t) => EVENT_TYPE_FILTER_LABELS[t])).toEqual([
+      "Registros",
+      "Códigos",
+      "Vinculaciones",
+      "Desvinculaciones",
+      "Intentos fallidos",
     ]);
-    expect(EVENT_LABELS).toEqual({
-      registered: "Registro",
-      whatsapp_code_created: "Código para vincular",
-      whatsapp_linked: "WhatsApp vinculado",
-      whatsapp_unlinked: "WhatsApp desvinculado",
-      whatsapp_link_failed: "Intento fallido de vinculación",
-    });
+    expect(DATE_PRESETS.map((p) => DATE_PRESET_LABELS[p])).toEqual([
+      "Todo",
+      "Hoy",
+      "Últimos 7 días",
+      "Últimos 30 días",
+      "Personalizado",
+    ]);
   });
 });
 
 describe("parseLogFilters", () => {
-  it("sin parámetros, sin filtros y en la primera página", () => {
-    expect(parseLogFilters({})).toEqual(NONE);
+  it("sin parámetros: todos los tipos, todas las fechas, los primeros 50", () => {
+    expect(parseLogFilters({})).toEqual(NO_FILTERS);
   });
 
-  it("lee todos los filtros", () => {
-    expect(
-      parseLogFilters({ tipo: "whatsapp_linked", q: "  ana@x.co ", desde: "2026-10-01", hasta: "2026-10-14", pagina: "3" }),
-    ).toEqual({ type: "whatsapp_linked", search: "ana@x.co", from: "2026-10-01", to: "2026-10-14", page: 3 });
+  it("acepta varios tipos, sin repetir y en el orden de siempre", () => {
+    expect(parseLogFilters({ tipo: ["whatsapp_link_failed", "registered", "registered"] }).types).toEqual([
+      "registered",
+      "whatsapp_link_failed",
+    ]);
+    expect(parseLogFilters({ tipo: "whatsapp_linked" }).types).toEqual(["whatsapp_linked"]);
   });
 
-  it.each(["", "otra_cosa", "REGISTERED", "registered ", "__proto__", "constructor"])("ignora el tipo %j", (tipo) => {
-    expect(parseLogFilters({ tipo }).type).toBeNull();
+  it.each([["otra_cosa"], ["REGISTERED"], ["__proto__"], ["constructor"], [""]])("ignora el tipo %j", (tipo) => {
+    expect(parseLogFilters({ tipo: [tipo, "whatsapp_linked"] }).types).toEqual(["whatsapp_linked"]);
   });
 
-  it.each(["0", "-1", "1.5", "abc", "", "1e3", " 2"])("con la página %j vuelve a la primera", (pagina) => {
-    expect(parseLogFilters({ pagina }).page).toBe(pagina === "1e3" ? 1000 : pagina === " 2" ? 2 : 1);
+  it.each(DATE_PRESETS.filter((p) => p !== "personalizado"))("lee la fecha %s", (fecha) => {
+    expect(parseLogFilters({ fecha }).date).toBe(fecha);
+  });
+
+  it.each(["ayer", "7D", "", "custom"])("con la fecha %j vuelve a 'todo'", (fecha) => {
+    expect(parseLogFilters({ fecha }).date).toBe("todo");
+  });
+
+  it("el rango personalizado solo cuenta con fecha=personalizado", () => {
+    expect(parseLogFilters({ fecha: "personalizado", desde: "2026-10-01", hasta: "2026-10-14" })).toMatchObject({
+      date: "personalizado",
+      from: "2026-10-01",
+      to: "2026-10-14",
+    });
+    expect(parseLogFilters({ fecha: "7d", desde: "2026-10-01", hasta: "2026-10-14" })).toMatchObject({
+      date: "7d",
+      from: null,
+      to: null,
+    });
+    expect(parseLogFilters({ desde: "2026-10-01" })).toMatchObject({ date: "todo", from: null });
+  });
+
+  it("el rango personalizado se ordena si viene al revés, y puede tener un solo extremo", () => {
+    expect(parseLogFilters({ fecha: "personalizado", desde: "2026-10-14", hasta: "2026-10-01" })).toMatchObject({
+      from: "2026-10-01",
+      to: "2026-10-14",
+    });
+    expect(parseLogFilters({ fecha: "personalizado", desde: "2026-10-14" })).toMatchObject({
+      from: "2026-10-14",
+      to: null,
+    });
+    expect(parseLogFilters({ fecha: "personalizado", hasta: "2026-10-01" })).toMatchObject({
+      from: null,
+      to: "2026-10-01",
+    });
   });
 
   it.each(["2026-02-31", "2026-13-01", "2026-1-5", "2026-10", "2026", "ayer", "2026-10-14T00:00", "'; drop table user; --", ""])(
-    "ignora la fecha inválida %j",
-    (desde) => {
-      expect(parseLogFilters({ desde, hasta: desde })).toMatchObject({ from: null, to: null });
+    "ignora el día inválido %j (sin fechas válidas, el personalizado es 'todo')",
+    (day) => {
+      expect(parseLogFilters({ fecha: "personalizado", desde: day, hasta: day })).toMatchObject({
+        date: "todo",
+        from: null,
+        to: null,
+      });
     },
   );
 
   it("acepta el 29 de febrero solo en años bisiestos", () => {
-    expect(parseLogFilters({ desde: "2028-02-29" }).from).toBe("2028-02-29");
-    expect(parseLogFilters({ desde: "2026-02-29" }).from).toBeNull();
+    expect(parseLogFilters({ fecha: "personalizado", desde: "2028-02-29" }).from).toBe("2028-02-29");
+    expect(parseLogFilters({ fecha: "personalizado", desde: "2026-02-29" }).from).toBeNull();
   });
 
-  it("si las fechas vienen al revés, las ordena", () => {
-    expect(parseLogFilters({ desde: "2026-10-14", hasta: "2026-10-01" })).toMatchObject({
-      from: "2026-10-01",
-      to: "2026-10-14",
-    });
-    expect(parseLogFilters({ desde: "2026-10-14" })).toMatchObject({ from: "2026-10-14", to: null });
-    expect(parseLogFilters({ hasta: "2026-10-01" })).toMatchObject({ from: null, to: "2026-10-01" });
+  it.each([
+    ["100", 100],
+    ["150", 150],
+    ["120", 150],
+    ["1", 50],
+    ["0", 50],
+    ["-50", 50],
+    ["500", 500],
+    ["9999", 500],
+    ["1.5", 50],
+    ["abc", 50],
+    ["", 50],
+  ])("mostrar=%j muestra %i eventos", (mostrar, limit) => {
+    expect(parseLogFilters({ mostrar }).limit).toBe(limit);
   });
 
-  it("recorta la búsqueda a 100 caracteres", () => {
+  it("recorta la búsqueda a 100 caracteres y quita espacios de los extremos", () => {
     expect(parseLogFilters({ q: "a".repeat(500) }).search).toHaveLength(100);
+    expect(parseLogFilters({ q: "  ana  " }).search).toBe("ana");
   });
 
-  it("si un parámetro viene repetido, usa el primero", () => {
-    expect(parseLogFilters({ tipo: ["registered", "whatsapp_linked"], q: ["ana", "beto"], pagina: ["2", "9"] })).toMatchObject({
-      type: "registered",
+  it("si un parámetro de un solo valor viene repetido, usa el primero", () => {
+    expect(parseLogFilters({ q: ["ana", "beto"], fecha: ["hoy", "7d"], mostrar: ["100", "500"] })).toMatchObject({
       search: "ana",
-      page: 2,
+      date: "hoy",
+      limit: 100,
     });
   });
 });
 
 describe("logHref", () => {
   it("sin filtros es /admin", () => {
-    expect(logHref(NONE)).toBe("/admin");
-    expect(logHref(NONE, 1)).toBe("/admin");
+    expect(logHref(NO_FILTERS)).toBe("/admin");
   });
 
-  it("lleva los filtros y la página, con la búsqueda codificada", () => {
-    const filters = { type: "whatsapp_unlinked" as const, search: "ana & beto", from: "2026-10-01", to: "2026-10-14", page: 2 };
-    expect(logHref(filters)).toBe("/admin?tipo=whatsapp_unlinked&q=ana+%26+beto&desde=2026-10-01&hasta=2026-10-14&pagina=2");
-    expect(logHref(filters, 3)).toContain("pagina=3");
-    expect(logHref(filters, 1)).not.toContain("pagina");
+  it("repite tipo por cada tipo y omite lo que está por defecto", () => {
+    expect(logHref(f({ types: ["registered", "whatsapp_linked"], date: "7d", search: "ana & beto", limit: 100 }))).toBe(
+      "/admin?tipo=registered&tipo=whatsapp_linked&fecha=7d&q=ana+%26+beto&mostrar=100",
+    );
+  });
+
+  it("las fechas del rango solo van con 'personalizado'", () => {
+    expect(logHref(f({ date: "personalizado", from: "2026-10-01", to: "2026-10-14" }))).toBe(
+      "/admin?fecha=personalizado&desde=2026-10-01&hasta=2026-10-14",
+    );
+    expect(logHref(f({ date: "personalizado", from: "2026-10-01" }))).toBe("/admin?fecha=personalizado&desde=2026-10-01");
+    expect(logHref(f({ date: "personalizado", to: "2026-10-01" }))).toBe("/admin?fecha=personalizado&hasta=2026-10-01");
+    expect(logHref(f({ date: "hoy", from: "2026-10-01", to: "2026-10-14" }))).toBe("/admin?fecha=hoy");
   });
 
   it("lo que arma, parseLogFilters lo lee igual", () => {
-    const filters = { type: "registered" as const, search: "José %_", from: "2026-01-01", to: "2026-12-31", page: 4 };
-    const params = Object.fromEntries(new URL(logHref(filters), "https://x.test").searchParams);
+    const filters = f({
+      types: ["whatsapp_code_created", "whatsapp_link_failed"],
+      date: "personalizado",
+      from: "2026-01-01",
+      to: "2026-12-31",
+      search: "José %_",
+      limit: 200,
+    });
+    const url = new URL(logHref(filters), "https://x.test");
+    const params: Record<string, string[]> = {};
+    for (const [key, value] of url.searchParams) (params[key] ??= []).push(value);
     expect(parseLogFilters(params)).toEqual(filters);
   });
 });
 
-describe("hasFilters", () => {
-  it("la página sola no cuenta como filtro", () => {
-    expect(hasFilters({ ...NONE, page: 5 })).toBe(false);
-    expect(hasFilters({ ...NONE, type: "registered" })).toBe(true);
-    expect(hasFilters({ ...NONE, search: "a" })).toBe(true);
-    expect(hasFilters({ ...NONE, from: "2026-10-01" })).toBe(true);
-    expect(hasFilters({ ...NONE, to: "2026-10-01" })).toBe(true);
+describe("filtros activos", () => {
+  it("activeFilterCount: cada tipo, la fecha y la búsqueda cuentan uno", () => {
+    expect(activeFilterCount(NO_FILTERS)).toBe(0);
+    expect(activeFilterCount(f({ limit: 300 }))).toBe(0);
+    expect(activeFilterCount(f({ types: ["registered", "whatsapp_linked"] }))).toBe(2);
+    expect(activeFilterCount(f({ date: "hoy" }))).toBe(1);
+    expect(activeFilterCount(f({ search: "ana" }))).toBe(1);
+    expect(activeFilterCount(f({ types: ["registered"], date: "30d", search: "ana" }))).toBe(3);
+  });
+
+  it("withoutFilter quita solo ese filtro y vuelve a los primeros 50", () => {
+    const all = f({
+      types: ["registered", "whatsapp_linked"],
+      date: "personalizado",
+      from: "2026-10-01",
+      to: "2026-10-02",
+      search: "ana",
+      limit: 300,
+    });
+    expect(withoutFilter(all, { type: "registered" })).toEqual({ ...all, types: ["whatsapp_linked"], limit: 50 });
+    expect(withoutFilter(all, "date")).toEqual({ ...all, date: "todo", from: null, to: null, limit: 50 });
+    expect(withoutFilter(all, "search")).toEqual({ ...all, search: "", limit: 50 });
+  });
+
+  it("showMore suma 50 hasta el tope", () => {
+    expect(showMore(f()).limit).toBe(100);
+    expect(showMore(f({ limit: 450 })).limit).toBe(500);
+    expect(showMore(f({ limit: 500 })).limit).toBe(500);
+    expect(showMore(f({ types: ["registered"], search: "x" }))).toMatchObject({ types: ["registered"], search: "x" });
+  });
+});
+
+describe("fechas", () => {
+  it("addDays cruza meses y años", () => {
+    expect(addDays("2026-10-15", -1)).toBe("2026-10-14");
+    expect(addDays("2026-10-01", -1)).toBe("2026-09-30");
+    expect(addDays("2026-01-01", -1)).toBe("2025-12-31");
+    expect(addDays("2028-02-28", 1)).toBe("2028-02-29");
+  });
+
+  it.each([
+    ["todo", { from: null, to: null }],
+    ["hoy", { from: "2026-10-15", to: "2026-10-15" }],
+    ["7d", { from: "2026-10-09", to: "2026-10-15" }],
+    ["30d", { from: "2026-09-16", to: "2026-10-15" }],
+  ] as const)("dateRange(%s) desde el 15 de octubre", (date, expected) => {
+    expect(dateRange(f({ date }), "2026-10-15")).toEqual(expected);
+  });
+
+  it("dateRange personalizado usa el rango tal cual", () => {
+    expect(dateRange(f({ date: "personalizado", from: "2026-01-01", to: null }), "2026-10-15")).toEqual({
+      from: "2026-01-01",
+      to: null,
+    });
+  });
+
+  it.each([
+    [f(), "Todo"],
+    [f({ date: "hoy" }), "Hoy"],
+    [f({ date: "7d" }), "Últimos 7 días"],
+    [f({ date: "30d" }), "Últimos 30 días"],
+    [f({ date: "personalizado", from: "2026-10-01", to: "2026-10-15" }), "1 de oct – 15 de oct"],
+    [f({ date: "personalizado", from: "2026-10-05", to: "2026-10-05" }), "5 de oct"],
+    [f({ date: "personalizado", from: "2026-10-05", to: null }), "Desde el 5 de oct"],
+    [f({ date: "personalizado", from: null, to: "2026-10-05" }), "Hasta el 5 de oct"],
+  ])("dateFilterLabel(%j) = %j", (filters, expected) => {
+    expect(dateFilterLabel(filters)).toBe(expected);
+  });
+
+  it("dayInBogota: el día en Colombia (a las 9 p. m. del 14 ya es 15 en UTC)", () => {
+    expect(dayInBogota(new Date("2026-10-15T02:00:00Z"))).toBe("2026-10-14");
+    expect(dayInBogota(new Date("2026-10-15T05:00:00Z"))).toBe("2026-10-15");
+  });
+
+  it.each([
+    ["2026-10-15", "Hoy"],
+    ["2026-10-14", "Ayer"],
+    ["2026-10-10", "10 de octubre"],
+    ["2026-01-01", "1 de enero"],
+    ["2025-09-25", "25 de septiembre de 2025"],
+  ])("dayLabel(%s) desde el 15 de octubre = %j", (day, expected) => {
+    expect(dayLabel(day, "2026-10-15")).toBe(expected);
+  });
+
+  it("groupByDay agrupa por día en Colombia, en orden, sin mezclar", () => {
+    const at = (iso: string) => ({ createdAt: new Date(iso), id: iso });
+    const entries = [
+      at("2026-10-15T20:00:00Z"),
+      at("2026-10-15T06:00:00Z"),
+      at("2026-10-15T03:00:00Z"), // 14 a las 10 p. m.
+      at("2026-10-10T12:00:00Z"),
+    ];
+    expect(groupByDay(entries, "2026-10-15").map((g) => [g.day, g.label, g.entries.map((e) => e.id)])).toEqual([
+      ["2026-10-15", "Hoy", ["2026-10-15T20:00:00Z", "2026-10-15T06:00:00Z"]],
+      ["2026-10-14", "Ayer", ["2026-10-15T03:00:00Z"]],
+      ["2026-10-10", "10 de octubre", ["2026-10-10T12:00:00Z"]],
+    ]);
+    expect(groupByDay([], "2026-10-15")).toEqual([]);
   });
 });
 
@@ -149,15 +322,15 @@ describe("formatos", () => {
   });
 
   it("normalizeSpaces: cambia los espacios duros por normales", () => {
-    expect(normalizeSpaces("9:41\u202fp.\u00a0m.")).toBe("9:41 p. m.");
+    expect(normalizeSpaces(`9:41${NARROW_NBSP}p.${NBSP}m.`)).toBe("9:41 p. m.");
     expect(normalizeSpaces("sin cambios")).toBe("sin cambios");
   });
 
-  it("formatEventTime: en la hora de Colombia y con espacios normales", () => {
+  it("formatEventTime y formatEventHour: en la hora de Colombia", () => {
     // 02:41 UTC del 15 de octubre = 9:41 p. m. del 14 en Bogotá.
-    const text = formatEventTime(new Date("2026-10-15T02:41:00Z"));
-    expect(text).toBe("14 de oct de 2026, 9:41 p. m.");
-    expect(text).not.toMatch(/[  ]/);
+    expect(formatEventTime(new Date("2026-10-15T02:41:00Z"))).toBe("14 de oct de 2026, 9:41 p. m.");
+    expect(formatEventHour(new Date("2026-10-15T02:41:00Z"))).toBe("9:41 p. m.");
+    expect(formatEventHour(new Date("2026-10-15T14:05:00Z"))).toBe("9:05 a. m.");
   });
 
   it.each([

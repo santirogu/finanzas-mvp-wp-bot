@@ -4,12 +4,15 @@ import { db } from "@/db";
 import { accountEvent, user } from "@/db/schema";
 import { createUser } from "../../../test/integration/factories";
 import { listAccountEvents } from "./events-log";
-import { ADMIN_LOG_PAGE_SIZE, parseLogFilters } from "./log-filters";
+import { ADMIN_LOG_MAX, ADMIN_LOG_PAGE_SIZE, parseLogFilters } from "./log-filters";
 
-// La lista de /admin con la base de verdad: todas las cuentas, filtros, paginación y búsquedas
-// raras (que nunca deben romper la consulta ni saltarse los filtros).
+// El historial de /admin con la base de verdad: todas las cuentas, filtros, "ver más" y búsquedas
+// raras (que nunca deben romper la consulta ni saltarse los filtros). "Hoy" es el 12 de octubre de
+// 2026 en Colombia, salvo que la prueba diga otra cosa.
 
-const list = (params: Record<string, string> = {}) => listAccountEvents(parseLogFilters(params));
+const TODAY = "2026-10-12";
+const list = (params: Record<string, string | string[]> = {}, today = TODAY) =>
+  listAccountEvents(parseLogFilters(params), today);
 
 type NewEvent = typeof accountEvent.$inferInsert;
 const at = (iso: string) => new Date(iso);
@@ -36,7 +39,7 @@ describe("listAccountEvents", () => {
     const { ana } = await seed();
     const page = await list();
 
-    expect(page).toMatchObject({ total: 6, page: 1, pageCount: 1 });
+    expect(page).toMatchObject({ total: 6, hasMore: false });
     expect(types(page)).toEqual([
       "whatsapp_unlinked",
       "whatsapp_link_failed",
@@ -58,10 +61,14 @@ describe("listAccountEvents", () => {
     expect(page.entries.filter((e) => e.account?.email === ana.email)).toHaveLength(4);
   });
 
-  it("filtra por tipo de evento", async () => {
+  it("filtra por uno o varios tipos de evento", async () => {
     await seed();
     expect(types(await list({ tipo: "registered" }))).toEqual(["registered", "registered"]);
     expect((await list({ tipo: "whatsapp_link_failed" })).entries.map((e) => e.phone)).toEqual(["573009998877"]);
+    expect(types(await list({ tipo: ["whatsapp_linked", "whatsapp_unlinked"] }))).toEqual([
+      "whatsapp_unlinked",
+      "whatsapp_linked",
+    ]);
     // Un tipo desconocido se ignora (no filtra nada).
     expect((await list({ tipo: "otra_cosa" })).total).toBe(6);
   });
@@ -99,24 +106,42 @@ describe("listAccountEvents", () => {
     },
   );
 
-  it("filtra por fechas en la hora de Colombia, con los dos días incluidos", async () => {
+  it("el rango personalizado va en la hora de Colombia, con los dos días incluidos", async () => {
     await seed();
+    const range = (desde?: string, hasta?: string) =>
+      list({ fecha: "personalizado", ...(desde ? { desde } : {}), ...(hasta ? { hasta } : {}) });
     // El registro de Beto fue el 9 de octubre a las 11:30 p. m. en Bogotá (10 en UTC).
-    expect(types(await list({ desde: "2026-10-10", hasta: "2026-10-10" }))).toEqual(["whatsapp_link_failed"]);
-    expect(types(await list({ desde: "2026-10-09", hasta: "2026-10-09" }))).toEqual(["registered"]);
-    expect((await list({ desde: "2026-10-02" })).total).toBe(5);
-    expect((await list({ hasta: "2026-10-02" })).total).toBe(3);
-    expect((await list({ desde: "2026-10-02", hasta: "2026-10-01" })).total).toBe(3);
-    expect((await list({ desde: "2026-11-01" })).total).toBe(0);
+    expect(types(await range("2026-10-10", "2026-10-10"))).toEqual(["whatsapp_link_failed"]);
+    expect(types(await range("2026-10-09", "2026-10-09"))).toEqual(["registered"]);
+    expect((await range("2026-10-02")).total).toBe(5);
+    expect((await range(undefined, "2026-10-02")).total).toBe(3);
+    expect((await range("2026-10-02", "2026-10-01")).total).toBe(3);
+    expect((await range("2026-11-01")).total).toBe(0);
+    // Sin fecha=personalizado, desde y hasta no cuentan.
+    expect((await list({ desde: "2026-11-01" })).total).toBe(6);
+  });
+
+  it("los atajos de fecha cuentan desde hoy en Colombia", async () => {
+    await seed();
+    // Hoy = 12 de octubre.
+    expect(types(await list({ fecha: "hoy" }))).toEqual(["whatsapp_unlinked"]);
+    // 7 días: del 6 al 12.
+    expect(types(await list({ fecha: "7d" }))).toEqual(["whatsapp_unlinked", "whatsapp_link_failed", "registered"]);
+    // 30 días: del 13 de septiembre al 12 de octubre.
+    expect((await list({ fecha: "30d" })).total).toBe(6);
+    // Visto desde el 10 de octubre, "hoy" es solo el intento de las 0:30 a. m.
+    expect(types(await list({ fecha: "hoy" }, "2026-10-10"))).toEqual(["whatsapp_link_failed"]);
+    expect((await list({ fecha: "hoy" }, "2026-11-01")).total).toBe(0);
   });
 
   it("combina los filtros", async () => {
     await seed();
-    expect(types(await list({ tipo: "registered", q: "beto", desde: "2026-10-09" }))).toEqual(["registered"]);
-    expect((await list({ tipo: "registered", q: "ana", desde: "2026-10-09" })).total).toBe(0);
+    expect(types(await list({ tipo: "registered", q: "beto", fecha: "7d" }))).toEqual(["registered"]);
+    expect((await list({ tipo: "registered", q: "ana", fecha: "7d" })).total).toBe(0);
+    expect((await list({ tipo: ["registered", "whatsapp_link_failed"], fecha: "personalizado", desde: "2026-10-09" })).total).toBe(2);
   });
 
-  it(`pagina de a ${ADMIN_LOG_PAGE_SIZE}, sin repetir ni saltarse eventos`, async () => {
+  it(`muestra de a ${ADMIN_LOG_PAGE_SIZE} y "ver más" suma los siguientes, sin repetir ni saltarse eventos`, async () => {
     const ana = await createUser();
     const start = Date.parse("2026-10-01T00:00:00Z");
     await db.insert(accountEvent).values(
@@ -128,26 +153,35 @@ describe("listAccountEvents", () => {
       })),
     );
 
-    const pages = [await list(), await list({ pagina: "2" }), await list({ pagina: "3" })];
+    const first = await list();
+    const more = await list({ mostrar: "100" });
+    const all = await list({ mostrar: "150" });
 
-    expect(pages.map((p) => [p.page, p.pageCount, p.entries.length])).toEqual([
-      [1, 3, 50],
-      [2, 3, 50],
-      [3, 3, 3],
+    expect([first, more, all].map((p) => [p.entries.length, p.total, p.hasMore])).toEqual([
+      [50, 103, true],
+      [100, 103, true],
+      [103, 103, false],
     ]);
-    const ids = pages.flatMap((p) => p.entries.map((e) => e.id));
-    expect(new Set(ids).size).toBe(103);
-    const times = pages.flatMap((p) => p.entries.map((e) => e.createdAt.getTime()));
+    // "Ver más" conserva los de antes, en el mismo orden.
+    expect(more.entries.slice(0, 50).map((e) => e.id)).toEqual(first.entries.map((e) => e.id));
+    expect(all.entries.slice(0, 100).map((e) => e.id)).toEqual(more.entries.map((e) => e.id));
+    expect(new Set(all.entries.map((e) => e.id)).size).toBe(103);
+    const times = all.entries.map((e) => e.createdAt.getTime());
     expect(times).toEqual([...times].sort((a, b) => b - a));
   });
 
-  it("una página que no existe muestra la última", async () => {
-    await seed();
-    expect(await list({ pagina: "99" })).toMatchObject({ page: 1, pageCount: 1, total: 6 });
+  it(`nunca muestra más de ${ADMIN_LOG_MAX}`, async () => {
+    const ana = await createUser();
+    await db.insert(accountEvent).values(
+      Array.from({ length: ADMIN_LOG_MAX + 5 }, () => ({ type: "whatsapp_code_created" as const, userId: ana.id })),
+    );
+    const page = await list({ mostrar: "99999" });
+    expect(page.entries).toHaveLength(ADMIN_LOG_MAX);
+    expect(page).toMatchObject({ total: ADMIN_LOG_MAX + 5, hasMore: true });
   });
 
-  it("sin eventos, una sola página vacía", async () => {
-    expect(await list()).toEqual({ entries: [], total: 0, page: 1, pageCount: 1 });
+  it("sin eventos, una lista vacía", async () => {
+    expect(await list()).toEqual({ entries: [], total: 0, hasMore: false });
   });
 
   it("los eventos de una cuenta borrada ya no aparecen", async () => {

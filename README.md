@@ -254,11 +254,15 @@ Después de hacerte admin, la pestaña **Admin** te lleva a configurar la verifi
 ### Historial de las cuentas
 
 La tabla `account_event` (`src/modules/account/events.ts`) guarda el historial de registro y
-vinculación de WhatsApp de cada cuenta. El admin lo ve en **`/admin`** (pestaña Admin): todas las
-cuentas, de lo más reciente a lo más antiguo, en hora de Colombia, con filtros por tipo de evento,
-búsqueda por nombre, correo o número (escrito como sea) y rango de fechas, 50 por página
-(`src/modules/admin/`). Los filtros van en la URL (formulario GET, sirve sin JavaScript) y se
-validan antes de consultar. `/privacidad` explica qué ve el administrador.
+vinculación de WhatsApp de cada cuenta. El admin lo ve en **`/admin`** (pestaña Admin) como línea de
+tiempo de todas las cuentas, agrupada por día ("Hoy", "Ayer", "10 de octubre"…) y en hora de
+Colombia: cada evento es una frase con su ícono ("Beto vinculó su WhatsApp +57 300…"). Arriba, la
+búsqueda (nombre, correo o número, escrito como sea) y el botón **Filtros**, con chips de tipo de
+evento (varios a la vez) y de fecha (Hoy, Últimos 7 días, Últimos 30 días, Todo o un rango
+personalizado); los filtros activos se quitan con su ✕ y tocar un nombre muestra solo esa cuenta.
+Se ven 50 eventos y "Ver más antiguos" suma de a 50, hasta 500 (`src/modules/admin/`). Los filtros
+van en la URL (`next/form`) y se validan antes de consultar. `/privacidad` explica qué ve el
+administrador.
 
 | Evento | Cuándo | Detalle |
 |---|---|---|
