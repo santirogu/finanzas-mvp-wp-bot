@@ -261,7 +261,7 @@ vienen aparecen como "Pronto".
 | Módulo | Ruta | Estado |
 |---|---|---|
 | Historial | `/admin/historial` | Activo: registro y vinculación de WhatsApp |
-| Usuarios | `/admin/usuarios` | Pronto |
+| Usuarios | `/admin/usuarios` | Activo: cuentas, sesiones y estado (solo consulta) |
 | Bot de WhatsApp | `/admin/bot` | Pronto |
 | Categorías | `/admin/categorias` | Pronto (de ingresos y egresos, editables solo por el admin) |
 | Salud del sistema | `/admin/salud` | Pronto |
@@ -280,6 +280,31 @@ vienen aparecen como "Pronto".
   (`next.config.ts`).
 - Las consultas de los comandos de terminal están en `src/modules/account/terminal.ts`: no validan
   sesión y la app no las puede importar.
+- **Listados** (Historial, Usuarios y los que vengan) comparten la lectura de filtros de la URL, las
+  fechas en hora de Colombia y los formatos (`src/modules/admin/shared/`), y la barra de búsqueda con
+  chips y las etiquetas de filtros activos (`src/app/(app)/admin/chip-filter-bar.tsx` y
+  `active-filters.tsx`).
+
+### Usuarios
+
+En **`/admin/usuarios`** el admin ve todas las cuentas, de la más nueva a la más vieja: nombre,
+correo, etiqueta de Admin, número de WhatsApp y fecha de registro, y una etiqueta roja si el inicio de
+sesión está bloqueado por intentos fallidos. Se busca por nombre, correo o número, y el botón
+**Filtros** tiene chips de rol, WhatsApp (vinculado o no), bloqueo y fecha de registro. Se ven 50
+cuentas y "Ver más cuentas" suma de a 50, hasta 500 (`src/modules/admin/users/`).
+
+Cada cuenta abre su detalle (`/admin/usuarios/<id>`): rol, registro, último inicio de sesión, WhatsApp
+(desde cuándo), bloqueo, la verificación en dos pasos si es admin, sus **sesiones abiertas**
+(navegador y sistema, como "Safari · iOS", dirección IP y fechas) y sus últimos 10 eventos, con un
+enlace a su historial completo. Better Auth guarda las IPv6 recortadas a la red (/64), así que se
+muestran así: `2800:e2:4a:1234::/64`. Por ahora solo se consulta: las acciones (desbloquear, cerrar
+sesiones, desvincular WhatsApp, eliminar y suspender) vienen después, cada una confirmada con el
+código de Google Authenticator.
+
+Lo que **no** se muestra, a propósito: montos, movimientos, mensajes del bot y el token de las
+sesiones (la consulta ni siquiera lo lee). El último inicio de sesión sale de las sesiones guardadas:
+al cerrar sesión se borra, y entonces dice "Sin sesiones guardadas". `/privacidad` explica qué ve el
+administrador.
 
 ### Historial de las cuentas
 

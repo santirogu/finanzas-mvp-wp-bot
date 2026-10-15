@@ -102,6 +102,8 @@ describe("listAccountEvents", () => {
     expect((await list({ q: "%" })).total).toBe(1);
     expect((await list({ q: "_" })).total).toBe(1);
     expect((await list({ q: "a%a" })).total).toBe(0);
+    // Un carácter nulo en la URL (?q=%00) no rompe la consulta: se quita.
+    expect((await list({ q: `ana${String.fromCharCode(0)}` })).total).toBe(4);
   });
 
   it.each([`' or '1'='1`, `"; drop table account_event; --`, "\\", "'", "ñandú 🙂"])(

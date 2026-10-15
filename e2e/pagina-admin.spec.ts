@@ -177,6 +177,8 @@ test("filtros raros en la URL no rompen la página ni muestran datos de más", a
     "?tipo=otra_cosa&tipo=__proto__&mostrar=-5",
     "?fecha=personalizado&desde=2026-02-31&hasta=ayer",
     `?q=${encodeURIComponent("' or '1'='1")}`,
+    // Un carácter nulo: Postgres no lo acepta en un texto (se quita antes de buscar).
+    "?q=%00",
     `?q=${"a".repeat(500)}&mostrar=999999&fecha=7D`,
   ]) {
     const response = await page.goto(`/admin${query}`);
@@ -198,7 +200,8 @@ test("un usuario normal no ve la página, ni con filtros en la URL", async ({ pa
 
 test("la política de privacidad explica qué ve el administrador", async ({ page }) => {
   await page.goto("/privacidad");
-  await expect(page.getByText(/el administrador de la app puede ver el historial/)).toBeVisible();
-  await expect(page.getByText(/No ve tus ingresos, egresos ni\s+mensajes/)).toBeVisible();
+  await expect(page.getByText(/el administrador de la app puede ver los datos de\s+cada cuenta/)).toBeVisible();
+  await expect(page.getByText(/sus sesiones abiertas \(navegador,\s+sistema operativo, dirección IP y fechas\)/)).toBeVisible();
+  await expect(page.getByText(/No ve tus ingresos,\s+egresos ni mensajes/)).toBeVisible();
   await expect(page.getByText(/Los intentos de vinculación desde números que no tienen\s+cuenta se borran a los 30 días/)).toBeVisible();
 });

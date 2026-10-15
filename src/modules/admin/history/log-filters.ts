@@ -1,19 +1,48 @@
 // El historial de /admin/historial: filtros que vienen en la URL, días, textos y formatos. Sin base
-// de datos (la consulta está en src/modules/admin/history/events-log.ts).
+// de datos (la consulta está en src/modules/admin/history/events-log.ts). Lo común con otros
+// listados de admin (fechas, búsqueda, formatos) está en src/modules/admin/shared/filters.ts.
 
 import type { AccountEventDetails } from "@/db/schema";
-import { todayInTimezone } from "@/lib/dates";
+import {
+  ADMIN_MAX_ROWS,
+  ADMIN_PAGE_SIZE,
+  ADMIN_TIMEZONE,
+  addDays,
+  appendDateFilter,
+  dayInBogota,
+  formatDateTime,
+  formatHour,
+  parseDateFilter,
+  parseLimit,
+  parseSearch,
+  all,
+  type DatePreset,
+  type Params,
+} from "../shared/filters";
+
+export {
+  DATE_PRESETS,
+  DATE_PRESET_LABELS,
+  addDays,
+  dateFilterLabel,
+  dateRange,
+  dayInBogota,
+  escapeLike,
+  formatPhone,
+  normalizeSpaces,
+  searchDigits,
+  type DatePreset,
+} from "../shared/filters";
 
 /** La página del historial (src/app/(app)/admin/historial). */
 export const HISTORY_PATH = "/admin/historial";
 
 /** Cuántos eventos se muestran al principio y cuántos suma "Ver más antiguos". */
-export const ADMIN_LOG_PAGE_SIZE = 50;
+export const ADMIN_LOG_PAGE_SIZE = ADMIN_PAGE_SIZE;
 /** Tope de eventos en pantalla: más allá, mejor filtrar. */
-export const ADMIN_LOG_MAX = 500;
+export const ADMIN_LOG_MAX = ADMIN_MAX_ROWS;
 /** Las fechas se muestran y filtran en la hora de Colombia. */
-export const ADMIN_LOG_TIMEZONE = "America/Bogota";
-const MAX_SEARCH_LENGTH = 100;
+export const ADMIN_LOG_TIMEZONE = ADMIN_TIMEZONE;
 
 export const EVENT_TYPES = [
   "registered",
@@ -31,17 +60,6 @@ export const EVENT_TYPE_FILTER_LABELS: Record<EventType, string> = {
   whatsapp_linked: "Vinculaciones",
   whatsapp_unlinked: "Desvinculaciones",
   whatsapp_link_failed: "Intentos fallidos",
-};
-
-export const DATE_PRESETS = ["todo", "hoy", "7d", "30d", "personalizado"] as const;
-export type DatePreset = (typeof DATE_PRESETS)[number];
-
-export const DATE_PRESET_LABELS: Record<DatePreset, string> = {
-  todo: "Todo",
-  hoy: "Hoy",
-  "7d": "Últimos 7 días",
-  "30d": "Últimos 30 días",
-  personalizado: "Personalizado",
 };
 
 const REASON_LABELS: Record<NonNullable<AccountEventDetails["reason"]>, string> = {
@@ -74,20 +92,6 @@ export const NO_FILTERS: LogFilters = {
   limit: ADMIN_LOG_PAGE_SIZE,
 };
 
-type Params = Record<string, string | string[] | undefined>;
-
-// Stryker disable next-line ConditionalExpression: [undefined] daría lo mismo (no es ningún tipo y se lee como "")
-const all = (value: string | string[] | undefined) => (Array.isArray(value) ? value : value === undefined ? [] : [value]);
-const first = (value: string | string[] | undefined) => all(value)[0] ?? "";
-
-/** Un día real con forma YYYY-MM-DD (no "2026-02-31", ni "2026-10", que Date también acepta). */
-function validDay(value: string): string | null {
-  // Stryker disable next-line Regex: los anclajes son redundantes con la comparación de abajo
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
-  const date = new Date(`${value}T00:00:00Z`);
-  return !Number.isNaN(date.getTime()) && date.toISOString().startsWith(value) ? value : null;
-}
-
 /**
  * Los filtros de la URL, validados: lo que no se entiende se ignora (nunca se pasa crudo a la
  * consulta). El rango personalizado se ordena si viene al revés; sin ninguna fecha válida, es "todo".
@@ -95,34 +99,14 @@ function validDay(value: string): string | null {
 export function parseLogFilters(params: Params): LogFilters {
   const requested = new Set(all(params.tipo));
   const types = EVENT_TYPES.filter((type) => requested.has(type));
-  const search = first(params.q).trim().slice(0, MAX_SEARCH_LENGTH);
-
-  const preset = first(params.fecha);
-  let date: DatePreset = (DATE_PRESETS as readonly string[]).includes(preset) ? (preset as DatePreset) : "todo";
-  let from = date === "personalizado" ? validDay(first(params.desde)) : null;
-  let to = date === "personalizado" ? validDay(first(params.hasta)) : null;
-  // Stryker disable next-line ConditionalExpression,LogicalOperator,EqualityOperator: comparar con null siempre da false (las guardas son para los tipos) e intercambiar dos fechas iguales no cambia nada
-  if (from && to && from > to) [from, to] = [to, from];
-  if (date === "personalizado" && !from && !to) date = "todo";
-
-  // "Ver más antiguos" suma de a 50: 50, 100, 150… hasta el tope.
-  const shown = Number(first(params.mostrar));
-  const limit = Number.isInteger(shown)
-    ? Math.min(ADMIN_LOG_MAX, Math.max(ADMIN_LOG_PAGE_SIZE, Math.ceil(shown / ADMIN_LOG_PAGE_SIZE) * ADMIN_LOG_PAGE_SIZE))
-    : ADMIN_LOG_PAGE_SIZE;
-
-  return { types, date, from, to, search, limit };
+  return { types, ...parseDateFilter(params), search: parseSearch(params), limit: parseLimit(params) };
 }
 
 /** La URL del historial con esos filtros (se omite lo que está en su valor por defecto). */
 export function logHref(filters: LogFilters): string {
   const params = new URLSearchParams();
   for (const type of filters.types) params.append("tipo", type);
-  if (filters.date !== "todo") params.set("fecha", filters.date);
-  if (filters.date === "personalizado") {
-    if (filters.from) params.set("desde", filters.from);
-    if (filters.to) params.set("hasta", filters.to);
-  }
+  appendDateFilter(params, filters);
   if (filters.search) params.set("q", filters.search);
   if (filters.limit > ADMIN_LOG_PAGE_SIZE) params.set("mostrar", String(filters.limit));
   const query = params.toString();
@@ -147,76 +131,11 @@ export const showMore = (f: LogFilters): LogFilters => ({
   limit: Math.min(ADMIN_LOG_MAX, f.limit + ADMIN_LOG_PAGE_SIZE),
 });
 
-/** Un día (YYYY-MM-DD) más `days` días. */
-export function addDays(day: string, days: number): string {
-  const date = new Date(`${day}T00:00:00Z`);
-  date.setUTCDate(date.getUTCDate() + days);
-  return date.toISOString().slice(0, 10);
-}
-
-/** El rango de días que cubre el filtro de fecha, contando desde `today` (en Colombia). */
-export function dateRange(f: LogFilters, today: string): { from: string | null; to: string | null } {
-  switch (f.date) {
-    case "hoy":
-      return { from: today, to: today };
-    case "7d":
-      return { from: addDays(today, -6), to: today };
-    case "30d":
-      return { from: addDays(today, -29), to: today };
-    case "personalizado":
-      return { from: f.from, to: f.to };
-    default:
-      return { from: null, to: null };
-  }
-}
-
-const shortDay = (day: string) =>
-  new Intl.DateTimeFormat("es-CO", { day: "numeric", month: "short", timeZone: "UTC" }).format(
-    new Date(`${day}T00:00:00Z`),
-  );
-
-/** El texto de la etiqueta del filtro de fecha: "Hoy", "Últimos 7 días", "1 de oct – 15 de oct"… */
-export function dateFilterLabel(f: LogFilters): string {
-  if (f.date !== "personalizado") return DATE_PRESET_LABELS[f.date];
-  if (f.from && f.to) return f.from === f.to ? shortDay(f.from) : `${shortDay(f.from)} – ${shortDay(f.to)}`;
-  return f.from ? `Desde el ${shortDay(f.from)}` : `Hasta el ${shortDay(f.to!)}`;
-}
-
-/** Para buscar con ILIKE sin que % o _ del texto funcionen como comodines. */
-export function escapeLike(text: string): string {
-  return text.replace(/[\\%_]/g, (char) => `\\${char}`);
-}
-
-/** Los dígitos de lo que se busca, para encontrar números escritos con espacios o "+". */
-export const searchDigits = (search: string) => search.replace(/\D/g, "");
-
-/** "573001112233" → "+57 300 111 2233" (completo: solo lo ve el admin). */
-export function formatPhone(phone: string): string {
-  const digits = phone.replace(/\D/g, "");
-  if (digits.startsWith("57") && digits.length === 12) {
-    return `+57 ${digits.slice(2, 5)} ${digits.slice(5, 8)} ${digits.slice(8)}`;
-  }
-  return `+${digits}`;
-}
-
-/**
- * Espacios duros (algunas versiones de ICU los usan, p. ej. antes de "p. m.") → espacios normales,
- * para que el texto sea igual en todos los entornos.
- */
-export const normalizeSpaces = (text: string) => text.replace(/[\u00a0\u202f]/g, " ");
-
-const format = (date: Date, options: Intl.DateTimeFormatOptions) =>
-  normalizeSpaces(new Intl.DateTimeFormat("es-CO", { timeZone: ADMIN_LOG_TIMEZONE, ...options }).format(date));
-
 /** Fecha y hora completas en Colombia: "14 de oct de 2026, 9:41 p. m.". */
-export const formatEventTime = (date: Date) =>
-  format(date, { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" });
+export const formatEventTime = formatDateTime;
 
 /** Solo la hora en Colombia: "9:41 p. m." (el día va en el título del grupo). */
-export const formatEventHour = (date: Date) => format(date, { hour: "numeric", minute: "2-digit" });
-
-/** El día (YYYY-MM-DD) de un instante, en Colombia. */
-export const dayInBogota = (date: Date) => todayInTimezone(ADMIN_LOG_TIMEZONE, date);
+export const formatEventHour = formatHour;
 
 /** "Hoy", "Ayer", "10 de octubre" o, de otro año, "25 de septiembre de 2025". */
 export function dayLabel(day: string, today: string): string {

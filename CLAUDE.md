@@ -132,7 +132,9 @@ de Vercel ni muevas las migraciones fuera del job `deploy`.
   2. su página en `src/app/(app)/admin/<id>/page.tsx`, que llama a `requireAdmin()` y se clasifica
      en la matriz de autorización como "requiere sesión de admin…";
   3. sus consultas en `src/modules/admin/<id>/`: cada función exportada es `async` y llama a
-     `requireAdmin()` antes de tocar la base (la matriz lo verifica);
+     `requireAdmin()` antes de tocar la base (la matriz lo verifica). Si es un listado, reutiliza
+     `src/modules/admin/shared/` (filtros de la URL, fechas, formatos) y `ChipFilterBar` y
+     `ActiveFilters` (`src/app/(app)/admin/`);
   4. si el módulo cambia datos (usuarios, categorías, configuración…), sus Server Actions con
      `requireAdmin()` y un registro de qué admin hizo qué (auditoría): se construye con el primero de
      estos módulos;

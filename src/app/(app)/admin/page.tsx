@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { requireAdmin } from "@/lib/session";
 import { historySummary } from "@/modules/admin/history/events-log";
 import { ADMIN_MODULES, type AdminModuleId } from "@/modules/admin/modules";
+import { usersSummary } from "@/modules/admin/users/users";
 import { PageSkeleton } from "../page-skeleton";
 import { ModuleIcon } from "./module-icon";
 
@@ -22,11 +23,12 @@ export default function AdminHomePage() {
 async function AdminHome() {
   // Rol de admin y verificación en dos pasos activa (sin ella, lleva a configurarla).
   await requireAdmin();
-  const history = await historySummary();
+  const [history, users] = await Promise.all([historySummary(), usersSummary()]);
   const summaries: Partial<Record<AdminModuleId, string>> = {
     historial: `${history.today} ${history.today === 1 ? "evento" : "eventos"} hoy · ${history.failedToday} ${
       history.failedToday === 1 ? "intento fallido" : "intentos fallidos"
     }`,
+    usuarios: `${users.total} ${users.total === 1 ? "cuenta" : "cuentas"} · ${users.withWhatsApp} con WhatsApp`,
     seguridad: "Verificación en dos pasos activa",
   };
 

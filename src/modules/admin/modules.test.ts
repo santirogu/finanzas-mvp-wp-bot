@@ -51,11 +51,11 @@ describe("registro de módulos de administración", () => {
     expect(folders).toEqual(activeAdminModules().map((m) => m.id).sort());
   });
 
-  it("hoy están activos Historial y Seguridad; los demás vienen pronto", () => {
-    expect(activeAdminModules().map((m) => m.id)).toEqual(["historial", "seguridad"]);
+  it("hoy están activos Historial, Usuarios y Seguridad; los demás vienen pronto", () => {
+    expect(activeAdminModules().map((m) => m.id)).toEqual(["historial", "usuarios", "seguridad"]);
     expect(Object.fromEntries(ADMIN_MODULES.map((m) => [m.id, m.status]))).toEqual({
       historial: "activo",
-      usuarios: "pronto",
+      usuarios: "activo",
       bot: "pronto",
       categorias: "pronto",
       salud: "pronto",
@@ -68,7 +68,7 @@ describe("registro de módulos de administración", () => {
 describe("subnavegación", () => {
   it("Inicio primero y luego los módulos activos, en orden", () => {
     expect(ADMIN_HOME).toEqual({ label: "Inicio", href: "/admin" });
-    expect(adminNavItems().map((i) => i.label)).toEqual(["Inicio", "Historial", "Seguridad"]);
+    expect(adminNavItems().map((i) => i.label)).toEqual(["Inicio", "Historial", "Usuarios", "Seguridad"]);
   });
 
   it.each([
@@ -80,6 +80,8 @@ describe("subnavegación", () => {
     ["/admin/seguridad", "/admin/historial", false],
     ["/admin", null, false],
     ["/admin/historial", null, false],
+    ["/admin/usuarios", "/admin/usuarios/abc123", true],
+    ["/admin/usuarios", "/admin/usuariosx", false],
   ])("isCurrentAdminItem(%s, %s) = %s", (href, pathname, expected) => {
     expect(isCurrentAdminItem(href, pathname)).toBe(expected);
   });
