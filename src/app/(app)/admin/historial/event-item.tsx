@@ -35,6 +35,8 @@ const ICON_PATHS: Record<LogEntry["type"], ReactNode> = {
   login_unlocked: <path d="M5.5 9.5h9v7h-9zM7.5 9.5V7a2.5 2.5 0 0 1 4.9-.7M10 12.5v1.5" />,
   sessions_revoked: <path d="M8 4H5v12h3M12.5 13.5 16 10l-3.5-3.5M16 10H8.5" />,
   account_deleted: <path d="M4.5 6h11M8 6V4.5h4V6M6 6l.7 10h6.6L14 6M8.5 9v4.5M11.5 9v4.5" />,
+  account_suspended: <path d="M10 3a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM8.25 7.5v5M11.75 7.5v5" />,
+  account_reactivated: <path d="M10 3a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM8.5 7.25v5.5L13 10z" />,
 };
 
 const ADMIN_COLOR = "bg-admin-surface text-admin";
@@ -49,6 +51,8 @@ const ICON_COLORS: Record<LogEntry["type"], string> = {
   login_unlocked: ADMIN_COLOR,
   sessions_revoked: ADMIN_COLOR,
   account_deleted: ADMIN_COLOR,
+  account_suspended: ADMIN_COLOR,
+  account_reactivated: ADMIN_COLOR,
 };
 
 /**
@@ -116,6 +120,10 @@ function sentence(entry: LogEntry, who: ReactNode, phone: ReactNode): ReactNode 
       return <>{admin} desbloqueó el inicio de sesión de {who}</>;
     case "sessions_revoked":
       return <>{admin} cerró las sesiones de {who}</>;
+    case "account_suspended":
+      return <>{admin} suspendió la cuenta de {who}</>;
+    case "account_reactivated":
+      return <>{admin} reactivó la cuenta de {who}</>;
     case "account_deleted":
       return <>{admin} eliminó una cuenta</>;
   }

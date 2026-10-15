@@ -27,6 +27,8 @@ export type UserRow = {
   lockedUntil: Date | null;
   /** El inicio de sesión más reciente que sigue guardado (al cerrar sesión, se borra). */
   lastSignInAt: Date | null;
+  /** Desde cuándo está suspendida por el admin; null si no lo está. */
+  suspendedAt: Date | null;
 };
 
 export type UserPage = { users: UserRow[]; total: number; hasMore: boolean };
@@ -41,6 +43,8 @@ export type UserSession = {
 
 export type UserDetail = UserRow & {
   twoFactorEnabled: boolean;
+  /** El motivo que escribió el admin al suspenderla (interno). */
+  suspensionReason: string | null;
   linkedAt: Date | null;
   /** Las sesiones abiertas (sin vencer), de la usada más recientemente (Better Auth la renueva cada 24 h de uso) a la menos. */
   sessions: UserSession[];
@@ -72,6 +76,7 @@ const columns = {
   phone: whatsappLink.phone,
   lockedUntil: loginFailure.lockedUntil,
   lastSignInAt: lastSignIn,
+  suspendedAt: user.suspendedAt,
 };
 
 /** Un bloqueo que ya pasó no cuenta (la fila se borra en el siguiente intento o login). */
@@ -82,6 +87,7 @@ function where(filters: UserFilters, today: string, now: Date): SQL | undefined 
   if (filters.role) conditions.push(eq(user.role, filters.role));
   if (filters.whatsapp !== null) conditions.push(filters.whatsapp ? isNotNull(whatsappLink.id) : isNull(whatsappLink.id));
   if (filters.locked) conditions.push(gt(loginFailure.lockedUntil, now));
+  if (filters.suspended) conditions.push(isNotNull(user.suspendedAt));
   if (filters.search) {
     const text = `%${escapeLike(filters.search)}%`;
     const digits = searchDigits(filters.search);
@@ -137,7 +143,12 @@ export async function getUserDetail(id: string, now = new Date()): Promise<UserD
   await requireAdmin();
   if (!isValidUserId(id)) return null;
   const [row] = await db
-    .select({ ...columns, twoFactorEnabled: user.twoFactorEnabled, linkedAt: whatsappLink.linkedAt })
+    .select({
+      ...columns,
+      twoFactorEnabled: user.twoFactorEnabled,
+      suspensionReason: user.suspensionReason,
+      linkedAt: whatsappLink.linkedAt,
+    })
     .from(user)
     .leftJoin(whatsappLink, eq(whatsappLink.userId, user.id))
     .leftJoin(loginFailure, lockOf)
@@ -193,11 +204,11 @@ export async function getUserDetail(id: string, now = new Date()): Promise<UserD
   };
 }
 
-/** El resumen de la tarjeta de Inicio: cuántas cuentas hay y cuántas tienen WhatsApp vinculado. */
-export async function usersSummary(): Promise<{ total: number; withWhatsApp: number }> {
+/** El resumen de la tarjeta de Inicio: cuántas cuentas hay, cuántas con WhatsApp y cuántas suspendidas. */
+export async function usersSummary(): Promise<{ total: number; withWhatsApp: number; suspended: number }> {
   await requireAdmin();
   const [row] = await db
-    .select({ total: count(), withWhatsApp: count(whatsappLink.id) })
+    .select({ total: count(), withWhatsApp: count(whatsappLink.id), suspended: count(user.suspendedAt) })
     .from(user)
     .leftJoin(whatsappLink, eq(whatsappLink.userId, user.id));
   return row;

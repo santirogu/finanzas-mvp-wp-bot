@@ -56,6 +56,8 @@ const SERVER_ACTIONS = {
   unlockLoginAction: "requireAdmin + código de Google Authenticator; nunca la cuenta propia ni la de otro admin",
   revokeSessionsAction: "requireAdmin + código de Google Authenticator; nunca la cuenta propia ni la de otro admin",
   unlinkWhatsAppByAdminAction: "requireAdmin + código de Google Authenticator; nunca la cuenta propia ni la de otro admin",
+  suspendAccountAction: "requireAdmin + código de Google Authenticator; nunca la cuenta propia ni la de otro admin",
+  reactivateAccountAction: "requireAdmin + código de Google Authenticator; nunca la cuenta propia ni la de otro admin",
   deleteAccountByAdminAction:
     "requireAdmin + código de Google Authenticator + escribir el correo; nunca la cuenta propia ni la de otro admin",
 } as const;

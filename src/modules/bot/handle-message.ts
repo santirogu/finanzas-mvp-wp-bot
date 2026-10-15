@@ -117,6 +117,10 @@ async function respond(
       status: "processed",
     };
   }
+  // Suspendida por el admin: no se interpreta (ni se gasta Claude) ni se registra nada.
+  if (user.suspendedAt) {
+    return { reply: replies.suspendedReply, intent: null, userId: user.id, status: "processed" };
+  }
 
   const today = todayInTimezone(user.timezone);
   const range = currentMonthRange(user.timezone);

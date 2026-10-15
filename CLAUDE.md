@@ -142,6 +142,10 @@ de Vercel ni muevas las migraciones fuera del job `deploy`.
      (auditoría: README → Usuarios);
   5. su resumen en la tarjeta de Inicio, si aplica, y pruebas unitarias, de integración, E2E y de
      accesibilidad.
+- **Cuentas suspendidas** (README → Usuarios): no abren sesiones (hook de Better Auth),
+  `getCurrentUser` ignora la que les quede y el bot no registra nada. Si agregas otra forma de
+  entrar o de usar la app (otro proveedor de login, una API, un comando del bot), revisa
+  `isSuspended` (`src/modules/account/suspension.ts`) también ahí, con su prueba.
 - **Historial de la cuenta** (`account_event`, README → Historial de las cuentas): si agregas o cambias
   algo del registro o la vinculación de WhatsApp, registra su evento con `recordEvent` en la misma
   transacción, con su prueba.

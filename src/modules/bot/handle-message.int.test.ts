@@ -4,6 +4,7 @@ import { db } from "@/db";
 import {
   category,
   transaction,
+  user as userTable,
   whatsappLink,
   whatsappLinkCode,
   whatsappMessage,
@@ -316,6 +317,46 @@ describe("handleIncomingMessage · comandos", () => {
     const { deps: d, sender } = deps();
     await handleIncomingMessage(incoming("ayuda"), d);
     expect(sender.sent[0].body).toBe(replies.helpReply("Ana Pérez"));
+  });
+});
+
+describe("handleIncomingMessage · cuenta suspendida", () => {
+  it("no registra nada, no llama a la IA ni deja ver el balance o deshacer: responde que está suspendida", async () => {
+    const ana = await linkedUser();
+    const add = fakeExtractor([{ type: "expense", amount: 30000, description: "Almuerzo", category: "Comida" }]);
+    await handleIncomingMessage(incoming("almuerzo 30 mil"), deps(add).deps);
+    await db.update(userTable).set({ suspendedAt: new Date() }).where(eq(userTable.id, ana.id));
+
+    const extractor = fakeExtractor([{ type: "expense", amount: 1, description: "Otro", category: "Comida" }]);
+    const { deps: d, sender } = deps(extractor);
+    const messages = [incoming("gasté 20 mil"), incoming("balance"), incoming("deshacer"), incoming("ayuda")];
+    for (const msg of messages) await handleIncomingMessage(msg, d);
+
+    expect(extractor.calls).toBe(0);
+    expect(sender.sent).toEqual(messages.map(() => ({ to: PHONE, body: replies.suspendedReply })));
+    // Lo que había registrado sigue ahí (deshacer no lo borró).
+    expect(await activeTransactions(ana.id)).toHaveLength(1);
+    // El mensaje queda a nombre de la cuenta, sin intención.
+    expect(await loggedMessage(messages[0].id)).toMatchObject({ status: "processed", userId: ana.id, intent: null, reply: replies.suspendedReply });
+  });
+
+  it("solo esa cuenta: otro número vinculado sigue funcionando", async () => {
+    const ana = await linkedUser();
+    const beto = await linkedUser("573004445566", "Beto");
+    await db.update(userTable).set({ suspendedAt: new Date() }).where(eq(userTable.id, ana.id));
+    const add = fakeExtractor([{ type: "expense", amount: 30000, description: "Almuerzo", category: "Comida" }]);
+    await handleIncomingMessage(incoming("almuerzo 30 mil", "573004445566"), deps(add).deps);
+    expect(add.calls).toBe(1);
+    expect(await activeTransactions(beto.id)).toHaveLength(1);
+  });
+
+  it("reactivada, el bot vuelve a registrar", async () => {
+    const ana = await linkedUser();
+    await db.update(userTable).set({ suspendedAt: new Date() }).where(eq(userTable.id, ana.id));
+    await db.update(userTable).set({ suspendedAt: null }).where(eq(userTable.id, ana.id));
+    const add = fakeExtractor([{ type: "expense", amount: 30000, description: "Almuerzo", category: "Comida" }]);
+    await handleIncomingMessage(incoming("almuerzo 30 mil"), deps(add).deps);
+    expect(await activeTransactions(ana.id)).toHaveLength(1);
   });
 });
 

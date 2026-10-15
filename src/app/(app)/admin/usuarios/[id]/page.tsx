@@ -55,6 +55,8 @@ async function Account({ id }: { id: string }) {
               lockedUntil: account.lockedUntil && formatHour(account.lockedUntil),
               openSessions: account.sessionCount,
               phone: account.phone && formatPhone(account.phone),
+              suspendedSince: account.suspendedAt && formatDateTime(account.suspendedAt),
+              suspensionReason: account.suspensionReason,
             }}
           />
           <AdminActions account={account} />
@@ -101,13 +103,23 @@ function Summary({ account }: { account: UserDetail }) {
         <div className="min-w-0 space-y-0.5">
           <h2 id="cuenta" className="flex flex-wrap items-center gap-x-2 gap-y-1 font-semibold">
             <span className="min-w-0 break-words">{account.name}</span>
-            <AccountBadges role={account.role} lockedUntil={account.lockedUntil} />
+            <AccountBadges role={account.role} lockedUntil={account.lockedUntil} suspended={account.suspendedAt !== null} />
           </h2>
           <p className="break-all text-sm text-muted">{account.email}</p>
         </div>
       </div>
       <dl className="grid gap-3 text-sm sm:grid-cols-2">
         <Field label="Rol">{ROLE_LABELS[account.role]}</Field>
+        <Field label="Estado">
+          {account.suspendedAt ? (
+            <>
+              Suspendida desde el {formatDateTime(account.suspendedAt)}
+              {account.suspensionReason && <span className="block text-muted">Motivo: {account.suspensionReason}</span>}
+            </>
+          ) : (
+            "Activa"
+          )}
+        </Field>
         <Field label="Registro">{formatDateTime(account.createdAt)}</Field>
         <Field label="Último inicio de sesión">
           {account.lastSignInAt ? formatDateTime(account.lastSignInAt) : "Sin sesiones guardadas"}

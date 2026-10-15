@@ -5,7 +5,9 @@ import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/session";
 import {
   deleteAccount,
+  reactivateAccount,
   revokeSessions,
+  suspendAccount,
   unlinkWhatsApp,
   unlockLogin,
   type AdminActionInput,
@@ -47,6 +49,16 @@ export async function unlinkWhatsAppByAdminAction(
 ): Promise<AccountActionState> {
   await requireAdmin();
   return settle(await unlinkWhatsApp(readInput(formData)));
+}
+
+export async function suspendAccountAction(_prev: AccountActionState, formData: FormData): Promise<AccountActionState> {
+  await requireAdmin();
+  return settle(await suspendAccount({ ...readInput(formData), reason: String(formData.get("reason") ?? "") }));
+}
+
+export async function reactivateAccountAction(_prev: AccountActionState, formData: FormData): Promise<AccountActionState> {
+  await requireAdmin();
+  return settle(await reactivateAccount(readInput(formData)));
 }
 
 export async function deleteAccountByAdminAction(

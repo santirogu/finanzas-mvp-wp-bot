@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ADMIN_MAX_ROWS, ADMIN_PAGE_SIZE, ADMIN_TIMEZONE, formatDate, parseSearch } from "./filters";
+import { ADMIN_MAX_ROWS, ADMIN_PAGE_SIZE, ADMIN_TIMEZONE, NOTE_MAX_LENGTH, cleanNote, formatDate, parseSearch } from "./filters";
 
 // Lo común de los listados de administración. El resto (fechas, búsqueda, formatos) se prueba con
 // el Historial (src/modules/admin/history/log-filters.test.ts), que lo usa tal cual.
@@ -40,5 +40,19 @@ describe("formatDate", () => {
     expect(formatDate(new Date("2026-10-14T21:41:00Z"))).toBe("14 de oct de 2026");
     // 11:30 p. m. del 9 en Colombia, aunque en UTC ya es el 10.
     expect(formatDate(new Date("2026-10-10T04:30:00Z"))).toBe("9 de oct de 2026");
+  });
+});
+
+describe("cleanNote", () => {
+  it("deja la nota en una línea, sin espacios de más ni caracteres de control", () => {
+    expect(NOTE_MAX_LENGTH).toBe(300);
+    expect(cleanNote("  Usa la cuenta\n\nde otra   persona ")).toBe("Usa la cuenta de otra persona");
+    expect(cleanNote(`a${TAB}b${NULL}c${DELETE}d`)).toBe("a bcd");
+    expect(cleanNote("Ñandú 😀 100%")).toBe("Ñandú 😀 100%");
+    expect(cleanNote("   ")).toBe("");
+  });
+
+  it("de máximo 300 caracteres", () => {
+    expect(cleanNote("a".repeat(400))).toHaveLength(300);
   });
 });

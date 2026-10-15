@@ -41,6 +41,7 @@ describe("vinculación de WhatsApp", () => {
       name: "Ana",
       timezone: "America/Bogota",
       currency: "COP",
+      suspendedAt: null,
     });
     expect(await getUserByPhone("573000000000")).toBeNull();
   });

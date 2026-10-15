@@ -75,6 +75,7 @@ describe("UsersFilterBar", () => {
     ]);
     expect(group("WhatsApp").getByRole("radio", { name: "Todos" })).toBeChecked();
     expect(group("Estado").getByRole("checkbox", { name: "Inicio de sesión bloqueado" })).not.toBeChecked();
+    expect(group("Estado").getByRole("checkbox", { name: "Suspendidas" })).not.toBeChecked();
     expect(group("Fecha de registro").getByRole("radio", { name: "Todo" })).toBeChecked();
   });
 
@@ -84,6 +85,13 @@ describe("UsersFilterBar", () => {
     expect(group("WhatsApp").getByRole("radio", { name: "Vinculado" })).toBeChecked();
     expect(group("Estado").getByRole("checkbox", { name: "Inicio de sesión bloqueado" })).toBeChecked();
     expect(group("Fecha de registro").getByRole("radio", { name: "Últimos 30 días" })).toBeChecked();
+  });
+
+  it("el chip de suspendidas se refleja y se combina con el de bloqueo", async () => {
+    render(<UsersFilterBar filters={f({ suspended: true })} panelOpen />);
+    expect(group("Estado").getByRole("checkbox", { name: "Suspendidas" })).toBeChecked();
+    await userEvent.click(group("Estado").getByRole("checkbox", { name: "Inicio de sesión bloqueado" }));
+    expect(submitted[0].getAll("estado")).toEqual(["bloqueadas", "suspendidas"]);
   });
 
   it("sin vincular también se refleja", () => {

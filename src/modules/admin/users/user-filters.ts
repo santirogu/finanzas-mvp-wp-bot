@@ -27,8 +27,9 @@ export const ROLE_FILTER_LABELS: Record<Role, string> = { admin: "Admin", user: 
 /** El filtro de WhatsApp: whatsapp=si / whatsapp=no. */
 export const WHATSAPP_FILTER_LABELS = { si: "Vinculado", no: "Sin vincular" } as const;
 
-/** El chip de estado: cuentas con el inicio de sesión bloqueado por intentos fallidos. */
+/** Los chips de estado: cuentas con el inicio de sesión bloqueado por intentos fallidos y suspendidas. */
 export const LOCKED_FILTER = { value: "bloqueadas", label: "Inicio de sesión bloqueado" } as const;
+export const SUSPENDED_FILTER = { value: "suspendidas", label: "Suspendidas" } as const;
 
 export type UserFilters = {
   /** Nombre, correo o número de WhatsApp. */
@@ -38,6 +39,7 @@ export type UserFilters = {
   /** true: con WhatsApp vinculado; false: sin vincular; null: todas. */
   whatsapp: boolean | null;
   locked: boolean;
+  suspended: boolean;
   /** Fecha de registro. */
   date: DatePreset;
   from: string | null;
@@ -50,6 +52,7 @@ export const NO_USER_FILTERS: UserFilters = {
   role: null,
   whatsapp: null,
   locked: false,
+  suspended: false,
   date: "todo",
   from: null,
   to: null,
@@ -66,6 +69,7 @@ export function parseUserFilters(params: Params): UserFilters {
     role: (ROLES as readonly string[]).includes(role) ? (role as Role) : null,
     whatsapp: parseWhatsApp(first(params.whatsapp)),
     locked: all(params.estado).includes(LOCKED_FILTER.value),
+    suspended: all(params.estado).includes(SUSPENDED_FILTER.value),
     ...parseDateFilter(params),
     limit: parseLimit(params),
   };
@@ -79,7 +83,8 @@ export function usersHref(f: UserFilters): string {
   const params = new URLSearchParams();
   if (f.role) params.set("rol", f.role);
   if (f.whatsapp !== null) params.set("whatsapp", whatsappParam(f.whatsapp));
-  if (f.locked) params.set("estado", LOCKED_FILTER.value);
+  if (f.locked) params.append("estado", LOCKED_FILTER.value);
+  if (f.suspended) params.append("estado", SUSPENDED_FILTER.value);
   appendDateFilter(params, f);
   if (f.search) params.set("q", f.search);
   if (f.limit > ADMIN_PAGE_SIZE) params.set("mostrar", String(f.limit));
@@ -87,7 +92,7 @@ export function usersHref(f: UserFilters): string {
   return query ? `${USERS_PATH}?${query}` : USERS_PATH;
 }
 
-export type UserFilterKey = "role" | "whatsapp" | "locked" | "date" | "search";
+export type UserFilterKey = "role" | "whatsapp" | "locked" | "suspended" | "date" | "search";
 
 /** Los filtros sin uno de ellos, para la ✕ de su etiqueta (vuelve a las primeras 50 cuentas). */
 export function withoutUserFilter(f: UserFilters, key: UserFilterKey): UserFilters {
@@ -99,6 +104,8 @@ export function withoutUserFilter(f: UserFilters, key: UserFilterKey): UserFilte
       return { ...base, whatsapp: null };
     case "locked":
       return { ...base, locked: false };
+    case "suspended":
+      return { ...base, suspended: false };
     case "date":
       return { ...base, date: "todo", from: null, to: null };
     default:
@@ -114,6 +121,7 @@ export function activeUserFilters(f: UserFilters): { key: UserFilterKey; label: 
     items.push({ key: "whatsapp", label: `WhatsApp: ${WHATSAPP_FILTER_LABELS[f.whatsapp ? "si" : "no"].toLowerCase()}` });
   }
   if (f.locked) items.push({ key: "locked", label: LOCKED_FILTER.label });
+  if (f.suspended) items.push({ key: "suspended", label: SUSPENDED_FILTER.label });
   if (f.date !== "todo") items.push({ key: "date", label: `Registro: ${dateFilterLabel(f)}` });
   if (f.search) items.push({ key: "search", label: `“${f.search}”` });
   return items;

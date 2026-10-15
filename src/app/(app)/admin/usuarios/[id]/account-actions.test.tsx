@@ -9,6 +9,8 @@ const actions = vi.hoisted(() => ({
   unlockLoginAction: vi.fn(),
   revokeSessionsAction: vi.fn(),
   unlinkWhatsAppByAdminAction: vi.fn(),
+  suspendAccountAction: vi.fn(),
+  reactivateAccountAction: vi.fn(),
   deleteAccountByAdminAction: vi.fn(),
 }));
 vi.mock("./actions", () => actions);
@@ -37,6 +39,8 @@ const target = (overrides: Partial<ActionTarget> = {}): ActionTarget => ({
   lockedUntil: "3:15 p. m.",
   openSessions: 2,
   phone: "+57 300 111 2233",
+  suspendedSince: null,
+  suspensionReason: null,
   ...overrides,
 });
 
@@ -162,6 +166,88 @@ describe("AccountActions", () => {
     expect(await screen.findByRole("region", { name: "Acciones" })).toBeInTheDocument();
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(actions.unlinkWhatsAppByAdminAction).not.toHaveBeenCalled();
+  });
+
+  describe("suspender y reactivar", () => {
+    const danger = () => within(screen.getByRole("region", { name: "Zona de peligro" }));
+
+    it("una cuenta activa se suspende desde la zona de peligro, antes de eliminar", () => {
+      render(<AccountActions target={target()} />);
+      expect(danger().getAllByRole("listitem").map((row) => row.querySelector("p")?.textContent)).toEqual([
+        "Suspender la cuenta",
+        "Eliminar la cuenta",
+      ]);
+      expect(danger().getAllByRole("listitem")[0]).toHaveTextContent(
+        "No podrá entrar ni usar el bot hasta que la reactives. Sus datos se conservan.",
+      );
+      expect(actionsSection().queryByRole("button", { name: "Reactivar" })).toBeNull();
+    });
+
+    it("la ventana de suspender explica qué pasa y pide un motivo opcional, que solo ve el admin", async () => {
+      actions.suspendAccountAction.mockResolvedValue({ message: "Se suspendió la cuenta de Beto Ruiz." });
+      render(<AccountActions target={target()} />);
+      await userEvent.click(danger().getByRole("button", { name: "Suspender" }));
+      expect(dialog()).toHaveAccessibleName("¿Suspender la cuenta de Beto Ruiz?");
+      expect(dialog()).toHaveAccessibleDescription(
+        "No podrá entrar a la web ni registrar movimientos por WhatsApp hasta que la reactives. Se cierran sus sesiones y sus datos se conservan. Al intentar entrar verá que su cuenta está suspendida, sin el motivo.",
+      );
+      const reason = within(dialog()).getByLabelText(/Motivo/);
+      expect(reason).toHaveAccessibleName("Motivo (opcional, solo lo ves tú)");
+      expect(reason).not.toBeRequired();
+      expect(reason).toHaveAttribute("maxlength", "300");
+
+      await userEvent.type(reason, "Usa la cuenta de otra persona");
+      await userEvent.type(codeField(), "123456");
+      await userEvent.click(within(dialog()).getByRole("button", { name: "Suspender" }));
+      const sent = actions.suspendAccountAction.mock.calls[0][1] as FormData;
+      expect(Object.fromEntries(sent)).toEqual({ userId: "cuenta-1", reason: "Usa la cuenta de otra persona", code: "123456" });
+      expect(await actionsSection().findByRole("status")).toHaveTextContent("Se suspendió la cuenta de Beto Ruiz.");
+    });
+
+    it("una cuenta suspendida se reactiva desde Acciones (con desde cuándo y el motivo) y ya no se puede suspender", async () => {
+      actions.reactivateAccountAction.mockResolvedValue({ message: "Se reactivó la cuenta de Beto Ruiz." });
+      render(
+        <AccountActions
+          target={target({ suspendedSince: "15 de oct de 2026, 3:00 p. m.", suspensionReason: "Spam", openSessions: 0, lockedUntil: null })}
+        />,
+      );
+      const row = actionsSection().getAllByRole("listitem")[0];
+      const [title, description] = row.querySelectorAll("p");
+      expect(title).toHaveTextContent("Reactivar la cuenta");
+      expect(description.textContent).toBe("Suspendida desde el 15 de oct de 2026, 3:00 p. m. Motivo: Spam");
+      expect(danger().queryByRole("button", { name: "Suspender" })).toBeNull();
+      expect(danger().getByRole("button", { name: "Eliminar cuenta" })).toBeInTheDocument();
+
+      await userEvent.click(within(row).getByRole("button", { name: "Reactivar" }));
+      expect(dialog()).toHaveAccessibleName("¿Reactivar la cuenta de Beto Ruiz?");
+      expect(dialog()).toHaveAccessibleDescription("Podrá volver a entrar y a usar el bot de WhatsApp.");
+      expect(within(dialog()).queryByLabelText(/Motivo/)).toBeNull();
+      await userEvent.type(codeField(), "123456");
+      await userEvent.click(within(dialog()).getByRole("button", { name: "Reactivar" }));
+      expect(Object.fromEntries(actions.reactivateAccountAction.mock.calls[0][1] as FormData)).toEqual({ userId: "cuenta-1", code: "123456" });
+      expect(await actionsSection().findByRole("status")).toHaveTextContent("Se reactivó la cuenta de Beto Ruiz.");
+    });
+
+    it("suspendida sin motivo, no lo menciona", () => {
+      render(<AccountActions target={target({ suspendedSince: "15 de oct de 2026, 3:00 p. m." })} />);
+      const description = actionsSection().getAllByRole("listitem")[0].querySelectorAll("p")[1];
+      expect(description.textContent).toBe("Suspendida desde el 15 de oct de 2026, 3:00 p. m.");
+    });
+
+    it.each([
+      ["Suspender", "suspendAccountAction", "Suspendiendo…", {}],
+      ["Reactivar", "reactivateAccountAction", "Reactivando…", { suspendedSince: "hoy" }],
+    ] as const)("mientras '%s' se envía, lo dice", async (button, action, pending, overrides) => {
+      let finish: (state: object) => void = () => {};
+      actions[action].mockReturnValue(new Promise((resolve) => (finish = resolve)));
+      render(<AccountActions target={target(overrides)} />);
+      await userEvent.click(screen.getAllByRole("button", { name: button })[0]);
+      await userEvent.type(codeField(), "123456");
+      await userEvent.click(within(dialog()).getByRole("button", { name: button }));
+      expect(await within(dialog()).findByRole("button", { name: pending })).toBeDisabled();
+      finish({ error: "Esta cuenta ya no existe." });
+      expect(await within(dialog()).findByRole("alert")).toHaveTextContent("Esta cuenta ya no existe.");
+    });
   });
 
   describe("eliminar", () => {

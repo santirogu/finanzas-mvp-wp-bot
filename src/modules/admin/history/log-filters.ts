@@ -57,7 +57,13 @@ export const EVENT_TYPES = [
 export type EventType = (typeof EVENT_TYPES)[number];
 
 /** Los tipos que solo registra una acción del admin (/admin/usuarios). */
-export const ADMIN_EVENT_TYPES = ["login_unlocked", "sessions_revoked", "account_deleted"] as const;
+export const ADMIN_EVENT_TYPES = [
+  "login_unlocked",
+  "sessions_revoked",
+  "account_suspended",
+  "account_reactivated",
+  "account_deleted",
+] as const;
 
 /** El chip "Acciones del admin": todo lo que hizo un admin, sea del tipo que sea. */
 export const ADMIN_ACTIONS_FILTER = "admin";
@@ -181,11 +187,12 @@ export function groupByDay<T extends { createdAt: Date }>(entries: T[], today: s
   return groups;
 }
 
-/** El detalle de un evento: el motivo, cuántas sesiones cerró el admin y si se reconstruyó. */
+/** El detalle de un evento: el motivo, el del admin al suspender, cuántas sesiones cerró y si se reconstruyó. */
 export function eventDetail(details: AccountEventDetails): string {
   const parts = [];
   const reason = REASON_LABELS.get(details.reason);
   if (reason) parts.push(reason);
+  if (details.note) parts.push(`motivo: ${details.note}`);
   if (details.sessions) parts.push(`${details.sessions} ${details.sessions === 1 ? "sesión" : "sesiones"}`);
   if (details.reconstructed) parts.push("reconstruido de datos anteriores");
   return parts.join(" · ");

@@ -4,6 +4,7 @@ import {
   ANY,
   LOCKED_FILTER,
   ROLE_FILTER_LABELS,
+  SUSPENDED_FILTER,
   USERS_PATH,
   WHATSAPP_FILTER_LABELS,
   activeUserFilters,
@@ -14,7 +15,7 @@ import { ChipFilterBar, dateChipGroup } from "../chip-filter-bar";
 
 const ALL = { value: ANY, label: "Todos" };
 
-/** Los filtros de Usuarios: rol, WhatsApp, bloqueo y fecha de registro. */
+/** Los filtros de Usuarios: rol, WhatsApp, estado (bloqueo, suspendida) y fecha de registro. */
 export function UsersFilterBar({ filters, panelOpen }: { filters: UserFilters; panelOpen: boolean }) {
   return (
     <ChipFilterBar
@@ -42,8 +43,8 @@ export function UsersFilterBar({ filters, panelOpen }: { filters: UserFilters; p
           name: "estado",
           legend: "Estado",
           type: "checkbox",
-          options: [LOCKED_FILTER],
-          selected: filters.locked ? [LOCKED_FILTER.value] : [],
+          options: [LOCKED_FILTER, SUSPENDED_FILTER],
+          selected: [...(filters.locked ? [LOCKED_FILTER.value] : []), ...(filters.suspended ? [SUSPENDED_FILTER.value] : [])],
         },
         dateChipGroup("Fecha de registro", filters),
       ]}

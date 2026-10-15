@@ -2,11 +2,24 @@ import { AdminBadge } from "@/components/admin-badge";
 import { hasRole, type Role } from "@/lib/roles";
 import { formatHour } from "@/modules/admin/shared/filters";
 
-/** Junto al nombre de una cuenta en Usuarios: si es admin y si tiene el inicio de sesión bloqueado. */
-export function AccountBadges({ role, lockedUntil }: { role: Role; lockedUntil: Date | null }) {
+/** Junto al nombre de una cuenta en Usuarios: si es admin, si está suspendida y si tiene el inicio de sesión bloqueado. */
+export function AccountBadges({
+  role,
+  lockedUntil,
+  suspended,
+}: {
+  role: Role;
+  lockedUntil: Date | null;
+  suspended: boolean;
+}) {
   return (
     <>
       {hasRole(role, "admin") && <AdminBadge />}
+      {suspended && (
+        <span className="rounded-full border border-foreground/30 bg-foreground/10 px-2 py-0.5 text-xs font-medium text-foreground">
+          Suspendida
+        </span>
+      )}
       {lockedUntil && (
         <span className="rounded-full border border-danger/40 bg-danger/10 px-2 py-0.5 text-xs font-medium text-danger">
           Bloqueada hasta las {formatHour(lockedUntil)}

@@ -265,7 +265,7 @@ vienen aparecen como "Pronto".
 | Módulo | Ruta | Estado |
 |---|---|---|
 | Historial | `/admin/historial` | Activo: registro y vinculación de WhatsApp |
-| Usuarios | `/admin/usuarios` | Activo: cuentas, sesiones y estado; desbloquear, cerrar sesiones, desvincular WhatsApp y eliminar |
+| Usuarios | `/admin/usuarios` | Activo: cuentas, sesiones y estado; desbloquear, cerrar sesiones, desvincular WhatsApp, suspender, reactivar y eliminar |
 | Bot de WhatsApp | `/admin/bot` | Pronto |
 | Categorías | `/admin/categorias` | Pronto (de ingresos y egresos, editables solo por el admin) |
 | Salud del sistema | `/admin/salud` | Pronto |
@@ -311,7 +311,17 @@ los roles siguen solo en la terminal):
 | Desbloquear el inicio de sesión | Borra el bloqueo por contraseñas equivocadas (`login_failure`) | `login_unlocked` |
 | Cerrar todas sus sesiones | Borra sus sesiones: tiene que volver a entrar. Su WhatsApp sigue | `sessions_revoked` (cuántas) |
 | Desvincular su WhatsApp | Lo mismo que hace la persona desde su Resumen | `whatsapp_unlinked` con `by_admin` |
+| Suspender la cuenta | Hasta que la reactive un admin: cierra sus sesiones, no puede entrar ni usar el bot. Sus datos se conservan. Motivo opcional e interno | `account_suspended` (con el motivo) |
+| Reactivar la cuenta | Puede volver a entrar y a usar el bot | `account_reactivated` |
 | Eliminar la cuenta | Lo mismo que `pnpm account:delete`; además pide escribir su correo | Solo `account_deleted`, sin datos de la cuenta |
+
+**Suspensión** (`user.suspended_at`, `src/modules/account/suspension.ts`): Better Auth no le abre
+sesiones a una cuenta suspendida (`databaseHooks.session.create.before`, después de la contraseña
+correcta: a quien no la sabe no se le revela nada) y responde `ACCOUNT_SUSPENDED`; el formulario dice
+"Tu cuenta está suspendida. Si crees que es un error, escríbenos a…", sin el motivo. Si le quedara una
+sesión, `getCurrentUser` la ignora. El bot le responde lo mismo y no registra nada (ni llama a Claude).
+`suspended_at` es `input: false`: nadie se la quita con "actualizar perfil". El motivo
+(`suspension_reason`) solo lo ve el admin, en el detalle y en el Historial.
 
 Cada una se confirma en una ventana con el **código de Google Authenticator** del admin
 (`src/modules/admin/shared/confirm-code.ts`). No se usa `auth.api.verifyTOTP`: con la sesión abierta,
@@ -345,7 +355,7 @@ administrador.
 | `whatsapp_linked` | El bot recibe `VINCULAR` con un código válido | Número completo |
 | `whatsapp_unlinked` | Se desvincula (`by_user`), el número pasa a otra cuenta (`number_moved`) o la cuenta vincula otro número (`number_changed`) | Número |
 | `whatsapp_link_failed` | Código inválido o vencido (`invalid_code`) o demasiados intentos (`rate_limited`) | Número; sin cuenta |
-| `login_unlocked`, `sessions_revoked`, `account_deleted` | Acciones del admin en `/admin/usuarios` (y `whatsapp_unlinked` con `by_admin`) | `admin_id`: quién lo hizo |
+| `login_unlocked`, `sessions_revoked`, `account_suspended`, `account_reactivated`, `account_deleted` | Acciones del admin en `/admin/usuarios` (y `whatsapp_unlinked` con `by_admin`) | `admin_id`: quién lo hizo; `details.note`: el motivo de una suspensión |
 
 Las acciones del admin llevan `admin_id` (su cuenta) y tienen su chip, **Acciones del admin**, en los
 filtros del Historial; también se ven en el detalle de cada cuenta. Si se borra la cuenta del admin, la

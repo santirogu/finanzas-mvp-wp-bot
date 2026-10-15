@@ -189,6 +189,73 @@ test("el admin desvincula el WhatsApp y elimina una cuenta; de ella solo queda '
   await carla.page.context().close();
 });
 
+test("suspender deja a la persona fuera de la web y del bot, sin decirle el motivo; reactivar lo devuelve todo @principal", async ({
+  page,
+  browser,
+  request,
+}) => {
+  const fran = await personWithWhatsApp(browser, "Fran Suspendida", request);
+  const { secret } = await adminOnAccount(page, fran.email);
+  const reason = "Comparte la cuenta con otra persona";
+
+  await test.step("suspender, con un motivo que solo ve el admin", async () => {
+    await dangerRegion(page).getByRole("button", { name: "Suspender" }).click();
+    await expect(dialog(page)).toHaveAccessibleName("¿Suspender la cuenta de Fran Suspendida?");
+    await dialog(page).getByLabel(/Motivo/).fill(reason);
+    await confirmWith(page, codeFor(secret), "Suspender");
+    await expect(status(page)).toHaveText("Se suspendió la cuenta de Fran Suspendida.");
+    await expect(visible(page.getByText("Suspendida", { exact: true })).first()).toBeVisible();
+    await expect(visible(page.locator("dt", { hasText: /^Estado$/ }).locator("xpath=following-sibling::dd[1]"))).toContainText(
+      `Motivo: ${reason}`,
+    );
+    await expect(actionsRegion(page).getByRole("button", { name: "Reactivar" })).toBeVisible();
+    await expect(dangerRegion(page).getByRole("button", { name: "Suspender" })).toHaveCount(0);
+    await expect(adminActions(page).first()).toContainText("Ana Admin suspendió la cuenta de Fran Suspendida");
+    await expect(adminActions(page).first()).toContainText(`motivo: ${reason}`);
+  });
+
+  await test.step("Fran queda fuera: su sesión se cerró y al entrar ve que está suspendida, sin el motivo", async () => {
+    await fran.page.reload();
+    await expect(fran.page).toHaveURL(/\/login/);
+    await logIn(fran.page, fran.email);
+    const alert = visible(fran.page.getByRole("alert").filter({ hasText: "Tu cuenta está suspendida" }));
+    await expect(alert).toContainText("Si crees que es un error, escríbenos a");
+    await expect(alert).not.toContainText(reason);
+    await expect(fran.page).not.toHaveURL(/\/dashboard$/);
+  });
+
+  await test.step("el bot no registra lo que escriba", async () => {
+    await sendWhatsApp(request, fran.phone, "gasté 20 mil en almuerzo");
+    const reply = await nthReply(request, fran.phone, 2);
+    expect(reply).toContain("Tu cuenta está suspendida, así que no puedo registrar movimientos");
+    expect(reply).not.toContain(reason);
+  });
+
+  await test.step("en Usuarios, el chip 'Suspendidas' la encuentra", async () => {
+    await page.goto(`/admin/usuarios?estado=suspendidas&q=${encodeURIComponent(fran.email)}`);
+    const row = visible(page.getByRole("list", { name: "Cuentas" })).getByRole("listitem");
+    await expect(row).toHaveCount(1);
+    await expect(row.first()).toContainText("Suspendida");
+    await expect(visible(page.getByRole("link", { name: "Quitar filtro: Suspendidas" }))).toBeVisible();
+    await row.first().getByRole("link").click();
+  });
+
+  await test.step("reactivar: Fran vuelve a entrar y el bot vuelve a registrar", async () => {
+    await actionsRegion(page).getByRole("button", { name: "Reactivar" }).click();
+    await confirmWith(page, codeFor(secret, 1), "Reactivar");
+    await expect(status(page)).toHaveText("Se reactivó la cuenta de Fran Suspendida.");
+    await expect(dangerRegion(page).getByRole("button", { name: "Suspender" })).toBeVisible();
+    await expect(adminActions(page).first()).toContainText("Ana Admin reactivó la cuenta de Fran Suspendida");
+
+    await logIn(fran.page, fran.email);
+    await expect(fran.page).toHaveURL(/\/dashboard$/);
+    await sendWhatsApp(request, fran.phone, "gasté 20 mil en almuerzo");
+    expect(await nthReply(request, fran.phone, 3)).not.toContain("suspendida");
+  });
+
+  await fran.page.context().close();
+});
+
 test("cinco códigos equivocados bloquean las acciones y también el inicio de sesión del admin", async ({ page, browser, request }) => {
   const dani = await personWithWhatsApp(browser, "Dani Bloqueo", request);
   const { secret, adminEmail } = await adminOnAccount(page, dani.email);
@@ -245,6 +312,7 @@ test("en celular y en modo oscuro, las ventanas se ven completas y sin problemas
 
   for (const [region, button] of [
     [actionsRegion, "Desvincular"],
+    [dangerRegion, "Suspender"],
     [dangerRegion, "Eliminar cuenta"],
   ] as const) {
     await region(page).getByRole("button", { name: button }).click();
@@ -254,6 +322,7 @@ test("en celular y en modo oscuro, las ventanas se ven completas y sin problemas
       // Con el botón rojo activo y el mouse encima: también así debe leerse.
       await dialog(page).getByRole("button", { name: "Eliminar cuenta" }).hover();
     }
+    if (button === "Suspender") await dialog(page).getByRole("button", { name: "Suspender" }).hover();
     const box = (await dialog(page).boundingBox())!;
     expect(box.x, button).toBeGreaterThanOrEqual(0);
     expect(box.x + box.width, button).toBeLessThanOrEqual(320);

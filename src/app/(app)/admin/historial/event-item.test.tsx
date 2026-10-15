@@ -66,6 +66,12 @@ describe("EventItem", () => {
       "Ana Admin desvinculó el WhatsApp +57 300 111 2233 de Ana Pérez",
       "ana@correo.com · 9:41 p. m.",
     ],
+    [
+      { type: "account_suspended", details: { note: "Spam", sessions: 1 } },
+      "Ana Admin suspendió la cuenta de Ana Pérez",
+      "ana@correo.com · motivo: Spam · 1 sesión · 9:41 p. m.",
+    ],
+    [{ type: "account_reactivated" }, "Ana Admin reactivó la cuenta de Ana Pérez", "ana@correo.com · 9:41 p. m."],
     // De la cuenta eliminada no queda ningún dato.
     [{ type: "account_deleted", account: null }, "Ana Admin eliminó una cuenta", "Sin datos de la cuenta · 9:41 p. m."],
   ] as const)("acción del admin %j, en su color", (overrides, sentence, meta) => {

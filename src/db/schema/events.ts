@@ -15,13 +15,17 @@ export const accountEventType = pgEnum("account_event_type", [
   "login_unlocked",
   "sessions_revoked",
   "account_deleted",
+  "account_suspended",
+  "account_reactivated",
 ]);
 
 /** Detalle de un evento: el motivo de una desvinculación o de un intento fallido. */
 export type AccountEventDetails = {
   reason?: "by_user" | "by_admin" | "number_moved" | "number_changed" | "invalid_code" | "rate_limited";
-  /** Cuántas sesiones cerró el admin (sessions_revoked). */
+  /** Cuántas sesiones cerró el admin (sessions_revoked, account_suspended). */
   sessions?: number;
+  /** El motivo que escribió el admin al suspender (interno: solo lo ve el admin). */
+  note?: string;
   /** Reconstruido al crear el historial a partir de lo que ya había en la base. */
   reconstructed?: boolean;
 };

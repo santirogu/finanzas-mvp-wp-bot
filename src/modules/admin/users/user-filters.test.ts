@@ -4,6 +4,7 @@ import {
   LOCKED_FILTER,
   NO_USER_FILTERS,
   ROLE_FILTER_LABELS,
+  SUSPENDED_FILTER,
   USERS_PATH,
   WHATSAPP_FILTER_LABELS,
   activeUserFilters,
@@ -28,6 +29,7 @@ describe("configuración", () => {
       role: null,
       whatsapp: null,
       locked: false,
+      suspended: false,
       date: "todo",
       from: null,
       to: null,
@@ -39,6 +41,7 @@ describe("configuración", () => {
     expect(ROLE_FILTER_LABELS).toEqual({ admin: "Admin", user: "Usuario" });
     expect(WHATSAPP_FILTER_LABELS).toEqual({ si: "Vinculado", no: "Sin vincular" });
     expect(LOCKED_FILTER).toEqual({ value: "bloqueadas", label: "Inicio de sesión bloqueado" });
+    expect(SUSPENDED_FILTER).toEqual({ value: "suspendidas", label: "Suspendidas" });
   });
 });
 
@@ -64,11 +67,14 @@ describe("parseUserFilters", () => {
       role: "admin",
       whatsapp: false,
       locked: true,
+      suspended: false,
       date: "personalizado",
       from: "2026-10-01",
       to: "2026-10-15",
       limit: 100,
     });
+    expect(parseUserFilters({ estado: "suspendidas" })).toMatchObject({ suspended: true, locked: false });
+    expect(parseUserFilters({ estado: ["bloqueadas", "suspendidas"] })).toMatchObject({ suspended: true, locked: true });
     expect(parseUserFilters({ rol: "user", whatsapp: "si" })).toMatchObject({ role: "user", whatsapp: true });
   });
 
@@ -104,6 +110,7 @@ describe("usersHref", () => {
       role: "user",
       whatsapp: true,
       locked: true,
+      suspended: true,
       date: "personalizado",
       from: "2026-10-01",
       to: "2026-10-02",
@@ -111,9 +118,10 @@ describe("usersHref", () => {
     });
     const href = usersHref(filters);
     expect(href).toBe(
-      "/admin/usuarios?rol=user&whatsapp=si&estado=bloqueadas&fecha=personalizado&desde=2026-10-01&hasta=2026-10-02&q=ana+p%C3%A9rez&mostrar=150",
+      "/admin/usuarios?rol=user&whatsapp=si&estado=bloqueadas&estado=suspendidas&fecha=personalizado&desde=2026-10-01&hasta=2026-10-02&q=ana+p%C3%A9rez&mostrar=150",
     );
-    const params = Object.fromEntries(new URL(href, "http://x").searchParams);
+    const url = new URL(href, "http://x").searchParams;
+    const params = Object.fromEntries([...new Set(url.keys())].map((key) => [key, url.getAll(key).length > 1 ? url.getAll(key) : url.get(key)!]));
     expect(parseUserFilters(params)).toEqual(filters);
   });
 
@@ -143,6 +151,7 @@ describe("filtros activos", () => {
     role: "admin",
     whatsapp: false,
     locked: true,
+    suspended: true,
     date: "personalizado",
     from: "2026-10-01",
     to: "2026-10-15",
@@ -158,6 +167,7 @@ describe("filtros activos", () => {
       { key: "role", label: "Rol: Admin" },
       { key: "whatsapp", label: "WhatsApp: sin vincular" },
       { key: "locked", label: "Inicio de sesión bloqueado" },
+      { key: "suspended", label: "Suspendidas" },
       { key: "date", label: "Registro: 1 de oct – 15 de oct" },
       { key: "search", label: "“ana”" },
     ]);
@@ -172,6 +182,7 @@ describe("filtros activos", () => {
     ["role", { role: null }],
     ["whatsapp", { whatsapp: null }],
     ["locked", { locked: false }],
+    ["suspended", { suspended: false }],
     ["date", { date: "todo", from: null, to: null }],
     ["search", { search: "" }],
   ] as const)("quitar %s deja los demás y vuelve a las primeras 50", (key, cleared) => {

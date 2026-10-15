@@ -57,6 +57,13 @@
       "when": 1792078249349,
       "tag": "0007_acciones-del-admin",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1792083158975,
+      "tag": "0008_suspender-cuentas",
+      "breakpoints": true
     }
   ]
 }

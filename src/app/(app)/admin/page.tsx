@@ -28,7 +28,11 @@ async function AdminHome() {
     historial: `${history.today} ${history.today === 1 ? "evento" : "eventos"} hoy · ${history.failedToday} ${
       history.failedToday === 1 ? "intento fallido" : "intentos fallidos"
     }`,
-    usuarios: `${users.total} ${users.total === 1 ? "cuenta" : "cuentas"} · ${users.withWhatsApp} con WhatsApp`,
+    usuarios: [
+      `${users.total} ${users.total === 1 ? "cuenta" : "cuentas"}`,
+      `${users.withWhatsApp} con WhatsApp`,
+      ...(users.suspended > 0 ? [`${users.suspended} ${users.suspended === 1 ? "suspendida" : "suspendidas"}`] : []),
+    ].join(" · "),
     seguridad: "Verificación en dos pasos activa",
   };
 

@@ -51,6 +51,13 @@ describe("getCurrentUser", () => {
     expect(headers.get("cookie")).toBe("sesion=1");
   });
 
+  it("una cuenta suspendida no tiene sesión, aunque le quede una (se cierran al suspenderla)", async () => {
+    mocks.getSession.mockResolvedValue({ user: { ...sessionUser, suspendedAt: new Date("2026-10-15T15:00:00Z") } });
+    expect(await getCurrentUser()).toBeNull();
+    mocks.getSession.mockResolvedValue({ user: { ...sessionUser, suspendedAt: null } });
+    expect(await getCurrentUser()).toMatchObject({ id: "u1" });
+  });
+
   it("usa Bogotá y COP si el usuario no tiene zona horaria o moneda", async () => {
     mocks.getSession.mockResolvedValue({
       user: { ...sessionUser, timezone: null, currency: undefined },
