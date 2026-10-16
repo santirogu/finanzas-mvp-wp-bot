@@ -39,8 +39,8 @@ Solo se ve en el simulador o en un dispositivo real; en WebKit de Playwright, a 
 
 - **[M] Letra de 16 px en todos los campos** en pantallas táctiles, también en el celular horizontal
   y en el iPad (más de 640 px). Con menos, Safari hace zoom al tocarlos y la página queda ampliada.
-  - Ojo con `sm:text-sm`: a partir de 640 px vuelve a 14 px, y un iPad o un celular horizontal
-    también son táctiles. Alternativa: `pointer-coarse:` de Tailwind.
+  - La clase `input` baja a 14 px solo con mouse (`pointer-fine:text-sm`). Un campo con su propia
+    letra chica según el ancho (`sm:text-sm`) vuelve a hacer zoom en el iPad y el celular horizontal.
 - **Campo de fecha:** el mismo alto que los demás, el texto a la izquierda, el selector nativo se
   abre bien y respeta `max` (no deja elegir días futuros).
 - **`<select>`:** la lista nativa muestra los emojis y las categorías largas completas.

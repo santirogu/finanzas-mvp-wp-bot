@@ -169,10 +169,12 @@ de Vercel ni muevas las migraciones fuera del job `deploy`.
   español y muestra cada error debajo de su campo con `FieldError` (fuera del `<label>`, con
   `aria-invalid` y `aria-describedby`). Nunca el globo del navegador: `src/forms.test.ts` lo exige y
   las E2E fallan si aparece.
-- **Celular**: los campos usan la clase `input` (16 px en celular: con menos, Safari del iPhone hace
-  zoom al tocarlos). Una rejilla con columnas solo desde un ancho (`lg:grid-cols-5`) lleva también
-  `grid-cols-1`: sin eso, un texto largo la ensancha más que la pantalla. Si agregas una página,
-  súmala a `e2e/diseno-celular.spec.ts` y a las vistas de la auditoría de diseño
+- **Celular y tableta**: los campos usan la clase `input` (16 px en pantallas táctiles: con menos,
+  Safari del iPhone y del iPad hace zoom al tocarlos). Su letra chica va con `pointer-fine:` (solo con
+  mouse), nunca con un corte de ancho (`sm:`): un iPad o un celular horizontal también son táctiles.
+  Una rejilla con columnas solo desde un ancho (`lg:grid-cols-5`) lleva también `grid-cols-1`: sin
+  eso, un texto largo la ensancha más que la pantalla. Si agregas una página, súmala a
+  `e2e/diseno-tactil.spec.ts` y a las vistas de la auditoría de diseño
   (`.claude/skills/auditoria-diseno/recorrido/vistas.ts`).
 - **Auditoría de diseño:** usa el skill `/auditoria-diseno` (README → Pruebas y CI).
   - Antes de abrir un PR que cambie páginas, componentes, `globals.css` o el layout, corre

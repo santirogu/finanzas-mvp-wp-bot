@@ -36,7 +36,7 @@ proyecto, no un especialista en accesibilidad.
   medida (`resumen.txt`: <tipo y valor>).
 - **Causa:** `ruta/archivo.tsx:línea`: <por qué pasa>.
 - **Arreglo propuesto:** <el cambio>. Rama sugerida: `fix/<descripcion>`.
-- **Prueba de regresión:** <qué se agrega: una medida en `e2e/diseno-celular.spec.ts`, un caso de
+- **Prueba de regresión:** <qué se agrega: una medida en `e2e/diseno-tactil.spec.ts`, un caso de
   axe en `e2e/accesibilidad.spec.ts`, una prueba de componente, o "no se puede medir: revisión
   visual">.
 

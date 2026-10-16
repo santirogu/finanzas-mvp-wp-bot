@@ -76,9 +76,11 @@ pnpm dev                        # http://localhost:3000
   navegador real recorre la app como un usuario contra un build de producción local, con su propia
   base (`finanzas_e2e_test`): registro, login, ingresos, egresos, balance, editar, borrar y salir (también
   en tamaño de celular), errores del formulario, el límite de intentos de login y que dos usuarios
-  no vean los datos del otro. En celular, además, `e2e/diseno-celular.spec.ts` recorre las páginas
-  con los textos más largos posibles en anchos de 375 y 440 px: nada puede salirse de la pantalla y
-  los campos tienen letra de 16 px o más (con menos, Safari del iPhone hace zoom al tocarlos). [axe-core](https://github.com/dequelabs/axe-core) revisa cada página
+  no vean los datos del otro. En las pantallas táctiles, además, `e2e/diseno-tactil.spec.ts` recorre
+  las páginas con los textos más largos posibles: en el proyecto "celular" a 375, 440 y 956 px
+  (horizontal), y en el proyecto "tableta" (iPad, con Chromium) a 768, 820 y 1180 px. Nada puede
+  salirse de la pantalla y los campos tienen letra de 16 px o más (con menos, Safari del iPhone y del
+  iPad hace zoom al tocarlos; con mouse, 14 px). [axe-core](https://github.com/dequelabs/axe-core) revisa cada página
   (WCAG 2.1 A y AA) en modo claro y oscuro, con datos y con los botones principales activos y con el
   mouse encima (axe no revisa el contraste de un botón deshabilitado), y falla ante problemas graves.
   Por eso los botones se oscurecen al pasar el mouse (`hover:brightness-90`) en vez de bajar su

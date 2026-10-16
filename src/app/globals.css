@@ -73,10 +73,11 @@ body {
 }
 
 @layer components {
-  /* Con un error (aria-invalid), el borde va en rojo. En celular, letra de 16 px: con menos, Safari
-     del iPhone hace zoom al tocar el campo y la página queda ampliada y corrida. */
+  /* Con un error (aria-invalid), el borde va en rojo. Letra de 16 px en pantallas táctiles (celular,
+     también horizontal, y tableta): con menos, Safari del iPhone y del iPad hace zoom al tocar el campo
+     y la página queda ampliada y corrida. 14 px solo con mouse (pointer-fine), no según el ancho. */
   .input {
-    @apply w-full rounded-lg border border-border bg-surface px-3 py-2 text-base outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 aria-invalid:border-danger aria-invalid:focus:ring-danger/20 sm:text-sm;
+    @apply w-full rounded-lg border border-border bg-surface px-3 py-2 text-base outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 aria-invalid:border-danger aria-invalid:focus:ring-danger/20 pointer-fine:text-sm;
   }
 
   /* El campo de fecha en Safari del iPhone: sin la apariencia propia del sistema respeta el ancho de
