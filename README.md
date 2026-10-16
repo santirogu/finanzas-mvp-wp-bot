@@ -269,7 +269,17 @@ Por eso, tras 5 contraseñas equivocadas en 15 minutos, la cuenta queda bloquead
 el intento de donde venga (ni la contraseña correcta entra; el formulario dice cuánto falta). Se
 cuenta por correo, también para correos que no existen, así que no revela cuáles están registrados.
 Un login correcto reinicia el contador. Implementado con hooks de Better Auth
-(`src/lib/auth.ts`) y la tabla `login_failure` (`src/modules/auth/lockout.ts`). Contra: alguien
+(`src/lib/auth.ts`) y la tabla `login_failure` (`src/modules/auth/lockout.ts`).
+
+Cómo se cuenta un intento:
+- **Se reserva antes de verificar la contraseña,** con un `UPSERT` condicional atómico
+  (`reserveAttempt`). Así, pedidos simultáneos desde muchas IPs no pasan todos antes de que se
+  registre el primer fallo: como mucho se verifican 5.
+- **Después se resuelve:** si la contraseña era equivocada queda como fallo; si era correcta se borra
+  el contador; si fue otra cosa (un error de validación, una cuenta suspendida) se devuelve
+  (`releaseAttempt`).
+- **La contraseña de activar la verificación en dos pasos y la de eliminar la cuenta** se cuentan
+  igual. Contra: alguien
 podría bloquear a propósito la cuenta de otra persona; por eso el bloqueo es corto.
 
 ### Roles

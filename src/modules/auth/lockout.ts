@@ -1,5 +1,5 @@
 import "server-only";
-import { eq, lt, sql } from "drizzle-orm";
+import { and, eq, gt, lt, lte, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { loginFailure } from "@/db/schema";
 
@@ -26,34 +26,61 @@ export async function lockedUntil(email: string, now = new Date()): Promise<Date
   return row?.lockedUntil && row.lockedUntil > now ? row.lockedUntil : null;
 }
 
+/** En SQL crudo las fechas van como texto ISO con su tipo: el driver no convierte los Date. */
+const at = (date: Date) => sql`${date.toISOString()}::timestamptz`;
+
+export type Reservation = { ok: true } | { ok: false; lockedUntil: Date };
+
 /**
- * Suma un intento fallido (en una sola operación, para que dos pedidos simultáneos no se pisen) y
- * bloquea la cuenta al llegar al máximo. Si el primer fallo ya salió de la ventana, empieza de cero.
+ * Reserva un intento de contraseña ANTES de verificarla, en una sola operación: cuenta como fallo
+ * hasta que se sepa el resultado (releaseAttempt lo devuelve; clearFailures borra todo si la
+ * contraseña era correcta). Así, pedidos simultáneos desde muchas IPs no pasan todos la revisión
+ * antes de que se registre el primer fallo: como mucho LOCKOUT.maxFailures se verifican. Si la cuenta
+ * está bloqueada o ya se usaron los intentos de la ventana, no reserva y dice hasta cuándo.
  */
-export async function recordFailure(email: string, now = new Date()) {
-  // En SQL crudo las fechas van como texto ISO con su tipo: el driver no convierte los Date.
-  const at = (date: Date) => sql`${date.toISOString()}::timestamptz`;
+export async function reserveAttempt(email: string, now = new Date()): Promise<Reservation> {
   const windowStart = new Date(now.getTime() - minutes(LOCKOUT.windowMinutes));
   const lockEnd = new Date(now.getTime() + minutes(LOCKOUT.lockMinutes));
-  const expired = sql`${loginFailure.firstFailureAt} <= ${at(windowStart)}`;
-  const failures = sql`case when ${expired} then 1 else ${loginFailure.failures} + 1 end`;
+  // Se vuelve a contar desde uno si el primer intento salió de la ventana o si ya pasó un bloqueo.
+  const restart = sql`(${loginFailure.firstFailureAt} <= ${at(windowStart)}
+    or (${loginFailure.lockedUntil} is not null and ${loginFailure.lockedUntil} <= ${at(now)}))`;
+  const failures = sql`case when ${restart} then 1 else ${loginFailure.failures} + 1 end`;
 
-  const [row] = await db
+  const reserved = await db
     .insert(loginFailure)
     .values({ email, failures: 1, firstFailureAt: now, lockedUntil: null })
     .onConflictDoUpdate({
       target: loginFailure.email,
       set: {
         failures,
-        firstFailureAt: sql`case when ${expired} then ${at(now)} else ${loginFailure.firstFailureAt} end`,
+        firstFailureAt: sql`case when ${restart} then ${at(now)} else ${loginFailure.firstFailureAt} end`,
         lockedUntil: sql`case when ${failures} >= ${LOCKOUT.maxFailures} then ${at(lockEnd)} else null end`,
       },
+      // Sin bloqueo vigente y con intentos libres (o se vuelve a contar desde uno).
+      setWhere: sql`(${loginFailure.lockedUntil} is null or ${loginFailure.lockedUntil} <= ${at(now)})
+        and (${restart} or ${loginFailure.failures} < ${LOCKOUT.maxFailures})`,
     })
-    .returning({ failures: loginFailure.failures, lockedUntil: loginFailure.lockedUntil });
+    .returning({ email: loginFailure.email });
 
   // Limpieza: los registros viejos ya no bloquean nada.
   await db.delete(loginFailure).where(lt(loginFailure.firstFailureAt, new Date(now.getTime() - minutes(24 * 60))));
-  return row;
+  if (reserved.length > 0) return { ok: true };
+  return { ok: false, lockedUntil: (await lockedUntil(email, now)) ?? lockEnd };
+}
+
+/**
+ * Devuelve un intento reservado que no terminó en una contraseña equivocada (por ejemplo, un error
+ * de validación o una cuenta suspendida): no debe contar como fallo.
+ */
+export async function releaseAttempt(email: string) {
+  await db
+    .update(loginFailure)
+    .set({
+      failures: sql`${loginFailure.failures} - 1`,
+      lockedUntil: sql`case when ${loginFailure.failures} - 1 >= ${LOCKOUT.maxFailures} then ${loginFailure.lockedUntil} else null end`,
+    })
+    .where(and(eq(loginFailure.email, email), gt(loginFailure.failures, 0)));
+  await db.delete(loginFailure).where(and(eq(loginFailure.email, email), lte(loginFailure.failures, 0)));
 }
 
 /** Tras un login correcto, el contador vuelve a cero. */

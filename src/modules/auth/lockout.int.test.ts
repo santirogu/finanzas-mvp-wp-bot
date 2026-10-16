@@ -3,10 +3,14 @@ import { describe, expect, it } from "vitest";
 import { db } from "@/db";
 import { loginFailure } from "@/db/schema";
 import { auth } from "@/lib/auth";
-import { LOCKOUT, clearFailures, lockedUntil, normalizeEmail, recordFailure } from "./lockout";
+import { LOCKOUT, clearFailures, lockedUntil, normalizeEmail, releaseAttempt, reserveAttempt } from "./lockout";
 
 const T0 = new Date("2026-10-14T15:00:00Z");
 const after = (minutes: number) => new Date(T0.getTime() + minutes * 60_000);
+
+const row = async (email: string) =>
+  (await db.select({ failures: loginFailure.failures, lockedUntil: loginFailure.lockedUntil }).from(loginFailure).where(eq(loginFailure.email, email)))[0] ??
+  null;
 
 describe("lockout (módulo)", () => {
   it("normaliza el correo y descarta lo que no es texto", () => {
@@ -15,32 +19,72 @@ describe("lockout (módulo)", () => {
     expect(normalizeEmail(42)).toBe("");
   });
 
-  it("bloquea la cuenta al quinto fallo dentro de la ventana, por 15 minutos", async () => {
+  it("cada intento reservado cuenta; al quinto la cuenta queda bloqueada 15 minutos", async () => {
     for (let i = 1; i < LOCKOUT.maxFailures; i++) {
-      expect(await recordFailure("ana@test.local", after(i))).toEqual({ failures: i, lockedUntil: null });
+      expect(await reserveAttempt("ana@test.local", after(i))).toEqual({ ok: true });
+      expect(await row("ana@test.local")).toEqual({ failures: i, lockedUntil: null });
     }
     expect(await lockedUntil("ana@test.local", after(4))).toBeNull();
 
-    const fifth = await recordFailure("ana@test.local", after(5));
-    expect(fifth).toEqual({ failures: 5, lockedUntil: after(20) });
+    expect(await reserveAttempt("ana@test.local", after(5))).toEqual({ ok: true });
+    expect(await row("ana@test.local")).toEqual({ failures: 5, lockedUntil: after(20) });
+    // El sexto ya no se reserva (ni se verifica): dice hasta cuándo está bloqueada.
+    expect(await reserveAttempt("ana@test.local", after(6))).toEqual({ ok: false, lockedUntil: after(20) });
+    expect(await row("ana@test.local")).toEqual({ failures: 5, lockedUntil: after(20) });
     expect(await lockedUntil("ana@test.local", after(19))).toEqual(after(20));
     expect(await lockedUntil("ana@test.local", after(20))).toBeNull();
   });
 
-  it("si el primer fallo salió de la ventana, vuelve a contar desde uno", async () => {
-    for (let i = 0; i < 4; i++) await recordFailure("beto@test.local", after(i));
-    expect(await recordFailure("beto@test.local", after(16))).toEqual({ failures: 1, lockedUntil: null });
+  it("devolver un intento no lo cuenta como fallo y levanta el bloqueo que había puesto", async () => {
+    for (let i = 0; i < LOCKOUT.maxFailures; i++) await reserveAttempt("ana@test.local", after(i));
+    expect((await row("ana@test.local"))?.lockedUntil).toEqual(after(19));
+
+    await releaseAttempt("ana@test.local");
+    expect(await row("ana@test.local")).toEqual({ failures: 4, lockedUntil: null });
+    expect(await reserveAttempt("ana@test.local", after(5))).toEqual({ ok: true });
+  });
+
+  it("devolver el único intento borra el registro; sin registro no hace nada", async () => {
+    await reserveAttempt("ana@test.local", T0);
+    await releaseAttempt("ana@test.local");
+    expect(await row("ana@test.local")).toBeNull();
+    await releaseAttempt("nadie@test.local");
+    expect(await db.select().from(loginFailure)).toEqual([]);
+  });
+
+  it("si el primer intento salió de la ventana, vuelve a contar desde uno", async () => {
+    for (let i = 0; i < 4; i++) await reserveAttempt("beto@test.local", after(i));
+    expect(await reserveAttempt("beto@test.local", after(16))).toEqual({ ok: true });
+    expect(await row("beto@test.local")).toEqual({ failures: 1, lockedUntil: null });
+  });
+
+  it("cuando vence el bloqueo, vuelve a contar desde uno", async () => {
+    for (let i = 0; i < LOCKOUT.maxFailures; i++) await reserveAttempt("beto@test.local", after(i));
+    expect(await reserveAttempt("beto@test.local", after(18))).toMatchObject({ ok: false });
+    expect(await reserveAttempt("beto@test.local", after(19))).toEqual({ ok: true });
+    expect(await row("beto@test.local")).toEqual({ failures: 1, lockedUntil: null });
+  });
+
+  it("intentos simultáneos: como mucho 5 se reservan", async () => {
+    const results = await Promise.all(Array.from({ length: 20 }, () => reserveAttempt("caro@test.local", T0)));
+    expect(results.filter((r) => r.ok)).toHaveLength(LOCKOUT.maxFailures);
+    expect(await row("caro@test.local")).toEqual({ failures: 5, lockedUntil: after(15) });
+  });
+
+  it("con los intentos usados pero sin fecha de bloqueo (no debería pasar), igual bloquea 15 minutos", async () => {
+    await db.insert(loginFailure).values({ email: "dan@test.local", failures: 5, firstFailureAt: T0, lockedUntil: null });
+    expect(await reserveAttempt("dan@test.local", after(1))).toEqual({ ok: false, lockedUntil: after(16) });
   });
 
   it("un login correcto borra el contador", async () => {
-    await recordFailure("caro@test.local", T0);
+    await reserveAttempt("caro@test.local", T0);
     await clearFailures("caro@test.local");
-    expect(await db.select().from(loginFailure).where(eq(loginFailure.email, "caro@test.local"))).toEqual([]);
+    expect(await row("caro@test.local")).toBeNull();
   });
 
   it("borra los registros de más de un día", async () => {
-    await recordFailure("viejo@test.local", T0);
-    await recordFailure("nuevo@test.local", after(24 * 60 + 1));
+    await reserveAttempt("viejo@test.local", T0);
+    await reserveAttempt("nuevo@test.local", after(24 * 60 + 1));
     const emails = (await db.select().from(loginFailure)).map((r) => r.email);
     expect(emails).toEqual(["nuevo@test.local"]);
   });
@@ -80,6 +124,16 @@ describe("bloqueo por cuenta (Better Auth)", () => {
     const body = await blocked.json();
     expect(body.code).toBe("ACCOUNT_LOCKED");
     expect(body.message).toMatch(/bloqueada por varios intentos fallidos\. Intenta de nuevo en 15 minutos\./);
+  });
+
+  it("20 intentos simultáneos desde IPs distintas: solo 5 contraseñas se verifican", async () => {
+    await createAccount("ana@test.local");
+    const responses = await Promise.all(Array.from({ length: 20 }, (_, i) => signIn("ana@test.local", `mala-${i}`)));
+    const codes = await Promise.all(responses.map(async (response) => (await response.json()).code));
+    expect(codes.filter((code) => code === "INVALID_EMAIL_OR_PASSWORD")).toHaveLength(LOCKOUT.maxFailures);
+    expect(codes.filter((code) => code === "ACCOUNT_LOCKED")).toHaveLength(15);
+    // Y la correcta ya no entra.
+    expect((await signIn("ana@test.local", "clave-correcta-123")).status).toBe(429);
   });
 
   it("no afecta a otras cuentas", async () => {

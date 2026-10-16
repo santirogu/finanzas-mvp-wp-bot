@@ -10,7 +10,7 @@ import { recordEvent } from "@/modules/account/events";
 import { SUSPENDED_MESSAGE, isSuspended } from "@/modules/account/suspension";
 import { parseAccountName } from "@/modules/auth/account-name";
 import { AUTH_DISABLED_PATHS } from "@/modules/auth/http-routes";
-import { clearFailures, lockedUntil, normalizeEmail, recordFailure } from "@/modules/auth/lockout";
+import { clearFailures, normalizeEmail, releaseAttempt, reserveAttempt } from "@/modules/auth/lockout";
 import {
   TWO_FACTOR_ERRORS,
   TWO_FACTOR_ISSUER,
@@ -83,7 +83,7 @@ export const auth = betterAuth({
   hooks: {
     before: createAuthMiddleware(async (ctx) => {
       if (ctx.path === "/sign-in/email") {
-        await assertNotLocked(normalizeEmail(ctx.body?.email));
+        await reserveOrThrow(normalizeEmail(ctx.body?.email));
         return;
       }
       // Better Auth no valida el nombre: se limpia y se limita aquí (src/modules/auth/account-name.ts).
@@ -107,20 +107,23 @@ export const auth = betterAuth({
       }
       if (violation) throw APIError.from("BAD_REQUEST", TWO_FACTOR_ERRORS[violation]);
       // La contraseña que pide activarla cuenta para el bloqueo de la cuenta.
-      if (session && ctx.path === "/two-factor/enable") await assertNotLocked(normalizeEmail(session.user.email));
+      if (session && ctx.path === "/two-factor/enable") await reserveOrThrow(normalizeEmail(session.user.email));
     }),
+    // El intento se reservó antes de verificar la contraseña (reserveAttempt): si era la correcta, el
+    // contador se borra; si era equivocada, queda como fallo; si fue otra cosa, se devuelve.
     after: createAuthMiddleware(async (ctx) => {
       const returned = ctx.context.returned;
       if (ctx.path === "/sign-in/email") {
         const email = normalizeEmail(ctx.body?.email);
         if (!email) return;
         if (!isAPIError(returned)) await clearFailures(email);
-        else if (returned.body?.code === "INVALID_EMAIL_OR_PASSWORD") await recordFailure(email);
+        else if (returned.body?.code !== "INVALID_EMAIL_OR_PASSWORD") await releaseAttempt(email);
         return;
       }
-      if (ctx.path === "/two-factor/enable" && isAPIError(returned) && returned.body?.code === "INVALID_PASSWORD") {
+      if (ctx.path === "/two-factor/enable") {
         const session = await getSessionFromCtx(ctx);
-        if (session) await recordFailure(normalizeEmail(session.user.email));
+        const wrongPassword = isAPIError(returned) && returned.body?.code === "INVALID_PASSWORD";
+        if (session && !wrongPassword) await releaseAttempt(normalizeEmail(session.user.email));
       }
     }),
   },
@@ -172,10 +175,12 @@ export const auth = betterAuth({
 });
 
 /** Error del login bloqueado por intentos fallidos, con los minutos que faltan. */
-async function assertNotLocked(email: string) {
-  const until = email ? await lockedUntil(email) : null;
-  if (!until) return;
-  const minutes = Math.max(1, Math.ceil((until.getTime() - Date.now()) / 60_000));
+/** Reserva el intento de contraseña o responde que la cuenta está bloqueada (con los minutos que faltan). */
+async function reserveOrThrow(email: string) {
+  if (!email) return;
+  const reservation = await reserveAttempt(email);
+  if (reservation.ok) return;
+  const minutes = Math.max(1, Math.ceil((reservation.lockedUntil.getTime() - Date.now()) / 60_000));
   throw APIError.from("TOO_MANY_REQUESTS", {
     code: "ACCOUNT_LOCKED",
     message: `Por seguridad, la cuenta quedó bloqueada por varios intentos fallidos. Intenta de nuevo en ${minutes} ${minutes === 1 ? "minuto" : "minutos"}.`,
