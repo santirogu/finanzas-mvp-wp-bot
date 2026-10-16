@@ -400,14 +400,13 @@ jobs:
         run: |
           "$VERCEL" pull --yes --environment=production --token="$VERCEL_TOKEN"
 
-      # Ejecuta `pnpm vercel-build`: migraciones + categorías + build de Next.js.
+      # Ejecuta `pnpm vercel-build`: migraciones + categorías + build de Next.js. Sin el token de Vercel:
+      # es el paso que más código de terceros corre (todas las dependencias del build), y no lo
+      # necesita porque lee la configuración y las variables que dejó `vercel pull` en .vercel/
+      # (probado en local: el CLI solo llama a la API con --project o al construir un despliegue ya creado).
       - name: Migrar base de datos y compilar
-        env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
-          "$VERCEL" build --prod --token="$VERCEL_TOKEN"
+          "$VERCEL" build --prod
 
       # --skip-domain: la versión nueva queda publicada en su propia URL, sin recibir tráfico.
       - name: Publicar sin dominio
