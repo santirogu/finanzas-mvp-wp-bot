@@ -1,7 +1,9 @@
 import { formatLongDate } from "@/lib/dates";
 import { parseCommand, type BotCommand } from "./commands";
 import type { Extractor, Usage } from "./claude-extractor";
-import { normalizeTransactions, type CategoryNames, type ParsedTransaction } from "./normalize";
+import { MAX_TRANSACTIONS_PER_MESSAGE } from "./limits";
+import { normalizeReply, normalizeTransactions, type CategoryNames, type ParsedTransaction } from "./normalize";
+import { tooManyTransactionsReply } from "./replies";
 
 export type BotIntent =
   | BotCommand
@@ -44,6 +46,10 @@ export async function interpretMessage(
     return { kind: "error", reason: result.detail ? `${result.reason}: ${result.detail}` : result.reason, usage: result.usage };
   }
 
+  // Más de los que caben en una respuesta (o un mensaje hecho para gastar): no se registra ninguno.
+  if (result.transactions.length > MAX_TRANSACTIONS_PER_MESSAGE) {
+    return { kind: "reply", text: tooManyTransactionsReply(MAX_TRANSACTIONS_PER_MESSAGE), usage: result.usage };
+  }
   const items = normalizeTransactions(result.transactions, ctx);
   if (items.length > 0) return { kind: "transactions", items, usage: result.usage };
 
@@ -51,5 +57,5 @@ export async function interpretMessage(
   if (result.transactions.length > 0) {
     return { kind: "reply", text: "No entendí el monto. ¿Cuánto fue exactamente?", usage: result.usage };
   }
-  return { kind: "reply", text: result.reply?.trim() || FALLBACK_REPLY, usage: result.usage };
+  return { kind: "reply", text: normalizeReply(result.reply) ?? FALLBACK_REPLY, usage: result.usage };
 }

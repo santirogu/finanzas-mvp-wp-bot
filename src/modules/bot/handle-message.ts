@@ -11,6 +11,7 @@ import { getMonthlySummary, listCategories } from "@/modules/transactions/querie
 import type { Sender } from "@/modules/whatsapp/client";
 import { consumeLinkCode, getUserByPhone } from "@/modules/whatsapp/link";
 import type { IncomingMessage } from "@/modules/whatsapp/payload";
+import { reserveAiCall } from "./ai-quota";
 import type { Extractor } from "./claude-extractor";
 import { parseCommand } from "./commands";
 import { interpretMessage, type BotIntent } from "./interpret";
@@ -130,6 +131,9 @@ async function respond(
   ]);
   const categories = { expense: expenseCategories, income: incomeCategories };
 
+  // Antes de cada llamada a Claude se reserva el cupo de la cuenta (src/modules/bot/ai-quota.ts).
+  const extractor: Extractor = async (input) =>
+    (await reserveAiCall(user.id, msg.id)) ? deps.extractor(input) : { ok: false, reason: "rate_limited" };
   const intent = await interpretMessage(
     msg.text,
     {
@@ -139,7 +143,7 @@ async function respond(
         income: incomeCategories.map((c) => c.name),
       },
     },
-    deps.extractor,
+    extractor,
   );
   const base = { intent, userId: user.id, status: "processed" as Status };
 
@@ -180,6 +184,7 @@ async function respond(
     case "reply":
       return { ...base, reply: intent.text };
     case "error":
+      if (intent.reason === "rate_limited") return { ...base, reply: replies.aiRateLimitedReply };
       return {
         ...base,
         status: "failed",

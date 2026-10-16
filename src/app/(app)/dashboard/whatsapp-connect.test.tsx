@@ -21,7 +21,7 @@ async function generateCode(props: { botNumber: string | null; showSimulator?: b
 beforeEach(() => {
   vi.useFakeTimers({ now: NOW });
   vi.clearAllMocks();
-  mocks.generate.mockResolvedValue({ code: "482913", expiresAt: inMinutes(10) });
+  mocks.generate.mockResolvedValue({ ok: true, code: "482913", expiresAt: inMinutes(10) });
 });
 
 afterEach(() => {
@@ -60,7 +60,7 @@ describe("WhatsAppConnect", () => {
   });
 
   it("cada 4 segundos revisa si ya se vinculó y actualiza los minutos que faltan", async () => {
-    mocks.generate.mockResolvedValue({ code: "482913", expiresAt: inMinutes(1.5) });
+    mocks.generate.mockResolvedValue({ ok: true, code: "482913", expiresAt: inMinutes(1.5) });
     await generateCode({ botNumber: null });
     expect(screen.getByText(/Vence en 2 minutos/)).toBeVisible();
     expect(mocks.refresh).not.toHaveBeenCalled();
@@ -73,7 +73,7 @@ describe("WhatsAppConnect", () => {
   });
 
   it("cuando el código vence, lo dice, deja generar otro y deja de revisar", async () => {
-    mocks.generate.mockResolvedValue({ code: "482913", expiresAt: inMinutes(0.1) });
+    mocks.generate.mockResolvedValue({ ok: true, code: "482913", expiresAt: inMinutes(0.1) });
     await generateCode({ botNumber: null });
 
     act(() => vi.advanceTimersByTime(8_000));
@@ -86,8 +86,26 @@ describe("WhatsAppConnect", () => {
     expect(mocks.refresh).toHaveBeenCalledTimes(refreshes);
   });
 
+  it("si ya pidió muchos códigos, muestra el aviso y deja el botón para intentar más tarde", async () => {
+    const error = "Ya generaste varios códigos en la última hora. Usa el último que generaste o espera un rato para pedir otro.";
+    mocks.generate.mockResolvedValue({ ok: false, error });
+    await generateCode({ botNumber: null });
+
+    expect(screen.getByRole("alert")).toHaveTextContent(error);
+    expect(screen.queryByText(/^VINCULAR/)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Conectar WhatsApp" })).toBeEnabled();
+
+    // Si después sí se puede, el aviso desaparece.
+    mocks.generate.mockResolvedValue({ ok: true, code: "333444", expiresAt: inMinutes(10) });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Conectar WhatsApp" }));
+    });
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.getByText("VINCULAR 333444")).toBeVisible();
+  });
+
   it("mientras genera el código, desactiva el botón", async () => {
-    let finish!: (value: { code: string; expiresAt: string }) => void;
+    let finish!: (value: { ok: true; code: string; expiresAt: string }) => void;
     mocks.generate.mockReturnValue(new Promise((resolve) => (finish = resolve)));
     render(<WhatsAppConnect botNumber={null} showSimulator={false} />);
 
@@ -96,7 +114,7 @@ describe("WhatsAppConnect", () => {
     });
     expect(screen.getByRole("button", { name: "Generando…" })).toBeDisabled();
 
-    await act(async () => finish({ code: "111222", expiresAt: inMinutes(10) }));
+    await act(async () => finish({ ok: true, code: "111222", expiresAt: inMinutes(10) }));
     expect(screen.getByText("VINCULAR 111222")).toBeVisible();
   });
 });
