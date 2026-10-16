@@ -97,6 +97,11 @@ de Vercel ni muevas las migraciones fuera del job `deploy`.
   pide revisarlos, verifica el changelog y que el CI pase; si una actualización mayor rompe algo,
   arréglalo en una rama `fix/` o `chore/` aparte.
 - Si CodeQL marca una alerta en un PR, corrígela en el mismo PR antes de pedir el merge.
+- **Auditoría de seguridad:** usa el skill `/auditoria-seguridad` (README → Seguridad).
+  - Antes de abrir un PR que toque autenticación, roles, administración, el webhook, el bot, las
+    cabeceras, las variables de entorno o los workflows, corre `/auditoria-seguridad cambios`.
+  - Su informe va a `reports/seguridad/` y nunca se sube: el repo es público.
+  - Los PRs de arreglo no describen cómo explotar el fallo hasta que esté desplegado.
 
 - Nunca escribas secretos en el código, en commits ni en el chat; van en `.env` (local) o en
   Vercel. Si el usuario pega una credencial, recuérdale que no lo haga.
