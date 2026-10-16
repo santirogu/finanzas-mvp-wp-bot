@@ -41,7 +41,17 @@ describe("las E2E del CI", () => {
   });
 
   it("el check obligatorio junta todas las partes", () => {
-    expect(ci).toMatch(/\n {2}e2e:\n {4}name: E2E y accesibilidad\n {4}needs: e2e-parte\n {4}if: always\(\)\n/);
-    expect(ci).toContain('test "$RESULTADO" = "success"');
+    expect(ci).toMatch(/\n {2}e2e:\n {4}name: E2E y accesibilidad\n {4}needs: \[e2e-cambios, e2e-parte\]\n {4}if: always\(\)\n/);
+    expect(ci).toContain('test "$DETECCION" = "success" && test "$RESULTADO" = "success"');
+  });
+
+  // Las partes se saltan solo si scripts/e2e-needed.mjs dijo que el PR no las necesita; el check
+  // obligatorio acepta "saltadas" solo en ese caso, y fuera de un PR (main) corren siempre.
+  it("las partes se saltan solo cuando la detección lo decide, y solo en un PR", () => {
+    expect(ci).toMatch(/\n {2}e2e-parte:\n {4}name: .+\n {4}needs: e2e-cambios\n {4}if: needs\.e2e-cambios\.outputs\.e2e == 'true'\n/);
+    expect(ci).toContain(
+      'if [ "$DETECCION" = "success" ] && [ "$NECESARIAS" = "false" ] && [ "$RESULTADO" = "skipped" ]; then',
+    );
+    expect(ci).toMatch(/if \[ "\$GITHUB_EVENT_NAME" != "pull_request" \]; then\n.+\n +echo "e2e=true" >> "\$GITHUB_OUTPUT"/);
   });
 });

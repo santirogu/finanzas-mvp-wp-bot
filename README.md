@@ -102,7 +102,11 @@ pnpm dev                        # http://localhost:3000 (antes, copia la base lo
   escritorio en 3 con `--shard` de Playwright, y celular y tableta en la cuarta), y el check
   obligatorio **E2E y accesibilidad** pasa solo si pasan todas. Las partes están en la matriz del job
   `e2e-parte` de `.github/workflows/ci.yml`: si agregas un proyecto de Playwright, súmalo ahí
-  (`test/e2e-en-ci.test.ts` falla si falta). La regla de `main` no cambia.
+  (`test/e2e-en-ci.test.ts` falla si falta). La regla de `main` no cambia. En un PR que solo cambia
+  cosas que las E2E no ejercitan (documentación, skills, otros workflows, pruebas que no son E2E,
+  herramientas de `scripts/`), se saltan y el check pasa igual: lo decide `scripts/e2e-needed.mjs`,
+  que ante un archivo desconocido las corre. Todo lo que salta las E2E también salta el despliegue
+  (una prueba lo exige), y en `main` corren siempre.
 - **Auditoría de diseño** (`/auditoria-diseno`, un skill de Claude Code en
   `.claude/skills/auditoria-diseno/`): revisa cómo se ve y cómo se usa la app, más allá de lo que
   cubren las E2E.
