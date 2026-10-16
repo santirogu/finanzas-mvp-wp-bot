@@ -9,6 +9,9 @@
   --foreground: #14171c;
   --muted: #5f6672;
   --border: #e3e6eb;
+  /* El borde de los campos: 3:1 contra la tarjeta y contra el fondo (WCAG 1.4.11; --border, el de
+     los divisores y las tarjetas, casi no se ve). src/color-contrast.test.ts lo revisa. */
+  --control: #838a95;
   --brand: #0f766e;
   --brand-foreground: #ffffff;
   /* Ingresos y egresos: un poco más oscuros que el verde y el naranja estándar para que el texto
@@ -34,6 +37,7 @@
     --foreground: #eceff3;
     --muted: #98a1ad;
     --border: #262c35;
+    --control: #646d7b;
     --brand: #2dd4bf;
     --brand-foreground: #062925;
     --income: #4ade80;
@@ -53,6 +57,7 @@
   --color-foreground: var(--foreground);
   --color-muted: var(--muted);
   --color-border: var(--border);
+  --color-control: var(--control);
   --color-brand: var(--brand);
   --color-brand-foreground: var(--brand-foreground);
   --color-income: var(--income);
@@ -77,7 +82,7 @@ body {
      también horizontal, y tableta): con menos, Safari del iPhone y del iPad hace zoom al tocar el campo
      y la página queda ampliada y corrida. 14 px solo con mouse (pointer-fine), no según el ancho. */
   .input {
-    @apply w-full rounded-lg border border-border bg-surface px-3 py-2 text-base outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 aria-invalid:border-danger aria-invalid:focus:ring-danger/20 pointer-fine:text-sm;
+    @apply w-full rounded-lg border border-control bg-surface px-3 py-2 text-base outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 aria-invalid:border-danger aria-invalid:focus:ring-danger/20 pointer-fine:text-sm;
   }
 
   /* El campo de fecha en Safari del iPhone: sin la apariencia propia del sistema respeta el ancho de
