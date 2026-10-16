@@ -57,7 +57,8 @@ Solo se ve en el simulador o en un dispositivo real; en WebKit de Playwright, a 
   colores sueltos en las clases (`text-red-500`, `#hex`).
   - `grep -rnE "(text|bg|border)-(red|green|blue|gray|slate|zinc|orange)-[0-9]" src/app src/components`.
 - **Ingresos en verde con "+", egresos en naranja con "−", en todas partes.** El color nunca es la
-  única señal.
+  única señal. Los errores y las zonas de peligro van en rojo (`danger`), nunca en el naranja de
+  los egresos.
 - **Dinero siempre con `formatMoney`** ("$1.000.000,00"), alineado con `tabular-nums` en listas y
   totales.
 - **Tipografía:** una escala corta y repetida (títulos `text-2xl`, secciones `font-semibold`, ayudas

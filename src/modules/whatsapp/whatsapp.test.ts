@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { extractMessages } from "./payload";
-import { maskPhone } from "./phone";
+import { formatPhone, maskPhone } from "./phone";
 import { isValidSignature, signBody } from "./signature";
 
 describe("isValidSignature", () => {
@@ -219,5 +219,17 @@ describe("isValidSignature · prefijo", () => {
     const hex = signBody(body, "secreto").slice("sha256=".length);
     expect(isValidSignature(body, `sha512=${hex}`, "secreto")).toBe(false);
     expect(isValidSignature(body, `sha256=${hex}`, "secreto")).toBe(true);
+  });
+});
+
+describe("formatPhone", () => {
+  it.each([
+    ["573001112233", "+57 300 111 2233"],
+    ["+57 300 111 2233", "+57 300 111 2233"],
+    // Otro país o un largo distinto: los dígitos tal cual, con "+".
+    ["14155550123", "+14155550123"],
+    ["5730011122", "+5730011122"],
+  ])("%j → %j", (phone, expected) => {
+    expect(formatPhone(phone)).toBe(expected);
   });
 });

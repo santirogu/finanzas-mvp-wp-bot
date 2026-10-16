@@ -182,7 +182,9 @@ de Vercel ni muevas las migraciones fuera del job `deploy`.
   - Antes de abrir un PR que cambie páginas, componentes, `globals.css` o el layout, corre
     `/auditoria-diseno cambios`.
   - Su informe y sus capturas van a `reports/diseno/` y no se suben.
-- **Colores** (`src/app/globals.css`): solo los tokens. El borde de un campo es `border-control` (3:1
+- **Colores** (`src/app/globals.css`): solo los tokens. Los errores, las alertas y lo que no se
+  deshace van en rojo (`danger`, y `btn-danger` para su botón); el naranja (`expense`) es solo para
+  los egresos (`src/forms.test.ts` lo revisa en los avisos con `role="alert"`). El borde de un campo es `border-control` (3:1
   contra la tarjeta y el fondo, WCAG 1.4.11), nunca `border-border`, que es para divisores y tarjetas.
   Si cambias un color, `src/color-contrast.test.ts` revisa ese contraste (axe solo el del texto).
 - **Dinero**: siempre con `formatMoney` (`src/lib/money.ts`), que da "$1.000.000,00" (dos decimales,

@@ -41,3 +41,19 @@ describe("formularios", () => {
     expect(code).toMatch(/\{\.\.\.formProps\}/);
   });
 });
+
+// Los errores y las alertas van en rojo (--danger), como los errores de cada campo (FieldError): el
+// naranja (--expense) significa "egreso", y un mismo formulario no puede mostrar el error en dos colores.
+describe("errores", () => {
+  const alerts = sources.flatMap((file) =>
+    [...readFileSync(file, "utf8").matchAll(/<[a-zA-Z]+\b[^>]*\brole="alert"[^>]*>/g)].map((m) => [relative(ROOT, file), m[0]]),
+  );
+
+  it("la regla encuentra los avisos de error de la app", () => {
+    expect(alerts.length).toBeGreaterThan(5);
+  });
+
+  it.each(alerts)("%s: el aviso de error usa el rojo, no el color de los egresos", (_, tag) => {
+    expect(tag).not.toMatch(/expense/);
+  });
+});
