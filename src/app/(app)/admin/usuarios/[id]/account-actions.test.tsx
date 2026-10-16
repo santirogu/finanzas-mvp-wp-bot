@@ -132,6 +132,8 @@ describe("AccountActions", () => {
 
     expect(await actionsSection().findByRole("status")).toHaveTextContent("Se desbloqueó el inicio de sesión de Beto Ruiz.");
     expect(screen.queryByRole("dialog")).toBeNull();
+    // El botón que abrió la ventana ya no existe (la cuenta se desbloqueó): el foco va al aviso.
+    expect(actionsSection().getByRole("status")).toHaveFocus();
 
     await userEvent.click(actionsSection().getByRole("button", { name: "Desvincular" }));
     expect(actionsSection().queryByRole("status")).toBeNull();

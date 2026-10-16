@@ -4,7 +4,7 @@ import { useActionState, useId, useState, type ReactNode } from "react";
 import { describedBy, FieldError } from "@/components/field-error";
 import { useFieldErrors } from "@/components/use-field-errors";
 import { EMAIL_MESSAGE, TOTP_CODE_MESSAGES, type FieldMessages } from "@/lib/field-errors";
-import { Buttons, CODE_FIELD_MESSAGES, CodeField, Dialog, FormError } from "../../admin-dialog";
+import { Buttons, CODE_FIELD_MESSAGES, CodeField, Dialog, DoneMessage, FormError } from "../../admin-dialog";
 import { NOTE_MAX_LENGTH } from "@/modules/admin/shared/filters";
 import {
   deleteAccountByAdminAction,
@@ -69,11 +69,7 @@ export function AccountActions({ target }: { target: ActionTarget }) {
           Acciones
         </h2>
         <p className="text-sm text-muted">Cada una pide el código de Google Authenticator.</p>
-        {done && (
-          <p role="status" className="!mt-3 rounded-lg bg-income/10 px-3 py-2 text-sm text-income">
-            {done}
-          </p>
-        )}
+        {done && <DoneMessage message={done} className="!mt-3" />}
         {target.suspendedSince || target.lockedUntil || target.openSessions > 0 || target.phone ? (
           <ul className="divide-y divide-border">
             {target.suspendedSince && (
