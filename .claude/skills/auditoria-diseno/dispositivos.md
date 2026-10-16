@@ -46,4 +46,6 @@ ancho es el de la pantalla: el diseño que ve depende del ancho, como en la tabl
 ## Modos de color
 
 Cada vista representativa se captura en modo claro y oscuro (`prefers-color-scheme`), y axe revisa
-el contraste en los dos. La app sigue el modo del sistema: no hay botón para cambiarlo.
+el contraste en los dos. La app sigue el modo del sistema salvo que la persona elija "Claro" u
+"Oscuro" en Mi cuenta (`src/lib/theme.ts`). El recorrido usa el del sistema; que lo elegido funcione
+lo prueba `e2e/tema.spec.ts`.

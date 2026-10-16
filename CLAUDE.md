@@ -187,6 +187,9 @@ de Vercel ni muevas las migraciones fuera del job `deploy`.
   los egresos (`src/forms.test.ts` lo revisa en los avisos con `role="alert"`). El borde de un campo es `border-control` (3:1
   contra la tarjeta y el fondo, WCAG 1.4.11), nunca `border-border`, que es para divisores y tarjetas.
   Si cambias un color, `src/color-contrast.test.ts` revisa ese contraste (axe solo el del texto).
+  El modo oscuro está en dos bloques iguales (el del sistema y el elegido en Mi cuenta, `src/lib/theme.ts`):
+  cambia los dos (la prueba exige que coincidan) y nunca uses la variante `dark:` de Tailwind, que solo
+  mira el sistema (`src/global-styles.test.ts` lo revisa).
 - **Dinero**: siempre con `formatMoney` (`src/lib/money.ts`), que da "$1.000.000,00" (dos decimales,
   sin espacio) y "−$50.000,00" para los negativos (el signo menos tipográfico, U+2212, como el de los
   egresos en las listas), en la web y en el bot. No uses `toLocaleString` para mostrar montos, y un
