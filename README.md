@@ -90,6 +90,28 @@ pnpm dev                        # http://localhost:3000
   responde a servidores falsos de WhatsApp y Claude (`e2e/fake-services.mjs`): nada sale a
   internet, así que no cuesta nada. La primera vez instala el navegador:
   `pnpm exec playwright install chromium`.
+- **Auditoría de diseño** (`/auditoria-diseno`, un skill de Claude Code en
+  `.claude/skills/auditoria-diseno/`): revisa cómo se ve y cómo se usa la app, más allá de lo que
+  cubren las E2E.
+  - **Dónde:** en celular, tableta (iPad) y computador, del iPhone SE a un monitor de 1920 px, y en
+    320 px y con letra al 200 % para la accesibilidad.
+  - **Con qué:** Chromium y WebKit (el motor de Safari), en modo claro y oscuro, y opcionalmente en
+    el simulador de iOS.
+  - **Cómo trabaja:** un recorrido con Playwright (`recorrido/`) crea cuentas de prueba en la base
+    de las E2E y captura cada página y estado.
+    - **Qué mide:** lo que se sale de la pantalla o queda tapado, textos cortados, campos de menos
+      de 16 px, zonas táctiles chicas, axe con WCAG 2.2, el recorrido con el teclado y los saltos al
+      cargar.
+    - **Qué deja:** una galería para comparar las capturas lado a lado.
+    - **Después:** Claude y sus subagentes revisan las capturas y los flujos con un checklist (UI,
+      UX, accesibilidad, Safari de iOS) y separan los defectos de las sugerencias de diseño.
+  - **Modos:**
+    - `completa`: una vez al mes o después de una funcionalidad grande;
+    - `cambios`: antes de un PR que cambie páginas, componentes o estilos;
+    - un área o una página, por ejemplo `/auditoria-diseno tableta` o `/auditoria-diseno /egresos`.
+  - **El informe**, con las capturas y la galería, queda en `reports/diseno/` (ignorado por git). Los
+    arreglos van en ramas `fix/…`, con una prueba de regresión cuando se puede medir.
+  - **WebKit** se instala una vez: `pnpm exec playwright install webkit`.
 - **Errores de los formularios**: en español, debajo de cada campo y nunca el globo del navegador
   (que sale en su idioma, "Please fill out this field."). Los traduce `src/lib/field-errors.ts` y
   los muestra `useFieldErrors`; `src/forms.test.ts` exige que todo formulario con campos validados lo
