@@ -103,7 +103,11 @@ test("un admin sin la verificación no puede ver la página de administración",
   await newAdmin(page);
   await page.goto("/admin");
   await expect(page).toHaveURL(/\/admin\/seguridad$/);
-  await expect(heading(page, "Administración")).toHaveCount(0);
+  // Lo que se protege es el contenido de la página (los módulos). El título "Administración" es del
+  // marco (layout), que también rodea Seguridad: que alcance a dibujarse antes de la redirección
+  // depende del tiempo, así que no sirve para esta prueba.
+  await expect(visible(page.getByLabel("Tu contraseña"))).toBeVisible();
+  await expect(page.getByRole("list", { name: "Módulos de administración" })).toHaveCount(0);
 });
 
 test("un usuario normal no ve la pestaña Admin y las páginas de administración no existen para él", async ({ page }) => {
