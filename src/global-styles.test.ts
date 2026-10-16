@@ -6,7 +6,12 @@ import { describe, expect, it } from "vitest";
 // distinto. La auditoría de diseño (WebKit) las revisa en pantalla; aquí, que no se pierdan.
 
 const css = readFileSync(path.join(__dirname, "app/globals.css"), "utf8");
-const rule = (selector: string) => css.match(new RegExp(`${selector.replace(/[.[\]"=]/g, "\\$&")}\\s*\\{([^}]*)\\}`))?.[1] ?? "";
+/** El contenido `{ … }` de una regla, buscada por su selector exacto (como texto, sin armar una regex). */
+function rule(selector: string) {
+  const start = css.indexOf(`${selector} {`);
+  if (start < 0) return "";
+  return css.slice(css.indexOf("{", start) + 1, css.indexOf("}", start));
+}
 
 describe("estilos para Safari", () => {
   it("el <select> no usa la apariencia del sistema (Safari en Mac no le aplicaría el borde ni el alto)", () => {
