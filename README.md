@@ -98,7 +98,11 @@ pnpm dev                        # http://localhost:3000 (antes, copia la base lo
   repetidos y audios. Los mensajes llegan al webhook firmados como los manda Meta y la app
   responde a servidores falsos de WhatsApp y Claude (`e2e/fake-services.mjs`): nada sale a
   internet, así que no cuesta nada. La primera vez instala el navegador:
-  `pnpm exec playwright install chromium`.
+  `pnpm exec playwright install chromium`. En el CI van partidas en 4 jobs que corren a la vez (el
+  escritorio en 3 con `--shard` de Playwright, y celular y tableta en la cuarta), y el check
+  obligatorio **E2E y accesibilidad** pasa solo si pasan todas. Las partes están en la matriz del job
+  `e2e-parte` de `.github/workflows/ci.yml`: si agregas un proyecto de Playwright, súmalo ahí
+  (`test/e2e-en-ci.test.ts` falla si falta). La regla de `main` no cambia.
 - **Auditoría de diseño** (`/auditoria-diseno`, un skill de Claude Code en
   `.claude/skills/auditoria-diseno/`): revisa cómo se ve y cómo se usa la app, más allá de lo que
   cubren las E2E.
