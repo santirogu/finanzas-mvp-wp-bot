@@ -218,6 +218,26 @@ respetan todas las instancias de Vercel; en memoria cada instancia tendría el s
 `src/lib/rate-limit.int.test.ts` y las E2E. La vinculación de WhatsApp tiene su propio límite: 5
 códigos fallidos por hora y número.
 
+**Rutas de Better Auth:** `/api/auth/*` solo atiende las que la app usa desde el navegador
+(`AUTH_HTTP_ROUTES` en `src/modules/auth/http-routes.ts`):
+- registrarse;
+- entrar;
+- configurar la verificación en dos pasos;
+- escribir el código o un código de respaldo.
+
+Todo lo demás responde 404, incluidas las rutas que agregue una versión nueva de Better Auth:
+- cambiar o verificar la contraseña;
+- actualizar el perfil;
+- listar o cerrar sesiones;
+- los proveedores sociales;
+- recuperar la contraseña.
+
+Lo que la app hace desde el servidor (leer la sesión, salir, verificar la contraseña al eliminar la
+cuenta) llama a `auth.api.*` y no pasa por esas rutas. Las conocidas también están en `disabledPaths`.
+`src/lib/auth-routes.int.test.ts` falla si Better Auth trae un endpoint sin clasificar. El nombre se
+valida al registrarse: máximo 80 caracteres y sin caracteres de control ni invisibles
+(`src/modules/auth/account-name.ts`).
+
 **Bloqueo por cuenta:** el límite por IP no frena a quien reparte los intentos entre muchas IPs.
 Por eso, tras 5 contraseñas equivocadas en 15 minutos, la cuenta queda bloqueada 15 minutos, venga
 el intento de donde venga (ni la contraseña correcta entra; el formulario dice cuánto falta). Se
@@ -239,10 +259,10 @@ Hay dos roles (`src/lib/roles.ts`), guardados en la columna `user.role`:
   existe, desde la terminal, y solo puede hacerlo quien tiene la `DATABASE_URL`. Así no queda
   nada en el código (el repositorio es público) ni en Vercel.
 - **Nadie puede darse el rol desde la app:** en Better Auth el campo tiene `input: false`, así que
-  el registro ignora el rol que mande el cliente y "actualizar perfil" lo rechaza
-  (`FIELD_NOT_ALLOWED`). La base solo acepta `user` o `admin` (tipo `user_role`). No se usa el plugin
-  `admin` de Better Auth: agregaría endpoints (suplantar usuarios, cambiar contraseñas ajenas) que
-  no hacen falta.
+  el registro ignora el rol que mande el cliente. "Actualizar perfil" está apagado por HTTP y, si se
+  usara desde el servidor, también lo rechaza (`FIELD_NOT_ALLOWED`). La base solo acepta `user` o
+  `admin` (tipo `user_role`). No se usa el plugin `admin` de Better Auth: agregaría endpoints
+  (suplantar usuarios, cambiar contraseñas ajenas) que no hacen falta.
 - **En el servidor:** las páginas y acciones de administración llaman a `requireAdmin()`
   (`src/lib/session.ts`): sin sesión llevan al login, sin el rol responden 404 (para no revelar que
   la sección existe) y sin la verificación en dos pasos llevan a configurarla. El rol se lee de la
@@ -261,7 +281,10 @@ Authenticator (o cualquier app TOTP); reglas propias en `src/modules/auth/two-fa
   dispositivo". 5 códigos incorrectos seguidos la bloquean 15 minutos (más el límite de 3 intentos
   cada 10 s por IP); las contraseñas equivocadas al activarla cuentan para el bloqueo del login.
 - **No se desactiva desde la app:** `disable`, `get-totp-uri`, `generate-backup-codes` y OTP están
-  apagados (404), y solo un admin puede activarla. Si se pierde el celular: un código de respaldo; si
+  apagados (404), y solo un admin puede activarla. Con la verificación ya activa, `verify-totp` y
+  `verify-backup-code` solo sirven para entrar: con una sesión abierta responden 403
+  (`TWO_FACTOR_ALREADY_VERIFIED`), porque ahí Better Auth no cuenta los fallos y con la sesión robada de
+  un admin se podrían probar códigos sin límite. Si se pierde el celular: un código de respaldo; si
   tampoco, `pnpm admin:reset-2fa --env .env.produccion <correo>` la reinicia y cierra sus sesiones.
 - **Sesión cerrada en otro lado** (al activarla, al reiniciarla, al borrar la cuenta): el navegador
   conserva la cookie vieja. `requireUser` manda a `/login?sesion=vencida`, donde el proxy la borra
@@ -345,7 +368,7 @@ sesiones a una cuenta suspendida (`databaseHooks.session.create.before`, despué
 correcta: a quien no la sabe no se le revela nada) y responde `ACCOUNT_SUSPENDED`; el formulario dice
 "Tu cuenta está suspendida. Si crees que es un error, escríbenos a…", sin el motivo. Si le quedara una
 sesión, `getCurrentUser` la ignora. El bot le responde lo mismo y no registra nada (ni llama a Claude).
-`suspended_at` es `input: false`: nadie se la quita con "actualizar perfil". El motivo
+`suspended_at` es `input: false`: nadie se la quita con "actualizar perfil" (que además está apagado). El motivo
 (`suspension_reason`) solo lo ve el admin, en el detalle y en el Historial.
 
 Cada una se confirma en una ventana con el **código de Google Authenticator** del admin

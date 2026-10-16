@@ -15,6 +15,15 @@ describe("authErrorMessage", () => {
       "La contraseña debe tener al menos 8 caracteres.",
     );
     expect(authErrorMessage({ code: "INVALID_EMAIL" })).toBe("El correo no es válido.");
+    expect(authErrorMessage({ code: "PASSWORD_TOO_LONG", message: "Password too long" })).toBe(
+      "La contraseña puede tener máximo 128 caracteres.",
+    );
+  });
+
+  it("el nombre inválido llega del servidor con su mensaje en español", () => {
+    expect(authErrorMessage({ status: 400, code: "INVALID_NAME", message: "El nombre puede tener máximo 80 caracteres." })).toBe(
+      "El nombre puede tener máximo 80 caracteres.",
+    );
   });
 
   it("avisa en español cuando se superó el límite de intentos (429, sin código)", () => {
@@ -62,6 +71,9 @@ describe("authErrorMessage", () => {
     );
     expect(authErrorMessage({ status: 403, code: "ADMIN_ONLY" })).toBe(
       "La verificación en dos pasos es solo para administradores.",
+    );
+    expect(authErrorMessage({ status: 403, code: "TWO_FACTOR_ALREADY_VERIFIED", message: "x" })).toBe(
+      "La verificación en dos pasos ya está activa.",
     );
   });
 

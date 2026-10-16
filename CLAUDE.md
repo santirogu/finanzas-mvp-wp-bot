@@ -132,6 +132,12 @@ de Vercel ni muevas las migraciones fuera del job `deploy`.
   (`input: false` en Better Auth) ni crees usuarios o contraseñas de admin por defecto. Solo
   `roles.ts` y `session.ts` comparan roles. No reactives los endpoints de `TWO_FACTOR_DISABLED_PATHS`
   ni ofrezcas "recordar este dispositivo".
+- **Rutas de Better Auth** (`src/modules/auth/http-routes.ts`): `/api/auth/*` solo atiende
+  `AUTH_HTTP_ROUTES`; el resto responde 404.
+  - Si el navegador necesita una ruta nueva de Better Auth, agrégala a `AUTH_HTTP_ROUTES` con quién la
+    usa. Antes, piensa si basta llamar a `auth.api.*` desde una Server Action.
+  - Si Better Auth trae un endpoint nuevo, clasifícalo: `src/lib/auth-routes.int.test.ts` falla hasta
+    que lo hagas.
 - **Agregar un módulo de administración** (README → Sección de administración):
   1. su entrada en `src/modules/admin/modules.ts` (`status: "activo"`);
   2. su página en `src/app/(app)/admin/<id>/page.tsx`, que llama a `requireAdmin()` y se clasifica

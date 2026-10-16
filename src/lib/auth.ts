@@ -8,21 +8,23 @@ import { PHASE_PRODUCTION_BUILD } from "next/constants";
 import { db, schema } from "@/db";
 import { recordEvent } from "@/modules/account/events";
 import { SUSPENDED_MESSAGE, isSuspended } from "@/modules/account/suspension";
+import { parseAccountName } from "@/modules/auth/account-name";
+import { AUTH_DISABLED_PATHS } from "@/modules/auth/http-routes";
 import { clearFailures, lockedUntil, normalizeEmail, recordFailure } from "@/modules/auth/lockout";
 import {
-  TWO_FACTOR_DISABLED_PATHS,
   TWO_FACTOR_ERRORS,
   TWO_FACTOR_ISSUER,
   TWO_FACTOR_LOCKOUT,
+  needsSession,
   twoFactorViolation,
 } from "@/modules/auth/two-factor-rules";
 import { getAppUrl, getVercelOrigins } from "./app-url";
 import { envVar } from "./env";
 import { ROLES, hasRole, parseRole } from "./roles";
 
-// El build corre en GitHub Actions, que no recibe los secretos de Vercel. Better Auth exige
-// un secreto al inicializarse, así que durante el build se usa uno provisional que nunca
-// firma sesiones: en ejecución se usa el real y, si falta, Better Auth falla como debe.
+// Better Auth exige un secreto al inicializarse. El build de producción trae el real (el job de
+// despliegue hace `vercel pull`); si un build corre sin él (por ejemplo, el de las E2E en el CI), se
+// usa uno provisional que nunca firma sesiones. En ejecución, si falta, Better Auth falla como debe.
 const secret =
   envVar("BETTER_AUTH_SECRET") ??
   (process.env.NEXT_PHASE === PHASE_PRODUCTION_BUILD
@@ -49,6 +51,8 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     minPasswordLength: 8,
+    // El de Better Auth por defecto, explícito: el formulario usa el mismo (maxLength).
+    maxPasswordLength: 128,
     autoSignIn: true,
   },
   user: {
@@ -78,16 +82,28 @@ export const auth = betterAuth({
         await assertNotLocked(normalizeEmail(ctx.body?.email));
         return;
       }
+      // Better Auth no valida el nombre: se limpia y se limita aquí (src/modules/auth/account-name.ts).
+      if (ctx.path === "/sign-up/email") {
+        const name = parseAccountName(ctx.body?.name);
+        if (!name.ok) throw APIError.from("BAD_REQUEST", { code: "INVALID_NAME", message: name.error });
+        return { context: { body: { ...ctx.body, name: name.value } } };
+      }
       if (!ctx.path.startsWith("/two-factor/")) return;
-      const session = ctx.path === "/two-factor/enable" ? await getSessionFromCtx(ctx) : null;
+      const session = needsSession(ctx.path) ? await getSessionFromCtx(ctx) : null;
       const violation = twoFactorViolation({
         path: ctx.path,
         body: ctx.body,
-        isAdmin: session ? hasRole(parseRole(session.user.role), "admin") : null,
+        session: session && {
+          isAdmin: hasRole(parseRole(session.user.role), "admin"),
+          twoFactorEnabled: session.user.twoFactorEnabled === true,
+        },
       });
-      if (violation === "ADMIN_ONLY") throw APIError.from("FORBIDDEN", TWO_FACTOR_ERRORS.ADMIN_ONLY);
+      if (violation === "ADMIN_ONLY" || violation === "ALREADY_VERIFIED") {
+        throw APIError.from("FORBIDDEN", TWO_FACTOR_ERRORS[violation]);
+      }
       if (violation) throw APIError.from("BAD_REQUEST", TWO_FACTOR_ERRORS[violation]);
-      if (session) await assertNotLocked(normalizeEmail(session.user.email));
+      // La contraseña que pide activarla cuenta para el bloqueo de la cuenta.
+      if (session && ctx.path === "/two-factor/enable") await assertNotLocked(normalizeEmail(session.user.email));
     }),
     after: createAuthMiddleware(async (ctx) => {
       const returned = ctx.context.returned;
@@ -130,8 +146,9 @@ export const auth = betterAuth({
       },
     },
   },
-  // Rutas apagadas (responden 404); ver TWO_FACTOR_DISABLED_PATHS.
-  disabledPaths: [...TWO_FACTOR_DISABLED_PATHS],
+  // Rutas que la app no usa por HTTP: responden 404 (src/modules/auth/http-routes.ts). El route
+  // handler de /api/auth además solo deja pasar las de AUTH_HTTP_ROUTES.
+  disabledPaths: [...AUTH_DISABLED_PATHS],
   session: {
     // Sesión en cookie httpOnly, válida 30 días y renovada cada 24 h de uso.
     expiresIn: 60 * 60 * 24 * 30,
