@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, type ReactNode } from "react";
+import { useEffect, useId, useRef, type ReactNode } from "react";
 import { FieldError } from "@/components/field-error";
 import { TOTP_CODE_MESSAGES, type FieldMessages } from "@/lib/field-errors";
 
@@ -32,6 +32,26 @@ export function Dialog({ title, onClose, children }: { title: string; onClose: (
         {children(ids)}
       </div>
     </dialog>
+  );
+}
+
+/**
+ * El aviso de una acción que terminó bien ("Se creó la categoría…"). Recibe el foco al aparecer: la
+ * ventana que la hizo ya se cerró y a veces el botón que la abrió ya no existe (un "Desbloquear" ya
+ * hecho), así que el teclado y el lector de pantalla siguen desde aquí, no desde el principio.
+ */
+export function DoneMessage({ message, className = "" }: { message: string; className?: string }) {
+  const ref = useRef<HTMLParagraphElement>(null);
+  useEffect(() => ref.current?.focus(), [message]);
+  return (
+    <p
+      ref={ref}
+      role="status"
+      tabIndex={-1}
+      className={`rounded-lg bg-income/10 px-3 py-2 text-sm text-income outline-none focus-visible:ring-2 focus-visible:ring-income/40 ${className}`}
+    >
+      {message}
+    </p>
   );
 }
 

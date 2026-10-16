@@ -95,6 +95,31 @@ describe("la lista", () => {
     expect(panel).not.toBeVisible();
   });
 
+  it("'⋯' se cierra con Esc (y el foco vuelve a él) y al tocar afuera", async () => {
+    renderManager();
+    const more = within(row("Mercado")).getByRole("button", { name: "Más acciones para Mercado" });
+    const panel = document.getElementById(more.getAttribute("aria-controls")!)!;
+    await userEvent.click(more);
+    await userEvent.tab();
+    expect(within(panel).getByRole("button", { name: /^Archivar/ })).toHaveFocus();
+    await userEvent.keyboard("{Escape}");
+    expect(panel).not.toBeVisible();
+    expect(more).toHaveFocus();
+
+    await userEvent.click(more);
+    await userEvent.click(screen.getByRole("list", { name: "Categorías de egresos" }));
+    expect(panel).not.toBeVisible();
+  });
+
+  it("al elegir una acción del '⋯', el foco pasa al '⋯' (el navegador lo devuelve ahí al cancelar la ventana)", async () => {
+    renderManager();
+    const more = within(row("Mercado")).getByRole("button", { name: "Más acciones para Mercado" });
+    await userEvent.click(more);
+    await userEvent.click(within(row("Mercado")).getByRole("button", { name: /^Archivar/ }));
+    expect(dialog()).toBeInTheDocument();
+    expect(more).toHaveFocus();
+  });
+
   it("las archivadas se restauran sin código, y también se pueden eliminar", async () => {
     actions.restoreCategoryAction.mockResolvedValue({ message: "Se restauró la categoría 🎮 Videojuegos." });
     renderManager();
@@ -139,6 +164,8 @@ describe("crear y editar (sin código)", () => {
     expect(Object.fromEntries(actions.createCategoryAction.mock.calls[0][1] as FormData)).toEqual({ type: "expense", name: "Mascotas", emoji: "🐾" });
     expect(await screen.findByRole("status")).toHaveTextContent("Se creó la categoría 🐾 Mascotas.");
     expect(screen.queryByRole("dialog")).toBeNull();
+    // La ventana ya no está: el foco va al aviso, no al principio de la página.
+    expect(screen.getByRole("status")).toHaveFocus();
   });
 
   it("editar trae lo de ahora y envía el id; los errores van junto a su campo", async () => {

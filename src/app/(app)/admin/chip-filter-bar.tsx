@@ -90,8 +90,9 @@ export function ChipFilterBar({
             className="input"
           />
         </label>
-        {/* Enter en la búsqueda envía el formulario. */}
-        <button type="submit" className="sr-only">
+        {/* Enter en la búsqueda envía el formulario. Fuera del orden de Tab: no se ve, así que el foco
+            quedaría en un lugar invisible (WCAG 2.4.7). */}
+        <button type="submit" tabIndex={-1} className="sr-only">
           Buscar
         </button>
         <button

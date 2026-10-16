@@ -1,11 +1,11 @@
 "use client";
 
-import { useActionState, useId, useState, type ReactNode } from "react";
+import { useActionState, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { CATEGORY_NAME_MAX, CATEGORY_TYPE_LABELS, DEFAULT_CATEGORY, EMOJI_SUGGESTIONS, type CategoryType } from "@/modules/admin/categories/category-input";
 import { describedBy } from "@/components/field-error";
 import { useFieldErrors } from "@/components/use-field-errors";
 import type { FieldMessages } from "@/lib/field-errors";
-import { Buttons, CODE_FIELD_MESSAGES, CodeField, Dialog, FormError } from "../admin-dialog";
+import { Buttons, CODE_FIELD_MESSAGES, CodeField, Dialog, DoneMessage, FormError } from "../admin-dialog";
 import {
   archiveCategoryAction,
   createCategoryAction,
@@ -66,11 +66,7 @@ export function CategoryManager({ type, categories }: { type: CategoryType; cate
           Nueva categoría
         </button>
       </div>
-      {done && (
-        <p role="status" className="rounded-lg bg-income/10 px-3 py-2 text-sm text-income">
-          {done}
-        </p>
-      )}
+      {done && <DoneMessage message={done} />}
 
       <ul aria-label={`Categorías de ${kind}`} className="divide-y divide-border">
         {active.map((category) => (
@@ -201,9 +197,30 @@ function CategoryRow({ category, onEdit, children }: { category: ManagedCategory
 function MoreActions({ name, actions }: { name: string; actions: { label: string; danger?: boolean; onClick: () => void }[] }) {
   const [expanded, setExpanded] = useState(false);
   const panelId = useId();
+  const wrapper = useRef<HTMLDivElement>(null);
+  const button = useRef<HTMLButtonElement>(null);
+  // Abierto, se cierra con Esc (y el foco vuelve al "⋯") o al tocar fuera de él.
+  useEffect(() => {
+    if (!expanded) return;
+    const onPointerDown = (event: PointerEvent) => {
+      if (!wrapper.current?.contains(event.target as Node)) setExpanded(false);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      setExpanded(false);
+      button.current?.focus();
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [expanded]);
   return (
-    <div className="relative">
+    <div ref={wrapper} className="relative">
       <button
+        ref={button}
         type="button"
         aria-expanded={expanded}
         aria-controls={panelId}
@@ -224,6 +241,9 @@ function MoreActions({ name, actions }: { name: string; actions: { label: string
             type="button"
             onClick={() => {
               setExpanded(false);
+              // El elemento del menú se oculta: con el foco en el "⋯", la ventana que se abre lo
+              // devuelve ahí al cancelarla (si no, quedaría al principio de la página).
+              button.current?.focus();
               action.onClick();
             }}
             className={`block w-full rounded-md px-3 py-2 text-left text-sm hover:bg-background ${action.danger ? "text-danger" : ""}`}
