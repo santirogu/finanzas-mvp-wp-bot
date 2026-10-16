@@ -114,6 +114,42 @@ export function medirDiseno({ tactil }: { tactil: boolean }): Problema[] {
     }
   }
 
+  // 4c. El borde de los campos contra su fondo y contra lo que los rodea: 3:1 (WCAG 1.4.11). axe no
+  // lo mide. Los colores que el navegador no da en rgb (mezclas en oklab) no se comparan.
+  const rgb = (color: string) => {
+    const m = color.match(/^rgba?\(([\d.]+),\s*([\d.]+),\s*([\d.]+)(?:,\s*([\d.]+))?\)$/);
+    return m ? { canales: [m[1], m[2], m[3]].map(Number), alfa: m[4] === undefined ? 1 : Number(m[4]) } : null;
+  };
+  const luminancia = (canales: number[]) => {
+    const [r, g, b] = canales.map((c) => (c / 255 <= 0.04045 ? c / 255 / 12.92 : ((c / 255 + 0.055) / 1.055) ** 2.4));
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  };
+  const contraste = (a: number[], b: number[]) => {
+    const [claro, oscuro] = [luminancia(a), luminancia(b)].sort((x, y) => y - x);
+    return (claro + 0.05) / (oscuro + 0.05);
+  };
+  // El primer fondo opaco hacia arriba (null si hay uno semitransparente o en un formato sin rgb).
+  const fondoDe = (desde: Element | null): number[] | null => {
+    for (let el = desde; el; el = el.parentElement) {
+      const color = rgb(getComputedStyle(el).backgroundColor);
+      if (!color) return null;
+      if (color.alfa === 1) return color.canales;
+      if (color.alfa > 0) return null;
+    }
+    return [255, 255, 255];
+  };
+  for (const campo of document.querySelectorAll<HTMLElement>(
+    "input:not([type=hidden]):not([type=checkbox]):not([type=radio]):not([type=range]), select, textarea",
+  )) {
+    const s = getComputedStyle(campo);
+    if (!seVe(campo) || s.borderTopStyle === "none" || parseFloat(s.borderTopWidth) === 0 || campo === document.activeElement) continue;
+    const borde = rgb(s.borderTopColor);
+    const [propio, alrededor] = [fondoDe(campo), fondoDe(campo.parentElement)];
+    if (!borde || borde.alfa < 1 || !propio || !alrededor) continue;
+    const minimo = Math.min(contraste(borde.canales, propio), contraste(borde.canales, alrededor));
+    if (minimo < 3) problemas.push({ tipo: "borde-campo", nivel: "defecto", detalle: "El borde del campo casi no se ve (menos de 3:1, WCAG 1.4.11)", elemento: describir(campo), medida: `${minimo.toFixed(2)}:1` });
+  }
+
   // 4. Campos con letra de menos de 16 px en una pantalla táctil: Safari del iPhone hace zoom al tocarlos.
   if (tactil) {
     const campos = document.querySelectorAll<HTMLElement>(

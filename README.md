@@ -102,7 +102,7 @@ pnpm dev                        # http://localhost:3000
   `.claude/skills/auditoria-diseno/`): revisa cómo se ve y cómo se usa la app, más allá de lo que
   cubren las E2E.
   - **Dónde:** en celular, tableta (iPad) y computador, del iPhone SE a un monitor de 1920 px, y en
-    320 px y con letra al 200 % para la accesibilidad.
+    320 px y con zoom al 200 % (640 px) para la accesibilidad.
   - **Con qué:** Chromium y WebKit (el motor de Safari), en modo claro y oscuro, y opcionalmente en
     el simulador de iOS.
   - **Cómo trabaja:** un recorrido con Playwright (`recorrido/`) crea cuentas de prueba en la base

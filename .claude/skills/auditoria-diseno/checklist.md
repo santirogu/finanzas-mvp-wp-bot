@@ -120,9 +120,9 @@ Recorre cada flujo como alguien que lo usa por primera vez:
 | 1.3.5 Propósito de los campos | `autoComplete` en nombre, correo, contraseña y código | Código |
 | 1.4.1 Uso del color | El ingreso/egreso también con "+"/"−"; los errores también con texto | Capturas |
 | 1.4.3 Contraste del texto | 4,5:1 (3:1 en texto grande), en claro y oscuro | [M] axe |
-| 1.4.4 Cambio de tamaño del texto | Con la letra al 200 % nada se corta ni se tapa | [M] letra-200 |
+| 1.4.4 Cambio de tamaño del texto | Con el zoom al 200 % nada se corta ni se tapa | [M] zoom-200 (640 px) |
 | 1.4.10 Reflujo | A 320 px, sin scroll de lado | [M] reflujo-320 |
-| 1.4.11 Contraste de lo que no es texto | El borde de los campos y de los controles contra el fondo: 3:1. Axe no lo mide | `src/color-contrast.test.ts` (tokens `--control`, `--brand`, `--danger`); un control nuevo con otro borde, a mano |
+| 1.4.11 Contraste de lo que no es texto | El borde de los campos y de los controles contra el fondo: 3:1. Axe no lo mide | [M] borde-campo (en pantalla) y `src/color-contrast.test.ts` (los tokens `--control`, `--brand` y `--danger`) |
 | 1.4.12 Espaciado del texto | Más interlineado y espacio entre letras no corta nada | Prueba corta con estilos |
 | 1.4.13 Contenido al pasar el mouse | Los `title` y menús se pueden cerrar y no tapan lo que se lee | Código |
 | 2.1.1 y 2.1.2 Teclado | Todo se hace con el teclado y se sale de cada ventana con Esc | [M] foco, y a mano en las ventanas |

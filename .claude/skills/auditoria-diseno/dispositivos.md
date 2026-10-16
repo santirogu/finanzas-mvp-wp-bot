@@ -16,7 +16,7 @@ La lista que usa el recorrido está en `recorrido/dispositivos.ts`. Esta página
 | Computador | **1280 × 800** | Laptop | Representativa; aquí se recorre con el teclado |
 | Computador | 1920 × 1080 | Monitor | El contenido centrado (`max-w-5xl`, 1024 px) en una pantalla ancha |
 | Accesibilidad | 320 × 640 | Zoom al 400 % | WCAG 1.4.10: a 320 px de ancho todo se lee sin scroll de lado |
-| Accesibilidad | 1280 × 800, letra 200 % | Letra grande del navegador | WCAG 1.4.4: el texto crece sin perderse ni taparse |
+| Accesibilidad | 640 × 400 (escala 2) | Zoom al 200 % en un computador de 1280 × 800 | WCAG 1.4.4: con el zoom, el texto crece sin perderse ni taparse. Se simula con el ancho que ve el navegador (640 px), como el zoom real: así el diseño cambia según sus cortes. Agrandar solo la letra de `<html>` no lo hacía y daba falsos positivos |
 
 En **negrita**, las representativas: además se revisan en modo oscuro y con axe. Las demás, en modo
 claro y con las medidas de diseño (que no dependen del color).

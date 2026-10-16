@@ -64,7 +64,6 @@ export const VISTAS: Vista[] = [
   { id: "privacidad", titulo: "Política de privacidad", ruta: fija("/privacidad") },
   { id: "eliminar-datos", titulo: "Eliminar mis datos", ruta: fija("/eliminar-datos") },
   { id: "cuenta-eliminada", titulo: "Cuenta eliminada", ruta: fija("/cuenta-eliminada") },
-  { id: "no-encontrada", titulo: "Página que no existe (404)", ruta: fija("/esta-pagina-no-existe") },
 
   // Una cuenta nueva, sin movimientos
   { id: "resumen-vacio", titulo: "Resumen sin movimientos", persona: "vacia", ruta: fija("/dashboard") },
@@ -91,6 +90,8 @@ export const VISTAS: Vista[] = [
     },
   },
   { id: "cuenta", titulo: "Mi cuenta", persona: "vacia", ruta: fija("/cuenta") },
+  // Con sesión: sin ella, el proxy lleva al login cualquier dirección que no conoce (a propósito).
+  { id: "no-encontrada", titulo: "Página que no existe (404)", persona: "vacia", ruta: fija("/esta-pagina-no-existe") },
 
   // Una cuenta con datos normales y WhatsApp vinculado
   { id: "resumen", titulo: "Resumen con datos", persona: "datos", ruta: fija("/dashboard") },
