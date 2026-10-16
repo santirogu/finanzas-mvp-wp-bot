@@ -1,6 +1,8 @@
-import { randomInt } from "node:crypto";
+import { randomInt, randomUUID } from "node:crypto";
 import { expect, type Page } from "@playwright/test";
+import postgres from "postgres";
 import { heading, newAdmin, setUpTwoFactor } from "./admin";
+import { e2eDatabaseUrl } from "./database-url";
 import { addTransaction, openTab, test, visible } from "./helpers";
 
 // En las pantallas táctiles todo cabe en la pantalla, aunque los textos sean largos (sin scroll de
@@ -161,7 +163,15 @@ test("en pantallas táctiles las páginas caben y los campos no hacen zoom @tact
   });
 
   await test.step("las páginas de administración", async () => {
-    for (const path of ["/admin", "/admin/usuarios", "/admin/historial", "/admin/seguridad"]) {
+    // El bot con tokens de Claude de muchos meses (cientos de millones): los totales caben en sus tarjetas.
+    const sql = postgres(e2eDatabaseUrl(), { max: 1, onnotice: () => {} });
+    const usage = { model: "claude-haiku-5-5", inputTokens: 123_456_789, outputTokens: 12_345_678 };
+    await sql`
+      insert into whatsapp_message (id, phone, body, status, intent, processed_at, ai_requested_at)
+      values (${`wamid.tactil.${randomUUID()}`}, '573000000001', 'mensaje de prueba', 'processed',
+              ${sql.json({ kind: "reply", text: "", usage })}, now(), now())`;
+    await sql.end();
+    for (const path of ["/admin", "/admin/usuarios", "/admin/historial", "/admin/bot", "/admin/seguridad"]) {
       await open(page, path);
       await expectFitsOnScreens(page, path);
     }

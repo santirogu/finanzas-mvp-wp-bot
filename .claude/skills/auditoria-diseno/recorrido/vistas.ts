@@ -128,6 +128,8 @@ export const VISTAS: Vista[] = [
       await expect(dialogo(page)).toBeVisible();
     },
   },
+  // Con la persona de datos, para que haya mensajes del bot (vinculación, movimientos y Claude).
+  { id: "admin-bot", titulo: "Administración: bot de WhatsApp", persona: "admin", necesita: ["datos"], ruta: fija("/admin/bot") },
   { id: "admin-categorias", titulo: "Administración: categorías", persona: "admin", ruta: fija("/admin/categorias") },
   {
     id: "admin-categoria-nueva",

@@ -51,12 +51,12 @@ describe("registro de módulos de administración", () => {
     expect(folders).toEqual(activeAdminModules().map((m) => m.id).sort());
   });
 
-  it("hoy están activos Historial, Usuarios, Categorías y Seguridad; los demás vienen pronto", () => {
-    expect(activeAdminModules().map((m) => m.id)).toEqual(["historial", "usuarios", "categorias", "seguridad"]);
+  it("hoy están activos Historial, Usuarios, Bot, Categorías y Seguridad; los demás vienen pronto", () => {
+    expect(activeAdminModules().map((m) => m.id)).toEqual(["historial", "usuarios", "bot", "categorias", "seguridad"]);
     expect(Object.fromEntries(ADMIN_MODULES.map((m) => [m.id, m.status]))).toEqual({
       historial: "activo",
       usuarios: "activo",
-      bot: "pronto",
+      bot: "activo",
       categorias: "activo",
       salud: "pronto",
       configuracion: "pronto",
@@ -68,7 +68,7 @@ describe("registro de módulos de administración", () => {
 describe("subnavegación", () => {
   it("Inicio primero y luego los módulos activos, en orden", () => {
     expect(ADMIN_HOME).toEqual({ label: "Inicio", href: "/admin" });
-    expect(adminNavItems().map((i) => i.label)).toEqual(["Inicio", "Historial", "Usuarios", "Categorías", "Seguridad"]);
+    expect(adminNavItems().map((i) => i.label)).toEqual(["Inicio", "Historial", "Usuarios", "Bot de WhatsApp", "Categorías", "Seguridad"]);
   });
 
   it.each([

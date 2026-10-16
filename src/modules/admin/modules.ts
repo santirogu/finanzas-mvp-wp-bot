@@ -50,7 +50,7 @@ export const ADMIN_MODULES: readonly AdminModule[] = [
     label: "Bot de WhatsApp",
     href: "/admin/bot",
     description: "Mensajes, errores y consumo de Claude",
-    status: "pronto",
+    status: "activo",
   },
   {
     id: "categorias",

@@ -17,7 +17,7 @@ const config = {
   mutate: [
     "src/lib/{money,dates,email-typo,env,app-url,session,health,auth-errors,security-headers,service-url,roles,expired-session,field-errors,safe-log,text,cron-auth}.ts",
     "src/modules/auth/{two-factor-rules,http-routes,account-name}.ts",
-    "src/modules/admin/{modules,history/log-filters,shared/filters,shared/totp,users/user-filters,users/session-info,categories/category-input}.ts",
+    "src/modules/admin/{modules,history/log-filters,shared/filters,shared/totp,users/user-filters,users/session-info,categories/category-input,bot/bot-filters}.ts",
     "src/modules/bot/{commands,normalize,interpret,replies,prompt,claude-extractor,limits}.ts",
     "src/modules/whatsapp/{signature,payload,phone,client,actions}.ts",
     "src/modules/transactions/{validation,default-categories}.ts",

@@ -16,10 +16,11 @@ describe("AdminNav", () => {
       ["Inicio", "/admin"],
       ["Historial", "/admin/historial"],
       ["Usuarios", "/admin/usuarios"],
+      ["Bot de WhatsApp", "/admin/bot"],
       ["Categorías", "/admin/categorias"],
       ["Seguridad", "/admin/seguridad"],
     ]);
-    expect(screen.queryByText("Bot de WhatsApp")).toBeNull();
+    expect(screen.queryByText("Salud del sistema")).toBeNull();
   });
 
   it.each([
@@ -28,6 +29,7 @@ describe("AdminNav", () => {
     ["/admin/usuarios", "Usuarios"],
     // El detalle de una cuenta sigue en Usuarios.
     ["/admin/usuarios/abc123", "Usuarios"],
+    ["/admin/bot", "Bot de WhatsApp"],
     ["/admin/categorias", "Categorías"],
     ["/admin/seguridad", "Seguridad"],
   ])("en %s marca %s como la página actual (y solo esa)", (pathname, current) => {
