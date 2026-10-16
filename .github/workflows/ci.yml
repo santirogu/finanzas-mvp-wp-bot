@@ -101,6 +101,41 @@ jobs:
           path: coverage/
           retention-days: 14
 
+  # ¿El PR necesita las E2E? Si solo cambia cosas que no ejercitan (documentación, skills, otros
+  # workflows, pruebas que no son E2E, herramientas: scripts/e2e-needed.mjs), se saltan y el check
+  # obligatorio pasa igual. En main y con "Run workflow" corren siempre: protegen el despliegue.
+  e2e-cambios:
+    name: Detectar cambios para las E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      e2e: ${{ steps.decide.outputs.e2e }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Sin el token de GitHub en .git/config mientras corre código de terceros.
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Decidir si correr las E2E
+        id: decide
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" != "pull_request" ]; then
+            echo "Fuera de un PR (main o Run workflow): las E2E corren siempre."
+            echo "e2e=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # GITHUB_SHA es el PR fusionado con la base: el diff son los cambios del PR.
+          if ! git diff --name-only "$BASE" "$GITHUB_SHA" > changed.txt; then
+            echo "No se pudo comparar con la base: las E2E corren por seguridad."
+            echo "e2e=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          node scripts/e2e-needed.mjs < changed.txt | tee decision.txt
+          { echo "### ¿Correr las E2E?"; echo; echo '```'; cat decision.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
   # Pruebas de punta a punta: un navegador real (Playwright) recorre la app como un usuario, en
   # escritorio, celular y tableta, y axe-core revisa la accesibilidad. Corre contra un build de
   # producción local con su propio Postgres; no llama a Claude ni a WhatsApp.
@@ -114,6 +149,8 @@ jobs:
   # los resultados: la regla "Proteger main" no cambia aunque cambien las partes.
   e2e-parte:
     name: E2E (parte ${{ matrix.parte }} de ${{ strategy.job-total }})
+    needs: e2e-cambios
+    if: needs.e2e-cambios.outputs.e2e == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     strategy:
@@ -197,21 +234,28 @@ jobs:
             test-results/
           retention-days: 14
 
-  # El check obligatorio "E2E y accesibilidad": pasa solo si pasaron todas las partes (con
-  # always(), también responde si alguna falló o se canceló, en vez de quedar sin resultado).
+  # El check obligatorio "E2E y accesibilidad": pasa si pasaron todas las partes, o si el PR no las
+  # necesitaba y por eso no corrieron. Si la detección falla, o las partes se saltan por otra razón,
+  # falla (con always(), también responde si algo falló o se canceló, en vez de quedar sin resultado).
   e2e:
     name: E2E y accesibilidad
-    needs: e2e-parte
+    needs: [e2e-cambios, e2e-parte]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Todas las partes de las E2E pasaron
+      - name: Las E2E pasaron, o el PR no las necesitaba
         env:
+          DETECCION: ${{ needs.e2e-cambios.result }}
+          NECESARIAS: ${{ needs.e2e-cambios.outputs.e2e }}
           RESULTADO: ${{ needs.e2e-parte.result }}
         run: |
-          echo "Resultado de las partes: $RESULTADO"
-          test "$RESULTADO" = "success"
+          echo "Detección: $DETECCION · ¿hacen falta? $NECESARIAS · partes: $RESULTADO"
+          if [ "$DETECCION" = "success" ] && [ "$NECESARIAS" = "false" ] && [ "$RESULTADO" = "skipped" ]; then
+            echo "El PR no cambia nada que las E2E ejerciten: no hizo falta correrlas."
+            exit 0
+          fi
+          test "$DETECCION" = "success" && test "$RESULTADO" = "success"
 
   # Escaneo de seguridad dinámico (DAST) con OWASP ZAP: recorre el build de producción local y
   # analiza cada respuesta en busca de cabeceras faltantes, cookies inseguras y fugas de
