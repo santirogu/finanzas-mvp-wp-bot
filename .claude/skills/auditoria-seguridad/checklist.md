@@ -261,8 +261,10 @@ Puntos a revisar:
   defecto).
 - **Acciones de terceros:** fijadas por SHA (con la versión en un comentario), no por etiqueta; las
   imágenes de Docker, por digest. Todos los `actions/checkout` llevan `persist-credentials: false`.
-- **Secretos por paso:** en el job de despliegue, `VERCEL_TOKEN` va solo en los pasos que lo usan,
-  nunca en el `env` del job ni en la instalación de dependencias.
+- **Secretos por paso:** en el job de despliegue, `VERCEL_TOKEN` va solo en los pasos que hablan con
+  la API de Vercel (`pull`, `deploy`, `inspect`, `promote`, `rollback`). Nunca va en el `env` del job,
+  en la instalación de dependencias ni en `vercel build`, que corre todo el código del build y no lo
+  necesita.
 - **Inyección en `run:`:** ningún `${{ github.event.* }}` va directo dentro de `run:` (títulos o
   cuerpos de PR, nombres de rama). Debe pasar por `env:`.
 - **Código no confiable con secretos:** nada de `pull_request_target` ni `workflow_run` que haga
