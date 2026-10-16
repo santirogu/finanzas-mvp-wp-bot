@@ -5,7 +5,8 @@ const formatters = new Map<string, Intl.NumberFormat>();
 
 /**
  * Un monto como se muestra en toda la app (web y bot): con dos decimales y sin espacio después del
- * símbolo, "$1.000.000,00", "$45.900,50" o "-$50.000,00".
+ * símbolo, "$1.000.000,00", "$45.900,50" o "−$50.000,00". Los negativos llevan el signo menos
+ * tipográfico (U+2212), el mismo que las listas les ponen a los egresos, no el guion de Intl.
  */
 export function formatMoney(amount: number, currency = "COP"): string {
   let fmt = formatters.get(currency);
@@ -21,7 +22,7 @@ export function formatMoney(amount: number, currency = "COP"): string {
     formatters.set(currency, fmt);
   }
   // Intl pone un espacio duro entre el símbolo y el número ("$ 1.000,00"); se quita.
-  return fmt.format(amount).replace(/\s/g, "");
+  return fmt.format(amount).replace(/\s/g, "").replace(/^-/, "−");
 }
 
 /**
@@ -30,11 +31,12 @@ export function formatMoney(amount: number, currency = "COP"): string {
  * Sin coma, un punto final seguido de 1 o 2 dígitos también son centavos ("45900.5", del teclado en
  * inglés): un punto de miles siempre va seguido de 3 dígitos, así que no hay confusión.
  * Devuelve null si no hay un monto válido mayor que cero, si tiene más de dos decimales ("1,500"
- * sería ambiguo) o si es negativo (el tipo ingreso/egreso ya indica el signo: "-5.000" no debe
- * guardarse como 5.000).
+ * sería ambiguo) o si es negativo (el tipo ingreso/egreso ya indica el signo: "-5.000" o "−5.000" no
+ * deben guardarse como 5.000).
  */
 export function parseAmountInput(raw: string): number | null {
-  if (raw.includes("-")) return null;
+  // El guion o el signo menos tipográfico (U+2212) que muestra la app, si se copia un monto de ella.
+  if (/[-−]/.test(raw)) return null;
   // Solo cuentan los dígitos y los separadores: "$", espacios y letras se ignoran.
   const text = raw.replace(/[^\d.,]/g, "");
   // Stryker disable next-line Regex: sin el "^" del segundo patrón el resultado es el mismo (solo hay dígitos y puntos, y el grupo perezoso arranca en 0)
@@ -88,4 +90,14 @@ export function amountInputValue(amount: number): string {
   const rest = cents % 100;
   const whole = groupThousands(String((cents - rest) / 100));
   return rest ? `${whole},${String(rest).padStart(2, "0")}` : whole;
+}
+
+/**
+ * Qué parte de un total es un monto, en porcentaje entero para mostrar: "55", o "<1" si hay dinero
+ * pero menos del 1 % ("0" se leería como si no hubiera nada).
+ */
+export function formatShare(part: number, total: number): string {
+  if (part <= 0 || total <= 0) return "0";
+  const pct = Math.round((part / total) * 100);
+  return pct === 0 ? "<1" : String(pct);
 }

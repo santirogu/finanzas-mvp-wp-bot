@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { TransactionList } from "@/components/transaction-list";
 import { currentMonthRange, formatMonthLabel } from "@/lib/dates";
-import { formatMoney } from "@/lib/money";
+import { formatMoney, formatShare } from "@/lib/money";
 import { requireUser } from "@/lib/session";
 import {
   getMonthlySummary,
@@ -41,30 +41,33 @@ async function Dashboard() {
         <h1 className="text-2xl font-semibold tracking-tight">{formatMonthLabel(range)}</h1>
       </div>
 
-      <section className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <div className="card p-5 sm:order-last">
+      {/* Tres columnas recién desde lg: en un iPad vertical (768-1023 px), con tres, un monto de
+          millones no cabe en su tarjeta. Entre sm y lg, el balance arriba a todo el ancho. Los montos
+          no se parten (WebKit dejaba el signo de un balance negativo solo en un renglón). */}
+      <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="card p-5 sm:col-span-2 lg:order-last lg:col-span-1">
           <p className="text-sm text-muted">Balance del mes</p>
           <p
-            className={`mt-1 text-3xl font-semibold tabular-nums ${summary.balance < 0 ? "text-expense" : ""}`}
+            className={`mt-1 whitespace-nowrap text-3xl font-semibold tabular-nums ${summary.balance < 0 ? "text-expense" : ""}`}
           >
             {money(summary.balance)}
           </p>
         </div>
         <Link href="/ingresos" className="card p-5 transition hover:border-income/40">
           <p className="text-sm text-muted">Ingresos</p>
-          <p className="mt-1 text-2xl font-semibold tabular-nums text-income">
+          <p className="mt-1 whitespace-nowrap text-2xl font-semibold tabular-nums text-income">
             {money(summary.income)}
           </p>
         </Link>
         <Link href="/egresos" className="card p-5 transition hover:border-expense/40">
           <p className="text-sm text-muted">Egresos</p>
-          <p className="mt-1 text-2xl font-semibold tabular-nums text-expense">
+          <p className="mt-1 whitespace-nowrap text-2xl font-semibold tabular-nums text-expense">
             {money(summary.expense)}
           </p>
         </Link>
       </section>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-5">
         <section className="card lg:col-span-3">
           <h2 className="border-b border-border px-4 py-3 font-semibold">Últimos movimientos</h2>
           <TransactionList
@@ -90,7 +93,7 @@ async function Dashboard() {
                           {c.emoji} {c.name}
                         </span>
                         <span className="shrink-0 tabular-nums text-muted">
-                          {money(c.total)} · {pct}%
+                          {money(c.total)} · {formatShare(c.total, summary.expense)}%
                         </span>
                       </div>
                       <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-background">

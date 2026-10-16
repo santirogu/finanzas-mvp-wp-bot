@@ -51,7 +51,7 @@ describe("registeredReply", () => {
       { today: "2026-10-13", currency: "COP", balance: -25900.5, range },
     );
     expect(text).toContain("✅ Egreso registrado: *Almuerzo* — $25.900,50 (Alimentación)");
-    expect(text).toContain("Balance de octubre: *-$25.900,50*");
+    expect(text).toContain("Balance de octubre: *−$25.900,50*");
   });
 
   it("muestra la fecha cuando no es hoy y lista varios movimientos", () => {

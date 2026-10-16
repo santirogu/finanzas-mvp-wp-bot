@@ -216,7 +216,7 @@ describe("handleIncomingMessage · registro de movimientos", () => {
     expect((await activeTransactions(user.id)).map((t) => t.amount).sort((a, b) => a - b)).toEqual([3500.76, 25900.5]);
     expect(sender.sent[0].body).toContain("*Almuerzo* — $25.900,50");
     expect(sender.sent[0].body).toContain("*Parqueadero* — $3.500,76");
-    expect(sender.sent[0].body).toContain("*-$29.401,26*");
+    expect(sender.sent[0].body).toContain("*−$29.401,26*");
 
     await handleIncomingMessage(incoming("deshacer"), d);
     expect(sender.sent[1].body).toContain("Almuerzo — $25.900,50");
