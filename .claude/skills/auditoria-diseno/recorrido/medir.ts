@@ -295,9 +295,15 @@ export async function revisarFoco(page: Page, maximo = 60): Promise<{ orden: Pas
       const nombre =
         el.getAttribute("aria-label") ??
         ((el as HTMLElement).innerText || (el as HTMLInputElement).placeholder || el.getAttribute("name") || "").trim().slice(0, 50);
-      const indicador = (s.outlineStyle !== "none" && parseFloat(s.outlineWidth) > 0) || s.boxShadow !== "none";
+      const marca = (estilo: CSSStyleDeclaration) =>
+        (estilo.outlineStyle !== "none" && parseFloat(estilo.outlineWidth) > 0) || estilo.boxShadow !== "none";
+      // Un radio o una casilla ocultos (1 × 1 px) cuya etiqueta muestra el foco (un selector de
+      // botones, los chips de filtros): lo que se ve es la etiqueta, y eso basta.
+      const etiqueta = (el as HTMLInputElement).labels?.[0] ?? el.closest("label");
+      const conEtiqueta = Boolean(etiqueta && etiqueta.getBoundingClientRect().width > 1 && marca(getComputedStyle(etiqueta)));
+      const indicador = marca(s) || conEtiqueta;
       // Uno "solo para lectores de pantalla" (1 × 1 px) recibe el foco sin verse: no está tapado.
-      const oculto = r.width <= 1 || r.height <= 1;
+      const oculto = (r.width <= 1 || r.height <= 1) && !conEtiqueta;
       const arriba = oculto ? null : document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
       const tapado = Boolean(arriba) && arriba !== el && !el.contains(arriba) && !arriba!.contains(el);
       const id = `${el.tagName}|${nombre}|${Math.round(r.left)}|${Math.round(r.top + window.scrollY)}`;
