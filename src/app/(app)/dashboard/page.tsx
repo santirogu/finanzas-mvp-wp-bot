@@ -41,7 +41,7 @@ async function Dashboard() {
         <h1 className="text-2xl font-semibold tracking-tight">{formatMonthLabel(range)}</h1>
       </div>
 
-      <section className="grid gap-3 sm:grid-cols-3">
+      <section className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div className="card p-5 sm:order-last">
           <p className="text-sm text-muted">Balance del mes</p>
           <p
@@ -64,7 +64,7 @@ async function Dashboard() {
         </Link>
       </section>
 
-      <div className="grid gap-6 lg:grid-cols-5">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
         <section className="card lg:col-span-3">
           <h2 className="border-b border-border px-4 py-3 font-semibold">Últimos movimientos</h2>
           <TransactionList

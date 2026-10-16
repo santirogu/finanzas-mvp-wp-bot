@@ -39,7 +39,7 @@ async function AdminHome() {
   };
 
   return (
-    <ul aria-label="Módulos de administración" className="grid gap-3 sm:grid-cols-2">
+    <ul aria-label="Módulos de administración" className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       {ADMIN_MODULES.map((adminModule) => {
         const body = (
           <>
