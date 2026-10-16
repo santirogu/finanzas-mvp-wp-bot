@@ -99,6 +99,8 @@ async function layoutProblems(page: Page) {
 async function expectFitsOnScreens(page: Page, where: string) {
   for (const size of SCREENS[test.info().project.name]) {
     await page.setViewportSize(size);
+    // Dos cuadros: lo que reacciona al cambio de tamaño (la barra del admin) ya se acomodó.
+    await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
     expect.soft(await layoutProblems(page), `${where} (${size.width} × ${size.height} px)`).toEqual([]);
   }
 }

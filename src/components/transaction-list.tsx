@@ -27,9 +27,8 @@ export function TransactionList({
         const isIncome = t.type === "income";
         return (
           <li key={t.id} className="flex items-center gap-3 px-4 py-3">
-            {/* En modo oscuro, la ficha un tono más clara que la tarjeta: sobre --background, más
-                oscuro, los emojis oscuros (🩺, 🎬) casi no se veían. */}
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-background text-base dark:bg-border">
+            {/* --chip: en modo oscuro, un tono más clara que la tarjeta (los emojis oscuros se ven). */}
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-chip text-base">
               {t.categoryEmoji ?? "•"}
             </span>
             {/* En celular, dos renglones: la descripción con el monto y, abajo, la fecha y la categoría

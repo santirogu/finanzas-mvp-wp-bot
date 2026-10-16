@@ -13,9 +13,14 @@ function tokens(block: string): Record<string, string> {
   return Object.fromEntries([...block.matchAll(/--([\w-]+):\s*(#[0-9a-f]{6})\b/gi)].map((m) => [m[1], m[2]]));
 }
 
+// El modo oscuro está dos veces: el del sistema (media query) y el elegido en Mi cuenta
+// (data-theme="dark"). Tienen que ser iguales.
+const darkFromSystem = css.match(/prefers-color-scheme:\s*dark\)\s*\{\s*:root:not\(\[data-theme="light"\]\)\s*\{([^}]*)\}/)![1];
+const darkChosen = css.match(/:root\[data-theme="dark"\]\s*\{([^}]*)\}/)![1];
+
 const MODES = {
   claro: tokens(css.match(/^:root\s*\{([^}]*)\}/m)![1]),
-  oscuro: tokens(css.match(/prefers-color-scheme:\s*dark\)\s*\{\s*:root\s*\{([^}]*)\}/)![1]),
+  oscuro: tokens(darkChosen),
 };
 
 /** Luminancia relativa de un color #rrggbb (WCAG 2.2). */
@@ -54,6 +59,12 @@ describe("contraste (WCAG)", () => {
       });
     });
   }
+
+  it("el modo oscuro elegido en Mi cuenta es igual al del sistema, y define los mismos colores que el claro", () => {
+    const normalize = (block: string) => block.split(";").map((line) => line.trim()).filter(Boolean);
+    expect(normalize(darkChosen)).toEqual(normalize(darkFromSystem));
+    expect(Object.keys(MODES.oscuro).sort()).toEqual(Object.keys(MODES.claro).sort());
+  });
 
   it("los campos usan el borde de los controles, no el de los divisores", () => {
     const input = css.match(/\.input\s*\{([^}]*)\}/)![1];

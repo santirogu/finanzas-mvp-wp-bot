@@ -4,6 +4,7 @@ import { ROLE_LABELS } from "@/lib/roles";
 import { requireUser } from "@/lib/session";
 import { PageSkeleton } from "../page-skeleton";
 import { DeleteAccountForm } from "./delete-account-form";
+import { ThemePicker } from "./theme-picker";
 
 export const metadata: Metadata = { title: "Mi cuenta" };
 
@@ -33,6 +34,19 @@ async function Account() {
         <p>
           <span className="text-muted">Tipo de cuenta:</span> {ROLE_LABELS[user.role]}
         </p>
+      </section>
+
+      <section className="card space-y-3 p-4 text-sm" aria-labelledby="apariencia">
+        <div className="space-y-1">
+          <h2 id="apariencia" className="font-semibold">
+            Apariencia
+          </h2>
+          <p className="text-muted">
+            Con &quot;Sistema&quot;, la app se ve clara u oscura según tu celular o computador. Se guarda en
+            este dispositivo.
+          </p>
+        </div>
+        <ThemePicker />
       </section>
 
       <section className="card space-y-4 border-danger/40 p-4">

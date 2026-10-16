@@ -173,6 +173,11 @@ scripts/seed.ts                     Categorías por defecto
 
 ### Decisiones importantes
 
+- **Apariencia: Sistema, Claro u Oscuro** (Mi cuenta, `src/lib/theme.ts`).
+  - **Dónde se guarda:** en el navegador (`localStorage`), no en la cuenta, así que cada dispositivo tiene la suya.
+  - **Cómo se aplica:** un script en línea del `<head>` la aplica antes de pintar, sin parpadeo, también en las páginas sin sesión, que se sirven prearmadas.
+  - **Los colores** del modo oscuro están dos veces en `globals.css`, uno por cada forma de llegar a él: con el sistema en oscuro y sin `data-theme="light"`, o con `data-theme="dark"`. `src/color-contrast.test.ts` exige que los dos bloques sean iguales.
+  - **Sin `dark:`:** la variante de Tailwind solo mira el sistema, así que no se usa.
 - **Montos en pesos con centavos, como decimal exacto** (`numeric(18, 2)`), nunca `float` en la
   base: las sumas las hace Postgres. En la app son `number` con hasta dos decimales; para sumar o
   restar en JavaScript, `sumAmounts` y `roundToCents` (`src/lib/money.ts`). Al escribir, el punto

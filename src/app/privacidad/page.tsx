@@ -51,6 +51,11 @@ export default function PrivacyPage() {
               que identifica la red) y navegador, usados solo para mantener tu sesión segura.
             </li>
             <li>
+              <strong>Tu preferencia de apariencia:</strong> si eliges &quot;Claro&quot; u
+              &quot;Oscuro&quot; en Mi cuenta, se guarda solo en tu navegador, en este dispositivo.
+              No llega a nuestros servidores.
+            </li>
+            <li>
               <strong>Estadísticas de uso anónimas:</strong> con Vercel Web Analytics contamos qué
               páginas se visitan, desde qué país y ciudad, con qué tipo de dispositivo, sistema
               operativo y navegador, y desde qué sitio llegaste. No usa cookies, no guarda tu

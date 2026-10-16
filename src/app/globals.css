@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
-/* Los controles del sistema (el ícono del calendario, la lista de un <select>, las barras de
-   desplazamiento) siguen el modo de la página: en modo oscuro, oscuros. */
+/* Modo claro (por defecto). Los controles del sistema (el ícono del calendario, la lista de un
+   <select>, las barras de desplazamiento) siguen el modo de la página: color-scheme. */
 :root {
   color-scheme: light;
   --background: #f6f7f9;
@@ -9,6 +9,9 @@
   --foreground: #14171c;
   --muted: #5f6672;
   --border: #e3e6eb;
+  /* La ficha de los emojis de las listas y de Categorías (en oscuro, un tono más clara que la tarjeta:
+     sobre el fondo, los emojis oscuros como 🩺 casi no se veían). */
+  --chip: #f6f7f9;
   /* El borde de los campos: 3:1 contra la tarjeta y contra el fondo (WCAG 1.4.11; --border, el de
      los divisores y las tarjetas, casi no se ve). src/color-contrast.test.ts lo revisa. */
   --control: #838a95;
@@ -29,14 +32,16 @@
   --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%235f6672'%3E%3Cpath fill-rule='evenodd' d='M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z' clip-rule='evenodd'/%3E%3C/svg%3E");
 }
 
+/* Modo oscuro: el del sistema, salvo que la persona haya elegido "Claro" en Mi cuenta… */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     color-scheme: dark;
     --background: #0d1014;
     --surface: #161a20;
     --foreground: #eceff3;
     --muted: #98a1ad;
     --border: #262c35;
+    --chip: #262c35;
     --control: #646d7b;
     --brand: #2dd4bf;
     --brand-foreground: #062925;
@@ -51,12 +56,37 @@
   }
 }
 
+/* …o el que eligió en Mi cuenta, aunque el sistema esté en claro. Los mismos valores que el bloque
+   de arriba: src/color-contrast.test.ts exige que sean iguales. (Lo pone el script de tema de
+   src/lib/theme.ts en <html data-theme>.) */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --background: #0d1014;
+  --surface: #161a20;
+  --foreground: #eceff3;
+  --muted: #98a1ad;
+  --border: #262c35;
+  --chip: #262c35;
+  --control: #646d7b;
+  --brand: #2dd4bf;
+  --brand-foreground: #062925;
+  --income: #4ade80;
+  --expense: #fb923c;
+  --danger: #f87171;
+  --danger-foreground: #450a0a;
+  --admin: #cecbf6;
+  --admin-surface: #3c3489;
+  --admin-border: #7f77dd;
+  --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%2398a1ad'%3E%3Cpath fill-rule='evenodd' d='M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z' clip-rule='evenodd'/%3E%3C/svg%3E");
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-surface: var(--surface);
   --color-foreground: var(--foreground);
   --color-muted: var(--muted);
   --color-border: var(--border);
+  --color-chip: var(--chip);
   --color-control: var(--control);
   --color-brand: var(--brand);
   --color-brand-foreground: var(--brand-foreground);

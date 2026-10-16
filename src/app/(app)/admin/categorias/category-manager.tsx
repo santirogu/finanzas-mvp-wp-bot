@@ -169,7 +169,7 @@ export function CategoryManager({ type, categories }: { type: CategoryType; cate
 function CategoryRow({ category, onEdit, children }: { category: ManagedCategory; onEdit?: () => void; children?: ReactNode }) {
   return (
     <li className="flex items-center gap-3 py-3">
-      <span aria-hidden className={`flex size-9 flex-none items-center justify-center rounded-lg bg-background text-lg dark:bg-border ${category.archived ? "grayscale" : ""}`}>
+      <span aria-hidden className={`flex size-9 flex-none items-center justify-center rounded-lg bg-chip text-lg ${category.archived ? "grayscale" : ""}`}>
         {category.emoji}
       </span>
       <div className="min-w-0 flex-1">
