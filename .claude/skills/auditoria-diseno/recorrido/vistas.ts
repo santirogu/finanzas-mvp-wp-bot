@@ -97,6 +97,7 @@ export const VISTAS: Vista[] = [
   { id: "ingresos", titulo: "Ingresos con datos", persona: "datos", ruta: fija("/ingresos") },
   { id: "egresos", titulo: "Egresos con datos", persona: "datos", ruta: fija("/egresos") },
   { id: "editar-movimiento", titulo: "Editar un movimiento", persona: "datos", ruta: (d) => d.editar.datos },
+  { id: "egresos-borrado", titulo: "Egresos: aviso después de borrar (con Deshacer)", persona: "datos", ruta: (d) => d.borrado },
 
   // Lo más largo que acepta la app: textos, montos, categorías y una lista de 25 egresos
   { id: "resumen-extremo", titulo: "Resumen con textos y montos máximos", persona: "admin", ruta: fija("/dashboard") },

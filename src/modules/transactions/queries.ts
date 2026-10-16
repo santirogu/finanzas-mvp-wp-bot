@@ -100,6 +100,34 @@ export async function getTransaction(userId: string, id: string) {
 export type EditableTransaction = NonNullable<Awaited<ReturnType<typeof getTransaction>>>;
 
 /**
+ * Cuánto tiempo después de borrar un movimiento se puede deshacer desde la web (el aviso
+ * "Se borró… · Deshacer" de Ingresos y Egresos). Después queda borrado, hasta que la limpieza diaria
+ * lo elimine del todo (retention.ts).
+ */
+export const UNDO_WINDOW_MS = 10 * 60_000;
+
+/** El primer momento en que un movimiento borrado todavía se puede restaurar. */
+export const undoableSince = (now: Date) => new Date(now.getTime() - UNDO_WINDOW_MS);
+
+/**
+ * Lo que dice el aviso después de borrar o de deshacer: un movimiento propio, borrado hace menos de
+ * UNDO_WINDOW_MS ("deleted") o vuelto a la lista ("restored"). null si no hay nada que avisar.
+ */
+export async function getTransactionNotice(userId: string, id: string, kind: "deleted" | "restored", now = new Date()) {
+  const [row] = await db
+    .select({ id: transaction.id, description: transaction.description })
+    .from(transaction)
+    .where(
+      and(
+        eq(transaction.id, id),
+        eq(transaction.userId, userId),
+        kind === "deleted" ? gte(transaction.deletedAt, undoableSince(now)) : isNull(transaction.deletedAt),
+      ),
+    );
+  return row ?? null;
+}
+
+/**
  * Las categorías que puede elegir el usuario (las globales y las suyas), sin las archivadas: las de
  * los formularios y las que conoce el bot. Alfabéticas, con "Otros" al final.
  */
