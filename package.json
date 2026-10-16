@@ -3,7 +3,7 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
-    "dev": "next dev",
+    "dev": "tsx scripts/db-backup.ts auto && next dev",
     "build": "next build",
     "vercel-build": "drizzle-kit migrate && tsx scripts/seed.ts && next build",
     "start": "next start",
@@ -17,6 +17,8 @@
     "db:seed": "tsx scripts/seed.ts",
     "db:studio": "drizzle-kit studio",
     "db:setup": "pnpm db:migrate && pnpm db:seed",
+    "db:backup": "tsx scripts/db-backup.ts backup",
+    "db:restore": "tsx scripts/db-backup.ts restore",
     "account:delete": "tsx --conditions=react-server scripts/delete-data.ts cuenta",
     "messages:cleanup": "tsx --conditions=react-server scripts/delete-data.ts huerfanos",
     "admin:grant": "tsx --conditions=react-server scripts/admin.ts grant",

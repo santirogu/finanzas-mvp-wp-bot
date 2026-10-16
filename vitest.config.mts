@@ -27,7 +27,7 @@ export default defineConfig({
         "src/components/**",
         "src/app/**/{auth-form,two-factor-login,two-factor-setup,expired-session-notice,filter-bar,chip-filter-bar,admin-nav,nav-tabs,whatsapp-connect,page-skeleton,delete-account-form,user-menu,account-actions,event-item,admin-dialog,category-manager}.tsx",
         "scripts/*.mjs",
-        "scripts/{delete-data,admin,db-cli}.ts",
+        "scripts/{delete-data,admin,db-cli,db-backup}.ts",
       ],
       exclude: [
         "**/*.test.ts",

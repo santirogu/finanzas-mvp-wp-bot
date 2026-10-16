@@ -25,7 +25,7 @@ const config = {
     "src/app/*/simulador/actions.ts",
     "src/proxy.ts",
     "scripts/{conventional-commit,deploy-needed,pr-description,check-schema-drift,mutation-summary,smoke,release}.mjs",
-    "scripts/{delete-data,admin,db-cli}.ts",
+    "scripts/{delete-data,admin,db-cli,db-backup}.ts",
   ],
   reporters: ["clear-text", "progress-append-only", "html", "json"],
   htmlReporter: { fileName: "reports/mutation/index.html" },

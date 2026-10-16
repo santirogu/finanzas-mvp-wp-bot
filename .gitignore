@@ -12,6 +12,9 @@
 !.yarn/releases
 !.yarn/versions
 
+# copias de la base local (pnpm db:backup): datos de prueba, nunca al repo público
+/backups
+
 # testing
 /coverage
 /playwright-report

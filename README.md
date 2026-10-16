@@ -28,14 +28,14 @@ pnpm install
 cp .env.example .env            # completa BETTER_AUTH_SECRET con: openssl rand -base64 32
 pnpm db:up                      # levanta Postgres con Docker
 pnpm db:setup                   # aplica migraciones y crea las categorías por defecto
-pnpm dev                        # http://localhost:3000
+pnpm dev                        # http://localhost:3000 (antes, copia la base local si hace falta)
 ```
 
 ### Scripts
 
 | Script | Qué hace |
 |---|---|
-| `pnpm dev` / `build` / `start` | Servidor de desarrollo / build de producción / servir build |
+| `pnpm dev` / `build` / `start` | Servidor de desarrollo (con la copia diaria de la base local) / build de producción / servir build |
 | `pnpm typecheck` · `lint` | Tipos y ESLint |
 | `pnpm test` | Pruebas unitarias y de componentes (rápidas, sin base de datos) |
 | `pnpm test:int` | Pruebas de integración contra Postgres real (`TEST_DATABASE_URL`) |
@@ -48,6 +48,7 @@ pnpm dev                        # http://localhost:3000
 | `pnpm db:check-drift` | Verifica que cada cambio del esquema tenga su migración (lo corre el CI) |
 | `pnpm db:seed` | Crea las categorías globales por defecto, solo si la base no tiene ninguna (después se administran en `/admin/categorias`) |
 | `pnpm db:studio` | Explorador visual de la base de datos |
+| `pnpm db:backup` · `db:restore [archivo]` | Copia la base local en `backups/` / la reemplaza con una copia (ver abajo) |
 | `pnpm account:delete <correo>` | Borra una cuenta y todos sus datos, para quien lo pide por correo (ver Seguridad → Borrar datos a pedido) |
 | `pnpm messages:cleanup` | Borra los mensajes de WhatsApp y los intentos fallidos de vinculación de números sin cuenta, de más de 30 días (`--dias N`, mínimo 7) |
 | `pnpm admin:grant <correo>` · `admin:revoke` · `admin:list` | Da o quita el rol de admin, o lista los admins (ver Seguridad → Roles) |
@@ -148,6 +149,28 @@ pnpm dev                        # http://localhost:3000
   por eso no corre en CI.
 
 Con Docker, `pnpm db:up` crea también la base `finanzas_test` la primera vez.
+
+### Copias de la base local
+
+La base de desarrollo vive en el volumen de Docker de `pnpm db:up` (Postgres 17, como el CI). Un
+reinicio del equipo no la borra; sí la borran un "Factory Reset" o la desinstalación de Docker Desktop
+o Rancher Desktop, cambiar su motor de contenedores o un `docker system prune --volumes`. Para no
+perder las cuentas y los datos de prueba:
+
+- **`pnpm dev` hace una copia al arrancar** si la última tiene más de un día. Si Docker no está
+  abierto, avisa y el servidor arranca igual.
+- **`pnpm db:backup`** hace una cuando quieras (por ejemplo, antes de limpiar Docker).
+- **`pnpm db:restore`** reemplaza la base con la copia más reciente, o con la que le pases
+  (`pnpm db:restore finanzas-2026-10-16-164205.sql.gz`). Antes pide escribir el nombre de la base.
+
+Las copias son SQL comprimido en `backups/`, que git ignora (el repo es público), y se guardan las 10
+últimas (`scripts/db-backup.ts`). Solo trabajan con una `DATABASE_URL` de `localhost`: nunca copian ni
+pisan otra base, como la de producción. Llevan los datos de prueba (correos, movimientos, mensajes del
+bot): si las guardas fuera del equipo, que sea en una nube personal.
+
+Para que la base esté lista al prender el equipo, activa en Docker Desktop o Rancher Desktop la
+opción de abrirse al iniciar sesión (en Rancher Desktop: *Preferences → Application → General →
+Automatically start at login*).
 
 ## Estructura
 
