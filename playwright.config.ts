@@ -19,7 +19,8 @@ export default defineConfig({
   forbidOnly: CI,
   // Un reintento en el CI: si una prueba pasa al segundo intento, el reporte la marca "flaky".
   retries: CI ? 1 : 0,
-  workers: CI ? 2 : undefined,
+  // En el CI, los workers de cada parte los fija .github/workflows/ci.yml (E2E_WORKERS).
+  workers: CI ? Number(process.env.E2E_WORKERS) || 2 : undefined,
   reporter: CI ? [["github"], ["html", { open: "never" }]] : [["list"], ["html", { open: "never" }]],
   use: {
     baseURL: BASE_URL,
