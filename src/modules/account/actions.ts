@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { ACCOUNT_LOCKED } from "@/lib/auth-errors";
 import { requireUser } from "@/lib/session";
-import { lockedUntil, normalizeEmail, recordFailure } from "@/modules/auth/lockout";
+import { normalizeEmail, releaseAttempt, reserveAttempt } from "@/modules/auth/lockout";
 import { CONFIRMATION_WORD } from "./confirmation";
 import { deleteAccountData } from "./delete-account";
 
@@ -35,20 +35,23 @@ export async function deleteAccountAction(
   }
   if (fieldErrors.password || fieldErrors.confirmation) return { fieldErrors };
 
+  // El intento se reserva antes de verificar (como en el login): si la contraseña es equivocada,
+  // queda como fallo; si no, se devuelve.
   const email = normalizeEmail(user.email);
-  if (await lockedUntil(email)) return { error: ACCOUNT_LOCKED };
+  if (!(await reserveAttempt(email)).ok) return { error: ACCOUNT_LOCKED };
 
   const requestHeaders = await headers();
   try {
     await auth.api.verifyPassword({ body: { password }, headers: requestHeaders });
   } catch (error) {
-    if (!isAPIError(error)) throw error;
-    if (error.body?.code !== "INVALID_PASSWORD") {
-      return { error: "No pudimos verificar tu contraseña. Cierra sesión y vuelve a entrar." };
+    if (isAPIError(error) && error.body?.code === "INVALID_PASSWORD") {
+      return { fieldErrors: { password: "Contraseña incorrecta" } };
     }
-    await recordFailure(email);
-    return { fieldErrors: { password: "Contraseña incorrecta" } };
+    await releaseAttempt(email);
+    if (!isAPIError(error)) throw error;
+    return { error: "No pudimos verificar tu contraseña. Cierra sesión y vuelve a entrar." };
   }
+  await releaseAttempt(email);
 
   // Primero se cierra la sesión (borra la cookie) y después se borra todo.
   await auth.api.signOut({ headers: requestHeaders });
