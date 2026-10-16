@@ -174,6 +174,11 @@ de Vercel ni muevas las migraciones fuera del job `deploy`.
 - **Historial de la cuenta** (`account_event`, README → Historial de las cuentas): si agregas o cambias
   algo del registro o la vinculación de WhatsApp, registra su evento con `recordEvent` en la misma
   transacción, con su prueba.
+- **Dependencias con scripts de instalación** (pnpm 10, `strict-dep-builds`): si al agregar una
+  dependencia la instalación falla por sus scripts, revisa si funciona sin ellos. Si sí, va en
+  `pnpm.ignoredBuiltDependencies`; si de verdad los necesita, en `pnpm.onlyBuiltDependencies`. En los
+  dos casos, con su porqué en el README (Versiones forzadas de dependencias). No desactives
+  `strict-dep-builds` ni `minimum-release-age` (`.npmrc`).
 - **Logs sin datos personales:** nunca pases un error crudo a `console.*`; usa `describeError`
   (`src/lib/safe-log.ts`), porque el mensaje de un error de la base trae los datos de la consulta.
   `src/logs.test.ts` lo exige. Tampoco loguees textos de mensajes, correos ni montos.

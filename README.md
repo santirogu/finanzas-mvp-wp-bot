@@ -19,7 +19,9 @@ cuenta**, cada persona puede eliminar su cuenta y todos sus datos (confirmando c
 
 ## Desarrollo local
 
-Requisitos: Node 22+, pnpm y Docker (o cualquier Postgres).
+Requisitos: Node 22+, pnpm y Docker (o cualquier Postgres). La versión de pnpm la fija
+`package.json → packageManager` (10.x): con Corepack (`corepack enable`) o con pnpm 9.7+ instalado, se
+usa sola.
 
 ```bash
 pnpm install
@@ -520,9 +522,25 @@ aquí:
 |---|---|---|
 | [GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) (`braces`, alta) | Solo vía `eslint-config-next` (lint en desarrollo y en el CI), con patrones del propio proyecto: nadie de afuera controla su entrada | Salga una versión corregida de `braces` (o `eslint-config-next` deje de usarlo) |
 
+**Scripts de instalación** (pnpm 10): ninguna dependencia ejecuta scripts al instalarse salvo las
+autorizadas, que es la vía de entrada más común de un paquete secuestrado.
+- **En la app no se autoriza ninguna.** Las dos que traen scripts quedan en
+  `pnpm.ignoredBuiltDependencies`, porque funcionan sin ellos: pnpm ya instala sus binarios nativos
+  como dependencias opcionales. Verificado con una instalación limpia: lint, tipos, pruebas, build y
+  E2E en verde.
+  - `esbuild`: el script solo verifica su binario.
+  - `unrs-resolver`: el resolver de `eslint-config-next`.
+- **En el CLI de Vercel** (`.github/vercel-cli/`) solo `esbuild` (`pnpm.onlyBuiltDependencies`), como
+  hacía `pnpm dlx`.
+- **`.npmrc` → `strict-dep-builds=true`:** una dependencia nueva con scripts hace **fallar** la
+  instalación hasta decidir. Va en `ignoredBuiltDependencies` si funciona sin ellos (lo preferible) o
+  en `onlyBuiltDependencies` si de verdad los necesita, con su porqué en esta sección.
+- **`.npmrc` → `minimum-release-age=10080`:** al agregar o actualizar dependencias no se usan
+  versiones publicadas hace menos de 7 días, igual que el `cooldown` de Dependabot.
+
 **El CLI de Vercel del despliegue** vive aparte, en `.github/vercel-cli/`, con su propio
 `pnpm-lock.yaml`. El job de despliegue lo instala con `--frozen-lockfile`, así que ninguna de sus
-casi 400 dependencias cambia sin un PR (antes, `pnpm dlx` las resolvía en cada despliegue, con el
+casi 300 dependencias cambia sin un PR (antes, `pnpm dlx` las resolvía en cada despliegue, con el
 token de Vercel a mano).
 - **Por qué fuera de la app:** sus builders (Python, contenedores…) traen dependencias con avisos
   conocidos que este proyecto no usa, y así no se instalan en los demás jobs ni entran en el
