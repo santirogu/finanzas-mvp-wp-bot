@@ -80,10 +80,6 @@ async function recorrerVista(browser: Browser, baseURL: string, motor: string, v
     await page.goto(ruta);
     await esperarEstable(page);
     await vista.preparar?.(page, datos);
-    if (dispositivo.letra) {
-      // Como quien sube el tamaño de letra del navegador: la app usa rem, así que crece todo el texto.
-      await page.evaluate((letra) => document.documentElement.style.setProperty("font-size", `${letra * 100}%`, "important"), dispositivo.letra);
-    }
     await esperarEstable(page);
 
     resultado.problemas.push(...(await page.evaluate(medirDiseno, { tactil: dispositivo.tactil })), ...(await medirSaltos(page)));
@@ -92,16 +88,18 @@ async function recorrerVista(browser: Browser, baseURL: string, motor: string, v
 
     if (dispositivo.representativo) {
       resultado.problemas.push(...(await revisarAxe(page, "claro")));
-      // El teclado, en el computador (en WebKit, Tab no pasa por los enlaces si no se activa en Safari).
+      await page.emulateMedia({ colorScheme: "dark" });
+      await esperarEstable(page);
+      resultado.capturas.oscuro = await capturar(page, path.join(carpeta, `${dispositivo.id}-oscuro.jpg`));
+      resultado.problemas.push(...(await revisarAxe(page, "oscuro")));
+      // El teclado, al final: el recorrido con Tab deja el foco en algún elemento, y la captura oscura
+      // tiene que mostrar lo mismo que la clara. Solo en el computador (en WebKit, Tab no pasa por los
+      // enlaces si no se activa en Safari).
       if (dispositivo.grupo === "computador" && motor === "chromium") {
         const foco = await revisarFoco(page);
         resultado.foco = foco.orden;
         resultado.problemas.push(...foco.problemas);
       }
-      await page.emulateMedia({ colorScheme: "dark" });
-      await esperarEstable(page);
-      resultado.capturas.oscuro = await capturar(page, path.join(carpeta, `${dispositivo.id}-oscuro.jpg`));
-      resultado.problemas.push(...(await revisarAxe(page, "oscuro")));
     }
   } catch (error) {
     resultado.error = error instanceof Error ? error.message.split("\n")[0] : String(error);

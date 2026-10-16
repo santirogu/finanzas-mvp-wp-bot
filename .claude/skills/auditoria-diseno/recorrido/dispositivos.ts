@@ -14,8 +14,6 @@ export type Dispositivo = {
   tactil: boolean;
   escala: number;
   representativo?: boolean;
-  /** Letra de la página más grande que la normal (2 = 200 %), como quien sube la letra del navegador. */
-  letra?: number;
 };
 
 export const DISPOSITIVOS: Dispositivo[] = [
@@ -29,7 +27,9 @@ export const DISPOSITIVOS: Dispositivo[] = [
   { id: "computador-1280", grupo: "computador", nombre: "Laptop", ancho: 1280, alto: 800, tactil: false, escala: 1, representativo: true },
   { id: "computador-1920", grupo: "computador", nombre: "Monitor", ancho: 1920, alto: 1080, tactil: false, escala: 1 },
   { id: "reflujo-320", grupo: "accesibilidad", nombre: "320 px (zoom al 400 %, WCAG 1.4.10)", ancho: 320, alto: 640, tactil: true, escala: 2 },
-  { id: "letra-200", grupo: "accesibilidad", nombre: "Letra al 200 % (WCAG 1.4.4)", ancho: 1280, alto: 800, tactil: false, escala: 1, letra: 2 },
+  // El zoom al 200 % de un computador de 1280 × 800: el navegador ve 640 × 400 px CSS, así que el
+  // diseño cambia según sus cortes, como con el zoom de verdad (cambiar solo la letra de <html> no).
+  { id: "zoom-200", grupo: "accesibilidad", nombre: "Zoom al 200 % (WCAG 1.4.4)", ancho: 640, alto: 400, tactil: false, escala: 2 },
 ];
 
 export const GRUPOS: Grupo[] = ["celular", "tableta", "computador", "accesibilidad"];

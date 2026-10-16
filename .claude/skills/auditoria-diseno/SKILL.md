@@ -80,8 +80,9 @@ Qué mide (detalles en `recorrido/medir.ts`):
 - lo que se sale de la pantalla y el scroll de lado; el texto que se sale de su caja (un monto que
   no cabe en su tarjeta); lo que queda tapado;
 - textos cortados (sin "…" es defecto; con "…" es informativo, para que el revisor juzgue);
-- campos de menos de 16 px en pantallas táctiles (Safari hace zoom), y campos de una misma fila con
-  altos distintos (el `<select>` de Safari en Mac, si pierde `appearance-none`);
+- campos de menos de 16 px en pantallas táctiles (Safari hace zoom), campos de una misma fila con
+  altos distintos (el `<select>` de Safari en Mac, si pierde `appearance-none`) y bordes de campo de
+  menos de 3:1 contra su fondo (WCAG 1.4.11, que axe no mide);
 - zonas táctiles: menos de 24 px pegadas a otra (WCAG 2.5.8) y menos de 44 px (Apple);
 - estructura: `lang`, un h1, saltos de nivel en los títulos, `<main>`;
 - axe con WCAG 2.2 A y AA y sus buenas prácticas, en modo claro y oscuro (en las pantallas
