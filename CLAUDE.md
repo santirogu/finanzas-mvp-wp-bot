@@ -180,6 +180,9 @@ de Vercel ni muevas las migraciones fuera del job `deploy`.
   - Antes de abrir un PR que cambie páginas, componentes, `globals.css` o el layout, corre
     `/auditoria-diseno cambios`.
   - Su informe y sus capturas van a `reports/diseno/` y no se suben.
+- **Colores** (`src/app/globals.css`): solo los tokens. El borde de un campo es `border-control` (3:1
+  contra la tarjeta y el fondo, WCAG 1.4.11), nunca `border-border`, que es para divisores y tarjetas.
+  Si cambias un color, `src/color-contrast.test.ts` revisa ese contraste (axe solo el del texto).
 - **Dinero**: siempre con `formatMoney` (`src/lib/money.ts`), que da "$1.000.000,00" (dos decimales,
   sin espacio), en la web y en el bot. No uses `toLocaleString` para mostrar montos. Los montos
   tienen centavos (`numeric(18, 2)`): súmalos con `sumAmounts` (o en SQL) y redondea las restas con

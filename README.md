@@ -85,7 +85,10 @@ pnpm dev                        # http://localhost:3000
   mouse encima (axe no revisa el contraste de un botón deshabilitado), y falla ante problemas graves.
   Por eso los botones se oscurecen al pasar el mouse (`hover:brightness-90`) en vez de bajar su
   opacidad, y el texto sobre un color sólido usa su token (`--brand-foreground`,
-  `--expense-foreground`, `--danger-foreground`), oscuro en modo oscuro. **El bot de WhatsApp de punta a punta**
+  `--expense-foreground`, `--danger-foreground`), oscuro en modo oscuro. Lo que axe no mide, el
+  contraste del borde de los campos y de sus estados (3:1, WCAG 1.4.11), lo exige
+  `src/color-contrast.test.ts` con los tokens de `globals.css`: los campos usan `--control`, no
+  `--border`. **El bot de WhatsApp de punta a punta**
   (`e2e/bot-whatsapp.spec.ts`): vincular el número desde el dashboard, registrar un gasto escrito
   en lenguaje natural, `balance`, `deshacer`, números sin vincular, firmas falsas, mensajes
   repetidos y audios. Los mensajes llegan al webhook firmados como los manda Meta y la app
