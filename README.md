@@ -234,7 +234,7 @@ justifica.
 | **Categorías: crear, renombrar y restaurar no piden el código** de Google Authenticator; archivar y eliminar sí (#50) | Son cambios que se ven de inmediato y se deshacen con otro cambio. Cada uno queda en `category_change` con el admin, y la sesión de admin ya exige los dos pasos al entrar | Las categorías empezaran a afectar algo más que el nombre y el emoji (por ejemplo, reglas del bot) |
 | **Eliminar una cuenta reinicia el contador de intentos de vinculación de su número** | Conservar esos intentos contradiría "al eliminar la cuenta se borra su historial". Aprovecharlo exige registrarse y vincular el número cada 5 intentos, contra un millón de códigos que viven 10 minutos | Se agregue un contador sin datos personales (por ejemplo, el número con hash, por una hora) |
 | **El filtro de enlaces de las respuestas del bot usa una lista de terminaciones** (`.com`, `.co`, `.net`…) | Una terminación rara pasaría, pero la respuesta solo le llega a quien escribió, y además tiene largo máximo | Hubiera respuestas reales con enlaces de otra terminación |
-| **El CLI de Vercel del despliegue trae 50 avisos conocidos** (`.github/vercel-cli/`) | Vienen de sus builders (Python, contenedores…), que el despliegue no usa; ninguna versión del CLI los resuelve. El lockfile fijo protege de lo importante: un paquete secuestrado | Una versión del CLI los resuelva (Dependabot la propone) |
+| **El CLI de Vercel del despliegue trae 16 avisos sin versión corregida en su rama** (`.github/vercel-cli/`): 13 de `undici` 5.x, 2 de `@fastify/busboy` 2.x (llega con `undici` 5) y 1 de `braces` | El CLI usa `undici` 5 como cliente HTTP solo contra la API de Vercel, por HTTPS. Los avisos requieren que un servidor malicioso responda, WebSockets (el despliegue no los usa), o encabezados o cuerpos que controle un atacante (son fijos nuestros). `braces` recibe patrones del propio proyecto. Los demás avisos se corrigieron con overrides (ver "Versiones forzadas de dependencias") | Una versión del CLI pase a `undici` 6 o más (Dependabot la propone) |
 
 **Analítica y velocidad:** [Vercel Web Analytics](https://vercel.com/docs/analytics) y
 [Speed Insights](https://vercel.com/docs/speed-insights) (`<Analytics />` y `<SpeedInsights />` en
@@ -572,6 +572,18 @@ token de Vercel a mano).
   `pnpm audit` de la app.
 - **Cómo actualizarlo:** Dependabot lo propone (con `cooldown`), o a mano: cambia la versión en
   `.github/vercel-cli/package.json` y corre `pnpm install --dir .github/vercel-cli`.
+- **Versiones forzadas del CLI** (`.github/vercel-cli/package.json → pnpm.overrides`): corrigen 22
+  avisos de sus dependencias internas, siempre dentro de la misma versión mayor para no romperlo:
+  - `tar` 7.5.22 (incluido un aviso crítico);
+  - `minimatch` 10.2.6;
+  - `js-yaml` 4.3.2;
+  - `smol-toml` 1.9.0;
+  - `path-to-regexp` 6.3.0 y 8.4.2;
+  - `ajv` 8.18.0;
+  - `undici` 5.29.0.
+
+  Verificado con un `vercel build` local completo. Al actualizar el CLI, bórralas y vuelve a correr
+  `pnpm audit --dir .github/vercel-cli`: si la versión nueva ya trae las corregidas, sobran.
 
 ## Flujo de trabajo
 
