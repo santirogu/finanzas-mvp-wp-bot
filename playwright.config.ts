@@ -11,6 +11,8 @@ import { E2E_CRON_SECRET, E2E_WHATSAPP_APP_SECRET, FAKE_SERVICES_URL } from "./e
 const PORT = 3100;
 const BASE_URL = `http://localhost:${PORT}`;
 const CI = Boolean(process.env.CI);
+/** Las pruebas que cambian la configuración global (proyecto "configuracion"). */
+const GLOBAL_SETTINGS = /configuracion-[\w-]+\.spec\.ts$/;
 
 export default defineConfig({
   testDir: "e2e",
@@ -29,15 +31,25 @@ export default defineConfig({
     screenshot: "only-on-failure",
   },
   projects: [
-    { name: "escritorio", use: { ...devices["Desktop Chrome"] }, grepInvert: /@tactil/ },
+    { name: "escritorio", use: { ...devices["Desktop Chrome"] }, grepInvert: /@tactil/, testIgnore: GLOBAL_SETTINGS },
     // En celular, el flujo principal (@principal) y lo que solo importa en pantallas táctiles (@tactil).
-    { name: "celular", use: { ...devices["Pixel 7"] }, grep: /@principal|@tactil/ },
+    { name: "celular", use: { ...devices["Pixel 7"] }, grep: /@principal|@tactil/, testIgnore: GLOBAL_SETTINGS },
     // En tableta, solo lo táctil. Un iPad Air vertical en Chromium (el CI no instala WebKit), con el
     // navegador de computador: Safari del iPad se presenta como una Mac.
     {
       name: "tableta",
       use: { ...devices["Desktop Chrome"], viewport: { width: 820, height: 1180 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
       grep: /@tactil/,
+      testIgnore: GLOBAL_SETTINGS,
+    },
+    // Lo que cambia la configuración de toda la app (pausar Claude, los topes del bot): si corriera a
+    // la vez que las demás, sus mensajes recibirían "Claude está en pausa". En local va después de
+    // todas; en el CI, en su propia parte, con su propia base (--no-deps).
+    {
+      name: "configuracion",
+      use: { ...devices["Desktop Chrome"] },
+      testMatch: GLOBAL_SETTINGS,
+      dependencies: ["escritorio", "celular", "tableta"],
     },
   ],
   webServer: [

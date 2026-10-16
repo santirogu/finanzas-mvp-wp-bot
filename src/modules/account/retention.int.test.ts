@@ -64,6 +64,21 @@ describe("runDailyCleanup", () => {
   });
 });
 
+describe("las acciones del admin sin cuenta ni número", () => {
+  it("se conservan: no son datos de un número sin cuenta", async () => {
+    const admin = await createUser({ role: "admin" });
+    const old = daysAgo(RETENTION_DAYS.orphans + 60);
+    // "Un admin eliminó una cuenta": sin datos de la cuenta, ni siquiera su número.
+    await db.insert(accountEvent).values({ type: "account_deleted", userId: null, adminId: admin.id, phone: null, createdAt: old });
+    // Un intento fallido de un número sin cuenta, igual de viejo: este sí se borra.
+    await db.insert(accountEvent).values({ type: "whatsapp_link_failed", userId: null, phone: "573009990001", createdAt: old });
+
+    expect(await runDailyCleanup(NOW)).toMatchObject({ events: 1 });
+    const left = await db.select({ type: accountEvent.type }).from(accountEvent);
+    expect(left).toEqual([{ type: "account_deleted" }]);
+  });
+});
+
 describe("GET /api/cron/limpieza", () => {
   it.each([
     ["sin cabecera", undefined],

@@ -178,6 +178,9 @@ de Vercel ni muevas las migraciones fuera del job `deploy`.
   eso, un texto largo la ensancha más que la pantalla. Si agregas una página, súmala a
   `e2e/diseno-tactil.spec.ts` y a las vistas de la auditoría de diseño
   (`.claude/skills/auditoria-diseno/recorrido/vistas.ts`).
+- **E2E que cambian algo de toda la app** (pausar Claude, los topes del bot, la configuración): van en
+  `e2e/configuracion-*.spec.ts`, el proyecto "configuracion" de Playwright, que corre aparte (README →
+  Pruebas y CI). En paralelo con las demás les cambiaría lo que responde el bot.
 - **Auditoría de diseño:** usa el skill `/auditoria-diseno` (README → Pruebas y CI).
   - Antes de abrir un PR que cambie páginas, componentes, `globals.css` o el layout, corre
     `/auditoria-diseno cambios`.

@@ -35,7 +35,9 @@ async function AdminHome() {
       `${users.withWhatsApp} con WhatsApp`,
       ...(users.suspended > 0 ? [`${users.suspended} ${users.suspended === 1 ? "suspendida" : "suspendidas"}`] : []),
     ].join(" · "),
-    bot: `${bot.today} ${bot.today === 1 ? "mensaje" : "mensajes"} hoy · ${bot.failedToday} ${bot.failedToday === 1 ? "error" : "errores"}`,
+    bot: `${bot.claudePaused ? "Claude en pausa · " : ""}${bot.today} ${bot.today === 1 ? "mensaje" : "mensajes"} hoy · ${bot.failedToday} ${
+      bot.failedToday === 1 ? "error" : "errores"
+    }`,
     categorias: `${categories.expense} de egresos · ${categories.income} de ingresos`,
     seguridad: "Verificación en dos pasos activa",
   };

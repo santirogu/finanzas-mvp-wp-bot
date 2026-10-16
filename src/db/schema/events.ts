@@ -17,6 +17,10 @@ export const accountEventType = pgEnum("account_event_type", [
   "account_deleted",
   "account_suspended",
   "account_reactivated",
+  // Configuración del bot (/admin/bot), con admin_id y sin cuenta ni número.
+  "bot_claude_paused",
+  "bot_claude_resumed",
+  "bot_limits_changed",
 ]);
 
 /** Detalle de un evento: el motivo de una desvinculación o de un intento fallido. */
@@ -28,6 +32,9 @@ export type AccountEventDetails = {
   note?: string;
   /** Reconstruido al crear el historial a partir de lo que ya había en la base. */
   reconstructed?: boolean;
+  /** Los topes de Claude por cuenta que dejó el admin, y los de antes (bot_limits_changed). */
+  limits?: { perHour: number; perDay: number };
+  previousLimits?: { perHour: number; perDay: number };
 };
 
 export const accountEvent = pgTable(

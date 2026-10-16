@@ -19,7 +19,7 @@ const parts = [...ci.matchAll(/^ +- parte: (\d+)\n +pruebas: (.+)$/gm)].map(([, 
 
 describe("las E2E del CI", () => {
   it("lee los proyectos y las partes", () => {
-    expect(projects).toEqual(["escritorio", "celular", "tableta"]);
+    expect(projects).toEqual(["escritorio", "celular", "tableta", "configuracion"]);
     expect(parts.length).toBeGreaterThan(1);
     expect(parts.map((p) => p.number)).toEqual(parts.map((_, i) => i + 1));
   });

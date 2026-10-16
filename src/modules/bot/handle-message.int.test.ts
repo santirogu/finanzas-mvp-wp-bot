@@ -2,6 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { describe, expect, it, vi } from "vitest";
 import { db } from "@/db";
 import {
+  botSetting,
   category,
   transaction,
   user as userTable,
@@ -172,6 +173,51 @@ describe("handleIncomingMessage · límites (auditoría de seguridad 2026-10-15)
     expect((await loggedMessage(free.id)).aiRequestedAt).toBeInstanceOf(Date);
     expect((await loggedMessage(command.id)).aiRequestedAt).toBeNull();
     expect(await activeTransactions(user.id)).toHaveLength(1);
+  });
+});
+
+describe("handleIncomingMessage · configuración del admin (/admin/bot)", () => {
+  const ALMUERZO = [{ type: "expense" as const, amount: 20000, description: "Almuerzo", category: "Alimentación" }];
+
+  it("con Claude en pausa no lo llama ni gasta cupo: pide usar la web, y los comandos siguen", async () => {
+    const user = await linkedUser();
+    await db.insert(botSetting).values({ id: 1, claudePaused: true, aiPerHour: 20, aiPerDay: 100 });
+    const extractor = fakeExtractor(ALMUERZO);
+    const { deps: d, sender } = deps(extractor);
+
+    const free = incoming("almuerzo 20 mil");
+    await handleIncomingMessage(free, d);
+    expect(extractor.calls).toBe(0);
+    expect(sender.sent[0].body).toBe(replies.aiPausedReply(APP_URL));
+    expect(sender.sent[0].body).toContain("https://app.test/dashboard");
+    expect(await activeTransactions(user.id)).toEqual([]);
+    expect(await loggedMessage(free.id)).toMatchObject({
+      status: "processed",
+      userId: user.id,
+      aiRequestedAt: null,
+      intent: { kind: "error", reason: "paused" },
+    });
+
+    await handleIncomingMessage(incoming("balance"), d);
+    expect(sender.sent[1].body).toContain("Aún no tienes movimientos");
+
+    // Al reanudarlo, el siguiente mensaje ya va a Claude.
+    await db.update(botSetting).set({ claudePaused: false });
+    await handleIncomingMessage(incoming("almuerzo 20 mil"), d);
+    expect(extractor.calls).toBe(1);
+    expect(await activeTransactions(user.id)).toHaveLength(1);
+  });
+
+  it("usa los topes que dejó el admin", async () => {
+    await linkedUser();
+    await db.insert(botSetting).values({ id: 1, claudePaused: false, aiPerHour: 1, aiPerDay: 5 });
+    const extractor = fakeExtractor(ALMUERZO);
+    const { deps: d, sender } = deps(extractor);
+
+    await handleIncomingMessage(incoming("almuerzo 20 mil"), d);
+    await handleIncomingMessage(incoming("almuerzo 20 mil"), d);
+    expect(extractor.calls).toBe(1);
+    expect(sender.sent[1].body).toBe(replies.aiRateLimitedReply);
   });
 });
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { monthRange } from "@/lib/dates";
 import {
+  aiPausedReply,
   aiRateLimitedReply,
   aiUnavailableReply,
   balanceReply,
@@ -184,6 +185,12 @@ describe("textos fijos del bot", () => {
     );
     expect(aiUnavailableReply).toBe(
       "Por ahora solo entiendo *balance*, *deshacer* y *ayuda*. Muy pronto podrás registrar gastos escribiendo normal ✍️",
+    );
+  });
+
+  it("con Claude en pausa (/admin/bot): la web y los comandos que siguen", () => {
+    expect(aiPausedReply("https://finanzas.app")).toBe(
+      "Por ahora no puedo entender mensajes escritos libremente 🛠️ Registra tus movimientos en la web: https://finanzas.app/dashboard. *balance*, *deshacer* y *ayuda* siguen funcionando.",
     );
   });
 

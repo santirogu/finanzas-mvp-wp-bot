@@ -140,8 +140,9 @@ jobs:
   # escritorio, celular y tableta, y axe-core revisa la accesibilidad. Corre contra un build de
   # producción local con su propio Postgres; no llama a Claude ni a WhatsApp.
   #
-  # Van partidas en 4 jobs a la vez: cada uno prepara su entorno (~1 minuto) y corre una parte. El
-  # escritorio va en 3 (--shard de Playwright) y celular y tableta juntos en la cuarta: así las
+  # Van partidas en 5 jobs a la vez: cada uno prepara su entorno (~1 minuto) y corre una parte. El
+  # escritorio va en 3 (--shard de Playwright), celular y tableta juntos en la cuarta, y en la quinta
+  # las que cambian la configuración global (proyecto "configuracion"): así las
   # partes duran parecido (Playwright reparte por cantidad de pruebas, no por tiempo, y las de admin
   # y de celular son las más largas). Más workers por parte no ayudan: la máquina tiene 4 núcleos
   # para el navegador, la app y Postgres. test/e2e-en-ci.test.ts exige que cada proyecto de
@@ -166,6 +167,9 @@ jobs:
             pruebas: --project=escritorio --shard=3/3
           - parte: 4
             pruebas: --project=celular --project=tableta
+          # La configuración global (pausar Claude, topes), sola: en su propia base no afecta a nadie.
+          - parte: 5
+            pruebas: --project=configuracion --no-deps
 
     services:
       postgres:

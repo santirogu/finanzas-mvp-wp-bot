@@ -130,6 +130,27 @@ export const VISTAS: Vista[] = [
   },
   // Con la persona de datos, para que haya mensajes del bot (vinculación, movimientos y Claude).
   { id: "admin-bot", titulo: "Administración: bot de WhatsApp", persona: "admin", necesita: ["datos"], ruta: fija("/admin/bot") },
+  // Solo se abren: enviarlas cambiaría la configuración de toda la app (y pedirían el código).
+  {
+    id: "admin-bot-pausar",
+    titulo: "Administración: ventana para pausar Claude",
+    persona: "admin",
+    ruta: fija("/admin/bot"),
+    preparar: async (page) => {
+      await visible(page.getByRole("region", { name: "Configuración" })).getByRole("button", { name: "Pausar Claude" }).click();
+      await expect(dialogo(page)).toBeVisible();
+    },
+  },
+  {
+    id: "admin-bot-topes",
+    titulo: "Administración: ventana de los topes del bot",
+    persona: "admin",
+    ruta: fija("/admin/bot"),
+    preparar: async (page) => {
+      await visible(page.getByRole("region", { name: "Configuración" })).getByRole("button", { name: "Cambiar" }).click();
+      await expect(dialogo(page)).toBeVisible();
+    },
+  },
   { id: "admin-categorias", titulo: "Administración: categorías", persona: "admin", ruta: fija("/admin/categorias") },
   {
     id: "admin-categoria-nueva",

@@ -82,5 +82,8 @@ export const aiRateLimitedReply =
   "Recibí muchos mensajes en poco tiempo. Para cuidar el servicio, espera un rato antes de registrar más. Mientras tanto puedes escribir *balance* o *deshacer*, o usar la web.";
 export const tooManyTransactionsReply = (max: number) =>
   `Son muchos movimientos en un solo mensaje. Envíame máximo ${max} por mensaje y los registro.`;
+/** Cuando el admin pausó Claude en /admin/bot: los comandos siguen, el texto libre se registra en la web. */
+export const aiPausedReply = (appUrl: string) =>
+  `Por ahora no puedo entender mensajes escritos libremente 🛠️ Registra tus movimientos en la web: ${appUrl}/dashboard. *balance*, *deshacer* y *ayuda* siguen funcionando.`;
 export const aiUnavailableReply =
   "Por ahora solo entiendo *balance*, *deshacer* y *ayuda*. Muy pronto podrás registrar gastos escribiendo normal ✍️";

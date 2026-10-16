@@ -101,6 +101,14 @@ describe("botActivity", () => {
     expect(all.outcomes).toMatchObject({ vinculacion_fallida: 1, sin_vincular: 1, no_texto: 1 });
   });
 
+  it("los mensajes que llegaron con Claude en pausa cuentan aparte, sin llamada a Claude", async () => {
+    await message({ intent: { kind: "error", reason: "paused" } });
+    await message({ intent: { kind: "error", reason: "paused" } });
+    const { outcomes, claude } = await activity({ fecha: "hoy" });
+    expect(outcomes).toMatchObject({ pausa: 2, error: 0, tope_claude: 0 });
+    expect(claude.calls).toBe(0);
+  });
+
   it("nunca devuelve el texto, la respuesta ni lo que entendió Claude", async () => {
     await seed();
     const json = JSON.stringify(await activity());
@@ -213,6 +221,6 @@ describe("botActivity", () => {
 describe("botSummary", () => {
   it("los mensajes y errores de hoy", async () => {
     await seed();
-    expect(await botSummary(TODAY)).toEqual({ today: 14, failedToday: 2 });
+    expect(await botSummary(TODAY)).toEqual({ today: 14, failedToday: 2, claudePaused: false });
   });
 });

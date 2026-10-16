@@ -5,6 +5,7 @@ import { todayInTimezone } from "@/lib/dates";
 import { formatShare } from "@/lib/money";
 import { requireAdmin } from "@/lib/session";
 import { botActivity } from "@/modules/admin/bot/bot-activity";
+import { botSettingsForAdmin } from "@/modules/admin/bot/bot-settings";
 import {
   BOT_PATH,
   OUTCOMES,
@@ -19,9 +20,9 @@ import {
   parseBotFilters,
 } from "@/modules/admin/bot/bot-filters";
 import { ADMIN_TIMEZONE, formatDateTime } from "@/modules/admin/shared/filters";
-import { AI_LIMITS } from "@/modules/bot/limits";
 import { PageSkeleton } from "../../page-skeleton";
 import { ActiveFilters } from "../active-filters";
+import { BotSettings } from "./bot-settings";
 import { BotFilterBar } from "./filter-bar";
 
 export const metadata: Metadata = { title: "Bot de WhatsApp · Administración" };
@@ -45,7 +46,7 @@ async function Bot({ params }: { params: Record<string, string | string[] | unde
   await requireAdmin();
   const filters = parseBotFilters(params);
   const today = todayInTimezone(ADMIN_TIMEZONE);
-  const activity = await botActivity(filters, today);
+  const [activity, settings] = await Promise.all([botActivity(filters, today), botSettingsForAdmin()]);
   const panelOpen = params.panel === "1";
   const filtered = activeBotFilters(filters).length > 0;
   const maxCalls = Math.max(1, ...activity.claude.byDay.map((d) => d.calls));
@@ -79,6 +80,12 @@ async function Bot({ params }: { params: Record<string, string | string[] | unde
           </p>
         )}
       </section>
+
+      <BotSettings
+        claudePaused={settings.claudePaused}
+        limits={settings.limits}
+        lastChange={settings.updated && `${settings.updated.by ?? "Un admin"} · ${formatDateTime(settings.updated.at)}`}
+      />
 
       <section className="card space-y-3 p-4" aria-labelledby="resultados">
         <h2 id="resultados" className="font-semibold">
@@ -188,7 +195,7 @@ async function Bot({ params }: { params: Record<string, string | string[] | unde
           <h3 className="text-sm font-medium">
             Cuentas que llegaron al tope{" "}
             <span className="font-normal text-muted">
-              ({AI_LIMITS.perHour} por hora o {AI_LIMITS.perDay} por día)
+              ({formatCount(settings.limits.perHour)} por hora o {formatCount(settings.limits.perDay)} por día)
             </span>
           </h3>
           {activity.capped.length === 0 ? (
