@@ -23,8 +23,16 @@ const reason = sql`${whatsappMessage.intent}->>'reason'`;
 const notText = sql`${whatsappMessage.body} ~ '^\\[[a-z_]+\\]$'`;
 const usage = (field: "inputTokens" | "outputTokens") =>
   sql<number>`coalesce(sum((${whatsappMessage.intent}->'usage'->>${sql.raw(`'${field}'`)})::int), 0)::int`;
+/**
+ * Una llamada a Claude: el bot reservó el cupo (ai_requested_at, que existe desde el 15 de octubre de
+ * 2026, #55) o guardó los tokens que usó. Los mensajes de antes tienen los tokens pero no la reserva, y
+ * una llamada que falló antes de responder tiene la reserva pero no los tokens.
+ */
+const claudeCall = sql`(${whatsappMessage.aiRequestedAt} is not null or ${whatsappMessage.intent}->'usage' is not null)`;
+/** Cuándo se llamó a Claude: la reserva del cupo o, en los mensajes de antes, la llegada del mensaje. */
+const claudeAt = sql`coalesce(${whatsappMessage.aiRequestedAt}, ${whatsappMessage.receivedAt})`;
 /** El día de Colombia de una fecha (para agrupar). La zona va como texto fijo, no como parámetro. */
-const day = (column: AnyColumn) =>
+const day = (column: AnyColumn | SQL) =>
   sql<string>`to_char(${column} at time zone ${sql.raw(`'${ADMIN_TIMEZONE}'`)}, 'YYYY-MM-DD')`;
 
 /** El resultado de cada mensaje (src/modules/admin/bot/bot-filters.ts → OUTCOMES). */
@@ -46,7 +54,7 @@ end`;
 function where(
   filters: BotFilters,
   today: string,
-  column: AnyColumn = whatsappMessage.receivedAt,
+  column: AnyColumn | SQL = whatsappMessage.receivedAt,
   range: { from: string | null; to: string | null } = dateRange(filters, today),
 ): SQL | undefined {
   const conditions: (SQL | undefined)[] = inDayRange(column, range);
@@ -80,14 +88,17 @@ export type BotActivity = {
   };
   /** Las cuentas que llegaron al tope de Claude, de la que más veces a la que menos (máximo 10). */
   capped: { id: string; name: string; email: string; times: number }[];
-  /** Los errores, del más frecuente al menos (máximo 20). */
-  errors: { error: string; times: number; last: Date; accounts: number }[];
+  /**
+   * Los errores, del más frecuente al menos (máximo 20), con cuántos números los tuvieron: si el bot
+   * falla antes de identificar la cuenta, el mensaje queda sin cuenta, pero siempre tiene número.
+   */
+  errors: { error: string; times: number; last: Date; numbers: number }[];
 };
 
 export async function botActivity(filters: BotFilters, today: string): Promise<BotActivity> {
   await requireAdmin();
   const days = claudeDays(filters, today);
-  const claudeRange = where(filters, today, whatsappMessage.aiRequestedAt);
+  const claudeRange = where(filters, today, claudeAt);
 
   const [outcomeRows, [timing], [claude], byDay, byModel, capped, errors] = await Promise.all([
     db
@@ -108,17 +119,12 @@ export async function botActivity(filters: BotFilters, today: string): Promise<B
       .select({ calls: count(), inputTokens: usage("inputTokens"), outputTokens: usage("outputTokens") })
       .from(whatsappMessage)
       .leftJoin(user, eq(user.id, whatsappMessage.userId))
-      .where(and(claudeRange, isNotNull(whatsappMessage.aiRequestedAt))),
+      .where(and(claudeRange, claudeCall)),
     db
-      .select({ day: day(whatsappMessage.aiRequestedAt), calls: count() })
+      .select({ day: day(claudeAt), calls: count() })
       .from(whatsappMessage)
       .leftJoin(user, eq(user.id, whatsappMessage.userId))
-      .where(
-        and(
-          where(filters, today, whatsappMessage.aiRequestedAt, { from: days[0], to: days.at(-1)! }),
-          isNotNull(whatsappMessage.aiRequestedAt),
-        ),
-      )
+      .where(and(where(filters, today, claudeAt, { from: days[0], to: days.at(-1)! }), claudeCall))
       .groupBy(sql`1`),
     db
       .select({
@@ -145,7 +151,7 @@ export async function botActivity(filters: BotFilters, today: string): Promise<B
         error: sql<string>`coalesce(${whatsappMessage.error}, '')`,
         times: count(),
         last: sql<Date>`max(${whatsappMessage.receivedAt})`,
-        accounts: sql<number>`count(distinct ${whatsappMessage.userId})::int`,
+        numbers: sql<number>`count(distinct ${whatsappMessage.phone})::int`,
       })
       .from(whatsappMessage)
       .leftJoin(user, eq(user.id, whatsappMessage.userId))

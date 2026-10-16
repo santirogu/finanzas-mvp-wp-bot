@@ -1,5 +1,8 @@
+import { randomUUID } from "node:crypto";
 import { expect, type Page } from "@playwright/test";
+import postgres from "postgres";
 import { heading, newAdmin, seriousViolations, setUpTwoFactor } from "./admin";
+import { e2eDatabaseUrl } from "./database-url";
 import { newPerson, register, test, visible } from "./helpers";
 import { newPhone, nthReply, sendWhatsApp } from "./whatsapp";
 
@@ -106,5 +109,34 @@ test("un número sin vincular cuenta aparte, y sin mensajes la página lo dice",
   await page.goto(`/admin/bot?q=${newPhone()}`);
   await expect(stat(page, "Mensajes")).toHaveText("0");
   await expect(visible(page.getByText("No hay mensajes con estos filtros."))).toBeVisible();
+  expect(await seriousViolations(page)).toEqual([]);
+});
+
+test("los errores se leen: la explicación de Meta y cuántos números los tuvieron", async ({ page }) => {
+  // Lo que respondió Meta en producción (13 de octubre de 2026), con un número que el bot aún no
+  // había identificado (sin cuenta). Se insertan en la base: el WhatsApp falso no falla así.
+  const phone = newPhone();
+  const meta =
+    '400 {"error":{"message":"(#131030) Recipient phone number not in allowed list","code":131030,"type":"OAuthException","error_data":{"messaging_product":"whatsapp","details":"El número de teléfono del destinatario no está en la lista de autorizados: Agrega el número de teléfono del destinatario a la lista de destinatarios y vuelve a intentarlo."},"fbtrace_id":"AKrw3fJ7aDnkLUcNSu3rO_K"}}';
+  const sql = postgres(e2eDatabaseUrl(), { max: 1, onnotice: () => {} });
+  for (const error of [`envío: ${meta}`, `envío: ${meta}`]) {
+    await sql`
+      insert into whatsapp_message (id, phone, body, status, error, processed_at)
+      values (${`wamid.e2e.${randomUUID()}`}, ${phone}, 'hola', 'failed', ${error}, now())`;
+  }
+  await sql.end();
+
+  await newAdmin(page);
+  await setUpTwoFactor(page);
+  await page.goto(`/admin/bot?q=${phone}`);
+  const errors = visible(page.getByRole("region", { name: "Errores" }));
+  await expect(errors.getByRole("listitem")).toHaveCount(1);
+  await expect(errors).toContainText("No se pudo enviar la respuesta por WhatsApp");
+  await expect(errors).toContainText("2 veces · 1 número");
+  await expect(errors).toContainText(
+    "HTTP 400 · (#131030) El número de teléfono del destinatario no está en la lista de autorizados",
+  );
+  await expect(errors).not.toContainText("fbtrace_id");
+  await expect(stat(page, "Errores")).toHaveText("2");
   expect(await seriousViolations(page)).toEqual([]);
 });

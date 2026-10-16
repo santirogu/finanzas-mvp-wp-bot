@@ -98,15 +98,41 @@ export function formatSeconds(seconds: number): string {
   return `${Math.round(seconds / 60)} min`;
 }
 
+type ApiErrorBody = { error?: { message?: string; code?: number; error_data?: { details?: string } } };
+
+/**
+ * Lo que respondió una API al fallar, para leer: "400 {"error":{…}}" → "HTTP 400 · (#131030) El número…".
+ * De la Graph API de Meta usa la explicación (error_data.details, en el idioma de la cuenta) y su
+ * código; de la de Anthropic, el mensaje. Si no es ese formato (o quedó cortado), lo deja igual.
+ */
+export function readableApiError(detail: string): string {
+  const match = detail.match(/^(\d{3}) (\{[\s\S]*\})$/);
+  if (!match) return detail;
+  let body: ApiErrorBody;
+  try {
+    body = JSON.parse(match[2]) as ApiErrorBody;
+  } catch {
+    return detail;
+  }
+  const text = body.error?.error_data?.details ?? body.error?.message;
+  if (!text) return detail;
+  const code = body.error?.code && !text.includes(`#${body.error.code}`) ? `(#${body.error.code}) ` : "";
+  return `HTTP ${match[1]} · ${code}${text}`;
+}
+
 /**
  * El nombre de un error del bot (la columna error: el motivo que dio Claude, el tipo de excepción o
  * lo que respondió WhatsApp al enviar). Lo técnico va aparte, como detalle.
  */
 export function errorLabel(error: string): { label: string; detail: string | null } {
   const send = error.indexOf("envío: ");
-  if (send >= 0) return { label: "No se pudo enviar la respuesta por WhatsApp", detail: error.slice(send + "envío: ".length) || null };
+  if (send >= 0) {
+    const detail = error.slice(send + "envío: ".length);
+    return { label: "No se pudo enviar la respuesta por WhatsApp", detail: detail ? readableApiError(detail) : null };
+  }
   const [reason, ...rest] = error.split(": ");
-  const detail = rest.join(": ") || null;
+  const raw = rest.join(": ");
+  const detail = raw ? readableApiError(raw) : null;
   switch (reason) {
     case "not_configured":
       return { label: "Claude no está configurado (falta la API key)", detail };
@@ -119,6 +145,10 @@ export function errorLabel(error: string): { label: string; detail: string | nul
     case "":
       return { label: "Error sin detalle", detail: null };
     default:
+      // Lo que lanzaba la SDK de Anthropic sin API key, antes de que el bot lo revisara (not_configured).
+      if (error.startsWith("Could not resolve authentication method")) {
+        return { label: "Claude no está configurado (falta la API key)", detail: error };
+      }
       return { label: "Error interno de la app", detail: error };
   }
 }

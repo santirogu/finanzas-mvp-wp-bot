@@ -128,6 +128,31 @@ describe("botActivity", () => {
     expect(all.claude.byDay.find((d) => d.day === "2026-10-02")?.calls).toBe(1);
   });
 
+  it("cuenta también las llamadas de antes de la reserva del cupo (15 de octubre) y las que fallaron sin respuesta", async () => {
+    // De antes de #55: con los tokens que usó Claude, pero sin ai_requested_at (se fecha con la llegada).
+    await message({ intent: { kind: "transactions", items: [], usage: usage(1500, 90) }, receivedAt: at("2026-10-10T15:00:00Z") });
+    // Reservó el cupo, pero la API falló antes de responder: sin tokens.
+    await message({
+      status: "failed",
+      intent: { kind: "error", reason: "api_error: 529" },
+      error: "api_error: 529",
+      aiRequestedAt: at("2026-10-12T14:00:00Z"),
+      receivedAt: at("2026-10-12T14:00:00Z"),
+    });
+    // Un comando no llama a Claude.
+    await message({ intent: { kind: "command", command: "balance" } });
+
+    const week = await activity({ fecha: "7d" });
+    expect(week.claude).toMatchObject({ calls: 2, inputTokens: 1500, outputTokens: 90 });
+    expect(week.claude.byDay.find((d) => d.day === "2026-10-10")?.calls).toBe(1);
+    expect(week.claude.byDay.at(-1)).toEqual({ day: TODAY, calls: 1 });
+    expect(week.claude.byModel).toEqual([{ model: "claude-haiku-4-5", calls: 1, inputTokens: 1500, outputTokens: 90 }]);
+
+    // Con fechas, la de antes de la reserva cuenta por su llegada.
+    const lastTwoDays = await activity({ fecha: "personalizado", desde: "2026-10-11", hasta: "2026-10-12" });
+    expect(lastTwoDays.claude).toMatchObject({ calls: 1, inputTokens: 0, byModel: [] });
+  });
+
   it("el tiempo de respuesta (mediana y p95) de los mensajes ya procesados", async () => {
     await seed();
     const { response } = await activity({ fecha: "hoy" });
@@ -146,16 +171,25 @@ describe("botActivity", () => {
     ]);
   });
 
-  it("los errores agrupados, con su última vez y cuántas cuentas", async () => {
+  it("los errores agrupados, con su última vez y cuántos números", async () => {
     await seed();
     const { errors } = await activity({ fecha: "hoy" });
-    expect(errors.map((e) => [e.error, e.times, e.accounts])).toEqual(
+    expect(errors.map((e) => [e.error, e.times, e.numbers])).toEqual(
       expect.arrayContaining([
         ["api_error: Overloaded", 1, 1],
         ["envío: 400 (#131030) Recipient not allowed", 1, 1],
       ]),
     );
     expect(errors.find((e) => e.error.startsWith("api_error"))!.last).toEqual(at("2026-10-12T16:00:00Z"));
+  });
+
+  it("un error de antes de identificar la cuenta (sin cuenta) cuenta por su número", async () => {
+    // Si el bot falla antes de saber de quién es el número, el mensaje queda sin cuenta.
+    await message({ phone: "573005550001", status: "failed", error: "TypeError" });
+    await message({ phone: "573005550001", status: "failed", error: "TypeError" });
+    await message({ phone: "573005550002", status: "failed", error: "TypeError" });
+    const { errors } = await activity({ fecha: "hoy" });
+    expect(errors.find((e) => e.error === "TypeError")).toMatchObject({ times: 3, numbers: 2 });
   });
 
   it("filtra por fecha y por cuenta o número (con espacios o \"+\")", async () => {

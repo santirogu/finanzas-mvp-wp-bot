@@ -226,11 +226,11 @@ async function Bot({ params }: { params: Record<string, string | string[] | unde
                   <p className="flex flex-wrap justify-between gap-x-3">
                     <span className="font-medium text-danger">{label}</span>
                     <span className="tabular-nums text-muted">
-                      {formatCount(e.times)} {e.times === 1 ? "vez" : "veces"} · {formatCount(e.accounts)}{" "}
-                      {e.accounts === 1 ? "cuenta" : "cuentas"}
+                      {formatCount(e.times)} {e.times === 1 ? "vez" : "veces"} · {formatCount(e.numbers)}{" "}
+                      {e.numbers === 1 ? "número" : "números"}
                     </span>
                   </p>
-                  {detail && <p className="break-all font-mono text-xs text-muted">{detail}</p>}
+                  {detail && <p className="break-words text-xs text-muted">{detail}</p>}
                   <p className="text-xs text-muted">La última: {formatDateTime(e.last)}</p>
                 </li>
               );
