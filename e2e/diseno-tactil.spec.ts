@@ -53,9 +53,18 @@ async function layoutProblems(page: Page) {
       const size = parseFloat(getComputedStyle(field).fontSize);
       if (size < 16) problems.push(`el campo "${field.name || field.id}" tiene letra de ${size} px`);
     }
+    // Ningún texto se sale de su caja (un monto que no cabe en su tarjeta, una fecha que no cabe en
+    // su columna): la caja cabe en la pantalla, pero el texto no.
+    for (const el of document.body.querySelectorAll("*")) {
+      const ownText = [...el.childNodes].some((n) => n.nodeType === Node.TEXT_NODE && n.textContent?.trim());
+      if (!ownText || el.matches("input, textarea, select, option") || !el.checkVisibility()) continue;
+      if (getComputedStyle(el).overflowX === "visible" && el.clientWidth > 0 && el.scrollWidth > el.clientWidth + 1) {
+        problems.push(`"${el.textContent?.trim().slice(0, 30)}" se sale de su caja (${el.scrollWidth} px en ${el.clientWidth} px)`);
+      }
+    }
     // Las listas de movimientos ("8 movimientos este mes", "Últimos movimientos"): la descripción
-    // conserva un ancho que se lee (100 px, unas 14 letras) aunque el monto sea el máximo, ningún
-    // texto se sale de su caja y los botones de cada fila miden 44 px (lo que recomienda Apple).
+    // conserva un ancho que se lee (100 px, unas 14 letras) aunque el monto sea el máximo y los
+    // botones de cada fila miden 44 px (lo que recomienda Apple).
     const lists = [...document.querySelectorAll("section")].filter(
       (section) => section.checkVisibility() && /movimientos?\b/i.test(section.querySelector("h2")?.textContent ?? ""),
     );
@@ -69,12 +78,6 @@ async function layoutProblems(page: Page) {
         const rect = button.getBoundingClientRect();
         if (Math.min(rect.width, rect.height) < 44) {
           problems.push(`en la lista, "${button.getAttribute("aria-label")}" mide ${Math.round(rect.width)} × ${Math.round(rect.height)} px`);
-        }
-      }
-      for (const el of item.querySelectorAll("*")) {
-        const ownText = [...el.childNodes].some((n) => n.nodeType === Node.TEXT_NODE && n.textContent?.trim());
-        if (ownText && getComputedStyle(el).overflowX === "visible" && el.clientWidth > 0 && el.scrollWidth > el.clientWidth + 1) {
-          problems.push(`en la lista, "${el.textContent?.trim().slice(0, 30)}" se sale de su caja (${el.scrollWidth} px en ${el.clientWidth} px)`);
         }
       }
     }

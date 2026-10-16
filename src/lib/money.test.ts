@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { amountInputValue, formatAmountTyping, formatMoney, parseAmountInput, roundToCents, sumAmounts } from "./money";
+import { amountInputValue, formatAmountTyping, formatMoney, formatShare, parseAmountInput, roundToCents, sumAmounts } from "./money";
 
 describe("parseAmountInput", () => {
   it.each([
@@ -44,6 +44,9 @@ describe("parseAmountInput", () => {
     "-5.000",
     "$-500.000",
     "5.000-",
+    // El signo menos tipográfico (U+2212) que muestra la app: copiado de una lista o del balance.
+    "−5.000",
+    "−$5.000,00",
     // Más de dos decimales: "1,500" puede ser mil quinientos (en inglés) o 1,5: mejor no adivinar.
     "1,500",
     "45.900,505",
@@ -161,7 +164,9 @@ describe("formatMoney", () => {
     [0, "$0,00"],
     [6500, "$6.500,00"],
     [999, "$999,00"],
-    [-50000, "-$50.000,00"],
+    // El signo menos tipográfico (U+2212), el mismo que las listas ponen a los egresos.
+    [-50000, "−$50.000,00"],
+    [-25900.5, "−$25.900,50"],
     [1234.5, "$1.234,50"],
     [1234.567, "$1.234,57"],
     [45900.05, "$45.900,05"],
@@ -176,5 +181,24 @@ describe("formatMoney", () => {
 
   it("otras monedas, igual: dos decimales y sin espacio", () => {
     expect(formatMoney(1234.5, "USD")).toBe("US$1.234,50");
+  });
+});
+
+describe("formatShare", () => {
+  it.each([
+    [55, 100, "55"],
+    [1, 3, "33"],
+    [99.6, 100, "100"],
+    [100, 100, "100"],
+    // Con dinero pero menos del 1 %: no "0".
+    [0.4, 100, "<1"],
+    [7_200_000, 100_012_309_982.99, "<1"],
+    [0.5, 100, "1"],
+    // Sin dinero, o sin total.
+    [0, 100, "0"],
+    [10, 0, "0"],
+    [-5, 100, "0"],
+  ])("%d de %d → %s", (part, total, expected) => {
+    expect(formatShare(part, total)).toBe(expected);
   });
 });

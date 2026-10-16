@@ -184,7 +184,9 @@ de Vercel ni muevas las migraciones fuera del job `deploy`.
   contra la tarjeta y el fondo, WCAG 1.4.11), nunca `border-border`, que es para divisores y tarjetas.
   Si cambias un color, `src/color-contrast.test.ts` revisa ese contraste (axe solo el del texto).
 - **Dinero**: siempre con `formatMoney` (`src/lib/money.ts`), que da "$1.000.000,00" (dos decimales,
-  sin espacio), en la web y en el bot. No uses `toLocaleString` para mostrar montos. Los montos
+  sin espacio) y "−$50.000,00" para los negativos (el signo menos tipográfico, U+2212, como el de los
+  egresos en las listas), en la web y en el bot. No uses `toLocaleString` para mostrar montos, y un
+  monto grande en pantalla va con `whitespace-nowrap` (que no se parta). Los montos
   tienen centavos (`numeric(18, 2)`): súmalos con `sumAmounts` (o en SQL) y redondea las restas con
   `roundToCents`. Un campo de monto lee con `parseAmountInput` y formatea
   con `formatAmountTyping` (punto = miles, coma = centavos).

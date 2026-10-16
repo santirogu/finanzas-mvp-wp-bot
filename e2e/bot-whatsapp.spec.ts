@@ -37,7 +37,7 @@ test("vincular el número desde el dashboard y llevar las cuentas por WhatsApp",
     await sendWhatsApp(request, phone, "me compré unos zapatos de $500.000");
     const reply = await nthReply(request, phone, 2);
     expect(reply).toMatch(/✅ Egreso registrado: \*Zapatos\* — \$500\.000,00 \(Ropa\)/);
-    expect(reply).toMatch(/Balance de [a-z]+: \*-\$500\.000,00\*/);
+    expect(reply).toMatch(/Balance de [a-z]+: \*−\$500\.000,00\*/);
 
     await openTab(page, "Egresos");
     const row = visible(page.getByRole("listitem").filter({ hasText: "Zapatos" }));

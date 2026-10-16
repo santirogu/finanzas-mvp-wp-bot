@@ -45,7 +45,7 @@ test("corregir un egreso: monto, descripción y categoría @principal", async ({
 
   await test.step("el resumen refleja el monto nuevo", async () => {
     await openTab(page, "Resumen");
-    await expect(visible(page.getByText("Balance del mes")).locator("..")).toContainText(/-\$450\.000,00/);
+    await expect(visible(page.getByText("Balance del mes")).locator("..")).toContainText(/−\$450\.000,00/);
   });
 });
 
@@ -77,7 +77,7 @@ test("los centavos se escriben después de la coma y se corrigen como el resto d
     await expect(page).toHaveURL(/\/egresos$/);
     await expect(row(page, "Almuerzo")).toContainText(/−\$25\.900,75/);
     await openTab(page, "Resumen");
-    await expect(visible(page.getByText("Balance del mes")).locator("..")).toContainText(/-\$25\.900,75/);
+    await expect(visible(page.getByText("Balance del mes")).locator("..")).toContainText(/−\$25\.900,75/);
   });
 });
 
