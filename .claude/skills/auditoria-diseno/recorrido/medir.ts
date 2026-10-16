@@ -97,6 +97,23 @@ export function medirDiseno({ tactil }: { tactil: boolean }): Problema[] {
     }
   }
 
+  // 4b. Campos de una misma fila (Categoría y Fecha) con altos distintos: Safari en Mac dibuja el
+  // <select> con su apariencia nativa, más bajo y sin borde, si no lleva appearance-none.
+  const filas = new Map<string, HTMLElement[]>();
+  for (const campo of document.querySelectorAll<HTMLElement>(
+    "input:not([type=hidden]):not([type=checkbox]):not([type=radio]):not([type=range]), select",
+  )) {
+    if (!seVe(campo)) continue;
+    const clave = `${campo.closest("form") ? [...document.forms].indexOf(campo.closest("form")!) : -1}|${Math.round(campo.getBoundingClientRect().top / 8)}`;
+    filas.set(clave, [...(filas.get(clave) ?? []), campo]);
+  }
+  for (const campos of filas.values()) {
+    const altos = campos.map((c) => Math.round(c.getBoundingClientRect().height));
+    if (campos.length > 1 && Math.max(...altos) - Math.min(...altos) > 2) {
+      problemas.push({ tipo: "campos-desparejos", nivel: "defecto", detalle: "Campos de la misma fila con altos distintos", elemento: campos.map(describir).join(" · "), medida: altos.map((a) => `${a} px`).join(" y ") });
+    }
+  }
+
   // 4. Campos con letra de menos de 16 px en una pantalla táctil: Safari del iPhone hace zoom al tocarlos.
   if (tactil) {
     const campos = document.querySelectorAll<HTMLElement>(
