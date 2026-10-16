@@ -150,7 +150,10 @@ de Vercel ni muevas las migraciones fuera del job `deploy`.
      `requireAdmin()`, confirmadas con el código de Google Authenticator (`confirmAdminCode` de
      `src/modules/admin/shared/confirm-code.ts`; nunca `auth.api.verifyTOTP`, que no limita intentos
      con la sesión abierta), y registradas en `account_event` con `adminId` en la misma transacción
-     (auditoría: README → Usuarios);
+     (auditoría: README → Usuarios). **Excepción decidida (#50):** en Categorías, crear, renombrar y
+     restaurar no piden el código (archivar y eliminar sí) y su auditoría va en `category_change`
+     (README → Seguridad → Riesgos aceptados). Una excepción nueva se decide con el dueño y se anota
+     ahí;
   5. su resumen en la tarjeta de Inicio, si aplica, y pruebas unitarias, de integración, E2E y de
      accesibilidad.
 - **Categorías** (README → Categorías): las globales las administra el admin; no las crees ni

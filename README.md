@@ -221,6 +221,21 @@ Cross-Origin-Opener/Resource-Policy; sin `X-Powered-By`. La CSP permite scripts 
 app (guía de CSP de Next 16). Las E2E fallan si la CSP bloquea algo de la app, y los smoke tests
 revisan las cabeceras en cada despliegue.
 
+**Riesgos aceptados** (decisiones conscientes). La auditoría de seguridad (`/auditoria-seguridad`) no
+los reporta como hallazgos nuevos: los anota como informativos y revisa si cambió lo que los
+justifica.
+
+| Decisión | Por qué se acepta | Revisar si… |
+|---|---|---|
+| **La CSP permite scripts en línea** (`'unsafe-inline'`) | Los nonces no son compatibles con el prerenderizado parcial que usa la app (guía de CSP de Next 16). Sin `unsafe-eval`, sin iframes, con `object-src 'none'` | Next permita nonces (o hashes) con el prerenderizado parcial |
+| **El bloqueo por cuenta dura poco** (15 minutos) | Alguien podría bloquear a propósito la cuenta de otra persona; por eso se levanta solo | Hubiera bloqueos repetidos de una misma cuenta en el historial |
+| **El registro dice si un correo ya tiene cuenta** ("Ya existe una cuenta con ese correo") | El registro no verifica el correo y crea la sesión de una vez: sin ese aviso, quien se equivocó de botón no entendería qué pasa. El inicio de sesión y el bloqueo no lo revelan, y el registro tiene su límite por IP (3 cada 10 s), así que recorrer una lista de correos es lento y deja rastro | Se agregue la verificación del correo: entonces el registro puede responder siempre igual ("te enviamos un correo") |
+| **HSTS con `preload`** (`max-age` de 2 años, `includeSubDomains`) | En `*.vercel.app` no tiene efecto: solo el dueño de un dominio registrable puede pedir que entre a la lista de precarga (hstspreload.org), y nadie lo ha pedido. La cabecera sí obliga HTTPS a cada navegador que ya visitó la app | Se agregue un dominio propio: antes de pedir la precarga, confirmar que **todos** sus subdominios funcionan con HTTPS (salir de la lista tarda meses). Si no se va a pedir, se puede quitar `preload` |
+| **Categorías: crear, renombrar y restaurar no piden el código** de Google Authenticator; archivar y eliminar sí (#50) | Son cambios que se ven de inmediato y se deshacen con otro cambio. Cada uno queda en `category_change` con el admin, y la sesión de admin ya exige los dos pasos al entrar | Las categorías empezaran a afectar algo más que el nombre y el emoji (por ejemplo, reglas del bot) |
+| **Eliminar una cuenta reinicia el contador de intentos de vinculación de su número** | Conservar esos intentos contradiría "al eliminar la cuenta se borra su historial". Aprovecharlo exige registrarse y vincular el número cada 5 intentos, contra un millón de códigos que viven 10 minutos | Se agregue un contador sin datos personales (por ejemplo, el número con hash, por una hora) |
+| **El filtro de enlaces de las respuestas del bot usa una lista de terminaciones** (`.com`, `.co`, `.net`…) | Una terminación rara pasaría, pero la respuesta solo le llega a quien escribió, y además tiene largo máximo | Hubiera respuestas reales con enlaces de otra terminación |
+| **El CLI de Vercel del despliegue trae 50 avisos conocidos** (`.github/vercel-cli/`) | Vienen de sus builders (Python, contenedores…), que el despliegue no usa; ninguna versión del CLI los resuelve. El lockfile fijo protege de lo importante: un paquete secuestrado | Una versión del CLI los resuelva (Dependabot la propone) |
+
 **Analítica y velocidad:** [Vercel Web Analytics](https://vercel.com/docs/analytics) y
 [Speed Insights](https://vercel.com/docs/speed-insights) (`<Analytics />` y `<SpeedInsights />` en
 `src/app/layout.tsx`, activadas en Vercel). Son anónimas y sin cookies, y están explicadas en
