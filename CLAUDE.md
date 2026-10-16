@@ -172,7 +172,12 @@ de Vercel ni muevas las migraciones fuera del job `deploy`.
 - **Celular**: los campos usan la clase `input` (16 px en celular: con menos, Safari del iPhone hace
   zoom al tocarlos). Una rejilla con columnas solo desde un ancho (`lg:grid-cols-5`) lleva también
   `grid-cols-1`: sin eso, un texto largo la ensancha más que la pantalla. Si agregas una página,
-  súmala a `e2e/diseno-celular.spec.ts`.
+  súmala a `e2e/diseno-celular.spec.ts` y a las vistas de la auditoría de diseño
+  (`.claude/skills/auditoria-diseno/recorrido/vistas.ts`).
+- **Auditoría de diseño:** usa el skill `/auditoria-diseno` (README → Pruebas y CI).
+  - Antes de abrir un PR que cambie páginas, componentes, `globals.css` o el layout, corre
+    `/auditoria-diseno cambios`.
+  - Su informe y sus capturas van a `reports/diseno/` y no se suben.
 - **Dinero**: siempre con `formatMoney` (`src/lib/money.ts`), que da "$1.000.000,00" (dos decimales,
   sin espacio), en la web y en el bot. No uses `toLocaleString` para mostrar montos. Los montos
   tienen centavos (`numeric(18, 2)`): súmalos con `sumAmounts` (o en SQL) y redondea las restas con
