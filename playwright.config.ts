@@ -29,9 +29,9 @@ export default defineConfig({
     screenshot: "only-on-failure",
   },
   projects: [
-    { name: "escritorio", use: { ...devices["Desktop Chrome"] } },
-    // En celular solo el flujo principal (las pruebas marcadas con @principal).
-    { name: "celular", use: { ...devices["Pixel 7"] }, grep: /@principal/ },
+    { name: "escritorio", use: { ...devices["Desktop Chrome"] }, grepInvert: /@celular/ },
+    // En celular, el flujo principal (@principal) y lo que solo importa en una pantalla chica (@celular).
+    { name: "celular", use: { ...devices["Pixel 7"] }, grep: /@principal|@celular/ },
   ],
   webServer: [
     {

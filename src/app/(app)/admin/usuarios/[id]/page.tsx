@@ -108,7 +108,7 @@ function Summary({ account }: { account: UserDetail }) {
           <p className="break-all text-sm text-muted">{account.email}</p>
         </div>
       </div>
-      <dl className="grid gap-3 text-sm sm:grid-cols-2">
+      <dl className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
         <Field label="Rol">{ROLE_LABELS[account.role]}</Field>
         <Field label="Estado">
           {account.suspendedAt ? (

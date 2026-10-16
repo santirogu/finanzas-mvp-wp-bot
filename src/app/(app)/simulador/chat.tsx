@@ -72,7 +72,7 @@ export function Chat() {
   }
 
   return (
-    <div className="grid items-start gap-6 lg:grid-cols-5">
+    <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-5">
       <div className="card flex h-[34rem] flex-col overflow-hidden lg:col-span-3">
         <div className="flex items-center gap-3 border-b border-border px-4 py-3">
           <span className="flex size-9 items-center justify-center rounded-full bg-brand text-sm font-semibold text-brand-foreground">

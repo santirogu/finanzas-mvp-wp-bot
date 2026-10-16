@@ -169,6 +169,10 @@ de Vercel ni muevas las migraciones fuera del job `deploy`.
   español y muestra cada error debajo de su campo con `FieldError` (fuera del `<label>`, con
   `aria-invalid` y `aria-describedby`). Nunca el globo del navegador: `src/forms.test.ts` lo exige y
   las E2E fallan si aparece.
+- **Celular**: los campos usan la clase `input` (16 px en celular: con menos, Safari del iPhone hace
+  zoom al tocarlos). Una rejilla con columnas solo desde un ancho (`lg:grid-cols-5`) lleva también
+  `grid-cols-1`: sin eso, un texto largo la ensancha más que la pantalla. Si agregas una página,
+  súmala a `e2e/diseno-celular.spec.ts`.
 - **Dinero**: siempre con `formatMoney` (`src/lib/money.ts`), que da "$1.000.000,00" (dos decimales,
   sin espacio), en la web y en el bot. No uses `toLocaleString` para mostrar montos. Los montos
   tienen centavos (`numeric(18, 2)`): súmalos con `sumAmounts` (o en SQL) y redondea las restas con

@@ -78,7 +78,7 @@ export function TransactionForm({
 
       <Field label="Monto" error={errorOf("amount")} errorId={ids.amount}>
         <div className="relative">
-          <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-muted">
+          <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-base text-muted sm:text-sm">
             $
           </span>
           <input
