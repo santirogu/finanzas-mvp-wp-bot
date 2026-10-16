@@ -31,7 +31,7 @@ export async function TransactionsView({ type }: { type: "income" | "expense" })
       </div>
 
       {/* grid-cols-1: sin columnas definidas, una descripción o una categoría larga ensancharía la
-          rejilla más que la pantalla del celular (e2e/diseno-celular.spec.ts). */}
+          rejilla más que la pantalla del celular (e2e/diseno-tactil.spec.ts). */}
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-5">
         <div className="lg:col-span-2">
           <TransactionForm type={type} categories={categories} today={todayInTimezone(user.timezone)} />

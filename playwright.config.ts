@@ -29,9 +29,16 @@ export default defineConfig({
     screenshot: "only-on-failure",
   },
   projects: [
-    { name: "escritorio", use: { ...devices["Desktop Chrome"] }, grepInvert: /@celular/ },
-    // En celular, el flujo principal (@principal) y lo que solo importa en una pantalla chica (@celular).
-    { name: "celular", use: { ...devices["Pixel 7"] }, grep: /@principal|@celular/ },
+    { name: "escritorio", use: { ...devices["Desktop Chrome"] }, grepInvert: /@tactil/ },
+    // En celular, el flujo principal (@principal) y lo que solo importa en pantallas táctiles (@tactil).
+    { name: "celular", use: { ...devices["Pixel 7"] }, grep: /@principal|@tactil/ },
+    // En tableta, solo lo táctil. Un iPad Air vertical en Chromium (el CI no instala WebKit), con el
+    // navegador de computador: Safari del iPad se presenta como una Mac.
+    {
+      name: "tableta",
+      use: { ...devices["Desktop Chrome"], viewport: { width: 820, height: 1180 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
+      grep: /@tactil/,
+    },
   ],
   webServer: [
     {

@@ -166,7 +166,7 @@ Para cada posible hallazgo (de las medidas, de los subagentes o tuyo):
   - la ruta del informe y de la galería.
 - Termina proponiendo el plan de arreglos: una rama por hallazgo o por grupo pequeño del mismo
   tema, primero lo bloqueante y lo alto, y para cada uno la prueba de regresión
-  (`e2e/diseno-celular.spec.ts`, axe en `e2e/accesibilidad.spec.ts` o una prueba de componente).
+  (`e2e/diseno-tactil.spec.ts`, axe en `e2e/accesibilidad.spec.ts` o una prueba de componente).
   Pregunta antes de empezar cualquiera. Si un hallazgo pide cambiar una regla de CLAUDE.md o el
   diseño en general, proponlo en vez de hacerlo.
 
@@ -179,7 +179,7 @@ Para cada posible hallazgo (de las medidas, de los subagentes o tuyo):
 
 ## Mantenimiento del recorrido
 
-- Página nueva en la app → su vista en `recorrido/vistas.ts` (y en `e2e/diseno-celular.spec.ts`).
+- Página nueva en la app → su vista en `recorrido/vistas.ts` (y en `e2e/diseno-tactil.spec.ts`).
 - Dispositivo nuevo que importe (otro tamaño de iPhone o de iPad) → `recorrido/dispositivos.ts` y
   [dispositivos.md](dispositivos.md).
 - Una medida que da falsos positivos → corrígela en `recorrido/medir.ts` con un comentario del caso.
