@@ -80,7 +80,9 @@ pnpm dev                        # http://localhost:3000
   las páginas con los textos más largos posibles: en el proyecto "celular" a 375, 440 y 956 px
   (horizontal), y en el proyecto "tableta" (iPad, con Chromium) a 768, 820 y 1180 px. Nada puede
   salirse de la pantalla y los campos tienen letra de 16 px o más (con menos, Safari del iPhone y del
-  iPad hace zoom al tocarlos; con mouse, 14 px). [axe-core](https://github.com/dequelabs/axe-core) revisa cada página
+  iPad hace zoom al tocarlos; con mouse, 14 px). En las listas de movimientos, la descripción conserva
+  al menos 100 px aunque el monto sea el máximo (en celular, la fila va en dos renglones), ningún
+  texto se sale de su caja y los botones de editar y eliminar miden 44 px (con mouse, 28 px). [axe-core](https://github.com/dequelabs/axe-core) revisa cada página
   (WCAG 2.1 A y AA) en modo claro y oscuro, con datos y con los botones principales activos y con el
   mouse encima (axe no revisa el contraste de un botón deshabilitado), y falla ante problemas graves.
   Por eso los botones se oscurecen al pasar el mouse (`hover:brightness-90`) en vez de bajar su
