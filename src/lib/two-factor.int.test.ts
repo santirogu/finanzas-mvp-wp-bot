@@ -14,6 +14,7 @@ import {
   register,
   sessionOf,
   signIn,
+  updateUserFromServer,
 } from "../../test/integration/auth-http";
 import { secretFromUri, totp } from "../../test/totp";
 
@@ -207,14 +208,15 @@ describe("lo que no se puede hacer desde la app", () => {
     expect((await userRow("ana@test.local")).twoFactorEnabled).toBe(true);
   });
 
-  it("el estado de la verificación no se cambia con 'actualizar perfil'", async () => {
+  it("el estado de la verificación no se cambia con 'actualizar perfil' (ni por HTTP ni desde el servidor)", async () => {
     const { jar } = await adminWithTwoFactor();
-    const response = await post("/update-user", { twoFactorEnabled: false }, jar);
-    expect(response.status).toBe(400);
+    expect((await post("/update-user", { twoFactorEnabled: false }, jar)).status).toBe(404);
+    expect((await updateUserFromServer({ twoFactorEnabled: false }, jar)).status).toBe(400);
     expect((await userRow("ana@test.local")).twoFactorEnabled).toBe(true);
 
     const beto = await register("beto@test.local");
-    await post("/update-user", { twoFactorEnabled: true }, beto);
+    expect((await post("/update-user", { twoFactorEnabled: true }, beto)).status).toBe(404);
+    expect((await updateUserFromServer({ twoFactorEnabled: true }, beto)).status).toBe(400);
     expect((await userRow("beto@test.local")).twoFactorEnabled).toBe(false);
   });
 });

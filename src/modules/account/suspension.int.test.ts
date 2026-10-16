@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { db } from "@/db";
 import { loginFailure, session, user } from "@/db/schema";
 import { ACCOUNT_SUSPENDED } from "@/lib/auth-errors";
-import { PASSWORD, json, post, register, sessionOf, signIn } from "../../../test/integration/auth-http";
+import { PASSWORD, post, register, sessionOf, signIn, updateUserFromServer } from "../../../test/integration/auth-http";
 import { createUser } from "../../../test/integration/factories";
 import { isSuspended } from "./suspension";
 
@@ -76,15 +76,16 @@ describe("iniciar sesión con la cuenta suspendida", () => {
 });
 
 describe("nadie se quita (ni se pone) la suspensión desde la app", () => {
-  it("'actualizar perfil' rechaza suspendedAt", async () => {
+  it("'actualizar perfil' rechaza suspendedAt: por HTTP está apagada y desde el servidor no lo acepta", async () => {
     const jar = await register("ana@test.local");
+    for (const value of [new Date().toISOString(), "2020-01-01", null]) {
+      expect((await post("/update-user", { suspendedAt: value }, jar)).status, String(value)).toBe(404);
+    }
     for (const value of [new Date().toISOString(), "2020-01-01"]) {
-      const response = await post("/update-user", { suspendedAt: value }, jar);
-      expect(response.status, value).toBe(400);
-      expect(await json(response)).toMatchObject({ code: "FIELD_NOT_ALLOWED" });
+      expect(await updateUserFromServer({ suspendedAt: value }, jar)).toEqual({ status: 400, code: "FIELD_NOT_ALLOWED" });
     }
     // null (lo que mandaría alguien para quitársela) también se rechaza: no queda nada que cambiar.
-    expect((await post("/update-user", { suspendedAt: null }, jar)).status).toBe(400);
+    expect((await updateUserFromServer({ suspendedAt: null }, jar)).status).toBe(400);
     expect(await isSuspended(await idOf("ana@test.local"))).toBe(false);
   });
 

@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { db } from "@/db";
 import { user } from "@/db/schema";
 import { findAccountRole, listAdmins, setRole } from "@/modules/account/terminal";
+import { updateUserFromServer } from "../../test/integration/auth-http";
 import { auth } from "./auth";
 
 // Roles con Better Auth y la base de verdad. Cada prueba intenta un camino para que alguien se dé
@@ -78,48 +79,46 @@ describe("rol al registrarse", () => {
 });
 
 describe("nadie puede cambiarse el rol desde la app", () => {
+  it("la ruta 'actualizar perfil' está apagada: responde 404 y no cambia nada", async () => {
+    const cookie = await register("ana@test.local");
+    for (const body of [{ role: "admin" }, { name: "Ana Admin", role: "admin" }]) {
+      expect((await post("/update-user", body, cookie)).status).toBe(404);
+    }
+    expect(await db.select({ name: user.name, role: user.role }).from(user)).toEqual([{ name: "Ana", role: "user" }]);
+  });
+
+  // La ruta está apagada, pero `input: false` es la segunda barrera: si algún día se usa desde el
+  // servidor, tampoco debe dejar cambiar el rol.
   it.each([
     ["solo el rol", { role: "admin" }],
     ["el rol junto con el nombre", { name: "Ana Admin", role: "admin" }],
     ["el rol en mayúsculas", { role: "ADMIN" }],
     ["el rol en una lista", { role: ["admin"] }],
-  ])("'actualizar perfil' rechaza %s y no cambia nada", async (_, body) => {
+  ])("'actualizar perfil' desde el servidor rechaza %s y no cambia nada", async (_, body) => {
     const cookie = await register("ana@test.local");
 
-    const response = await post("/update-user", body, cookie);
+    expect(await updateUserFromServer(body, cookie)).toEqual({ status: 400, code: "FIELD_NOT_ALLOWED" });
 
-    expect(response.status).toBe(400);
-    expect(await response.json()).toMatchObject({ code: "FIELD_NOT_ALLOWED" });
     const [row] = await db.select().from(user).where(eq(user.email, "ana@test.local"));
     expect(row).toMatchObject({ role: "user", name: "Ana" });
     expect(await roleInSession(cookie)).toBe("user");
   });
 
-  it("un admin tampoco puede cambiarse el rol desde la app (ni bajárselo)", async () => {
+  it("un admin tampoco puede cambiarse el rol (ni bajárselo)", async () => {
     const cookie = await register("ana@test.local");
     const account = await findAccountRole("ana@test.local");
     await setRole(account!.id, "admin");
 
-    const response = await post("/update-user", { role: "user" }, cookie);
-
-    expect(response.status).toBe(400);
+    expect((await post("/update-user", { role: "user" }, cookie)).status).toBe(404);
+    expect((await updateUserFromServer({ role: "user" }, cookie)).status).toBe(400);
     expect(await roleInDb("ana@test.local")).toBe("admin");
   });
 
   it("sin sesión, 'actualizar perfil' no hace nada", async () => {
     await register("ana@test.local");
-    const response = await post("/update-user", { role: "admin" });
-    expect(response.status).toBe(401);
+    expect((await post("/update-user", { role: "admin" })).status).toBe(404);
+    expect((await updateUserFromServer({ role: "admin" })).status).toBe(401);
     expect(await roleInDb("ana@test.local")).toBe("user");
-  });
-
-  it("'actualizar perfil' sigue funcionando para lo permitido (el nombre)", async () => {
-    const cookie = await register("ana@test.local");
-    const response = await post("/update-user", { name: "Ana María" }, cookie);
-    expect(response.status).toBe(200);
-    expect(await db.select({ name: user.name, role: user.role }).from(user)).toEqual([
-      { name: "Ana María", role: "user" },
-    ]);
   });
 
   it.each(["/admin/set-role", "/admin/create-user", "/admin/impersonate-user", "/admin/list-users"])(

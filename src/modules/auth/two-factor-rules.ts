@@ -25,8 +25,12 @@ export const TWO_FACTOR_DISABLED_PATHS = [
   "/two-factor/verify-otp",
 ] as const;
 
-/** Endpoints donde se escribe un código: aceptan "recordar este dispositivo", que no se ofrece. */
-const CODE_PATHS = ["/two-factor/verify-totp", "/two-factor/verify-backup-code"];
+/**
+ * Endpoints donde se escribe un código. Aceptan "recordar este dispositivo", que no se ofrece, y
+ * con una sesión abierta responden si el código es correcto sin contar los fallos: por eso, con la
+ * verificación ya activa, solo se usan para entrar (sin sesión todavía).
+ */
+export const TWO_FACTOR_CODE_PATHS = ["/two-factor/verify-totp", "/two-factor/verify-backup-code"] as const;
 
 export const TWO_FACTOR_ERRORS = {
   ADMIN_ONLY: {
@@ -37,27 +41,37 @@ export const TWO_FACTOR_ERRORS = {
     code: "TRUST_DEVICE_NOT_ALLOWED",
     message: "Aquí no se puede recordar el dispositivo: el código se pide en cada inicio de sesión.",
   },
+  // Con la sesión de un admin (sin su celular) se podrían probar códigos sin límite y usar el que
+  // acierte para confirmar una acción de administración (auditoría de seguridad 2026-10-15).
+  ALREADY_VERIFIED: {
+    code: "TWO_FACTOR_ALREADY_VERIFIED",
+    message: "La verificación en dos pasos ya está activa: el código se pide al entrar y al confirmar cada acción.",
+  },
 } as const;
 
 export type TwoFactorViolation = keyof typeof TWO_FACTOR_ERRORS;
 
+/** Las rutas de dos pasos en las que el hook necesita la sesión para decidir. */
+export const needsSession = (path: string) =>
+  path === "/two-factor/enable" || (TWO_FACTOR_CODE_PATHS as readonly string[]).includes(path);
+
 /**
- * Lo que no se permite en un pedido a Better Auth, o null. `isAdmin` es null si el pedido no trae
- * sesión (el endpoint responde 401 por su cuenta).
+ * Lo que no se permite en un pedido a Better Auth, o null. `session` es null si el pedido no trae
+ * sesión: al entrar con el código, o sin sesión (el endpoint responde 401 por su cuenta).
  */
 export function twoFactorViolation({
   path,
   body,
-  isAdmin,
+  session,
 }: {
   path: string;
   body: unknown;
-  isAdmin: boolean | null;
+  session: { isAdmin: boolean; twoFactorEnabled: boolean } | null;
 }): TwoFactorViolation | null {
-  if (path === "/two-factor/enable" && isAdmin === false) return "ADMIN_ONLY";
-  if (CODE_PATHS.includes(path) && (body as { trustDevice?: unknown } | null)?.trustDevice) {
-    return "TRUST_DEVICE_NOT_ALLOWED";
-  }
+  if (path === "/two-factor/enable" && session?.isAdmin === false) return "ADMIN_ONLY";
+  if (!(TWO_FACTOR_CODE_PATHS as readonly string[]).includes(path)) return null;
+  if ((body as { trustDevice?: unknown } | null)?.trustDevice) return "TRUST_DEVICE_NOT_ALLOWED";
+  if (session?.twoFactorEnabled) return "ALREADY_VERIFIED";
   return null;
 }
 

@@ -174,8 +174,11 @@ describe("AuthForm · registro", () => {
     render(<AuthForm mode="register" />);
     expect(screen.getByRole("heading", { name: "Crea tu cuenta" })).toBeVisible();
     expect(screen.getByLabelText("Nombre")).toBeRequired();
+    // Los mismos topes que valida el servidor (src/modules/auth/account-name.ts y Better Auth).
+    expect(screen.getByLabelText("Nombre")).toHaveAttribute("maxlength", "80");
     expect(password()).toHaveAttribute("autocomplete", "new-password");
     expect(password()).toHaveAttribute("minlength", "8");
+    expect(password()).toHaveAttribute("maxlength", "128");
     expect(screen.getByRole("link", { name: "Inicia sesión" })).toHaveAttribute("href", "/login");
   });
 

@@ -9,6 +9,7 @@ import { authClient } from "@/lib/auth-client";
 import { authErrorMessage } from "@/lib/auth-errors";
 import { suggestEmailCorrection } from "@/lib/email-typo";
 import type { FieldMessages } from "@/lib/field-errors";
+import { MAX_NAME_LENGTH } from "@/modules/auth/account-name";
 import { TwoFactorLogin } from "./two-factor-login";
 
 // Los errores de los campos, en español (en vez del globo del navegador).
@@ -93,6 +94,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
               <input
                 name="name"
                 required
+                maxLength={MAX_NAME_LENGTH}
                 autoComplete="name"
                 aria-invalid={Boolean(errors.name) || undefined}
                 aria-describedby={describedBy(errors.name && nameErrorId)}
@@ -155,6 +157,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
               type="password"
               required
               minLength={8}
+              maxLength={128}
               autoComplete={isRegister ? "new-password" : "current-password"}
               aria-invalid={Boolean(errors.password) || undefined}
               aria-describedby={describedBy(errors.password && passwordErrorId)}

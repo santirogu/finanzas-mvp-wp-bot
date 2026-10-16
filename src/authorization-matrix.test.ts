@@ -37,8 +37,10 @@ const PAGES = {
 } as const;
 
 const API_ROUTES = {
-  "/api/auth/[...all] GET": "Better Auth: cada endpoint valida la sesión que necesita",
-  "/api/auth/[...all] POST": "Better Auth: cada endpoint valida la sesión que necesita",
+  "/api/auth/[...all] GET":
+    "Better Auth: solo atiende AUTH_HTTP_ROUTES (src/modules/auth/http-routes.ts; ninguna es GET) y cada una valida la sesión que necesita",
+  "/api/auth/[...all] POST":
+    "Better Auth: solo atiende AUTH_HTTP_ROUTES (src/modules/auth/http-routes.ts) y cada una valida la sesión que necesita",
   "/api/whatsapp/webhook GET": "token de verificación de Meta",
   "/api/whatsapp/webhook POST": "firma HMAC de Meta (X-Hub-Signature-256)",
   "/api/health GET": "pública: no devuelve datos ni detalles de configuración",
@@ -122,7 +124,9 @@ function exportedMethods(source: string) {
   const fromConst = [...source.matchAll(/export\s+const\s+\{([^}]+)\}/g)].flatMap((m) =>
     m[1].split(",").map((s) => s.trim()),
   );
-  return [...fromFunctions, ...fromConst].filter((name) => methods.test(name));
+  // export const GET = …
+  const fromAssignment = [...source.matchAll(/export\s+const\s+(\w+)\s*=/g)].map((m) => m[1]);
+  return [...fromFunctions, ...fromConst, ...fromAssignment].filter((name) => methods.test(name));
 }
 
 /** Server Actions: funciones exportadas de archivos "use server" y funciones con "use server". */

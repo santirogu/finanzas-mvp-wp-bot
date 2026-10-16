@@ -1,5 +1,6 @@
 // Pedidos HTTP a Better Auth como los haría un navegador (o alguien con curl), para las pruebas de
 // integración de roles y verificación en dos pasos.
+import { isAPIError } from "better-auth/api";
 import { expect } from "vitest";
 import { auth } from "@/lib/auth";
 import { findAccountRole, setRole } from "@/modules/account/terminal";
@@ -54,6 +55,22 @@ export async function post(path: string, body: unknown, jar?: Jar, ip = nextIp()
 }
 
 export const json = async (response: Response) => response.json() as Promise<Record<string, unknown>>;
+
+/**
+ * "Actualizar perfil" llamado desde el servidor. La ruta HTTP está apagada (src/modules/auth/
+ * http-routes.ts), pero `input: false` debe seguir protegiendo el rol, la suspensión y la
+ * verificación en dos pasos si algún día se usa: se prueba por aquí.
+ */
+export async function updateUserFromServer(body: Record<string, unknown>, cookie?: Jar | string) {
+  const header = cookie instanceof Jar ? cookie.header() : cookie;
+  try {
+    await auth.api.updateUser({ headers: new Headers(header ? { cookie: header } : {}), body });
+    return { status: 200, code: undefined as unknown };
+  } catch (error) {
+    if (isAPIError(error)) return { status: error.statusCode, code: (error.body as { code?: unknown } | undefined)?.code };
+    throw error;
+  }
+}
 export const sessionOf = (jar: Jar) => auth.api.getSession({ headers: new Headers({ cookie: jar.header() }) });
 
 export async function register(email: string, name = "Ana") {

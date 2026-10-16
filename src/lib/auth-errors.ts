@@ -8,6 +8,7 @@ const MESSAGES: Record<string, string> = {
   USER_ALREADY_EXISTS: "Ya existe una cuenta con ese correo.",
   USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL: "Ya existe una cuenta con ese correo.",
   PASSWORD_TOO_SHORT: "La contraseña debe tener al menos 8 caracteres.",
+  PASSWORD_TOO_LONG: "La contraseña puede tener máximo 128 caracteres.",
   INVALID_EMAIL: "El correo no es válido.",
   INVALID_PASSWORD: "Contraseña incorrecta.",
   // Verificación en dos pasos (plugin twoFactor y src/modules/auth/two-factor-rules.ts).
@@ -20,6 +21,8 @@ const MESSAGES: Record<string, string> = {
     "Demasiados intentos en este inicio de sesión. Vuelve a escribir tu correo y contraseña.",
   TOTP_ALREADY_ENABLED: "La verificación en dos pasos ya está activa.",
   ADMIN_ONLY: "La verificación en dos pasos es solo para administradores.",
+  TWO_FACTOR_ALREADY_VERIFIED: "La verificación en dos pasos ya está activa.",
+  // INVALID_NAME (src/modules/auth/account-name.ts) llega con su mensaje en español.
 };
 
 // Better Auth limita los intentos de login y registro por IP y responde 429 sin código de error
