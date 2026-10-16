@@ -1,0 +1,9 @@
+{
+  "name": "vercel-cli-despliegue",
+  "private": true,
+  "description": "El CLI de Vercel que usa el job de despliegue (.github/workflows/ci.yml), con su versión y la de todas sus dependencias fijas en pnpm-lock.yaml.",
+  "packageManager": "pnpm@9.15.0",
+  "dependencies": {
+    "vercel": "61.1.0"
+  }
+}

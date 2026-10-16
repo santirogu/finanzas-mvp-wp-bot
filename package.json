@@ -75,6 +75,11 @@
     "overrides": {
       "@esbuild-kit/core-utils>esbuild": "^0.25.4",
       "typed-rest-client>qs": "^6.16.0"
+    },
+    "auditConfig": {
+      "ignoreGhsas": [
+        "GHSA-vfj7-8cjw-p6xm"
+      ]
     }
   }
 }

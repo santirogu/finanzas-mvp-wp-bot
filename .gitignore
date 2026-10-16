@@ -2,6 +2,8 @@
 
 # dependencies
 /node_modules
+# El CLI de Vercel del job de despliegue (.github/vercel-cli/)
+/.github/vercel-cli/node_modules
 /.pnp
 .pnp.*
 .yarn/*

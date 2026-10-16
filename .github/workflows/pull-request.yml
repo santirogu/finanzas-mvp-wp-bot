@@ -19,7 +19,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Sin el token de GitHub en .git/config mientras corre código de terceros.
+          persist-credentials: false
 
       - name: Validar Conventional Commits
         env:
@@ -35,7 +38,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Sin el token de GitHub en .git/config mientras corre código de terceros.
+          persist-credentials: false
 
       - name: Validar Why / What / How
         if: github.event.pull_request.user.login != 'dependabot[bot]'
