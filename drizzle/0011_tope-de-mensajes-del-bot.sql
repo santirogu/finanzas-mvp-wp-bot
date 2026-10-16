@@ -1,0 +1,2 @@
+ALTER TABLE "whatsapp_message" ADD COLUMN "ai_requested_at" timestamp with time zone;--> statement-breakpoint
+CREATE INDEX "whatsapp_message_user_ai_requested_idx" ON "whatsapp_message" USING btree ("user_id","ai_requested_at");

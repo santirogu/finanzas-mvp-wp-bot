@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { monthRange } from "@/lib/dates";
 import {
+  aiRateLimitedReply,
   aiUnavailableReply,
   balanceReply,
   errorReply,
@@ -11,6 +12,7 @@ import {
   notLinkedReply,
   registeredReply,
   suspendedReply,
+  tooManyTransactionsReply,
   undoReply,
   unsupportedTypeReply,
 } from "./replies";
@@ -182,6 +184,15 @@ describe("textos fijos del bot", () => {
     );
     expect(aiUnavailableReply).toBe(
       "Por ahora solo entiendo *balance*, *deshacer* y *ayuda*. Muy pronto podrás registrar gastos escribiendo normal ✍️",
+    );
+  });
+
+  it("límites del bot", () => {
+    expect(aiRateLimitedReply).toBe(
+      "Recibí muchos mensajes en poco tiempo. Para cuidar el servicio, espera un rato antes de registrar más. Mientras tanto puedes escribir *balance* o *deshacer*, o usar la web.",
+    );
+    expect(tooManyTransactionsReply(20)).toBe(
+      "Son muchos movimientos en un solo mensaje. Envíame máximo 20 por mensaje y los registro.",
     );
   });
 });

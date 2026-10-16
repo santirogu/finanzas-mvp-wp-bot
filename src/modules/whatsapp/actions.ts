@@ -2,12 +2,19 @@
 
 import { refresh } from "next/cache";
 import { requireUser } from "@/lib/session";
-import { createLinkCode, unlinkUser } from "./link";
+import { createLinkCode, LinkCodeLimitError, unlinkUser } from "./link";
 
-export async function generateLinkCodeAction() {
+export type LinkCodeState = { ok: true; code: string; expiresAt: string } | { ok: false; error: string };
+
+export async function generateLinkCodeAction(): Promise<LinkCodeState> {
   const user = await requireUser();
-  const { code, expiresAt } = await createLinkCode(user.id);
-  return { code, expiresAt: expiresAt.toISOString() };
+  try {
+    const { code, expiresAt } = await createLinkCode(user.id);
+    return { ok: true, code, expiresAt: expiresAt.toISOString() };
+  } catch (error) {
+    if (error instanceof LinkCodeLimitError) return { ok: false, error: error.message };
+    throw error;
+  }
 }
 
 export async function unlinkWhatsAppAction() {

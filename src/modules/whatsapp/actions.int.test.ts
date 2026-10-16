@@ -47,13 +47,25 @@ describe("generateLinkCodeAction", () => {
     expect(await db.select().from(whatsappLinkCode)).toEqual([]);
   });
 
+  it("después de 5 códigos en una hora no genera más y lo dice en español", async () => {
+    const ana = await createUser({ name: "Ana" });
+    await signIn(ana);
+    for (let i = 0; i < 5; i++) expect(await generateLinkCodeAction()).toMatchObject({ ok: true });
+
+    expect(await generateLinkCodeAction()).toEqual({
+      ok: false,
+      error: "Ya generaste varios códigos en la última hora. Usa el último que generaste o espera un rato para pedir otro.",
+    });
+  });
+
   it("el código queda a nombre del usuario de la sesión y vincula el número a esa cuenta", async () => {
     const ana = await createUser({ name: "Ana" });
     const beto = await createUser({ name: "Beto" });
     await signIn(ana);
 
-    const { code } = await generateLinkCodeAction();
-    const result = await consumeLinkCode("573001112233", code);
+    const generated = await generateLinkCodeAction();
+    if (!generated.ok) throw new Error(generated.error);
+    const result = await consumeLinkCode("573001112233", generated.code);
 
     expect(result).toEqual({ ok: true, userId: ana.id, name: "Ana" });
     expect(await getLinkForUser(ana.id)).toMatchObject({ phone: "573001112233" });

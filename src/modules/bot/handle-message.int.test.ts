@@ -115,6 +115,66 @@ describe("handleIncomingMessage · vinculación", () => {
   });
 });
 
+describe("handleIncomingMessage · límites (auditoría de seguridad 2026-10-15)", () => {
+  it("si Meta rechaza la respuesta, el intento fallido de vinculación igual cuenta", async () => {
+    const victim = await createUser();
+    const failing = capturingSender({ fail: "131056" });
+    const d = { extractor: fakeExtractor([]), send: failing.send, appUrl: APP_URL };
+    for (let i = 0; i < 8; i++) await handleIncomingMessage(incoming("VINCULAR 000000"), d);
+
+    // Solo 5 se evaluaron: el resto quedó bloqueado aunque ninguna respuesta llegó.
+    expect(failing.sent.filter((m) => m.body === replies.linkInvalidReply)).toHaveLength(5);
+    expect(failing.sent.filter((m) => m.body === replies.linkRateLimitedReply)).toHaveLength(3);
+    const { code } = await createLinkCode(victim.id);
+    const { deps: ok, sender } = deps();
+    await handleIncomingMessage(incoming(`VINCULAR ${code}`), ok);
+    expect(sender.sent[0].body).toBe(replies.linkRateLimitedReply);
+    expect(await db.select().from(whatsappLink)).toEqual([]);
+  });
+
+  it("varios intentos de vinculación simultáneos no se saltan el límite", async () => {
+    const { deps: d, sender } = deps();
+    await Promise.all(Array.from({ length: 20 }, () => handleIncomingMessage(incoming("VINCULAR 000000"), d)));
+    expect(sender.sent.filter((m) => m.body === replies.linkInvalidReply)).toHaveLength(5);
+    expect(sender.sent.filter((m) => m.body === replies.linkRateLimitedReply)).toHaveLength(15);
+  });
+
+  it("con el cupo de mensajes agotado no llama a la IA, avisa y los comandos siguen funcionando", async () => {
+    const user = await linkedUser();
+    const now = new Date();
+    for (let i = 0; i < 20; i++) {
+      await db.insert(whatsappMessage).values({ id: `wamid.usado.${i}`, phone: PHONE, body: "x", userId: user.id, aiRequestedAt: now });
+    }
+    const extractor = fakeExtractor([{ type: "expense", amount: 20000, description: "Almuerzo", category: "Alimentación" }]);
+    const { deps: d, sender } = deps(extractor);
+
+    const msg = incoming("almuerzo 20 mil");
+    await handleIncomingMessage(msg, d);
+    expect(extractor.calls).toBe(0);
+    expect(sender.sent[0].body).toBe(replies.aiRateLimitedReply);
+    expect(await activeTransactions(user.id)).toEqual([]);
+    expect(await loggedMessage(msg.id)).toMatchObject({ status: "processed", userId: user.id, aiRequestedAt: null });
+
+    await handleIncomingMessage(incoming("balance"), d);
+    expect(sender.sent[1].body).toContain("Aún no tienes movimientos");
+  });
+
+  it("cada mensaje que va a la IA queda reservado; los comandos no gastan cupo", async () => {
+    const user = await linkedUser();
+    const extractor = fakeExtractor([{ type: "expense", amount: 20000, description: "Almuerzo", category: "Alimentación" }]);
+    const { deps: d } = deps(extractor);
+    const free = incoming("almuerzo 20 mil");
+    const command = incoming("balance");
+
+    await handleIncomingMessage(free, d);
+    await handleIncomingMessage(command, d);
+
+    expect((await loggedMessage(free.id)).aiRequestedAt).toBeInstanceOf(Date);
+    expect((await loggedMessage(command.id)).aiRequestedAt).toBeNull();
+    expect(await activeTransactions(user.id)).toHaveLength(1);
+  });
+});
+
 describe("handleIncomingMessage · registro de movimientos", () => {
   it("registra los movimientos con categoría, origen WhatsApp y responde con el balance", async () => {
     const user = await linkedUser();

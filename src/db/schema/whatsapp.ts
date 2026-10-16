@@ -45,6 +45,12 @@ export const whatsappMessage = pgTable(
     error: text("error"),
     receivedAt: timestamp("received_at", { withTimezone: true }).notNull().defaultNow(),
     processedAt: timestamp("processed_at", { withTimezone: true }),
+    // Cuándo se reservó una llamada a Claude para este mensaje: el tope de mensajes interpretados por
+    // cuenta (src/modules/bot/ai-quota.ts) cuenta estas filas.
+    aiRequestedAt: timestamp("ai_requested_at", { withTimezone: true }),
   },
-  (t) => [index("whatsapp_message_phone_received_idx").on(t.phone, t.receivedAt)],
+  (t) => [
+    index("whatsapp_message_phone_received_idx").on(t.phone, t.receivedAt),
+    index("whatsapp_message_user_ai_requested_idx").on(t.userId, t.aiRequestedAt),
+  ],
 );

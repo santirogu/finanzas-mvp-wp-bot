@@ -15,6 +15,7 @@ export function WhatsAppConnect({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [link, setLink] = useState<{ code: string; expiresAt: string } | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
 
   const expired = link ? new Date(link.expiresAt).getTime() <= now : false;
@@ -31,7 +32,9 @@ export function WhatsAppConnect({
 
   function generate() {
     startTransition(async () => {
-      setLink(await generateLinkCodeAction());
+      const result = await generateLinkCodeAction();
+      setError(result.ok ? null : result.error);
+      setLink(result.ok ? { code: result.code, expiresAt: result.expiresAt } : null);
       setNow(Date.now());
     });
   }
@@ -44,6 +47,11 @@ export function WhatsAppConnect({
           <em>“me compré unos zapatos de $500.000”</em>.
         </p>
         {expired && <p className="text-expense">El código venció. Genera uno nuevo.</p>}
+        {error && (
+          <p role="alert" className="text-expense">
+            {error}
+          </p>
+        )}
         <button type="button" onClick={generate} disabled={pending} className="btn-primary w-full">
           {pending ? "Generando…" : "Conectar WhatsApp"}
         </button>

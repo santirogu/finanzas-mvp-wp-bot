@@ -38,7 +38,8 @@ export type ExtractionResult =
   | { ok: true; transactions: RawTransaction[]; reply: string | null; usage: Usage }
   | {
       ok: false;
-      reason: "not_configured" | "refusal" | "invalid_output" | "api_error";
+      // rate_limited: la cuenta usó su cupo de mensajes interpretados (no se llamó a Claude).
+      reason: "not_configured" | "refusal" | "invalid_output" | "api_error" | "rate_limited";
       detail?: string;
       usage?: Usage;
     };
@@ -73,7 +74,8 @@ export const claudeExtractor: Extractor = async ({ text, today, categories }) =>
   try {
     const response = await getClient().beta.messages.parse({
       model,
-      max_tokens: 8000,
+      // Alcanza para MAX_TRANSACTIONS_PER_MESSAGE movimientos; acota el costo de cada llamada.
+      max_tokens: 2048,
       system: buildSystemPrompt(categories),
       messages: [{ role: "user", content: buildUserMessage(text, today) }],
       output_config: { effort: botEffort(), format: betaZodOutputFormat(extractionSchema) },

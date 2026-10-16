@@ -162,6 +162,24 @@ scripts/seed.ts                     Categorías por defecto
 3. Se deduplica por el ID del mensaje, se resuelven los comandos fijos (`balance`, `deshacer`,
    `ayuda`) y el texto libre se interpreta con Claude. El bot responde por WhatsApp.
 
+**Límites** (`src/modules/bot/limits.ts`): cada mensaje interpretado es una llamada a Claude con
+costo, y la vinculación por código no debe poder adivinarse.
+- **Mensajes interpretados por cuenta:**
+  - máximo 20 por hora y 100 por día (`src/modules/bot/ai-quota.ts`);
+  - antes de llamar a Claude se reserva el cupo marcando el mensaje (`ai_requested_at`), en una
+    transacción corta con un bloqueo por cuenta, así una ráfaga simultánea no supera el tope;
+  - al pasarlo, el bot avisa y los comandos (`balance`, `deshacer`, `ayuda`) siguen funcionando.
+- **Por mensaje:** máximo 20 movimientos (si la IA propone más, pide dividirlo) y `max_tokens` de 2048.
+- **La respuesta libre del modelo** (cuando no hay movimientos) va en una línea, con máximo 300
+  caracteres. Si trae un enlace se descarta, porque un texto pegado podría hacer que el bot "hable"
+  con la voz del servicio.
+- **Vinculación:**
+  - 5 códigos equivocados por hora y número, contados en el historial dentro de la misma transacción
+    que revisa el código, con un bloqueo por número: no dependen de que la respuesta llegue a
+    WhatsApp, y los intentos simultáneos no se saltan el límite;
+  - el bloqueo se registra una vez por hora;
+  - además, máximo 5 códigos nuevos por hora por cuenta.
+
 En desarrollo, sin credenciales de Meta, las respuestas se imprimen en la consola. Para probar sin
 WhatsApp, usa el simulador en `/simulador`.
 
@@ -215,8 +233,8 @@ cada 10 segundos por IP (y 100 pedidos cada 10 s en el resto de `/api/auth`); de
 y el formulario pide esperar. El contador se guarda en Postgres (tabla `rate_limit`), así que lo
 respetan todas las instancias de Vercel; en memoria cada instancia tendría el suyo. La IP sale de
 `x-forwarded-for`, que Vercel reemplaza con la IP real del cliente. Lo prueban
-`src/lib/rate-limit.int.test.ts` y las E2E. La vinculación de WhatsApp tiene su propio límite: 5
-códigos fallidos por hora y número.
+`src/lib/rate-limit.int.test.ts` y las E2E. El bot de WhatsApp tiene sus propios límites (README →
+Bot de WhatsApp → Límites).
 
 **Rutas de Better Auth:** `/api/auth/*` solo atiende las que la app usa desde el navegador
 (`AUTH_HTTP_ROUTES` en `src/modules/auth/http-routes.ts`):

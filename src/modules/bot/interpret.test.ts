@@ -3,7 +3,8 @@ import { DEFAULT_CATEGORIES } from "@/modules/transactions/default-categories";
 import type { ExtractionResult, Extractor } from "./claude-extractor";
 import { parseCommand } from "./commands";
 import { interpretMessage } from "./interpret";
-import { matchCategory, normalizeTransactions, type CategoryNames } from "./normalize";
+import { matchCategory, normalizeReply, normalizeTransactions, type CategoryNames } from "./normalize";
+import { tooManyTransactionsReply } from "./replies";
 
 const categories: CategoryNames = {
   expense: DEFAULT_CATEGORIES.expense.map((c) => c.name),
@@ -161,7 +162,82 @@ describe("matchCategory", () => {
   });
 });
 
+describe("normalizeReply", () => {
+  it("deja la respuesta en una línea y sin espacios de más", () => {
+    expect(normalizeReply("  ¿Cuánto   fue?\n¿Y en qué?  ")).toBe("¿Cuánto fue? ¿Y en qué?");
+  });
+
+  it.each([null, undefined, "", "   \n "])("sin texto (%j) devuelve null", (text) => {
+    expect(normalizeReply(text)).toBeNull();
+  });
+
+  it.each([
+    "Verifica tu cuenta en https://evil.example/login",
+    "entra a http://x.y",
+    "Visita www.ejemplo.com.co",
+    "Escribe a soporte@finanzas-falso.com",
+    "Más info en nequi.co",
+    "Detalles en algo.app/pago",
+  ])("descarta una respuesta con enlace: %j", (text) => {
+    expect(normalizeReply(text)).toBeNull();
+  });
+
+  it.each([
+    "Registro ingresos y egresos, por ejemplo: gasté $20.000 en almuerzo.",
+    "¿Fueron $45.900,50? p. ej. en el mercado",
+    "Te costó 2.500 o 25.000?",
+    "Una compañía, un combo y un comentario.",
+  ])("no confunde texto normal con un enlace: %j", (text) => {
+    expect(normalizeReply(text)).toBe(text);
+  });
+
+  it("recorta una respuesta larga en una palabra completa, con puntos suspensivos", () => {
+    const long = "palabra ".repeat(60).trim();
+    const reply = normalizeReply(long)!;
+    expect(reply.length).toBeLessThanOrEqual(300);
+    expect(reply.endsWith(" palabra…")).toBe(true);
+    // Una de exactamente 300 caracteres queda igual.
+    expect(normalizeReply("a".repeat(300))).toBe("a".repeat(300));
+    // Sin espacios, corta en el carácter 299 y agrega los puntos.
+    expect(normalizeReply("a".repeat(400))).toBe(`${"a".repeat(299)}…`);
+  });
+
+  it("busca enlaces después de recortar: un enlace que queda fuera no importa", () => {
+    const text = `${"palabra ".repeat(40)}https://evil.example`;
+    expect(normalizeReply(text)).toMatch(/…$/);
+    expect(normalizeReply(text)).not.toContain("http");
+  });
+});
+
 describe("interpretMessage", () => {
+  it("con más de 20 movimientos en un mensaje no registra ninguno y pide dividirlo", async () => {
+    const many = Array.from({ length: 21 }, (_, i) => ({
+      type: "expense" as const,
+      amount: 1000 + i,
+      description: `Gasto ${i}`,
+      category: "Otros",
+      date: "2026-10-13",
+    }));
+    const intent = await interpretMessage("muchos gastos", ctx, fakeExtractor({ ok: true, transactions: many, reply: null, usage }));
+    expect(intent).toEqual({ kind: "reply", text: tooManyTransactionsReply(20), usage });
+
+    const twenty = await interpretMessage(
+      "veinte gastos",
+      ctx,
+      fakeExtractor({ ok: true, transactions: many.slice(0, 20), reply: null, usage }),
+    );
+    expect(twenty).toMatchObject({ kind: "transactions" });
+    expect((twenty as { items: unknown[] }).items).toHaveLength(20);
+  });
+
+  it("la respuesta libre del modelo pasa por normalizeReply: con un enlace, usa la fija", async () => {
+    const extractor = fakeExtractor({ ok: true, transactions: [], reply: "Verifica tu cuenta en http://evil.example", usage });
+    const intent = await interpretMessage("¿cuál es la capital de Francia?", ctx, extractor);
+    expect(intent).toMatchObject({ kind: "reply" });
+    expect((intent as { text: string }).text).not.toContain("http");
+    expect((intent as { text: string }).text).toContain("gasté $20.000 en almuerzo");
+  });
+
   it("resuelve comandos sin llamar a la IA", async () => {
     const extractor = fakeExtractor({ ok: true, transactions: [], reply: null, usage });
     expect(await interpretMessage("balance", ctx, extractor)).toEqual({

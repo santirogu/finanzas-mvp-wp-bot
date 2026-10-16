@@ -1,6 +1,7 @@
 // Validación de lo que devuelve la IA antes de tocar la base de datos.
 // La IA propone; este código decide qué es aceptable.
 import { MAX_AMOUNT, roundToCents } from "@/lib/money";
+import { MAX_REPLY_LENGTH } from "./limits";
 
 export type TransactionKind = "income" | "expense";
 
@@ -79,4 +80,28 @@ export function normalizeTransactions(
     });
   }
   return result;
+}
+
+// Un enlace en la respuesta del modelo: con http(s)://, www. o un dominio con terminación conocida
+// (WhatsApp los vuelve clicables aunque no tengan http).
+const LINK = /https?:\/\/|www\.|[\w-]\.(com|co|net|org|info|io|app|me|ly|link|xyz|site|online|store|shop|ai|gg|to)\b/i;
+
+/**
+ * La respuesta libre del modelo (cuando no hay movimientos), lista para enviar: en una sola línea, de
+ * máximo MAX_REPLY_LENGTH caracteres y sin enlaces. Con un texto pegado de otro lado, el modelo podría
+ * responder con la voz del servicio algo engañoso ("verifica tu cuenta en…"). null si no sirve: se
+ * usa una respuesta fija.
+ */
+export function normalizeReply(text: string | null | undefined): string | null {
+  const clean = (text ?? "").replace(/\s+/g, " ").trim();
+  if (!clean) return null;
+  let reply = clean;
+  if (clean.length > MAX_REPLY_LENGTH) {
+    const cut = clean.slice(0, MAX_REPLY_LENGTH - 1);
+    const lastSpace = cut.lastIndexOf(" ");
+    // Stryker disable next-line EqualityOperator: el texto viene sin espacios al inicio (trim), así que lastSpace nunca es 0
+    reply = `${lastSpace > 0 ? cut.slice(0, lastSpace) : cut}…`;
+  }
+  // Se busca en el texto ya recortado: la expresión nunca recorre más de MAX_REPLY_LENGTH caracteres.
+  return LINK.test(reply) ? null : reply;
 }

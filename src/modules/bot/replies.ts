@@ -78,5 +78,9 @@ export const linkRateLimitedReply =
 export const unsupportedTypeReply = "Por ahora solo entiendo mensajes de texto ✍️";
 export const errorReply =
   "Tuve un problema procesando tu mensaje 😕 Intenta de nuevo en un momento.";
+export const aiRateLimitedReply =
+  "Recibí muchos mensajes en poco tiempo. Para cuidar el servicio, espera un rato antes de registrar más. Mientras tanto puedes escribir *balance* o *deshacer*, o usar la web.";
+export const tooManyTransactionsReply = (max: number) =>
+  `Son muchos movimientos en un solo mensaje. Envíame máximo ${max} por mensaje y los registro.`;
 export const aiUnavailableReply =
   "Por ahora solo entiendo *balance*, *deshacer* y *ayuda*. Muy pronto podrás registrar gastos escribiendo normal ✍️";

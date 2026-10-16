@@ -138,13 +138,17 @@ describe("vinculación de WhatsApp", () => {
     expect(await db.select().from(whatsappLink)).toEqual([]);
   });
 
-  it("con demasiados intentos en la hora, el bloqueo también queda en el historial", async () => {
+  it("con demasiados intentos en la hora, el bloqueo queda en el historial una sola vez", async () => {
     for (let i = 0; i < 5; i++) {
-      await db.insert(whatsappMessage).values({ id: `fallo-${i}`, phone: "573009998877", body: "VINCULAR 1", status: "link_failed" });
+      expect(await consumeLinkCode("573009998877", "000000")).toEqual({ ok: false, reason: "invalid" });
     }
-    expect(await consumeLinkCode("573009998877", "123456")).toEqual({ ok: false, reason: "rate_limited" });
+    for (let i = 0; i < 3; i++) {
+      expect(await consumeLinkCode("573009998877", "123456")).toEqual({ ok: false, reason: "rate_limited" });
+    }
+    const failed = { type: "whatsapp_link_failed", userId: null, phone: "573009998877" };
     expect(await events()).toEqual([
-      { type: "whatsapp_link_failed", userId: null, phone: "573009998877", details: { reason: "rate_limited" } },
+      ...Array.from({ length: 5 }, () => ({ ...failed, details: { reason: "invalid_code" } })),
+      { ...failed, details: { reason: "rate_limited" } },
     ]);
   });
 
