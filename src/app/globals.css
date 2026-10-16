@@ -27,6 +27,8 @@
   --admin: #3c3489;
   --admin-surface: #eeedfe;
   --admin-border: #afa9ec;
+  /* La flecha del <select> (sin la apariencia del sistema, la dibuja la app), en el color de --muted. */
+  --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%235f6672'%3E%3Cpath fill-rule='evenodd' d='M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z' clip-rule='evenodd'/%3E%3C/svg%3E");
 }
 
 @media (prefers-color-scheme: dark) {
@@ -48,6 +50,7 @@
     --admin: #cecbf6;
     --admin-surface: #3c3489;
     --admin-border: #7f77dd;
+    --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%2398a1ad'%3E%3Cpath fill-rule='evenodd' d='M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z' clip-rule='evenodd'/%3E%3C/svg%3E");
   }
 }
 
@@ -83,6 +86,16 @@ body {
      y la página queda ampliada y corrida. 14 px solo con mouse (pointer-fine), no según el ancho. */
   .input {
     @apply w-full rounded-lg border border-control bg-surface px-3 py-2 text-base outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 aria-invalid:border-danger aria-invalid:focus:ring-danger/20 pointer-fine:text-sm;
+  }
+
+  /* El <select> sin la apariencia del sistema: Safari en Mac no le aplica el borde, el relleno ni el
+     alto de los demás campos (quedaba más bajo que la fecha de al lado y sin borde). La flecha es
+     --select-arrow; la lista de opciones sigue siendo la nativa. */
+  select.input {
+    @apply appearance-none bg-no-repeat pr-9;
+    background-image: var(--select-arrow);
+    background-position: right 0.75rem center;
+    background-size: 1rem;
   }
 
   /* El campo de fecha en Safari del iPhone: sin la apariencia propia del sistema respeta el ancho de

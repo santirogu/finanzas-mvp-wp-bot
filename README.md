@@ -108,8 +108,8 @@ pnpm dev                        # http://localhost:3000
   - **Cómo trabaja:** un recorrido con Playwright (`recorrido/`) crea cuentas de prueba en la base
     de las E2E y captura cada página y estado.
     - **Qué mide:** lo que se sale de la pantalla o queda tapado, textos cortados, campos de menos
-      de 16 px, zonas táctiles chicas, axe con WCAG 2.2, el recorrido con el teclado y los saltos al
-      cargar.
+      de 16 px o de altos distintos en una misma fila, zonas táctiles chicas, axe con WCAG 2.2, el
+      recorrido con el teclado y los saltos al cargar.
     - **Qué deja:** una galería para comparar las capturas lado a lado.
     - **Después:** Claude y sus subagentes revisan las capturas y los flujos con un checklist (UI,
       UX, accesibilidad, Safari de iOS) y separan los defectos de las sugerencias de diseño.

@@ -43,7 +43,8 @@ Solo se ve en el simulador o en un dispositivo real; en WebKit de Playwright, a 
     letra chica según el ancho (`sm:text-sm`) vuelve a hacer zoom en el iPad y el celular horizontal.
 - **Campo de fecha:** el mismo alto que los demás, el texto a la izquierda, el selector nativo se
   abre bien y respeta `max` (no deja elegir días futuros).
-- **`<select>`:** la lista nativa muestra los emojis y las categorías largas completas.
+- **`<select>`:** la lista nativa muestra los emojis y las categorías largas completas. Cerrado, se ve
+  como los demás campos, también en Safari de Mac: **[M]** `campos-desparejos` (en WebKit).
 - **Teclado:** al abrirse, el campo enfocado queda a la vista y nada fijo (un botón abajo) lo tapa.
 - **Barra de Safari** (abajo, en iOS 26) y **notch:** nada importante queda debajo. Si algún día hay
   elementos fijos abajo, usar `env(safe-area-inset-bottom)`.

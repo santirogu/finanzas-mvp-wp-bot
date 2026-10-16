@@ -172,6 +172,8 @@ de Vercel ni muevas las migraciones fuera del job `deploy`.
 - **Celular y tableta**: los campos usan la clase `input` (16 px en pantallas táctiles: con menos,
   Safari del iPhone y del iPad hace zoom al tocarlos). Su letra chica va con `pointer-fine:` (solo con
   mouse), nunca con un corte de ancho (`sm:`): un iPad o un celular horizontal también son táctiles.
+  Un `<select>` también usa `input`: va sin la apariencia del sistema (Safari en Mac le quitaba el
+  borde y el alto) y con la flecha de `--select-arrow`; `src/global-styles.test.ts` lo revisa.
   Una rejilla con columnas solo desde un ancho (`lg:grid-cols-5`) lleva también `grid-cols-1`: sin
   eso, un texto largo la ensancha más que la pantalla. Si agregas una página, súmala a
   `e2e/diseno-tactil.spec.ts` y a las vistas de la auditoría de diseño
