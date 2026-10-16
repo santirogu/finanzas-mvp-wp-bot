@@ -16,6 +16,7 @@ import {
   formatSeconds,
   formatShortDay,
   parseBotFilters,
+  readableApiError,
 } from "./bot-filters";
 
 const TODAY = "2026-10-12";
@@ -89,6 +90,42 @@ describe("formatCount y formatShortDay", () => {
   });
 });
 
+// Lo que de verdad respondieron Meta y Anthropic (el primero, de producción, el 13 de octubre de 2026).
+const META_131030 =
+  '400 {"error":{"message":"(#131030) Recipient phone number not in allowed list","code":131030,"type":"OAuthException","error_data":{"messaging_product":"whatsapp","details":"El número de teléfono del destinatario no está en la lista de autorizados: Agrega el número de teléfono del destinatario a la lista de destinatarios y vuelve a intentarlo."},"fbtrace_id":"AKrw3fJ7aDnkLUcNSu3rO_K"}}';
+const ANTHROPIC_529 = '529 {"type":"error","error":{"type":"overloaded_error","message":"Overloaded"},"request_id":"req_011"}';
+
+describe("readableApiError", () => {
+  it("de Meta, la explicación en español con su código", () => {
+    expect(readableApiError(META_131030)).toBe(
+      "HTTP 400 · (#131030) El número de teléfono del destinatario no está en la lista de autorizados: Agrega el número de teléfono del destinatario a la lista de destinatarios y vuelve a intentarlo.",
+    );
+  });
+
+  it("sin explicación, el mensaje (sin repetir el código si ya lo trae)", () => {
+    expect(readableApiError('401 {"error":{"message":"(#190) Invalid OAuth access token","code":190}}')).toBe(
+      "HTTP 401 · (#190) Invalid OAuth access token",
+    );
+    expect(readableApiError('400 {"error":{"message":"Bad request","code":100}}')).toBe("HTTP 400 · (#100) Bad request");
+  });
+
+  it("de Anthropic, el mensaje", () => {
+    expect(readableApiError(ANTHROPIC_529)).toBe("HTTP 529 · Overloaded");
+  });
+
+  it.each([
+    ["cortado (la app guarda hasta 500 caracteres)", META_131030.slice(0, 120)],
+    ["sin mensaje", '500 {"error":{"type":"x"}}'],
+    ["sin el estado HTTP", '{"error":{"message":"x"}}'],
+    ["texto común", "400 (#131030) Recipient not allowed"],
+    ["un JSON que no es objeto", "500 {no es json}"],
+    ["con texto antes", `envío fallido ${ANTHROPIC_529}`],
+    ["con texto después", `${ANTHROPIC_529} (reintento)`],
+  ])("si no es ese formato (%s), lo deja igual", (_, detail) => {
+    expect(readableApiError(detail)).toBe(detail);
+  });
+});
+
 describe("errorLabel", () => {
   it.each([
     ["not_configured", "Claude no está configurado (falta la API key)", null],
@@ -98,7 +135,14 @@ describe("errorLabel", () => {
     ['api_error: 400 {"message": "x"}', "Error de la API de Claude", '400 {"message": "x"}'],
     ["envío: 400 (#131030) Recipient not allowed", "No se pudo enviar la respuesta por WhatsApp", "400 (#131030) Recipient not allowed"],
     ["api_error: x · envío: 500", "No se pudo enviar la respuesta por WhatsApp", "500"],
+    [`envío: ${META_131030}`, "No se pudo enviar la respuesta por WhatsApp", readableApiError(META_131030)],
+    [`api_error: ${ANTHROPIC_529}`, "Error de la API de Claude", "HTTP 529 · Overloaded"],
     ["PostgresError (23505)", "Error interno de la app", "PostgresError (23505)"],
+    [
+      "Could not resolve authentication method. Expected one of apiKey, authToken, credentials, config, or profile to be set.",
+      "Claude no está configurado (falta la API key)",
+      "Could not resolve authentication method. Expected one of apiKey, authToken, credentials, config, or profile to be set.",
+    ],
     ["", "Error sin detalle", null],
   ])("%j", (error, label, detail) => {
     expect(errorLabel(error)).toEqual({ label, detail });
