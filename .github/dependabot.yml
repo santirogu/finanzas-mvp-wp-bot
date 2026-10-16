@@ -23,10 +23,30 @@ updates:
       # Al subir de versión de Node, actualiza @types/node a mano en el mismo PR.
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]
+    # Espera 7 días desde que sale una versión: los paquetes secuestrados suelen detectarse y
+    # retirarse en esos primeros días. No aplica a las actualizaciones de seguridad.
+    cooldown:
+      default-days: 7
     groups:
       # Las versiones menores y parches van juntas en un solo PR; las mayores, por separado.
       menores-y-parches:
         update-types: [minor, patch]
+
+  # El CLI de Vercel del job de despliegue (.github/vercel-cli/), con su propio lockfile.
+  - package-ecosystem: npm
+    directory: /.github/vercel-cli
+    schedule:
+      interval: weekly
+      day: monday
+      time: "07:00"
+      timezone: America/Bogota
+    open-pull-requests-limit: 2
+    commit-message:
+      prefix: ci
+      include: scope
+    labels: [dependencias]
+    cooldown:
+      default-days: 7
 
   - package-ecosystem: github-actions
     directory: /
@@ -39,6 +59,9 @@ updates:
       prefix: ci
       include: scope
     labels: [dependencias]
+    # Las acciones van fijadas por SHA (con la versión en un comentario): Dependabot actualiza los dos.
+    cooldown:
+      default-days: 7
     groups:
       acciones:
         patterns: ["*"]

@@ -21,4 +21,7 @@ Solo la versión desplegada en producción (rama `main`).
 - **CodeQL**: análisis estático del código y de los workflows en cada PR y cada semana.
 - **Dependabot**: alertas y PRs de actualización ante vulnerabilidades en dependencias.
 - **Secret scanning** con *push protection*: GitHub rechaza pushes que contengan credenciales.
-- **`pnpm audit`** en el CI: falla ante vulnerabilidades altas o críticas en dependencias de producción.
+- **`pnpm audit`** en el CI: falla ante vulnerabilidades altas o críticas en todas las dependencias.
+- **Cadena de suministro del despliegue:** acciones de GitHub fijadas por SHA, checkouts sin
+  credenciales guardadas, el token de Vercel solo en los pasos que lo usan, el CLI de Vercel con su
+  lockfile y Dependabot con 7 días de espera ante versiones nuevas.

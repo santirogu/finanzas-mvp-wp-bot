@@ -44,21 +44,26 @@ jobs:
       TEST_DATABASE_URL: postgres://finanzas:finanzas@localhost:5432/finanzas_test
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Sin el token de GitHub en .git/config mientras corre código de terceros.
+          persist-credentials: false
 
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
 
-      # Falla ante vulnerabilidades altas o críticas en dependencias de producción. Las de
-      # desarrollo las vigila Dependabot (algunas no tienen versión corregida y bloquearían todo).
+      # Falla ante vulnerabilidades altas o críticas, también en las de desarrollo: drizzle-kit y tsx
+      # corren con la base de producción en el build. Las que no tienen versión corregida y no se
+      # pueden explotar aquí van en package.json → pnpm.auditConfig.ignoreGhsas, con su porqué en
+      # el README (Versiones forzadas de dependencias).
       - name: Auditoría de dependencias
-        run: pnpm audit --prod --audit-level high
+        run: pnpm audit --audit-level high
 
       - name: Lint
         run: pnpm lint
@@ -90,7 +95,7 @@ jobs:
 
       - name: Guardar reporte de cobertura
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: coverage
           path: coverage/
@@ -124,11 +129,14 @@ jobs:
       TEST_DATABASE_URL: postgres://finanzas:finanzas@localhost:5432/finanzas_test
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Sin el token de GitHub en .git/config mientras corre código de terceros.
+          persist-credentials: false
 
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
           cache: pnpm
@@ -137,7 +145,7 @@ jobs:
 
       # El navegador se guarda en caché por versión de Playwright (cambia con pnpm-lock.yaml).
       - name: Caché del navegador de Playwright
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
@@ -158,7 +166,7 @@ jobs:
       # Con capturas y trazas de las pruebas que fallaron: pnpm exec playwright show-trace <zip>.
       - name: Guardar reporte de Playwright
         if: failure()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: playwright-report
           path: |
@@ -195,11 +203,14 @@ jobs:
       BETTER_AUTH_URL: http://localhost:3100
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Sin el token de GitHub en .git/config mientras corre código de terceros.
+          persist-credentials: false
 
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
           cache: pnpm
@@ -236,7 +247,7 @@ jobs:
 
       - name: Guardar reporte de ZAP
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: zap-report
           path: zap/
@@ -281,8 +292,10 @@ jobs:
     outputs:
       deploy: ${{ steps.decide.outputs.deploy }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          # Sin el token de GitHub en .git/config mientras corre código de terceros.
+          persist-credentials: false
           fetch-depth: 0
 
       - name: Decidir si desplegar
@@ -290,7 +303,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
             echo "Despliegue manual: se despliega."
             echo "deploy=true" >> "$GITHUB_OUTPUT"
             exit 0
@@ -298,10 +311,10 @@ jobs:
 
           # Último despliegue a producción cuyo estado final fue "success".
           last=""
-          for id in $(gh api "repos/${{ github.repository }}/deployments?environment=production&per_page=30" --jq '.[].id'); do
-            state=$(gh api "repos/${{ github.repository }}/deployments/$id/statuses" --jq '.[0].state')
+          for id in $(gh api "repos/$GITHUB_REPOSITORY/deployments?environment=production&per_page=30" --jq '.[].id'); do
+            state=$(gh api "repos/$GITHUB_REPOSITORY/deployments/$id/statuses" --jq '.[0].state')
             if [ "$state" = "success" ]; then
-              last=$(gh api "repos/${{ github.repository }}/deployments/$id" --jq '.sha')
+              last=$(gh api "repos/$GITHUB_REPOSITORY/deployments/$id" --jq '.sha')
               break
             fi
           done
@@ -313,7 +326,7 @@ jobs:
           fi
 
           echo "Último despliegue exitoso: $last"
-          git diff --name-only "$last" "${{ github.sha }}" | tee changed.txt | node scripts/deploy-needed.mjs | tee decision.txt
+          git diff --name-only "$last" "$GITHUB_SHA" | tee changed.txt | node scripts/deploy-needed.mjs | tee decision.txt
           { echo "### ¿Desplegar a producción?"; echo; echo '```'; cat decision.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
 
   # Solo se despliega si las pruebas pasaron y hubo cambios que afectan la app, y solo desde main.
@@ -337,30 +350,42 @@ jobs:
     concurrency:
       group: deploy-production
       cancel-in-progress: false
+    # Los secretos de Vercel van solo en los pasos que los usan: no quedan a la vista de la
+    # instalación de dependencias ni de las acciones de terceros.
     env:
-      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       PRODUCTION_URL: https://finanzas-mvp-wp-bot.vercel.app
+      # El CLI de Vercel con su versión y la de todas sus dependencias fijas (.github/vercel-cli/).
+      VERCEL: .github/vercel-cli/node_modules/.bin/vercel
 
     # Publicar sin tráfico → smoke tests → pasarle el dominio → smoke tests → (si fallan) volver a
     # la versión anterior. Ojo: las migraciones corren en el build y no se deshacen; por eso deben
     # ser compatibles con la versión anterior del código (ver CLAUDE.md).
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Sin el token de GitHub en .git/config mientras corre código de terceros.
+          persist-credentials: false
 
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
 
+      # Con su lockfile: ninguna dependencia del CLI cambia sin un PR (antes, `pnpm dlx` resolvía
+      # cerca de 400 paquetes en cada despliegue, sin lockfile y con el token a mano).
+      - name: Instalar el CLI de Vercel
+        run: pnpm install --frozen-lockfile --dir .github/vercel-cli
+
       # Antes de migrar: si falta algo, mejor fallar aquí que con la base ya migrada.
       - name: Verificar credenciales de Vercel
         env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
         run: |
           for name in VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID VERCEL_AUTOMATION_BYPASS_SECRET; do
@@ -368,17 +393,31 @@ jobs:
           done
 
       - name: Descargar configuración y variables de producción
-        run: pnpm dlx vercel@61.1.0 pull --yes --environment=production --token="$VERCEL_TOKEN"
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          "$VERCEL" pull --yes --environment=production --token="$VERCEL_TOKEN"
 
       # Ejecuta `pnpm vercel-build`: migraciones + categorías + build de Next.js.
       - name: Migrar base de datos y compilar
-        run: pnpm dlx vercel@61.1.0 build --prod --token="$VERCEL_TOKEN"
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          "$VERCEL" build --prod --token="$VERCEL_TOKEN"
 
       # --skip-domain: la versión nueva queda publicada en su propia URL, sin recibir tráfico.
       - name: Publicar sin dominio
         id: publicar
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
-          url=$(pnpm dlx vercel@61.1.0 deploy --prebuilt --prod --skip-domain --token="$VERCEL_TOKEN")
+          url=$("$VERCEL" deploy --prebuilt --prod --skip-domain --token="$VERCEL_TOKEN")
           echo "Versión nueva, todavía sin tráfico: $url"
           echo "url=$url" >> "$GITHUB_OUTPUT"
 
@@ -393,8 +432,12 @@ jobs:
       # La que hoy sirve el dominio: es a la que se vuelve si algo falla después del cambio.
       - name: Anotar la versión actual de producción
         id: anterior
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
-          id=$(pnpm dlx vercel@61.1.0 inspect "$PRODUCTION_URL" --json --token="$VERCEL_TOKEN" | jq -er '.id')
+          id=$("$VERCEL" inspect "$PRODUCTION_URL" --json --token="$VERCEL_TOKEN" | jq -er '.id')
           echo "Versión actual de producción: $id"
           echo "id=$id" >> "$GITHUB_OUTPUT"
 
@@ -402,20 +445,28 @@ jobs:
         id: promover
         env:
           NUEVA: ${{ steps.publicar.outputs.url }}
-        run: pnpm dlx vercel@61.1.0 promote "$NUEVA" --timeout=5m --token="$VERCEL_TOKEN"
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          "$VERCEL" promote "$NUEVA" --timeout=5m --token="$VERCEL_TOKEN"
 
       - name: Smoke tests en el dominio de producción
         run: node scripts/smoke.mjs "$PRODUCTION_URL"
 
       # Solo si se alcanzó a intentar el cambio de dominio (si falló antes, el dominio sigue en la
-      # versión anterior y no hay nada que deshacer).
+      # versión anterior y no hay nada que deshacer). También si el job se cancela (por ejemplo, al
+      # llegar al tiempo máximo) durante el cambio o los smoke tests: ahí failure() es falso.
       - name: Volver a la versión anterior
-        if: failure() && (steps.promover.outcome == 'success' || steps.promover.outcome == 'failure')
+        if: (failure() || cancelled()) && (steps.promover.outcome == 'success' || steps.promover.outcome == 'failure')
         env:
           ANTERIOR: ${{ steps.anterior.outputs.id }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
           echo "::error::La versión nueva falló en producción: volviendo a la anterior ($ANTERIOR)."
-          pnpm dlx vercel@61.1.0 rollback "$ANTERIOR" --timeout=5m --token="$VERCEL_TOKEN"
+          "$VERCEL" rollback "$ANTERIOR" --timeout=5m --token="$VERCEL_TOKEN"
           node scripts/smoke.mjs "$PRODUCTION_URL" || echo "::error::La versión anterior tampoco pasa los smoke tests: revisa Vercel."
 
 
@@ -436,11 +487,13 @@ jobs:
       cancel-in-progress: false
     steps:
       # Con todo el historial y los tags: la versión nueva se calcula desde la última release.
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          # Sin el token de GitHub en .git/config mientras corre código de terceros.
+          persist-credentials: false
           fetch-depth: 0
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
 

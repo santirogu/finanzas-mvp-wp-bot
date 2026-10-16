@@ -190,7 +190,7 @@ Resumen de lo que se revisa de forma automática (detalles y cómo reportar en [
 | Herramienta | Qué hace | Cuándo | ¿Bloquea? |
 |---|---|---|---|
 | **CodeQL** (`.github/workflows/codeql.yml`) | Análisis estático del código TypeScript y de los workflows (reglas `security-extended`) | Cada PR, cada push a `main` y los miércoles | Sí: el merge se bloquea si un PR agrega alertas altas o críticas |
-| **`pnpm audit`** (job de CI) | Vulnerabilidades conocidas en dependencias de producción | Cada PR y push | Sí, si son altas o críticas |
+| **`pnpm audit`** (job de CI) | Vulnerabilidades conocidas en todas las dependencias (también las de desarrollo; las ignoradas, con su porqué en "Versiones forzadas de dependencias") | Cada PR y push | Sí, si son altas o críticas |
 | **Dependabot** (`.github/dependabot.yml`) | Alertas y PRs de seguridad, y actualizaciones semanales agrupadas | Lunes y ante cada vulnerabilidad nueva | No: abre PRs que el dueño revisa y fusiona |
 | **Secret scanning + push protection** | Detecta credenciales en el repo y **rechaza pushes** que las contengan | Siempre | Sí |
 | **OWASP ZAP** (job `dast` del CI) | Escaneo dinámico pasivo del build de producción: cabeceras faltantes, cookies inseguras, fugas de información. Reglas en `.zap/rules.tsv` (FAIL bloquea; WARN aceptadas con su porqué) | Cada PR y push | Sí, ante reglas en FAIL; el despliegue también lo espera |
@@ -511,8 +511,24 @@ hacen falta:
 | `@esbuild-kit/core-utils>esbuild: ^0.25.4` | `drizzle-kit` 0.31 trae `esbuild` 0.18, vulnerable ([GHSA-67mh-4wv8-2f99](https://github.com/advisories/GHSA-67mh-4wv8-2f99)). Verificado: `drizzle-kit generate`, `check` y `migrate` siguen funcionando | `drizzle-kit` deje de depender de `@esbuild-kit` |
 | `typed-rest-client>qs: ^6.16.0` | Stryker 10.0.0 usa `typed-rest-client` 2.x con `qs` vulnerable (3 avisos de DoS) | Stryker actualice `typed-rest-client` a 3.x |
 
-Única vulnerabilidad conocida restante: `braces` (alta, vía ESLint, solo desarrollo), sin versión
-corregida publicada.
+**Avisos ignorados en `pnpm audit`** (`package.json → pnpm.auditConfig.ignoreGhsas`). El CI audita
+todas las dependencias, también las de desarrollo, porque `drizzle-kit` y `tsx` corren con la base de
+producción en el build. Un aviso solo se ignora si no tiene versión corregida y no se puede explotar
+aquí:
+
+| Aviso | Por qué se ignora | Quitar cuando |
+|---|---|---|
+| [GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) (`braces`, alta) | Solo vía `eslint-config-next` (lint en desarrollo y en el CI), con patrones del propio proyecto: nadie de afuera controla su entrada | Salga una versión corregida de `braces` (o `eslint-config-next` deje de usarlo) |
+
+**El CLI de Vercel del despliegue** vive aparte, en `.github/vercel-cli/`, con su propio
+`pnpm-lock.yaml`. El job de despliegue lo instala con `--frozen-lockfile`, así que ninguna de sus
+casi 400 dependencias cambia sin un PR (antes, `pnpm dlx` las resolvía en cada despliegue, con el
+token de Vercel a mano).
+- **Por qué fuera de la app:** sus builders (Python, contenedores…) traen dependencias con avisos
+  conocidos que este proyecto no usa, y así no se instalan en los demás jobs ni entran en el
+  `pnpm audit` de la app.
+- **Cómo actualizarlo:** Dependabot lo propone (con `cooldown`), o a mano: cambia la versión en
+  `.github/vercel-cli/package.json` y corre `pnpm install --dir .github/vercel-cli`.
 
 ## Flujo de trabajo
 
@@ -553,7 +569,8 @@ una migración rota llega a la base de producción.
 2. Smoke tests contra esa URL. Si fallan, el job se detiene: el dominio nunca cambió.
 3. Se le pasa el dominio (`vercel promote`, instantáneo, sin recompilar).
 4. Smoke tests contra el dominio real. Si fallan, **vuelve sola a la versión anterior**
-   (`vercel rollback`) y el job queda en rojo.
+   (`vercel rollback`) y el job queda en rojo. También si el job se cancela a mitad, por ejemplo al
+   llegar al tiempo máximo.
 
 Los chequeos (segundos, sin costo, sin iniciar sesión ni guardar datos): `/login`, `/privacidad` y
 `/eliminar-datos` cargan; `/api/health` confirma la conexión a la base, que tiene todas las
