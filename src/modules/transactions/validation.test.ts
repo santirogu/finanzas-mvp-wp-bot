@@ -68,6 +68,12 @@ describe("newTransactionSchema", () => {
     },
   );
 
+  it("quita los caracteres de control de la descripción (el nulo haría fallar la base)", () => {
+    expect(newTransactionSchema.parse({ ...base, description: "Zap\u0000atos\u0007 " }).description).toBe("Zapatos");
+    // Si solo tenía caracteres de control, queda vacía y se pide una.
+    expect(errorsOf({ ...base, description: "\u0000\u0000" })).toHaveProperty("description", "Agrega una descripción");
+  });
+
   it("rechaza descripciones vacías o de más de 140 caracteres", () => {
     expect(errorsOf({ ...base, description: "   " })).toHaveProperty(
       "description",

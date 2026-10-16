@@ -1,6 +1,7 @@
 // Validación de lo que devuelve la IA antes de tocar la base de datos.
 // La IA propone; este código decide qué es aceptable.
 import { MAX_AMOUNT, roundToCents } from "@/lib/money";
+import { withoutControlChars } from "@/lib/text";
 import { MAX_REPLY_LENGTH } from "./limits";
 
 export type TransactionKind = "income" | "expense";
@@ -56,7 +57,7 @@ function normalizeDate(proposed: string, today: string): string {
 }
 
 function normalizeDescription(text: string): string {
-  const clean = text.replace(/\s+/g, " ").trim().slice(0, MAX_DESCRIPTION);
+  const clean = withoutControlChars(text.replace(/\s+/g, " ")).trim().slice(0, MAX_DESCRIPTION);
   return clean ? clean.charAt(0).toUpperCase() + clean.slice(1) : "";
 }
 

@@ -68,6 +68,11 @@ describe("normalizeTransactions", () => {
     expect(normalizeTransactions(items, ctx)).toEqual([]);
   });
 
+  it("quita los caracteres de control de la descripción que propone la IA", () => {
+    const [item] = normalizeTransactions([{ ...base, description: "zap\u0000atos\u001b[31m" }], ctx);
+    expect(item.description).toBe("Zapatos[31m");
+  });
+
   it("conserva los centavos y redondea lo que pase de dos decimales", () => {
     const amounts = [25900.5, 0.01, 0.005, 45900.555, 12500.4999, 0.1 + 0.2].map(
       (amount) => normalizeTransactions([{ ...base, amount }], ctx)[0].amount,

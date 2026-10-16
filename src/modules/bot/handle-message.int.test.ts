@@ -1,5 +1,5 @@
 import { and, eq } from "drizzle-orm";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { db } from "@/db";
 import {
   category,
@@ -497,19 +497,27 @@ describe("handleIncomingMessage · errores", () => {
     expect((await loggedMessage(msg.id)).error).toContain("529 overloaded");
   });
 
-  it("si el extractor lanza una excepción no se cae y responde el error genérico", async () => {
+  it("si algo lanza una excepción no se cae, responde el error genérico y no copia el mensaje del error", async () => {
     await linkedUser();
+    // Como un error de la base: su mensaje trae los datos de la consulta.
     const extractor = fakeExtractor(() => {
-      throw new Error("boom");
+      throw Object.assign(new Error("Failed query\nparams: 573001112233,gasté 80 mil en farmacia"), {
+        name: "DrizzleQueryError",
+        cause: { code: "57P01" },
+      });
     });
     const { deps: d, sender } = deps(extractor);
     const msg = incoming("gasté 20 mil");
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
 
     const result = await handleIncomingMessage(msg, d);
 
     expect(result).toMatchObject({ status: "failed" });
     expect(sender.sent[0].body).toBe(replies.errorReply);
-    expect((await loggedMessage(msg.id)).error).toBe("boom");
+    expect((await loggedMessage(msg.id)).error).toBe("DrizzleQueryError (57P01)");
+    expect(consoleError).toHaveBeenCalledWith("[bot] error procesando mensaje", msg.id, "DrizzleQueryError (57P01)");
+    expect(JSON.stringify(consoleError.mock.calls)).not.toMatch(/farmacia|params/);
+    consoleError.mockRestore();
   });
 
   it("registra cuando Meta rechaza el envío de la respuesta", async () => {

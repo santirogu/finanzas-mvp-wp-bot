@@ -1,5 +1,5 @@
 import "server-only";
-import { and, eq, isNull, or, type SQL } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull, ne, or, type SQL } from "drizzle-orm";
 import { db } from "@/db";
 import { accountEvent, loginFailure, user, whatsappLink, whatsappMessage } from "@/db/schema";
 import { recordEvent } from "./events";
@@ -9,28 +9,60 @@ import { recordEvent } from "./events";
  * en cascada las sesiones, las credenciales, los movimientos, las categorías propias y el vínculo
  * y los códigos de WhatsApp. Lo que no está atado a la cuenta por una clave foránea se borra aquí:
  *  - los mensajes de WhatsApp (su clave foránea es "set null": sin esto quedarían el número y el
- *    texto), incluidos los que se enviaron desde el número vinculado antes de vincularlo;
+ *    texto), incluidos los que se enviaron sin cuenta desde cualquiera de sus números (el actual y
+ *    los que tuvo antes), por ejemplo antes de vincularlos;
  *  - los intentos fallidos de login, que se guardan por correo;
- *  - los intentos fallidos de vinculación desde su número, que no tienen cuenta (los demás eventos
+ *  - los intentos fallidos de vinculación desde sus números, que no tienen cuenta (los demás eventos
  *    de su historial se borran en cascada con el usuario).
  */
+type Executor = Pick<typeof db, "select" | "selectDistinct">;
+
 /**
- * Los mensajes de WhatsApp de una cuenta: los asociados a ella y, si tiene un número vinculado,
- * todos los de ese número (también los de antes de vincularlo, que no tienen usuario).
+ * Los números de WhatsApp que tuvo la cuenta: el vinculado ahora y los que vinculó o desvinculó antes
+ * (sus eventos los guardan). Sin los que hoy están vinculados a otra cuenta: lo que llegó de ellos
+ * sin cuenta puede ser de esa otra persona.
  */
-export function accountMessages(userId: string, linkedPhone: string | null): SQL | undefined {
-  return linkedPhone
-    ? or(eq(whatsappMessage.userId, userId), eq(whatsappMessage.phone, linkedPhone))
+export async function accountPhones(userId: string, tx: Executor = db): Promise<string[]> {
+  const [fromEvents, current] = await Promise.all([
+    tx
+      .selectDistinct({ phone: accountEvent.phone })
+      .from(accountEvent)
+      .where(
+        and(
+          eq(accountEvent.userId, userId),
+          inArray(accountEvent.type, ["whatsapp_linked", "whatsapp_unlinked"]),
+          isNotNull(accountEvent.phone),
+        ),
+      ),
+    tx.select({ phone: whatsappLink.phone }).from(whatsappLink).where(eq(whatsappLink.userId, userId)),
+  ]);
+  const phones = new Set([...fromEvents.map((row) => row.phone!), ...current.map((row) => row.phone)]);
+  if (phones.size === 0) return [];
+  const ofOthers = await tx
+    .select({ phone: whatsappLink.phone })
+    .from(whatsappLink)
+    .where(and(inArray(whatsappLink.phone, [...phones]), ne(whatsappLink.userId, userId)));
+  for (const { phone } of ofOthers) phones.delete(phone);
+  return [...phones].sort();
+}
+
+/**
+ * Los mensajes de WhatsApp de una cuenta: los asociados a ella y los que llegaron sin cuenta desde
+ * sus números (por ejemplo, antes de vincularlos). Los de otra cuenta, nunca.
+ */
+export function accountMessages(userId: string, phones: readonly string[]): SQL | undefined {
+  return phones.length
+    ? or(eq(whatsappMessage.userId, userId), and(isNull(whatsappMessage.userId), inArray(whatsappMessage.phone, [...phones])))
     : eq(whatsappMessage.userId, userId);
 }
 
 /**
- * El historial de una cuenta: sus eventos y, si tiene un número vinculado, los intentos fallidos de
- * vinculación desde ese número (no tienen cuenta: el código era inválido).
+ * El historial de una cuenta: sus eventos y los intentos fallidos de vinculación desde sus números
+ * (no tienen cuenta: el código era inválido).
  */
-export function accountEvents(userId: string, linkedPhone: string | null): SQL | undefined {
-  return linkedPhone
-    ? or(eq(accountEvent.userId, userId), and(isNull(accountEvent.userId), eq(accountEvent.phone, linkedPhone)))
+export function accountEvents(userId: string, phones: readonly string[]): SQL | undefined {
+  return phones.length
+    ? or(eq(accountEvent.userId, userId), and(isNull(accountEvent.userId), inArray(accountEvent.phone, [...phones])))
     : eq(accountEvent.userId, userId);
 }
 
@@ -42,13 +74,10 @@ export async function deleteAccountData(userId: string, { deletedBy }: { deleted
   return db.transaction(async (tx) => {
     const [account] = await tx.select({ email: user.email }).from(user).where(eq(user.id, userId));
     if (!account) return false;
-    const [link] = await tx
-      .select({ phone: whatsappLink.phone })
-      .from(whatsappLink)
-      .where(eq(whatsappLink.userId, userId));
+    const phones = await accountPhones(userId, tx);
 
-    await tx.delete(whatsappMessage).where(accountMessages(userId, link?.phone ?? null));
-    await tx.delete(accountEvent).where(accountEvents(userId, link?.phone ?? null));
+    await tx.delete(whatsappMessage).where(accountMessages(userId, phones));
+    await tx.delete(accountEvent).where(accountEvents(userId, phones));
     await tx.delete(loginFailure).where(eq(loginFailure.email, account.email.toLowerCase()));
     await tx.delete(user).where(eq(user.id, userId));
     if (deletedBy) await recordEvent({ type: "account_deleted", userId: null, adminId: deletedBy }, tx);

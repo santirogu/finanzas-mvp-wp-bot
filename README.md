@@ -236,6 +236,12 @@ respetan todas las instancias de Vercel; en memoria cada instancia tendría el s
 `src/lib/rate-limit.int.test.ts` y las E2E. El bot de WhatsApp tiene sus propios límites (README →
 Bot de WhatsApp → Límites).
 
+**Logs sin datos personales** (`src/lib/safe-log.ts`): un error se registra con su tipo y su código
+(`describeError`), nunca con su mensaje. El de un error de la base trae los parámetros de la consulta
+(teléfonos, textos de mensajes, montos), y Better Auth usa un logger propio que los quita.
+`src/logs.test.ts` falla si un `console.*` recibe un error crudo. Los textos que llegan (mensajes,
+descripciones) se guardan sin caracteres de control: el nulo hacía fallar la base.
+
 **Rutas de Better Auth:** `/api/auth/*` solo atiende las que la app usa desde el navegador
 (`AUTH_HTTP_ROUTES` en `src/modules/auth/http-routes.ts`):
 - registrarse;
@@ -466,15 +472,25 @@ pnpm account:delete persona@correo.com
 ```
 
 Borra lo mismo que el botón de la app (`deleteAccountData`): la cuenta, sus sesiones, movimientos,
-categorías propias, el número vinculado, sus mensajes del bot y sus intentos fallidos de login.
+categorías propias, el número vinculado, sus mensajes del bot (también los que llegaron sin cuenta
+desde los números que tuvo antes, salvo que ese número sea hoy de otra cuenta) y sus intentos
+fallidos de login.
 Antes muestra en qué base de datos va a trabajar (sin la clave) y qué va a borrar, y pide escribir
 el correo de nuevo para confirmar. No uses SQL a mano: podrías dejar mensajes o intentos fallidos
 sueltos.
 
-`pnpm messages:cleanup` borra los datos **sin dueño**: mensajes de WhatsApp e intentos fallidos de
-vinculación de números que nunca se vincularon a una cuenta, con más de 30 días (`--dias N` para otro plazo; mínimo 7, porque Meta puede
-reenviar un mensaje hasta 7 días después y el registro evita procesarlo dos veces). Pide escribir
-`ELIMINAR` para confirmar.
+**Limpieza diaria automática** (`src/modules/account/retention.ts`): Vercel Cron llama cada día (4:00
+a. m. en Bogotá; `vercel.json → crons`) a `GET /api/cron/limpieza`, que solo responde al secreto
+`CRON_SECRET`. Borra lo que `/privacidad` promete borrar a los 30 días:
+- los mensajes e intentos fallidos de vinculación de números sin cuenta;
+- los movimientos eliminados (dejan de verse al eliminarlos y se borran del todo a los 30 días).
+
+En los logs deja solo las cantidades. `CRON_SECRET` es obligatoria (`REQUIRED_ENV`): sin ella, `/api/health`
+falla y el despliegue se detiene, para que la limpieza nunca quede apagada sin que nadie lo note.
+
+`pnpm messages:cleanup` hace la limpieza de los datos **sin dueño** a mano, con otro plazo si hace
+falta (`--dias N`, mínimo 7, porque Meta puede reenviar un mensaje hasta 7 días después y el registro
+evita procesarlo dos veces). Pide escribir `ELIMINAR` para confirmar.
 
 **Contra producción:** los dos usan la `DATABASE_URL` de `.env` (la base local). Para producción,
 copia la `DATABASE_URL` de Neon (*Dashboard → Connect*) en un archivo `.env.produccion` (git ignora

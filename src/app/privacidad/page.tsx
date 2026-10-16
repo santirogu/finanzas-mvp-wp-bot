@@ -125,9 +125,11 @@ export default function PrivacyPage() {
           <h2>Cuánto tiempo los conservamos</h2>
           <p>
             Conservamos tus datos mientras tu cuenta esté activa. Si eliminas tu cuenta desde la
-            app, tus datos se borran de inmediato, incluido su historial; si lo pides por correo, en
-            un plazo máximo de 30 días. Los intentos de vinculación desde números que no tienen
-            cuenta se borran a los 30 días.
+            app, tus datos se borran de inmediato, incluido su historial y los mensajes que enviaste
+            al bot desde cualquiera de tus números; si lo pides por correo, en un plazo máximo de 30
+            días. Los movimientos que eliminas dejan de verse en ese momento y se borran del todo a
+            los 30 días. Los mensajes y los intentos de vinculación de números que no están
+            vinculados a ninguna cuenta se borran a los 30 días.
           </p>
         </section>
 

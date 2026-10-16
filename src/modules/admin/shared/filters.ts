@@ -2,6 +2,7 @@
 // parámetros de la URL, los filtros de fecha, la búsqueda y los formatos. Sin base de datos.
 
 import { todayInTimezone } from "@/lib/dates";
+import { withoutControlChars } from "@/lib/text";
 
 /** Las fechas se muestran y filtran en la hora de Colombia. */
 export const ADMIN_TIMEZONE = "America/Bogota";
@@ -17,11 +18,6 @@ export type Params = Record<string, string | string[] | undefined>;
 export const all = (value: string | string[] | undefined) => (Array.isArray(value) ? value : value === undefined ? [] : [value]);
 export const first = (value: string | string[] | undefined) => all(value)[0] ?? "";
 
-/** Sin caracteres de control: no sirven para buscar y Postgres rechaza el nulo (?q=%00) en un texto. */
-const withoutControlChars = (text: string) =>
-  Array.from(text)
-    .filter((char) => char.charCodeAt(0) >= 32 && char.charCodeAt(0) !== 127)
-    .join("");
 
 /** Lo máximo que puede tener una nota del admin (el motivo de una suspensión). */
 export const NOTE_MAX_LENGTH = 300;

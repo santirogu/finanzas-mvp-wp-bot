@@ -42,7 +42,8 @@ export function extractMessages(payload: unknown): IncomingMessage[] {
           id: m.id,
           from: m.from,
           type,
-          text: type === "text" && typeof m.text?.body === "string" ? m.text.body : null,
+          // Sin el carácter nulo: Postgres lo rechaza en un texto y el mensaje se perdería.
+          text: type === "text" && typeof m.text?.body === "string" ? m.text.body.replaceAll("\u0000", "") : null,
           timestamp: Number(m.timestamp) || Math.floor(Date.now() / 1000),
           profileName: typeof contact?.profile?.name === "string" ? contact.profile.name : null,
         });

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { formatMoney, MAX_AMOUNT, parseAmountInput } from "@/lib/money";
+import { withoutControlChars } from "@/lib/text";
 
 export const transactionTypeSchema = z.enum(["income", "expense"]);
 
@@ -23,11 +24,11 @@ export const newTransactionSchema = z.object({
       }
       return parsed;
     }),
+  // Sin caracteres de control (pegados de otro lado): no se ven y el nulo haría fallar la base.
   description: z
     .string()
-    .trim()
-    .min(1, "Agrega una descripción")
-    .max(140, "Máximo 140 caracteres"),
+    .transform(withoutControlChars)
+    .pipe(z.string().trim().min(1, "Agrega una descripción").max(140, "Máximo 140 caracteres")),
   categoryId: z.uuid("Selecciona una categoría").optional().or(z.literal("").transform(() => undefined)),
   occurredOn: z.iso.date("Fecha inválida"),
 });
