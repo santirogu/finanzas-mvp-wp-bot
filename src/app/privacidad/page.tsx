@@ -98,6 +98,13 @@ export default function PrivacyPage() {
               tenían pasan a &quot;Otros&quot;; si la archiva, la conservan.
             </li>
             <li>
+              Cuidar el funcionamiento del bot de WhatsApp: el administrador ve, por cuenta o por número,
+              cuántos mensajes llegaron y qué pasó con cada uno (si registró movimientos, fue un comando,
+              una respuesta o un error), cuántas veces se usó Claude (llamadas y tokens) y los errores
+              técnicos. No ve el texto de tus mensajes, lo que te respondió el bot ni los movimientos
+              que registraste.
+            </li>
+            <li>
               Saber qué partes de la app se usan más y qué tan rápido cargan, con estadísticas
               anónimas, para mejorarla.
             </li>

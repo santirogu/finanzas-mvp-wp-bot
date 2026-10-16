@@ -405,7 +405,7 @@ vienen aparecen como "Pronto".
 |---|---|---|
 | Historial | `/admin/historial` | Activo: registro y vinculación de WhatsApp |
 | Usuarios | `/admin/usuarios` | Activo: cuentas, sesiones y estado; desbloquear, cerrar sesiones, desvincular WhatsApp, suspender, reactivar y eliminar |
-| Bot de WhatsApp | `/admin/bot` | Pronto |
+| Bot de WhatsApp | `/admin/bot` | Activo: qué pasó con los mensajes, consumo de Claude y errores, sin el texto |
 | Categorías | `/admin/categorias` | Activo: crear, editar, archivar, restaurar y eliminar las de ingresos y egresos |
 | Salud del sistema | `/admin/salud` | Pronto |
 | Configuración | `/admin/configuracion` | Pronto |
@@ -473,6 +473,29 @@ Lo que **no** se muestra, a propósito: montos, movimientos, mensajes del bot y 
 sesiones (la consulta ni siquiera lo lee). El último inicio de sesión sale de las sesiones guardadas:
 al cerrar sesión se borra, y entonces dice "Sin sesiones guardadas". `/privacidad` explica qué ve el
 administrador.
+
+### Bot de WhatsApp
+
+En **`/admin/bot`** el admin ve cómo funciona el bot, de todas las cuentas
+(`src/modules/admin/bot/`). Se busca por nombre, correo o número (con espacios o "+") y se filtra por
+la fecha de los mensajes, en hora de Colombia.
+
+- **Qué pasó con los mensajes:** cuántos llegaron y el resultado de cada uno: registró movimientos,
+  comando, respuesta sin registrar nada, vinculó su número, llegó al tope de Claude, error, código de
+  vinculación inválido, número sin vincular, no era texto, cuenta suspendida o sin procesar. Sale del
+  estado del mensaje, del tipo de intención y de si el número tiene cuenta. También el tiempo de
+  respuesta (mediana y p95).
+- **Consumo de Claude:** llamadas y tokens de entrada y salida (los que guarda el bot en cada
+  mensaje), por día (con "Todo", los últimos 30 días) y por modelo, y las cuentas que llegaron al tope
+  (`AI_LIMITS`). El costo en dinero se ve en la consola de Anthropic: los precios cambian.
+- **Errores:** agrupados por motivo (de Claude, al enviar por WhatsApp o internos), con cuántas veces,
+  cuántas cuentas y la última vez. Lo técnico (el código de Meta o de la API) va aparte, como detalle.
+
+Lo que **no** se muestra, a propósito: el texto de los mensajes, la respuesta del bot y los
+movimientos que entendió Claude. Las consultas solo leen el tipo de intención, el motivo de un error y
+los tokens; del texto, solo si es la marca de un mensaje que no era texto ("[audio]"), sin devolverlo.
+Una prueba revisa el código de las consultas y otra, de integración, que el texto no sale en los
+resultados. La tarjeta de Inicio dice cuántos mensajes y errores hubo hoy.
 
 ### Categorías
 

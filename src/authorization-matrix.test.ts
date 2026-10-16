@@ -33,6 +33,7 @@ const PAGES = {
   "/admin/usuarios": "requiere sesión de admin con la verificación en dos pasos activa (requireAdmin)",
   "/admin/usuarios/[id]": "requiere sesión de admin con la verificación en dos pasos activa (requireAdmin); un id inválido o inexistente da 404",
   "/admin/categorias": "requiere sesión de admin con la verificación en dos pasos activa (requireAdmin)",
+  "/admin/bot": "requiere sesión de admin con la verificación en dos pasos activa (requireAdmin); sin el texto de los mensajes",
   "/admin/seguridad": "requiere sesión de admin; es donde se configura la verificación en dos pasos (requireAdminRole)",
 } as const;
 
@@ -287,6 +288,7 @@ describe("administración", () => {
         "src/modules/admin/users/account-actions.ts",
         "src/modules/admin/shared/confirm-code.ts",
         "src/modules/admin/categories/categories.ts",
+        "src/modules/admin/bot/bot-activity.ts",
       ]),
     );
   });

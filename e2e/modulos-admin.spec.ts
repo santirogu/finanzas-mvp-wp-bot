@@ -26,10 +26,13 @@ test("Inicio muestra una tarjeta por módulo: los activos con su resumen y los q
   const categories = cards(page).filter({ hasText: "Categorías" });
   await expect(categories.getByRole("link")).toHaveAttribute("href", "/admin/categorias");
   await expect(categories).toContainText(/\d+ de egresos · \d+ de ingresos/);
+  const bot = cards(page).filter({ hasText: "Bot de WhatsApp" });
+  await expect(bot.getByRole("link")).toHaveAttribute("href", "/admin/bot");
+  await expect(bot).toContainText(/\d+ mensajes? hoy · \d+ error(es)?/);
   const security = cards(page).filter({ hasText: "Seguridad" });
   await expect(security.getByRole("link")).toHaveAttribute("href", "/admin/seguridad");
   await expect(security).toContainText("Verificación en dos pasos activa");
-  for (const name of ["Bot de WhatsApp", "Salud del sistema", "Configuración"]) {
+  for (const name of ["Salud del sistema", "Configuración"]) {
     const card = cards(page).filter({ hasText: name });
     await expect(card, name).toContainText("Pronto");
     await expect(card.getByRole("link"), name).toHaveCount(0);
@@ -41,10 +44,11 @@ test("la subnavegación lleva a cada módulo y marca dónde se está; la pestañ
   await newAdmin(page);
   await setUpTwoFactor(page);
 
-  await expect(subnav(page).getByRole("link")).toHaveText(["Inicio", "Historial", "Usuarios", "Categorías", "Seguridad"]);
+  await expect(subnav(page).getByRole("link")).toHaveText(["Inicio", "Historial", "Usuarios", "Bot de WhatsApp", "Categorías", "Seguridad"]);
   for (const [name, url] of [
     ["Historial", /\/admin\/historial$/],
     ["Usuarios", /\/admin\/usuarios$/],
+    ["Bot de WhatsApp", /\/admin\/bot$/],
     ["Categorías", /\/admin\/categorias$/],
     ["Seguridad", /\/admin\/seguridad$/],
     ["Inicio", /\/admin$/],
