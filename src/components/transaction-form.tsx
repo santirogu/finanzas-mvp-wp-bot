@@ -157,7 +157,7 @@ export function TransactionForm({
 
       <p
         aria-live="polite"
-        className={`min-h-5 text-center text-sm ${state.ok ? "text-income" : "text-expense"}`}
+        className={`min-h-5 text-center text-sm ${state.ok ? "text-income" : "text-danger"}`}
       >
         {state.ok ? `✓ ${state.message}` : (state.message ?? "")}
       </p>

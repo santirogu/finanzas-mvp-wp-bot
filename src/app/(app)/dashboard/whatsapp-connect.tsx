@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { generateLinkCodeAction } from "@/modules/whatsapp/actions";
+import { formatPhone } from "@/modules/whatsapp/phone";
 
 export function WhatsAppConnect({
   botNumber,
@@ -46,9 +47,9 @@ export function WhatsAppConnect({
           Conecta tu número y registra gastos escribiendo, por ejemplo,{" "}
           <em>“me compré unos zapatos de $500.000”</em>.
         </p>
-        {expired && <p className="text-expense">El código venció. Genera uno nuevo.</p>}
+        {expired && <p className="text-danger">El código venció. Genera uno nuevo.</p>}
         {error && (
-          <p role="alert" className="text-expense">
+          <p role="alert" className="text-danger">
             {error}
           </p>
         )}
@@ -68,7 +69,7 @@ export function WhatsAppConnect({
         Envía este mensaje{" "}
         {botNumber ? (
           <>
-            al <span className="font-medium text-foreground">+{botNumber}</span>
+            al <span className="whitespace-nowrap font-medium text-foreground">{formatPhone(botNumber)}</span>
           </>
         ) : (
           "al número del bot"

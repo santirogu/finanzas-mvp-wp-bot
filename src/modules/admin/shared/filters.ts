@@ -126,14 +126,8 @@ export function escapeLike(text: string): string {
 /** Los dígitos de lo que se busca, para encontrar números escritos con espacios o "+". */
 export const searchDigits = (search: string) => search.replace(/\D/g, "");
 
-/** "573001112233" → "+57 300 111 2233" (completo: solo lo ve el admin). */
-export function formatPhone(phone: string): string {
-  const digits = phone.replace(/\D/g, "");
-  if (digits.startsWith("57") && digits.length === 12) {
-    return `+57 ${digits.slice(2, 5)} ${digits.slice(5, 8)} ${digits.slice(8)}`;
-  }
-  return `+${digits}`;
-}
+// Los teléfonos completos se formatean como en el resto de la app (src/modules/whatsapp/phone.ts).
+export { formatPhone } from "@/modules/whatsapp/phone";
 
 /**
  * Espacios duros (algunas versiones de ICU los usan, p. ej. antes de "p. m.") → espacios normales,

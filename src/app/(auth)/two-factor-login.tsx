@@ -76,7 +76,7 @@ export function TwoFactorLogin({ onCancel }: { onCancel: () => void }) {
         </div>
 
         {error && (
-          <p role="alert" className="rounded-lg bg-expense/10 px-3 py-2 text-sm text-expense">
+          <p role="alert" className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">
             {error}
           </p>
         )}

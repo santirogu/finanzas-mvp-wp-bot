@@ -40,7 +40,7 @@ describe("WhatsAppConnect", () => {
 
     expect(mocks.generate).toHaveBeenCalledOnce();
     expect(screen.getByText("VINCULAR 482913")).toBeVisible();
-    expect(screen.getByText("+573001112233")).toBeVisible();
+    expect(screen.getByText("+57 300 111 2233")).toBeVisible();
     const link = screen.getByRole("link", { name: "Abrir WhatsApp" });
     expect(link).toHaveAttribute("href", "https://wa.me/573001112233?text=VINCULAR%20482913");
     expect(link).toHaveAttribute("target", "_blank");

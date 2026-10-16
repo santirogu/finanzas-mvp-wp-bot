@@ -18,8 +18,6 @@
      pase el contraste también sobre su fondo suave (bg-income/10, bg-expense/10: avisos y etiquetas). */
   --income: #137337;
   --expense: #b53c0b;
-  /* Texto sobre un fondo de egreso (el botón de eliminar la cuenta). */
-  --expense-foreground: #ffffff;
   /* Errores y alertas (p. ej. intentos fallidos en el historial de /admin). */
   --danger: #b91c1c;
   --danger-foreground: #ffffff;
@@ -44,7 +42,6 @@
     --brand-foreground: #062925;
     --income: #4ade80;
     --expense: #fb923c;
-    --expense-foreground: #431407;
     --danger: #f87171;
     --danger-foreground: #450a0a;
     --admin: #cecbf6;
@@ -65,7 +62,6 @@
   --color-brand-foreground: var(--brand-foreground);
   --color-income: var(--income);
   --color-expense: var(--expense);
-  --color-expense-foreground: var(--expense-foreground);
   --color-danger: var(--danger);
   --color-danger-foreground: var(--danger-foreground);
   --color-admin: var(--admin);
@@ -122,6 +118,12 @@ body {
      contraste (e2e/accesibilidad.spec.ts lo revisa en modo claro y oscuro). */
   .btn-primary {
     @apply inline-flex items-center justify-center rounded-lg bg-brand px-4 py-2 text-sm font-medium text-brand-foreground transition hover:brightness-90 disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  /* Lo mismo para lo que no se deshace (eliminar una cuenta, suspenderla): en rojo, el color de los
+     errores y las zonas de peligro. */
+  .btn-danger {
+    @apply inline-flex items-center justify-center rounded-lg bg-danger px-4 py-2 text-sm font-medium text-danger-foreground transition hover:brightness-90 disabled:cursor-not-allowed disabled:opacity-60;
   }
 
   .card {

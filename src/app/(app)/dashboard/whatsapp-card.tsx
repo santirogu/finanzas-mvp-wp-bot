@@ -24,13 +24,13 @@ export async function WhatsAppCard() {
         <div className="mt-3 space-y-3 text-sm">
           <p className="text-muted">
             Registra movimientos escribiendo desde{" "}
-            <span className="font-medium text-foreground">{maskPhone(link.phone)}</span>. Prueba:{" "}
+            <span className="whitespace-nowrap font-medium text-foreground">{maskPhone(link.phone)}</span>. Prueba:{" "}
             <em>“gasté 20 mil en almuerzo”</em>.
           </p>
           <form action={unlinkWhatsAppAction}>
             <button
               type="submit"
-              className="text-xs font-medium text-muted underline underline-offset-2 hover:text-expense"
+              className="text-xs font-medium text-muted underline underline-offset-2 hover:text-danger"
             >
               Desvincular número
             </button>

@@ -71,7 +71,13 @@ export function CategoryManager({ type, categories }: { type: CategoryType; cate
       <ul aria-label={`Categorías de ${kind}`} className="divide-y divide-border">
         {active.map((category) => (
           <CategoryRow key={category.id} category={category} onEdit={() => start({ kind: "edit", category })}>
-            {!category.isDefault && (
+            {category.isDefault ? (
+              // "Otros" no se archiva ni se elimina: el espacio del "⋯" queda vacío, para que su
+              // "Editar" se alinee con los de las demás filas.
+              <span aria-hidden className="invisible rounded-lg border px-2.5 py-1.5 text-sm font-medium">
+                ⋯
+              </span>
+            ) : (
               <MoreActions
                 name={category.name}
                 actions={[
@@ -138,7 +144,7 @@ export function CategoryManager({ type, categories }: { type: CategoryType; cate
           description={
             open.category.movements > 0 ? (
               <>
-                <span className="block rounded-lg border border-expense/30 bg-expense/10 px-3 py-2 text-expense">
+                <span className="block rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-danger">
                   Tiene {movementsLabel(open.category.movements)}. Si la eliminas, pasarán a {fallbackEmoji} {DEFAULT_CATEGORY}. La
                   eliminación queda en el registro de cambios y no se puede deshacer.
                 </span>
@@ -163,7 +169,7 @@ export function CategoryManager({ type, categories }: { type: CategoryType; cate
 function CategoryRow({ category, onEdit, children }: { category: ManagedCategory; onEdit?: () => void; children?: ReactNode }) {
   return (
     <li className="flex items-center gap-3 py-3">
-      <span aria-hidden className={`flex size-9 flex-none items-center justify-center rounded-lg bg-background text-lg ${category.archived ? "grayscale" : ""}`}>
+      <span aria-hidden className={`flex size-9 flex-none items-center justify-center rounded-lg bg-background text-lg dark:bg-border ${category.archived ? "grayscale" : ""}`}>
         {category.emoji}
       </span>
       <div className="min-w-0 flex-1">

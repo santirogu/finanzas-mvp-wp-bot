@@ -41,6 +41,16 @@ async function layoutProblems(page: Page) {
       );
       problems.push(`la página mide ${pageWidth} px de ancho en una pantalla de ${width} px: ${origins.slice(0, 3).map(describe).join(", ")}`);
     }
+    // En una barra que se desliza de lado (las secciones del admin), la actual se ve entera.
+    for (const current of document.querySelectorAll<HTMLElement>('[aria-current="page"]')) {
+      let strip = current.parentElement;
+      while (strip && !["auto", "scroll"].includes(getComputedStyle(strip).overflowX)) strip = strip.parentElement;
+      if (!strip || !current.checkVisibility()) continue;
+      const [item, bar] = [current.getBoundingClientRect(), strip.getBoundingClientRect()];
+      if (item.left < bar.left - 1 || item.right > bar.right + 1) {
+        problems.push(`la sección actual "${current.textContent?.trim()}" queda cortada en su barra`);
+      }
+    }
     for (const dialog of document.querySelectorAll("dialog[open]")) {
       const rect = dialog.getBoundingClientRect();
       if (rect.left < 0 || rect.right > width) problems.push(`la ventana se sale de la pantalla: ${describe(dialog)}`);

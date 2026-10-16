@@ -72,7 +72,7 @@ export function EventItem({ entry, filters, inAccount = false }: { entry: LogEnt
   ) : (
     (entry.account?.name ?? "Una cuenta")
   );
-  const phone = entry.phone ? <span className="whitespace-nowrap font-mono text-[0.8125rem]">{formatPhone(entry.phone)}</span> : null;
+  const phone = entry.phone ? <span className="whitespace-nowrap">{formatPhone(entry.phone)}</span> : null;
   const detail = eventDetail(entry.details);
   const color = isAdminAction(entry) ? ADMIN_COLOR : ICON_COLORS[entry.type];
   // De una cuenta que eliminó el admin no queda ningún dato.

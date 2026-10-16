@@ -35,9 +35,9 @@ async function Account() {
         </p>
       </section>
 
-      <section className="card space-y-4 border-expense/40 p-4">
+      <section className="card space-y-4 border-danger/40 p-4">
         <div className="space-y-2 text-sm">
-          <h2 className="font-semibold text-expense">Eliminar mi cuenta</h2>
+          <h2 className="font-semibold text-danger">Eliminar mi cuenta</h2>
           <p>Se borra todo de inmediato y no se puede deshacer:</p>
           <ul className="list-disc space-y-1 pl-5 text-muted">
             <li>tu cuenta y tu sesión;</li>
