@@ -1,5 +1,6 @@
 import { after, type NextRequest } from "next/server";
 import { getAppUrl } from "@/lib/app-url";
+import { describeError } from "@/lib/safe-log";
 import { claudeExtractor } from "@/modules/bot/claude-extractor";
 import { handleIncomingMessage } from "@/modules/bot/handle-message";
 import { sendWhatsAppText } from "@/modules/whatsapp/client";
@@ -58,7 +59,7 @@ export async function POST(request: NextRequest) {
             appUrl: getAppUrl(),
           });
         } catch (error) {
-          console.error("[whatsapp] no se pudo procesar", message.id, error);
+          console.error("[whatsapp] no se pudo procesar", message.id, describeError(error));
         }
       }
     });

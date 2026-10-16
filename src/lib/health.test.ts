@@ -139,6 +139,7 @@ describe("constantes", () => {
       "WHATSAPP_APP_SECRET",
       "WHATSAPP_ACCESS_TOKEN",
       "WHATSAPP_PHONE_NUMBER_ID",
+      "CRON_SECRET",
     ]);
     expect(ANTHROPIC_CREDENTIALS).toEqual(["ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN"]);
   });

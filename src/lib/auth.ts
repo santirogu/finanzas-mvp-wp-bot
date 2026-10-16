@@ -21,6 +21,7 @@ import {
 import { getAppUrl, getVercelOrigins } from "./app-url";
 import { envVar } from "./env";
 import { ROLES, hasRole, parseRole } from "./roles";
+import { describeError, logAuthSafely } from "./safe-log";
 
 // Better Auth exige un secreto al inicializarse. El build de producción trae el real (el job de
 // despliegue hace `vercel pull`); si un build corre sin él (por ejemplo, el de las E2E en el CI), se
@@ -33,6 +34,9 @@ const secret =
 
 export const auth = betterAuth({
   appName: "Finanzas MVP",
+  // Sin datos personales en los logs: el logger por defecto imprime los errores con los parámetros
+  // de la consulta (correo, nombre, hash de la contraseña).
+  logger: { log: logAuthSafely },
   secret,
   baseURL: getAppUrl(),
   // En Vercel, acepta también la URL propia de cada deployment (previews).
@@ -140,7 +144,7 @@ export const auth = betterAuth({
           try {
             await recordEvent({ type: "registered", userId: created.id });
           } catch (error) {
-            console.error("[historial] no se pudo registrar el evento de registro", created.id, error);
+            console.error("[historial] no se pudo registrar el evento de registro", created.id, describeError(error));
           }
         },
       },

@@ -44,6 +44,7 @@ const API_ROUTES = {
   "/api/whatsapp/webhook GET": "token de verificación de Meta",
   "/api/whatsapp/webhook POST": "firma HMAC de Meta (X-Hub-Signature-256)",
   "/api/health GET": "pública: no devuelve datos ni detalles de configuración",
+  "/api/cron/limpieza GET": "solo Vercel Cron, con el secreto CRON_SECRET (src/lib/cron-auth.ts); devuelve solo cantidades",
 } as const;
 
 const SERVER_ACTIONS = {

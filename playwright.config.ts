@@ -6,7 +6,7 @@
 import "dotenv/config";
 import { defineConfig, devices } from "@playwright/test";
 import { e2eDatabaseUrl } from "./e2e/database-url";
-import { E2E_WHATSAPP_APP_SECRET, FAKE_SERVICES_URL } from "./e2e/fake-config";
+import { E2E_CRON_SECRET, E2E_WHATSAPP_APP_SECRET, FAKE_SERVICES_URL } from "./e2e/fake-config";
 
 const PORT = 3100;
 const BASE_URL = `http://localhost:${PORT}`;
@@ -58,6 +58,7 @@ export default defineConfig({
         WHATSAPP_APP_SECRET: E2E_WHATSAPP_APP_SECRET,
         WHATSAPP_VERIFY_TOKEN: "e2e-verify-token",
         WHATSAPP_DISPLAY_NUMBER: "573000000000",
+        CRON_SECRET: E2E_CRON_SECRET,
         ANTHROPIC_BASE_URL: `${FAKE_SERVICES_URL}/anthropic`,
         ANTHROPIC_API_KEY: "e2e-key-falsa",
         ANTHROPIC_AUTH_TOKEN: "",

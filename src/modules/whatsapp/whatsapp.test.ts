@@ -67,6 +67,11 @@ describe("extractMessages", () => {
     ]);
   });
 
+  it("quita el carácter nulo del texto (Postgres no lo acepta y el mensaje se perdería)", () => {
+    const payload = webhook([{ id: "wamid.N", from: "573001112233", timestamp: "1791950000", type: "text", text: { body: "gasté \u000020 mil\u0000" } }]);
+    expect(extractMessages(payload)[0].text).toBe("gasté 20 mil");
+  });
+
   it("marca como texto null los audios, imágenes, etc.", () => {
     const payload = webhook([
       { id: "wamid.B", from: "573001112233", timestamp: "1", type: "audio", audio: {} },

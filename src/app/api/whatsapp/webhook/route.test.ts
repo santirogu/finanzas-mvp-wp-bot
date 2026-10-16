@@ -126,18 +126,15 @@ describe("POST · mensajes entrantes", () => {
     );
   });
 
-  it("si un mensaje falla, sigue con los demás", async () => {
-    mocks.handle.mockRejectedValueOnce(new Error("boom")).mockResolvedValueOnce(undefined);
+  it("si un mensaje falla, sigue con los demás y en el log va solo el tipo del error", async () => {
+    const dbError = Object.assign(new Error("Failed query\nparams: 573001112233,uno"), { name: "DrizzleQueryError" });
+    mocks.handle.mockRejectedValueOnce(dbError).mockResolvedValueOnce(undefined);
     await post(payload([textMessage("wamid.A", "uno"), textMessage("wamid.B", "dos")]));
 
     await mocks.afterCallbacks[0]();
 
     expect(mocks.handle).toHaveBeenCalledTimes(2);
-    expect(console.error).toHaveBeenCalledWith(
-      "[whatsapp] no se pudo procesar",
-      "wamid.A",
-      expect.any(Error),
-    );
+    expect(console.error).toHaveBeenCalledWith("[whatsapp] no se pudo procesar", "wamid.A", "DrizzleQueryError");
   });
 
   it("acepta notificaciones de estado (entregado/leído) sin procesar nada", async () => {

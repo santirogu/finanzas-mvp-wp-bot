@@ -28,10 +28,7 @@ describe("historial al registrarse", () => {
     expect(result.user.email).toBe("ana@test.local");
     expect(await db.select().from(user).where(eq(user.email, "ana@test.local"))).toHaveLength(1);
     expect(await db.select().from(accountEvent)).toEqual([]);
-    expect(logged).toHaveBeenCalledWith(
-      "[historial] no se pudo registrar el evento de registro",
-      result.user.id,
-      expect.objectContaining({ message: "se cayó la tabla del historial" }),
-    );
+    // Solo el tipo del error: su mensaje podría traer datos de la consulta.
+    expect(logged).toHaveBeenCalledWith("[historial] no se pudo registrar el evento de registro", result.user.id, "Error");
   });
 });

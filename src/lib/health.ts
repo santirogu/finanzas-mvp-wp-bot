@@ -2,7 +2,7 @@ import journal from "../../drizzle/meta/_journal.json";
 import { envVar } from "./env";
 
 // Sin estas variables la app arranca, pero no funciona en producción (sesiones, base de datos,
-// bot de WhatsApp). Para Claude basta con una de las dos credenciales.
+// bot de WhatsApp, limpieza diaria de datos vencidos). Para Claude basta con una de las dos credenciales.
 export const REQUIRED_ENV = [
   "DATABASE_URL",
   "BETTER_AUTH_SECRET",
@@ -10,6 +10,8 @@ export const REQUIRED_ENV = [
   "WHATSAPP_APP_SECRET",
   "WHATSAPP_ACCESS_TOKEN",
   "WHATSAPP_PHONE_NUMBER_ID",
+  // Vercel Cron la manda para llamar a la limpieza diaria (src/app/api/cron/limpieza/route.ts).
+  "CRON_SECRET",
 ] as const;
 export const ANTHROPIC_CREDENTIALS = ["ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN"] as const;
 

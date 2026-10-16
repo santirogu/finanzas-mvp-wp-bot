@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, count, eq, isNull, lt, notExists } from "drizzle-orm";
+import { asc, count, eq } from "drizzle-orm";
 import { db } from "@/db";
 import {
   accountEvent,
@@ -13,7 +13,7 @@ import {
 } from "@/db/schema";
 import type { Role } from "@/lib/roles";
 import { normalizeEmail } from "@/modules/auth/lockout";
-import { accountEvents, accountMessages } from "./delete-account";
+import { accountEvents, accountMessages, accountPhones } from "./delete-account";
 
 // Consultas de los comandos de terminal (scripts/delete-data.ts y scripts/admin.ts): las usa el
 // dueño de la app desde su computador, nunca la web (no validan ninguna sesión; la matriz de
@@ -54,11 +54,12 @@ export async function findAccountByEmail(email: string): Promise<AccountSummary 
     .from(whatsappLink)
     .where(eq(whatsappLink.userId, account.id));
   const phone = link?.phone ?? null;
+  const phones = await accountPhones(account.id);
   const [[transactions], [categories], [messages], [events]] = await Promise.all([
     db.select({ n: count() }).from(transaction).where(eq(transaction.userId, account.id)),
     db.select({ n: count() }).from(category).where(eq(category.userId, account.id)),
-    db.select({ n: count() }).from(whatsappMessage).where(accountMessages(account.id, phone)),
-    db.select({ n: count() }).from(accountEvent).where(accountEvents(account.id, phone)),
+    db.select({ n: count() }).from(whatsappMessage).where(accountMessages(account.id, phones)),
+    db.select({ n: count() }).from(accountEvent).where(accountEvents(account.id, phones)),
   ]);
 
   return {
@@ -71,44 +72,8 @@ export async function findAccountByEmail(email: string): Promise<AccountSummary 
   };
 }
 
-/**
- * Datos sin dueño anteriores a `before`: mensajes de WhatsApp e intentos fallidos de vinculación de
- * números que no están vinculados a ninguna cuenta. Si el número está vinculado, son de antes de
- * vincularlo y se borran con la cuenta.
- */
-const unlinked = (phone: typeof whatsappMessage.phone | typeof accountEvent.phone) =>
-  notExists(db.select().from(whatsappLink).where(eq(whatsappLink.phone, phone)));
-
-function orphanMessages(before: Date) {
-  return and(isNull(whatsappMessage.userId), lt(whatsappMessage.receivedAt, before), unlinked(whatsappMessage.phone));
-}
-
-function orphanEvents(before: Date) {
-  return and(isNull(accountEvent.userId), lt(accountEvent.createdAt, before), unlinked(accountEvent.phone));
-}
-
-export type OrphanCounts = { messages: number; events: number; phones: number };
-
-export async function countOrphanData(before: Date): Promise<OrphanCounts> {
-  const [[messages], [events], messagePhones, eventPhones] = await Promise.all([
-    db.select({ n: count() }).from(whatsappMessage).where(orphanMessages(before)),
-    db.select({ n: count() }).from(accountEvent).where(orphanEvents(before)),
-    db.selectDistinct({ phone: whatsappMessage.phone }).from(whatsappMessage).where(orphanMessages(before)),
-    db.selectDistinct({ phone: accountEvent.phone }).from(accountEvent).where(orphanEvents(before)),
-  ]);
-  // Un mismo número puede tener mensajes e intentos: se cuenta una vez.
-  const phones = new Set([...messagePhones, ...eventPhones].map((row) => row.phone));
-  return { messages: messages.n, events: events.n, phones: phones.size };
-}
-
-/** Borra los datos sin dueño anteriores a `before` y devuelve cuántos borró. */
-export async function deleteOrphanData(before: Date): Promise<{ messages: number; events: number }> {
-  return db.transaction(async (tx) => {
-    const messages = await tx.delete(whatsappMessage).where(orphanMessages(before)).returning({ id: whatsappMessage.id });
-    const events = await tx.delete(accountEvent).where(orphanEvents(before)).returning({ id: accountEvent.id });
-    return { messages: messages.length, events: events.length };
-  });
-}
+// La limpieza de datos sin dueño vive en ./retention.ts (también la usa la limpieza diaria de la web).
+export { countOrphanData, deleteOrphanData, type OrphanCounts } from "./retention";
 
 // ── Roles (pnpm admin:grant / admin:revoke / admin:list / admin:reset-2fa) ──────────────────────
 

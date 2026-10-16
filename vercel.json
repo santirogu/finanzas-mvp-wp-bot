@@ -3,5 +3,6 @@
   "buildCommand": "pnpm vercel-build",
   "git": {
     "deploymentEnabled": false
-  }
+  },
+  "crons": [{ "path": "/api/cron/limpieza", "schedule": "0 9 * * *" }]
 }

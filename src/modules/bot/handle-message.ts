@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { whatsappMessage } from "@/db/schema";
 import { currentMonthRange, todayInTimezone } from "@/lib/dates";
+import { describeError } from "@/lib/safe-log";
 import {
   createTransactionsFromMessage,
   undoLastWhatsAppEntry,
@@ -50,9 +51,10 @@ export async function handleIncomingMessage(
     ({ reply, intent, userId, status } = await respond(msg, deps));
     if (intent?.kind === "error") error = intent.reason;
   } catch (err) {
-    console.error("[bot] error procesando mensaje", msg.id, err);
+    // Solo el tipo y el código: el mensaje de un error de la base trae los datos del mensaje.
+    console.error("[bot] error procesando mensaje", msg.id, describeError(err));
     status = "failed";
-    error = err instanceof Error ? err.message : String(err);
+    error = describeError(err);
     reply = replies.errorReply;
   }
 

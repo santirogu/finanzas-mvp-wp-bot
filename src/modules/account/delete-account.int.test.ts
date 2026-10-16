@@ -14,9 +14,16 @@ import {
   whatsappMessage,
 } from "@/db/schema";
 import { auth } from "@/lib/auth";
-import { deleteAccountData } from "./delete-account";
+import { accountPhones, deleteAccountData } from "./delete-account";
 
 /** Una cuenta real (Better Auth: usuario, credenciales y sesión) con datos en todas las tablas. */
+/** Una cuenta recién registrada (sin número ni datos) y su id. */
+async function signUp(email: string) {
+  await auth.api.signUpEmail({ body: { name: "Persona", email, password: "clave-segura-123" } });
+  const [row] = await db.select({ id: user.id }).from(user).where(eq(user.email, email));
+  return row.id;
+}
+
 async function fullAccount(email: string, phone: string) {
   await auth.api.signUpEmail({ body: { name: "Persona", email, password: "clave-segura-123" } });
   const [row] = await db.select().from(user).where(eq(user.email, email));
@@ -107,6 +114,72 @@ describe("deleteAccountData", () => {
     // El mensaje de antes de vincular ya no se puede asociar a la cuenta (no hay número vinculado).
     expect(remaining.map((m) => m.id)).toEqual(["wamid.573005550000.antes"]);
     expect(await db.select().from(user).where(eq(user.id, id))).toEqual([]);
+  });
+
+  it("borra también lo que llegó sin cuenta desde los números que tuvo antes", async () => {
+    const id = await signUp("ana@test.local");
+    // Escribió desde A antes de vincularlo, lo vinculó, se cambió a B y escribió desde B.
+    await db.insert(whatsappMessage).values({ id: "wamid.antesA", phone: "573001110000", body: "gasté 80 mil en farmacia" });
+    await db.insert(accountEvent).values([
+      { type: "whatsapp_link_failed", phone: "573001110000", details: { reason: "invalid_code" } },
+      { type: "whatsapp_linked", userId: id, phone: "573001110000" },
+      { type: "whatsapp_unlinked", userId: id, phone: "573001110000", details: { reason: "number_changed" } },
+      { type: "whatsapp_linked", userId: id, phone: "573002220000" },
+    ]);
+    await db.insert(whatsappLink).values({ userId: id, phone: "573002220000" });
+    await db.insert(whatsappMessage).values({ id: "wamid.antesB", phone: "573002220000", body: "hola" });
+
+    expect(await accountPhones(id)).toEqual(["573001110000", "573002220000"]);
+    await deleteAccountData(id);
+
+    expect(await db.select().from(whatsappMessage)).toEqual([]);
+    expect(await db.select().from(accountEvent)).toEqual([]);
+  });
+
+  it("de un número que tuvo y hoy es de otra cuenta, no borra lo de la otra persona", async () => {
+    const ana = await signUp("ana@test.local");
+    const beto = await signUp("beto@test.local");
+    // El número pasó de Ana a Beto. Lo que llegó sin cuenta y lo de Beto se quedan.
+    await db.insert(accountEvent).values([
+      { type: "whatsapp_linked", userId: ana, phone: "573003330000" },
+      { type: "whatsapp_unlinked", userId: ana, phone: "573003330000", details: { reason: "number_moved" } },
+      { type: "whatsapp_linked", userId: beto, phone: "573003330000" },
+      { type: "whatsapp_link_failed", phone: "573003330000", details: { reason: "invalid_code" } },
+    ]);
+    await db.insert(whatsappLink).values({ userId: beto, phone: "573003330000" });
+    await db.insert(whatsappMessage).values([
+      { id: "wamid.ana", phone: "573003330000", body: "de Ana", userId: ana },
+      { id: "wamid.beto", phone: "573003330000", body: "de Beto", userId: beto },
+      { id: "wamid.sin", phone: "573003330000", body: "sin cuenta" },
+    ]);
+
+    expect(await accountPhones(ana)).toEqual([]);
+    await deleteAccountData(ana);
+
+    expect((await db.select({ id: whatsappMessage.id }).from(whatsappMessage)).map((row) => row.id).sort()).toEqual([
+      "wamid.beto",
+      "wamid.sin",
+    ]);
+    const events = await db.select({ type: accountEvent.type, userId: accountEvent.userId }).from(accountEvent);
+    expect(events).toEqual(
+      expect.arrayContaining([
+        { type: "whatsapp_linked", userId: beto },
+        { type: "whatsapp_link_failed", userId: null },
+      ]),
+    );
+    expect(events.some((event) => event.userId === ana)).toBe(false);
+  });
+
+  it("con el número vinculado, no borra los mensajes de ese número que son de otra cuenta", async () => {
+    const ana = await signUp("ana@test.local");
+    const beto = await signUp("beto@test.local");
+    await db.insert(whatsappLink).values({ userId: ana, phone: "573004440000" });
+    // El número fue de Beto antes de pasar a Ana: sus mensajes siguen siendo de Beto.
+    await db.insert(whatsappMessage).values({ id: "wamid.beto", phone: "573004440000", body: "de Beto", userId: beto });
+
+    await deleteAccountData(ana);
+
+    expect((await db.select({ id: whatsappMessage.id }).from(whatsappMessage)).map((row) => row.id)).toEqual(["wamid.beto"]);
   });
 
   it("si la cuenta ya no existe, no hace nada", async () => {
