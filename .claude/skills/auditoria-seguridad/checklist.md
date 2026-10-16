@@ -5,13 +5,12 @@ Si un archivo cambió de lugar, búscalo antes de dar el punto por bueno o por m
 este checklist en el PR del arreglo. Lo que cubren las pruebas automáticas se revisa igual: una
 prueba que pasa puede estar probando lo que no es.
 
-**Decisiones ya tomadas (riesgos aceptados):** el README (sección "Seguridad") documenta algunas.
-No las reportes como hallazgos nuevos: anótalas como informativas y revisa solo si cambió lo que las
-justificaba.
-- **CSP con `'unsafe-inline'` en `script-src`:** los nonces no son compatibles con el prerenderizado
-  parcial que usa la app. Revisa si la versión instalada de Next ya lo permite.
-- **Bloqueo corto de la cuenta (15 minutos):** alguien podría bloquear a propósito la cuenta de otra
-  persona, y por eso es corto.
+**Decisiones ya tomadas (riesgos aceptados):** están en la tabla "Riesgos aceptados" del README
+(sección Seguridad), con su porqué y cuándo revisarlas. Léela antes de empezar.
+- No las reportes como hallazgos nuevos: anótalas como informativas y revisa solo la columna
+  "Revisar si…".
+- Si la persona acepta un riesgo nuevo, propón agregarlo a esa tabla en el PR del cambio; no lo dejes
+  solo en el informe, que no se sube.
 
 ## auth — Autenticación y sesiones
 
@@ -33,7 +32,16 @@ Puntos a revisar:
   - no se puede saltar por otra ruta, como los códigos de respaldo, otro endpoint del plugin o el
     cambio de mayúsculas en el correo.
 - **Rutas de dos pasos:** `TWO_FACTOR_DISABLED_PATHS` sigue respondiendo 404 y no existe "recordar
-  este dispositivo".
+  este dispositivo". Con la verificación ya activa, `verify-totp` y `verify-backup-code` responden 403
+  si hay sesión (solo sirven para entrar).
+- **Rutas de Better Auth abiertas:**
+  - `/api/auth/*` solo atiende `AUTH_HTTP_ROUTES` (`src/modules/auth/http-routes.ts`);
+  - `src/lib/auth-routes.int.test.ts` clasifica cada endpoint;
+  - si alguien agregó una ruta a la lista, revisa que el navegador de verdad la necesite y que no
+    esquive el bloqueo ni los dos pasos.
+- **Cada contraseña que se verifica reserva su intento antes** (`reserveAttempt` en `lockout.ts`). Pasa
+  en el login, al activar los dos pasos y al eliminar la cuenta. Una ruta o acción nueva que verifique
+  una contraseña debe hacer lo mismo.
 - **Contraseñas:**
   - mínimo y **máximo** de longitud (una contraseña enorme encarece el hash y sirve para un DoS);
   - el hash es el de Better Auth;
@@ -125,7 +133,8 @@ Puntos a revisar:
   procesa.
 - **Vinculación por código:**
   - entropía y expiración del código;
-  - límite de intentos por número y por cuenta;
+  - límite de intentos por número, contado en `account_event` dentro de la misma transacción que
+    revisa el código, con un bloqueo por número (`link.ts`), y límite de códigos por cuenta;
   - un código nuevo invalida el anterior;
   - no se puede vincular un número a la cuenta de otro.
 - **Token de WhatsApp:**
@@ -149,9 +158,12 @@ Puntos a revisar:
     pidan ignorar las reglas, registrar en otra cuenta o revelar el prompt. Revelar el prompt es de
     impacto bajo: no tiene secretos.
 - **Costo y abuso:**
-  - límite de mensajes por número o por cuenta;
+  - el cupo por cuenta (`AI_LIMITS` en `src/modules/bot/limits.ts`, reservado en `ai-quota.ts` antes
+    de cada llamada);
+  - el tope de movimientos por mensaje;
   - `max_tokens`, `timeout` y reintentos acotados;
-  - qué pasa si alguien manda cientos de mensajes, porque cada uno cuesta una llamada a Anthropic.
+  - que todo camino nuevo hacia Claude pase por el cupo.
+- **La respuesta libre del modelo** pasa por `normalizeReply` (una línea, largo máximo, sin enlaces).
 - **Qué se guarda de cada mensaje:**
   - en `whatsapp_message` y en los logs, cuánto tiempo y quién lo ve;
   - que coincida con `/privacidad`.
@@ -167,11 +179,15 @@ Archivos:
 Puntos a revisar:
 - **Borrado completo de una cuenta:** `deleteAccountData` borra todo lo de la persona. Revisa cada
   tabla con datos personales: si no tiene clave foránea en cascada hacia `user`, debe borrarse a mano.
-- **Retención:** los intentos de vinculación desde números sin cuenta se borran a los 30 días. ¿Corre
-  de verdad el borrado y dónde se programa?
+- **Retención:** lo que `/privacidad` promete borrar con el tiempo está en `runDailyCleanup`
+  (`src/modules/account/retention.ts`), que llama Vercel Cron (`vercel.json`) con `CRON_SECRET`.
+  - Si se agregó un dato con plazo, revisa que esté ahí.
+  - Revisa que el cron siga en `vercel.json`.
 - **Logs** (`console.log`, `console.error`, `console.warn`): no imprimen contraseñas, códigos TOTP,
   tokens, cuerpos completos de mensajes ni más datos personales de los necesarios.
-  `git grep -n "console\." src`.
+  - Los errores van por `describeError` (`src/lib/safe-log.ts`); la guardiana es `src/logs.test.ts`.
+  - Revisa también lo que se guarda en columnas de error, como `whatsapp_message.error`.
+  - `git grep -n "console\." src`.
 - **La política coincide con el código:** lo que dice `/privacidad` es lo que hace el código, en lo
   que se guarda, quién lo ve, cuánto dura y con quién se comparte. Una diferencia es un hallazgo.
 - **IP:** las IPv6 se guardan truncadas al /64, como promete la política.
@@ -226,8 +242,12 @@ Puntos a revisar:
 - **Vulnerabilidades conocidas:** `pnpm audit` (producción y desarrollo), las alertas abiertas de
   Dependabot y los avisos de seguridad de `next`, `better-auth`, `drizzle-orm`, `postgres` y
   `@anthropic-ai/sdk` en la versión instalada.
-- **Scripts de instalación:** que solo corran los de paquetes aprobados
-  (`pnpm.onlyBuiltDependencies` o equivalente).
+- **Scripts de instalación:**
+  - en la app no se autoriza ninguno (`pnpm.ignoredBuiltDependencies`), y en
+    `.github/vercel-cli/package.json` solo `esbuild`;
+  - `.npmrc` mantiene `strict-dep-builds=true` y `minimum-release-age`;
+  - toda dependencia nueva en esas listas lleva su porqué en el README.
+- **El CLI de Vercel** se instala desde `.github/vercel-cli/` con su lockfile, nunca con `pnpm dlx`.
 - **Paquetes de riesgo:** sin mantenimiento, con un solo mantenedor o con nombres parecidos a otros
   conocidos (*typosquatting*) entre los agregados desde la auditoría anterior. Para verlos:
   `git log -p --since=<fecha> -- package.json`.
@@ -239,7 +259,10 @@ Archivos: `.github/workflows/*.yml`, `scripts/{deploy-needed,smoke,release}.mjs`
 Puntos a revisar:
 - **Permisos de los workflows:** `permissions` mínimos por workflow y por job (`contents: read` por
   defecto).
-- **Acciones de terceros:** fijadas por SHA, no por etiqueta; las imágenes de Docker, por digest.
+- **Acciones de terceros:** fijadas por SHA (con la versión en un comentario), no por etiqueta; las
+  imágenes de Docker, por digest. Todos los `actions/checkout` llevan `persist-credentials: false`.
+- **Secretos por paso:** en el job de despliegue, `VERCEL_TOKEN` va solo en los pasos que lo usan,
+  nunca en el `env` del job ni en la instalación de dependencias.
 - **Inyección en `run:`:** ningún `${{ github.event.* }}` va directo dentro de `run:` (títulos o
   cuerpos de PR, nombres de rama). Debe pasar por `env:`.
 - **Código no confiable con secretos:** nada de `pull_request_target` ni `workflow_run` que haga

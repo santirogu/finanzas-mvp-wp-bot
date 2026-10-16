@@ -61,8 +61,9 @@ gh run list --workflow ci.yml --branch main --limit 1 --json databaseId,conclusi
   o función apagada), sin insistir.
 - Avisos de las dependencias clave en la versión instalada, aunque `pnpm audit` no los muestre:
   `gh api "/advisories?ecosystem=npm&affects=<paquete>@<versión>"` para `next`, `better-auth`,
-  `drizzle-orm`, `postgres` y `@anthropic-ai/sdk` (la versión sale de
-  `node -p "require('<paquete>/package.json').version"`).
+  `drizzle-orm`, `postgres` y `@anthropic-ai/sdk`. La versión sale de
+  `node -p "require('./node_modules/<paquete>/package.json').version"`; con la ruta completa, porque
+  varios paquetes no exponen su `package.json` en `exports`.
 - Del último ZAP del CI, mira solo si el job pasó. Para ver su reporte hay que descargar el
   artefacto: pide permiso antes.
 - Secretos en el repo, **sin imprimir valores** (solo archivo y línea):
@@ -109,6 +110,19 @@ Para cada posible hallazgo:
 
    No dejes esas pruebas en el repo durante la auditoría: guárdalas en el scratchpad y súmalas
    después al PR del arreglo.
+
+   Para correr una prueba de integración desde el scratchpad, usa una config de Vitest ahí mismo:
+   - **Sin imports de paquetes:** un objeto plano exportado por defecto, porque `vitest/config` y
+     `dotenv` no se resuelven desde fuera del repo.
+   - **Opciones:**
+     - `root` apuntando al repo;
+     - los alias `@` → `src` y `server-only` → `test/server-only-stub.ts`;
+     - el `globalSetup` y el `setupFiles` de `test/integration/`;
+     - `env.DATABASE_URL = TEST_DATABASE_URL`, cargando `.env` con
+       `createRequire("<repo>/package.json")("dotenv").config(...)`.
+   - **Cómo correrla:** `pnpm vitest run --config <scratch>/vitest.config.mts --dir <scratch>`.
+   - **Para ver los resultados:** la configuración de las pruebas silencia `console.log`; imprime con
+     `process.stderr.write`.
 3. Clasifícalo:
    - **CONFIRMADO**: reproducido o demostrado en el código sin dudas;
    - **PROBABLE**: el camino existe pero no se pudo reproducir;
