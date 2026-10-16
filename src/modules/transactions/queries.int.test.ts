@@ -9,7 +9,9 @@ import {
   getMonthlySummary,
   getTotalsByCategory,
   getTransaction,
+  getTransactionNotice,
   isCategoryAvailable,
+  UNDO_WINDOW_MS,
   listCategories,
   listTransactions,
 } from "./queries";
@@ -316,5 +318,41 @@ describe("categorías", () => {
     expect(await getCategoryOption(user.id, ropa.id)).toMatchObject({ archived: true });
     expect(await getCategoryOption(user.id, secret.id)).toBeNull();
     expect(await getCategoryOption(user.id, null)).toBeNull();
+  });
+});
+
+describe("getTransactionNotice", () => {
+  const now = new Date("2026-10-16T15:00:00Z");
+  const ago = (ms: number) => new Date(now.getTime() - ms);
+
+  it("después de borrar: un movimiento propio borrado hace menos de 10 minutos", async () => {
+    const user = await createUser();
+    const tx = await addTx({ userId: user.id, description: "Almuerzo", deletedAt: ago(UNDO_WINDOW_MS - 1000) });
+
+    expect(await getTransactionNotice(user.id, tx.id, "deleted", now)).toEqual({ id: tx.id, description: "Almuerzo" });
+  });
+
+  it("después de borrar: nada si fue hace más de 10 minutos, si no está borrado o si es de otra persona", async () => {
+    const user = await createUser();
+    const other = await createUser();
+    const old = await addTx({ userId: user.id, deletedAt: ago(UNDO_WINDOW_MS + 1000) });
+    const active = await addTx({ userId: user.id });
+    const foreign = await addTx({ userId: other.id, deletedAt: ago(1000) });
+
+    expect(await getTransactionNotice(user.id, old.id, "deleted", now)).toBeNull();
+    expect(await getTransactionNotice(user.id, active.id, "deleted", now)).toBeNull();
+    expect(await getTransactionNotice(user.id, foreign.id, "deleted", now)).toBeNull();
+  });
+
+  it("después de deshacer: un movimiento propio que está en la lista", async () => {
+    const user = await createUser();
+    const other = await createUser();
+    const tx = await addTx({ userId: user.id, description: "Almuerzo" });
+    const deleted = await addTx({ userId: user.id, deletedAt: ago(1000) });
+    const foreign = await addTx({ userId: other.id });
+
+    expect(await getTransactionNotice(user.id, tx.id, "restored", now)).toEqual({ id: tx.id, description: "Almuerzo" });
+    expect(await getTransactionNotice(user.id, deleted.id, "restored", now)).toBeNull();
+    expect(await getTransactionNotice(user.id, foreign.id, "restored", now)).toBeNull();
   });
 });

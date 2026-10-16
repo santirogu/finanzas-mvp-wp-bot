@@ -182,7 +182,10 @@ scripts/seed.ts                     Categorías por defecto
   gasto del 31 a las 10 p. m. no caiga en el mes siguiente por usar UTC.
 - **Todas las consultas filtran por `userId`** obtenido de la sesión en el servidor; cada Server
   Action vuelve a validar la sesión.
-- **Borrado lógico** (`deleted_at`): permite un futuro "deshacer" desde WhatsApp.
+- **Borrado lógico** (`deleted_at`): permite deshacer.
+  - **En el bot:** `deshacer` borra el último movimiento registrado.
+  - **En la web:** al borrar un movimiento de Ingresos o Egresos, la lista muestra "Se borró… · Deshacer". El aviso viene en la URL (`?borrado=<id>`) y recibe el foco.
+  - **Límite:** `restoreTransactionAction` solo restaura un movimiento propio borrado hace menos de 10 minutos (`UNDO_WINDOW_MS`). Después queda borrado hasta que la limpieza diaria lo elimina del todo.
 - **`transaction.external_id` único**: guardará el ID del mensaje de WhatsApp para no registrar
   dos veces el mismo gasto si Meta reenvía el webhook.
 

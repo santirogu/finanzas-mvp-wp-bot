@@ -1,17 +1,32 @@
+import { z } from "zod";
 import { TransactionForm } from "@/components/transaction-form";
 import { TransactionList } from "@/components/transaction-list";
+import { TransactionNotice } from "@/components/transaction-notice";
 import { currentMonthRange, formatMonthLabel, todayInTimezone } from "@/lib/dates";
 import { formatMoney, sumAmounts } from "@/lib/money";
 import { requireUser } from "@/lib/session";
-import { listCategories, listTransactions } from "@/modules/transactions/queries";
+import { getTransactionNotice, listCategories, listTransactions } from "@/modules/transactions/queries";
+
+type Params = Record<string, string | string[] | undefined>;
+
+/** El aviso que pide la URL: ?borrado=<id> después de borrar, ?restaurado=<id> después de deshacer. */
+function noticeFrom(params: Params) {
+  for (const [key, kind] of [["borrado", "deleted"], ["restaurado", "restored"]] as const) {
+    const id = z.uuid().safeParse(params[key]);
+    if (id.success) return { id: id.data, kind };
+  }
+  return null;
+}
 
 // Vista compartida por las pestañas de Ingresos y Egresos.
-export async function TransactionsView({ type }: { type: "income" | "expense" }) {
+export async function TransactionsView({ type, params = {} }: { type: "income" | "expense"; params?: Params }) {
   const user = await requireUser();
   const range = currentMonthRange(user.timezone);
-  const [items, categories] = await Promise.all([
+  const requested = noticeFrom(params);
+  const [items, categories, notice] = await Promise.all([
     listTransactions(user.id, range, { type }),
     listCategories(user.id, type),
+    requested ? getTransactionNotice(user.id, requested.id, requested.kind) : null,
   ]);
   const total = sumAmounts(items.map((t) => t.amount));
   const isIncome = type === "income";
@@ -40,6 +55,14 @@ export async function TransactionsView({ type }: { type: "income" | "expense" })
           <h2 className="border-b border-border px-4 py-3 font-semibold">
             {items.length} {items.length === 1 ? "movimiento" : "movimientos"} este mes
           </h2>
+          {requested && notice && (
+            <TransactionNotice
+              kind={requested.kind}
+              id={notice.id}
+              description={notice.description}
+              closeHref={isIncome ? "/ingresos" : "/egresos"}
+            />
+          )}
           <TransactionList
             items={items}
             allowDelete

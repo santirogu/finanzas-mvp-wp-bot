@@ -20,6 +20,8 @@ export type Datos = {
   cuentaDatos?: string;
   /** La categoría de 40 caracteres que crea el admin. */
   categoriaLarga?: string;
+  /** Egresos con el aviso "Se borró… · Deshacer" de un movimiento de la cuenta "datos" (dura 10 minutos). */
+  borrado?: string;
 };
 
 type Movimiento = { amount: string; description: string; category?: string };
@@ -100,6 +102,15 @@ async function conDatos(browser: Browser, baseURL: string, datos: Datos) {
   await nthReply(page.request, phone, 3);
 
   datos.editar.datos = await primeraEdicion(page);
+
+  // Un movimiento borrado, para el aviso "Se borró… · Deshacer" (se puede deshacer 10 minutos).
+  await page.goto("/egresos");
+  await addTransaction(page, { amount: "9500", description: "Café para borrar", category: "Alimentación" });
+  await expect(visible(page.getByText("✓ Egreso registrado"))).toBeVisible();
+  await visible(page.getByRole("button", { name: "Eliminar Café para borrar" })).click();
+  await page.waitForURL(/\?borrado=/);
+  datos.borrado = new URL(page.url()).pathname + new URL(page.url()).search;
+
   datos.sesiones.datos = await page.context().storageState();
   await page.context().close();
 }

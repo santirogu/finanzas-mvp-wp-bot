@@ -51,6 +51,7 @@ const SERVER_ACTIONS = {
   createTransactionAction: "requireUser; el dueño sale de la sesión, nunca del formulario",
   updateTransactionAction: "requireUser; solo edita movimientos propios, sin cambiar su tipo",
   deleteTransactionAction: "requireUser; solo borra movimientos propios",
+  restoreTransactionAction: "requireUser; solo restaura movimientos propios, borrados hace menos de 10 minutos",
   generateLinkCodeAction: "requireUser; el código queda a nombre del usuario de la sesión",
   unlinkWhatsAppAction: "requireUser; solo desvincula el número propio",
   simulateMessageAction: "solo en desarrollo + requireUser",

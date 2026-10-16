@@ -21,9 +21,8 @@ vi.mock("next/navigation", () => ({
   }),
 }));
 
-const { createTransactionAction, deleteTransactionAction, updateTransactionAction } = await import(
-  "./actions"
-);
+const { createTransactionAction, deleteTransactionAction, restoreTransactionAction, updateTransactionAction } =
+  await import("./actions");
 
 async function signIn() {
   const user = await createUser();
@@ -196,14 +195,22 @@ describe("createTransactionAction", () => {
 });
 
 describe("deleteTransactionAction", () => {
-  it("elimina (borrado lógico) un movimiento propio", async () => {
+  it("elimina (borrado lógico) un movimiento propio y vuelve a su lista con el aviso", async () => {
     const user = await signIn();
     await createTransactionAction({ ok: false }, form(validExpense));
     const [tx] = await activeTransactions(user.id);
 
-    await deleteTransactionAction(form({ id: tx.id }));
+    await expect(deleteTransactionAction(form({ id: tx.id }))).rejects.toThrow(`NEXT_REDIRECT /egresos?borrado=${tx.id}`);
 
     expect(await activeTransactions(user.id)).toEqual([]);
+  });
+
+  it("un ingreso vuelve a Ingresos", async () => {
+    const user = await signIn();
+    await createTransactionAction({ ok: false }, form({ ...validExpense, type: "income" }));
+    const [tx] = await activeTransactions(user.id);
+
+    await expect(deleteTransactionAction(form({ id: tx.id }))).rejects.toThrow(`NEXT_REDIRECT /ingresos?borrado=${tx.id}`);
   });
 
   it("no puede eliminar movimientos de otro usuario", async () => {
@@ -231,6 +238,52 @@ describe("deleteTransactionAction", () => {
   it("ignora IDs inválidos sin lanzar error", async () => {
     await signIn();
     await expect(deleteTransactionAction(form({ id: "no-es-un-uuid" }))).resolves.toBeUndefined();
+  });
+});
+
+describe("restoreTransactionAction", () => {
+  async function deletedExpense() {
+    const user = await signIn();
+    await createTransactionAction({ ok: false }, form(validExpense));
+    const [tx] = await activeTransactions(user.id);
+    await expect(deleteTransactionAction(form({ id: tx.id }))).rejects.toThrow("NEXT_REDIRECT");
+    return { user, tx };
+  }
+
+  it("deshace el borrado y vuelve a la lista con el aviso", async () => {
+    const { user, tx } = await deletedExpense();
+
+    await expect(restoreTransactionAction(form({ id: tx.id }))).rejects.toThrow(`NEXT_REDIRECT /egresos?restaurado=${tx.id}`);
+
+    expect((await activeTransactions(user.id)).map((t) => t.id)).toEqual([tx.id]);
+  });
+
+  it("no restaura movimientos de otro usuario", async () => {
+    const { user, tx } = await deletedExpense();
+
+    await signIn(); // ahora la sesión es de otra persona
+    await expect(restoreTransactionAction(form({ id: tx.id }))).resolves.toBeUndefined();
+
+    expect(await activeTransactions(user.id)).toEqual([]);
+  });
+
+  it("no restaura uno borrado hace más de 10 minutos (un enlace viejo)", async () => {
+    const { user, tx } = await deletedExpense();
+    await db.update(transaction).set({ deletedAt: new Date(Date.now() - 11 * 60_000) }).where(eq(transaction.id, tx.id));
+
+    await expect(restoreTransactionAction(form({ id: tx.id }))).resolves.toBeUndefined();
+
+    expect(await activeTransactions(user.id)).toEqual([]);
+  });
+
+  it("tampoco sin sesión, y no hace nada con un id inválido", async () => {
+    const { user, tx } = await deletedExpense();
+
+    await expect(restoreTransactionAction(form({ id: "no-es-un-uuid" }))).resolves.toBeUndefined();
+    session.current = null;
+    await expect(restoreTransactionAction(form({ id: tx.id }))).rejects.toThrow("NEXT_REDIRECT /login");
+
+    expect(await activeTransactions(user.id)).toEqual([]);
   });
 });
 
@@ -319,7 +372,7 @@ describe("updateTransactionAction", () => {
 
   it("no puede editar un movimiento eliminado", async () => {
     const { user, tx } = await ownExpense();
-    await deleteTransactionAction(form({ id: tx.id }));
+    await expect(deleteTransactionAction(form({ id: tx.id }))).rejects.toThrow("NEXT_REDIRECT");
 
     const state = await updateTransactionAction({ ok: false }, editForm(tx.id));
 

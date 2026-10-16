@@ -5,10 +5,14 @@ import { TransactionsView } from "../transactions-view";
 
 export const metadata: Metadata = { title: "Egresos" };
 
-export default function EgresosPage() {
+// El aviso después de borrar o deshacer viene en la URL (?borrado=, ?restaurado=): se lee en cada
+// request, dentro de Suspense (Cache Components).
+export default function EgresosPage({ searchParams }: PageProps<"/egresos">) {
   return (
     <Suspense fallback={<PageSkeleton />}>
-      <TransactionsView type="expense" />
+      {searchParams.then((params) => (
+        <TransactionsView type="expense" params={params} />
+      ))}
     </Suspense>
   );
 }
