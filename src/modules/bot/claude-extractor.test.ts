@@ -1,13 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // SDK de Anthropic simulado: ninguna prueba llama a la API real ni gasta créditos.
-const sdk = vi.hoisted(() => ({ parse: vi.fn(), clientOptions: [] as unknown[] }));
+const sdk = vi.hoisted(() => ({ parse: vi.fn(), retrieve: vi.fn(), clientOptions: [] as unknown[] }));
 vi.mock("@anthropic-ai/sdk", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@anthropic-ai/sdk")>();
   class FakeAnthropic {
     static APIError = actual.APIError;
     static AnthropicError = actual.AnthropicError;
     beta = { messages: { parse: sdk.parse } };
+    models = { retrieve: sdk.retrieve };
     constructor(options: unknown) {
       sdk.clientOptions.push(options);
     }
@@ -16,7 +17,7 @@ vi.mock("@anthropic-ai/sdk", async (importOriginal) => {
 });
 
 const { APIConnectionError, APIError, AnthropicError } = await import("@anthropic-ai/sdk");
-const { claudeExtractor } = await import("./claude-extractor");
+const { checkClaudeConnection, claudeExtractor } = await import("./claude-extractor");
 
 const input = {
   text: "me compré unos zapatos de $500.000",
@@ -298,5 +299,66 @@ describe("claudeExtractor · credenciales y respuestas incompletas", () => {
 
     const result = await claudeExtractor(input);
     expect(result).toEqual({ ok: false, reason: "api_error", detail: "Connection error." });
+  });
+});
+
+describe("checkClaudeConnection", () => {
+  // Con llaves: si el hook devolviera el mock, Vitest lo llamaría como limpieza al terminar.
+  beforeEach(() => {
+    sdk.retrieve.mockReset();
+  });
+
+  it("consulta el modelo del bot (gratis), sin reintentos y con un tiempo corto", async () => {
+    sdk.retrieve.mockResolvedValue({ id: "claude-haiku-5-5", display_name: "Claude Haiku 5.5", deprecated_at: null });
+    expect(await checkClaudeConnection()).toEqual({ status: "ok", detail: "Claude Haiku 5.5 (claude-haiku-5-5)" });
+    expect(sdk.retrieve).toHaveBeenCalledWith("claude-haiku-5-5", {}, { timeout: 8_000, maxRetries: 0 });
+    expect(sdk.parse).not.toHaveBeenCalled();
+  });
+
+  it("usa BOT_MODEL y, si el nombre es el mismo id, no lo repite", async () => {
+    vi.stubEnv("BOT_MODEL", "claude-sonnet-5-5");
+    sdk.retrieve.mockResolvedValue({ id: "claude-sonnet-5-5", display_name: "claude-sonnet-5-5", deprecated_at: null });
+    expect(await checkClaudeConnection()).toEqual({ status: "ok", detail: "claude-sonnet-5-5" });
+    expect(sdk.retrieve.mock.calls[0][0]).toBe("claude-sonnet-5-5");
+  });
+
+  it("avisa si Anthropic marcó el modelo como obsoleto", async () => {
+    sdk.retrieve.mockResolvedValue({ id: "claude-haiku-5-5", display_name: "Claude Haiku 5.5", deprecated_at: "2027-03-01T00:00:00Z" });
+    expect(await checkClaudeConnection()).toEqual({
+      status: "ok",
+      detail: "Claude Haiku 5.5 (claude-haiku-5-5)",
+      warning: "Anthropic marcó el modelo como obsoleto (2027-03-01): conviene cambiarlo.",
+    });
+  });
+
+  it("si la API la rechaza, devuelve su mensaje (empieza por el estado HTTP)", async () => {
+    sdk.retrieve.mockRejectedValue(
+      APIError.generate(401, { type: "error", error: { type: "authentication_error", message: "invalid x-api-key" } }, undefined, new Headers()),
+    );
+    const check = await checkClaudeConnection();
+    expect(check).toMatchObject({ status: "error" });
+    expect(check.status === "error" && check.error).toMatch(/^401 /);
+    expect(JSON.stringify(check)).not.toContain("sk-ant-prueba");
+  });
+
+  it("otro error, solo su tipo", async () => {
+    sdk.retrieve.mockImplementation(async () => {
+      throw new TypeError("fetch failed");
+    });
+    expect(await checkClaudeConnection()).toEqual({ status: "error", error: "TypeError" });
+  });
+
+  it("con ANTHROPIC_AUTH_TOKEN en vez de API key, también prueba", async () => {
+    vi.stubEnv("ANTHROPIC_API_KEY", "");
+    vi.stubEnv("ANTHROPIC_AUTH_TOKEN", "token-de-prueba");
+    sdk.retrieve.mockResolvedValue({ id: "claude-haiku-5-5", display_name: "Claude Haiku 5.5", deprecated_at: null });
+    expect(await checkClaudeConnection()).toMatchObject({ status: "ok" });
+    expect(sdk.retrieve).toHaveBeenCalledTimes(1);
+  });
+
+  it("sin API key, dice que falta y no llama a la API", async () => {
+    vi.stubEnv("ANTHROPIC_API_KEY", "");
+    expect(await checkClaudeConnection()).toEqual({ status: "sin_configurar", missing: ["ANTHROPIC_API_KEY"] });
+    expect(sdk.retrieve).not.toHaveBeenCalled();
   });
 });

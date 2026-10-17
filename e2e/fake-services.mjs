@@ -7,6 +7,9 @@
 //   GET  /mensajes?to=<número>                 → los mensajes que recibió ese número
 //   POST /anthropic/v1/messages                → respuesta fija según el texto del usuario
 //   GET  /claude                               → los textos que la app le pidió interpretar
+//   GET  /graph/<versión>/<teléfono>           → el número del bot (Probar conexiones en /admin/bot)
+//   GET  /anthropic/v1/models/<modelo>         → el modelo del bot (Probar conexiones)
+//   POST /fallar?servicio=whatsapp|claude      → la próxima consulta de ese servicio responde 401
 //   GET  /salud                                → para saber que ya arrancó
 
 import { createServer } from "node:http";
@@ -14,6 +17,8 @@ import { createServer } from "node:http";
 const PORT = Number(process.env.FAKE_SERVICES_PORT ?? 3101);
 const sent = [];
 const claudeRequests = [];
+// Las consultas de Probar conexiones que deben fallar una vez (solo las usa esa prueba).
+const failNext = new Set();
 
 // Lo que "entiende" el Claude falso: frases fijas de las pruebas.
 const INTERPRETATIONS = [
@@ -93,6 +98,34 @@ const server = createServer(async (request, response) => {
     }
 
     if (request.method === "GET" && url.pathname === "/claude") return json(response, 200, claudeRequests);
+
+    if (request.method === "POST" && url.pathname === "/fallar") {
+      failNext.add(url.searchParams.get("servicio"));
+      return json(response, 200, { ok: true });
+    }
+
+    if (request.method === "GET" && /^\/graph\/[^/]+\/[^/]+$/.test(url.pathname)) {
+      if (failNext.delete("whatsapp")) {
+        // Lo que responde Meta con un token vencido.
+        return json(response, 401, {
+          error: { message: "Error validating access token: Session has expired.", type: "OAuthException", code: 190, fbtrace_id: "Afalso" },
+        });
+      }
+      return json(response, 200, {
+        verified_name: "Finanzas MVP (prueba)",
+        display_phone_number: "+57 300 0000000",
+        quality_rating: "GREEN",
+        id: url.pathname.split("/").at(-1),
+      });
+    }
+
+    if (request.method === "GET" && url.pathname.startsWith("/anthropic/v1/models/")) {
+      if (failNext.delete("claude")) {
+        return json(response, 401, { type: "error", error: { type: "authentication_error", message: "invalid x-api-key" } });
+      }
+      const id = decodeURIComponent(url.pathname.split("/").at(-1));
+      return json(response, 200, { type: "model", id, display_name: "Claude falso", created_at: "2026-01-01T00:00:00Z", deprecated_at: null });
+    }
 
     json(response, 404, { error: `ruta desconocida: ${request.method} ${url.pathname}` });
   } catch (error) {

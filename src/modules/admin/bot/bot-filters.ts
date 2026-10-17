@@ -4,6 +4,7 @@
 // El módulo muestra cómo funciona el bot, nunca lo que la gente escribe: la política de privacidad
 // promete que el admin no ve los mensajes (ni sus montos). Cada mensaje cuenta por su resultado.
 
+import type { ServiceCheck } from "@/lib/service-check";
 import { addDays, appendDateFilter, dateFilterLabel, dateRange, parseDateFilter, parseSearch, type DatePreset, type Params } from "../shared/filters";
 
 export const BOT_PATH = "/admin/bot";
@@ -167,3 +168,43 @@ export function formatShortDay(day: string): string {
   const part = (type: "day" | "month") => parts.find((p) => p.type === type)!.value;
   return `${part("day")} ${part("month")}`;
 }
+
+/** Cómo se ve la prueba de un servicio en /admin/bot → Conexiones. */
+export type ConnectionView = { ok: boolean; title: string; detail: string | null; warning: string | null };
+
+const SERVICE_NAMES = { whatsapp: "el token de WhatsApp", claude: "la API key de Claude" } as const;
+/** Por qué no sirve una credencial, con su género: "el token… vencido", "la API key… vencida". */
+const INVALID_REASONS = { whatsapp: "vencido, revocado o mal copiado", claude: "vencida, revocada o mal copiada" } as const;
+
+/**
+ * El resultado de probar un servicio, para leer: qué pasó (title), lo técnico (detail) y un aviso.
+ * Los errores más comunes llevan su causa: el token vencido o revocado de Meta, un permiso que falta,
+ * un modelo que ya no existe, o que el servicio no respondió.
+ */
+export function connectionView(service: "whatsapp" | "claude", check: ServiceCheck): ConnectionView {
+  if (check.status === "ok") return { ok: true, title: "Conectado", detail: check.detail, warning: check.warning ?? null };
+  if (check.status === "sin_configurar") {
+    return {
+      ok: false,
+      title: `Falta configurar ${check.missing.join(" y ")}`,
+      detail: "Se configura en Vercel → Settings → Environment Variables (y en .env en local).",
+      warning: null,
+    };
+  }
+  const detail = readableApiError(check.error);
+  const status = Number(check.error.match(/^(\d{3}) /)?.[1] ?? 0);
+  const metaCode = check.error.match(/"code":\s*(\d+)/)?.[1];
+  const fail = (title: string): ConnectionView => ({ ok: false, title, detail, warning: null });
+  // "TimeoutError (23)": describeError suma el código heredado de DOMException.
+  if (/^(TimeoutError|AbortError)\b/.test(check.error)) return { ok: false, title: "No respondió a tiempo (8 s)", detail: null, warning: null };
+  if (/^(TypeError|APIConnectionError|Connection error)/.test(check.error)) return fail("No se pudo conectar con el servicio");
+  if (service === "whatsapp" && (metaCode === "10" || metaCode === "200")) {
+    return fail("El token no tiene permiso para leer el número (whatsapp_business_management); los envíos pueden funcionar igual");
+  }
+  if (status === 401 || metaCode === "190") return fail(`${capitalize(SERVICE_NAMES[service])} no sirve: ${INVALID_REASONS[service]}`);
+  if (service === "claude" && status === 404) return fail("El modelo del bot no existe o la API key no tiene acceso a él (BOT_MODEL)");
+  if (status === 403) return fail(`${capitalize(SERVICE_NAMES[service])} no tiene permiso`);
+  return fail("El servicio respondió con un error");
+}
+
+const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);

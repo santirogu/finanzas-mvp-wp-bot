@@ -130,6 +130,18 @@ export const VISTAS: Vista[] = [
   },
   // Con la persona de datos, para que haya mensajes del bot (vinculación, movimientos y Claude).
   { id: "admin-bot", titulo: "Administración: bot de WhatsApp", persona: "admin", necesita: ["datos"], ruta: fija("/admin/bot") },
+  // Probar las conexiones solo lee (contra los servidores falsos): se ven los resultados.
+  {
+    id: "admin-bot-conexiones",
+    titulo: "Administración: resultado de probar las conexiones del bot",
+    persona: "admin",
+    ruta: fija("/admin/bot"),
+    preparar: async (page) => {
+      const conexiones = visible(page.getByRole("region", { name: "Conexiones" }));
+      await conexiones.getByRole("button", { name: "Probar conexiones" }).click();
+      await expect(conexiones.getByRole("listitem")).toHaveCount(2);
+    },
+  },
   // Solo se abren: enviarlas cambiaría la configuración de toda la app (y pedirían el código).
   {
     id: "admin-bot-pausar",

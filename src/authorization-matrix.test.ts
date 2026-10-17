@@ -74,6 +74,7 @@ const SERVER_ACTIONS = {
   pauseClaudeAction: "requireAdmin + código de Google Authenticator; solo la configuración global del bot",
   resumeClaudeAction: "requireAdmin + código de Google Authenticator; solo la configuración global del bot",
   changeAiLimitsAction: "requireAdmin + código de Google Authenticator; topes dentro de AI_LIMIT_BOUNDS",
+  testConnectionsAction: "requireAdmin; solo lee (consultas gratis a WhatsApp y Claude): nunca muestra el token ni la API key",
 } as const;
 
 // Acciones que no necesitan validar la sesión, con el porqué.
@@ -293,6 +294,7 @@ describe("administración", () => {
         "src/modules/admin/categories/categories.ts",
         "src/modules/admin/bot/bot-activity.ts",
         "src/modules/admin/bot/bot-settings.ts",
+        "src/modules/admin/bot/connections.ts",
       ]),
     );
   });
