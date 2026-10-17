@@ -83,6 +83,47 @@ test("el admin ve qué pasó con los mensajes de una cuenta y su consumo de Clau
     expect(await seriousViolations(page)).toEqual([]);
   });
 
+  await test.step("tocar una barra filtra por ese resultado; Por cuenta dice de quién son", async () => {
+    const results = visible(page.getByRole("region", { name: "Qué pasó con los mensajes" }));
+    await results.getByRole("link", { name: /^Registró movimientos/ }).click();
+    await expect.poll(() => new URL(page.url()).searchParams.get("resultado")).toBe("registrado");
+    // La búsqueda se conserva.
+    expect(new URL(page.url()).searchParams.get("q")).toBe(spaced(phone));
+    await expect(results.getByRole("link", { name: /^Registró movimientos/ })).toHaveAttribute("aria-current", "true");
+    await expect(visible(page.getByRole("link", { name: "Quitar filtro: Resultado: Registró movimientos" }))).toBeVisible();
+    await expect(stat(page, "Mensajes")).toHaveText("1");
+    // Las demás barras siguen ahí para cambiar de resultado.
+    await expect(results.getByRole("link")).toHaveCount(5);
+
+    const accounts = visible(page.getByRole("list", { name: "Cuentas" })).getByRole("listitem");
+    await expect(accounts).toHaveCount(1);
+    await expect(accounts.first()).toContainText("Beto Bot");
+    await expect(accounts.first()).toContainText("1 mensaje");
+    await expect(accounts.first()).toContainText("120 tokens");
+    expect(await seriousViolations(page)).toEqual([]);
+
+    await results.getByRole("link", { name: /^Registró movimientos/ }).click();
+    await expect.poll(() => new URL(page.url()).searchParams.get("resultado")).toBeNull();
+  });
+
+  await test.step("Por cuenta: Beto y el audio (llegó sin cuenta), con su orden y su enlace a Usuarios", async () => {
+    const accounts = visible(page.getByRole("list", { name: "Cuentas" })).getByRole("listitem");
+    await expect(accounts).toHaveCount(2);
+    await expect(accounts.nth(0)).toContainText("Beto Bot");
+    await expect(accounts.nth(0)).toContainText("4 mensajes");
+    await expect(accounts.nth(1)).toContainText("Números sin cuenta");
+    await expect(accounts.nth(1)).toContainText("1 número");
+    const sort = visible(page.getByRole("navigation", { name: "Ordenar por" }));
+    await expect(sort.getByRole("link", { name: "Tokens" })).toHaveAttribute("aria-current", "true");
+    await sort.getByRole("link", { name: "Último mensaje" }).click();
+    await expect.poll(() => new URL(page.url()).searchParams.get("orden")).toBe("ultimo");
+    await accounts.nth(0).getByRole("link", { name: "Beto Bot" }).click();
+    await expect(page).toHaveURL(/\/admin\/usuarios\/[\w-]+$/);
+    await expect(heading(page, /Beto Bot/)).toBeVisible();
+    await page.goBack();
+    await expect.poll(() => new URL(page.url()).searchParams.get("orden")).toBe("ultimo");
+  });
+
   await test.step("la fecha se combina con la búsqueda y se quita con su ✕", async () => {
     await visible(page.getByRole("button", { name: /^Filtros/ })).click();
     const group = visible(page.getByRole("group", { name: "Fecha de los mensajes" }));
@@ -110,6 +151,7 @@ test("un número sin vincular cuenta aparte, y sin mensajes la página lo dice",
   await page.goto(`/admin/bot?q=${newPhone()}`);
   await expect(stat(page, "Mensajes")).toHaveText("0");
   await expect(visible(page.getByText("No hay mensajes con estos filtros."))).toBeVisible();
+  await expect(visible(page.getByText("Ninguna cuenta con estos filtros."))).toBeVisible();
   expect(await seriousViolations(page)).toEqual([]);
 });
 

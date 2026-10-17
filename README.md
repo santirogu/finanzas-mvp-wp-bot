@@ -540,7 +540,15 @@ la fecha de los mensajes, en hora de Colombia.
   error, código de vinculación inválido, número sin vincular, no era texto, cuenta suspendida o sin
   procesar. Sale del
   estado del mensaje, del tipo de intención y de si el número tiene cuenta. También el tiempo de
-  respuesta (mediana y p95).
+  respuesta (mediana y p95). Tocar una barra filtra toda la página por ese resultado (`?resultado=`,
+  con su etiqueta y su ✕ en los filtros activos; otra vez, lo quita). Las barras siguen mostrando todos
+  los resultados para poder cambiar de uno a otro.
+- **Por cuenta:** una fila por cuenta, con los filtros de la página: mensajes, cuántos registraron
+  movimientos, tokens de Claude, errores y el último mensaje (hoy, ayer o la fecha), con enlace a su
+  detalle en Usuarios. Se ordena por tokens (de la que más usa), mensajes, errores o el último
+  (`?orden=`); los números que escribieron sin estar vinculados van juntos al final. Se ven 50 y "Ver
+  más cuentas" suma de a 50, hasta 500. En celular, cada cifra lleva su nombre a la vista; desde `sm`,
+  van en columnas. Solo cantidades, nunca el texto.
 - **Consumo de Claude:** llamadas y tokens de entrada y salida (los que guarda el bot en cada
   mensaje), por día (con "Todo", los últimos 30 días) y por modelo, y las cuentas que llegaron al tope.
   El costo en dinero se ve en la consola de Anthropic: los precios cambian.
