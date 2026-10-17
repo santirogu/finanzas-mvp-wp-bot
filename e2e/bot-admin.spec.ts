@@ -3,6 +3,7 @@ import { expect, type Page } from "@playwright/test";
 import postgres from "postgres";
 import { heading, newAdmin, seriousViolations, setUpTwoFactor } from "./admin";
 import { e2eDatabaseUrl } from "./database-url";
+import { FAKE_SERVICES_URL } from "./fake-config";
 import { newPerson, register, test, visible } from "./helpers";
 import { newPhone, nthReply, sendWhatsApp } from "./whatsapp";
 
@@ -139,4 +140,31 @@ test("los errores se leen: la explicación de Meta y cuántos números los tuvie
   await expect(errors).not.toContainText("fbtrace_id");
   await expect(stat(page, "Errores")).toHaveText("2");
   expect(await seriousViolations(page)).toEqual([]);
+});
+
+test("probar las conexiones: WhatsApp y Claude sin gastar nada, y un token vencido se explica", async ({ page, request }) => {
+  await newAdmin(page);
+  await setUpTwoFactor(page);
+  await page.goto("/admin/bot");
+  const connections = visible(page.getByRole("region", { name: "Conexiones" }));
+  const result = (name: string) => connections.getByRole("listitem").filter({ hasText: `${name}:` });
+
+  await test.step("con los servidores falsos, los dos conectan", async () => {
+    await connections.getByRole("button", { name: "Probar conexiones" }).click();
+    await expect(result("WhatsApp")).toContainText("Conectado");
+    await expect(result("WhatsApp")).toContainText("Finanzas MVP (prueba) · +57 300 0000000");
+    await expect(result("Claude")).toContainText("Claude falso (claude-haiku-5-5)");
+    await expect(connections.getByRole("status")).toContainText(/(Último mensaje que llegó al webhook: |Todavía no ha llegado ningún mensaje).* Probado a las /);
+    expect(await seriousViolations(page)).toEqual([]);
+  });
+
+  await test.step("con el token vencido, dice por qué y qué respondió Meta (sin el token)", async () => {
+    await request.post(`${FAKE_SERVICES_URL}/fallar?servicio=whatsapp`);
+    await connections.getByRole("button", { name: "Probar otra vez" }).click();
+    await expect(result("WhatsApp")).toContainText("El token de WhatsApp no sirve: vencido, revocado o mal copiado");
+    await expect(result("WhatsApp")).toContainText("HTTP 401 · (#190) Error validating access token: Session has expired.");
+    await expect(result("Claude")).toContainText("Conectado");
+    await expect(connections).not.toContainText("e2e-token-falso");
+    expect(await seriousViolations(page)).toEqual([]);
+  });
 });

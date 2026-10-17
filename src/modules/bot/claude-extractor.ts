@@ -4,6 +4,8 @@ import { z } from "zod";
 import type { CategoryNames, RawTransaction } from "./normalize";
 import { buildSystemPrompt, buildUserMessage } from "./prompt";
 import { envVar } from "@/lib/env";
+import { describeError } from "@/lib/safe-log";
+import { CHECK_TIMEOUT_MS, type ServiceCheck } from "@/lib/service-check";
 import { serviceUrl } from "@/lib/service-url";
 
 // Modelo configurable por entorno. Por defecto Claude Haiku 5.5 con esfuerzo bajo:
@@ -124,3 +126,24 @@ export const claudeExtractor: Extractor = async ({ text, today, categories }) =>
     throw error;
   }
 };
+
+/**
+ * Prueba la API key de Claude sin gastar créditos: consulta el modelo del bot en la API de modelos
+ * (gratis). Así se sabe que la key sirve y que el modelo existe; avisa si Anthropic ya lo marcó como
+ * obsoleto. Sin reintentos: el admin está mirando la página.
+ */
+export async function checkClaudeConnection(): Promise<ServiceCheck> {
+  if (!envVar("ANTHROPIC_API_KEY") && !envVar("ANTHROPIC_AUTH_TOKEN")) return { status: "sin_configurar", missing: ["ANTHROPIC_API_KEY"] };
+  const model = botModel();
+  try {
+    const info = await getClient().models.retrieve(model, {}, { timeout: CHECK_TIMEOUT_MS, maxRetries: 0 });
+    const detail = info.display_name && info.display_name !== info.id ? `${info.display_name} (${info.id})` : info.id;
+    return info.deprecated_at
+      ? { status: "ok", detail, warning: `Anthropic marcó el modelo como obsoleto (${info.deprecated_at.slice(0, 10)}): conviene cambiarlo.` }
+      : { status: "ok", detail };
+  } catch (error) {
+    // El SDK pone el estado HTTP al inicio del mensaje ("404 {...}"), como en las llamadas del bot.
+    if (error instanceof Anthropic.AnthropicError) return { status: "error", error: error.message };
+    return { status: "error", error: describeError(error) };
+  }
+}

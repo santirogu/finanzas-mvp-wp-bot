@@ -23,6 +23,7 @@ import { ADMIN_TIMEZONE, formatDateTime } from "@/modules/admin/shared/filters";
 import { PageSkeleton } from "../../page-skeleton";
 import { ActiveFilters } from "../active-filters";
 import { BotSettings } from "./bot-settings";
+import { Connections } from "./connections";
 import { BotFilterBar } from "./filter-bar";
 
 export const metadata: Metadata = { title: "Bot de WhatsApp · Administración" };
@@ -86,6 +87,7 @@ async function Bot({ params }: { params: Record<string, string | string[] | unde
         limits={settings.limits}
         lastChange={settings.updated && `${settings.updated.by ?? "Un admin"} · ${formatDateTime(settings.updated.at)}`}
       />
+      <Connections />
 
       <section className="card space-y-3 p-4" aria-labelledby="resultados">
         <h2 id="resultados" className="font-semibold">

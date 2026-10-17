@@ -526,6 +526,14 @@ la fecha de los mensajes, en hora de Colombia.
   `AI_LIMITS` (20 por hora y 100 por día). El bot la lee en cada mensaje que necesitaría a Claude
   (`src/modules/bot/settings.ts`), así que aplica desde el siguiente. Si Claude está en pausa, la
   tarjeta de Inicio lo dice.
+
+  **Conexiones:** "Probar conexiones" revisa el token de WhatsApp (lee el nombre, el número y la
+  calidad del número del bot en la Graph API; necesita el permiso `whatsapp_business_management`, el
+  mismo de `scripts/meta-subscribe.sh`) y la API key de Claude (consulta el modelo del bot en la API de
+  modelos), sin enviar mensajes ni gastar créditos. Dice por qué falla (token vencido, un permiso o una
+  variable que falta, un modelo que ya no existe) con lo que respondió el servicio, nunca la clave, y
+  cuándo llegó el último mensaje al webhook: si Meta dejó de enviar, se nota ahí. Solo lee: no pide el
+  código ni queda en el historial.
 - **Qué pasó con los mensajes:** cuántos llegaron y el resultado de cada uno: registró movimientos,
   comando, respuesta sin registrar nada, vinculó su número, llegó al tope de Claude, Claude en pausa,
   error, código de vinculación inválido, número sin vincular, no era texto, cuenta suspendida o sin

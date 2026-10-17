@@ -122,3 +122,81 @@ describe("sendWhatsAppText · errores sin cuerpo", () => {
     expect(await sendWhatsAppText("573001112233", "Hola")).toEqual({ ok: false, error: "503 " });
   });
 });
+
+describe("checkWhatsAppConnection", () => {
+  it("lee el número del bot sin enviar nada, con el token en la cabecera", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ verified_name: "Finanzas MVP", display_phone_number: "+1 555-662-5913", quality_rating: "GREEN" })),
+    );
+    const { checkWhatsAppConnection } = await loadClient();
+
+    expect(await checkWhatsAppConnection()).toEqual({ status: "ok", detail: "Finanzas MVP · +1 555-662-5913" });
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe("https://graph.facebook.com/v26.0/1418230944702354?fields=verified_name,display_phone_number,quality_rating");
+    expect(init.method ?? "GET").toBe("GET");
+    expect(init.headers).toEqual({ Authorization: "Bearer EAAtoken" });
+    expect(init.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it.each(["YELLOW", "red"])("con la calidad %s avisa que Meta podría limitar los envíos", async (quality) => {
+    fetchMock.mockResolvedValue(new Response(JSON.stringify({ verified_name: "Finanzas MVP", quality_rating: quality })));
+    const { checkWhatsAppConnection } = await loadClient();
+    expect(await checkWhatsAppConnection()).toEqual({
+      status: "ok",
+      detail: "Finanzas MVP",
+      warning: `Meta marca la calidad del número como ${quality.toUpperCase()}: podría limitar los envíos.`,
+    });
+  });
+
+  it("sin datos del número (o UNKNOWN), solo dice que conectó", async () => {
+    fetchMock.mockResolvedValueOnce(new Response("no es json")).mockResolvedValueOnce(new Response(JSON.stringify({ quality_rating: "UNKNOWN" })));
+    const { checkWhatsAppConnection } = await loadClient();
+    expect(await checkWhatsAppConnection()).toEqual({ status: "ok", detail: "Conectado" });
+    expect(await checkWhatsAppConnection()).toEqual({ status: "ok", detail: "Conectado" });
+  });
+
+  it("si Meta lo rechaza, devuelve el estado y lo que respondió (sin el token)", async () => {
+    const body = JSON.stringify({ error: { message: "Error validating access token", code: 190 } });
+    fetchMock.mockResolvedValue(new Response(body, { status: 401 }));
+    const { checkWhatsAppConnection } = await loadClient();
+    const check = await checkWhatsAppConnection();
+    expect(check).toEqual({ status: "error", error: `401 ${body}` });
+    expect(JSON.stringify(check)).not.toContain("EAAtoken");
+  });
+
+  it("de la respuesta de Meta guarda hasta 500 caracteres; si no se puede leer, solo el estado", async () => {
+    const long = JSON.stringify({ error: { message: "x".repeat(600), code: 1 } });
+    fetchMock.mockResolvedValueOnce(new Response(long, { status: 500 }));
+    const unreadable = new Response("", { status: 502 });
+    vi.spyOn(unreadable, "text").mockRejectedValue(new TypeError("cuerpo cortado"));
+    fetchMock.mockResolvedValueOnce(unreadable);
+    const { checkWhatsAppConnection } = await loadClient();
+
+    expect(await checkWhatsAppConnection()).toEqual({ status: "error", error: `500 ${long.slice(0, 500)}` });
+    expect(await checkWhatsAppConnection()).toEqual({ status: "error", error: "502 " });
+  });
+
+  it("si no responde, devuelve solo el tipo del error", async () => {
+    fetchMock.mockRejectedValue(new DOMException("The operation timed out.", "TimeoutError"));
+    const { checkWhatsAppConnection } = await loadClient();
+    // describeError suma el código heredado de DOMException (23).
+    expect(await checkWhatsAppConnection()).toEqual({ status: "error", error: "TimeoutError (23)" });
+  });
+
+  it("sin token o sin el id del número, dice cuál falta y no llama a Meta", async () => {
+    vi.stubEnv("WHATSAPP_ACCESS_TOKEN", "");
+    const { checkWhatsAppConnection } = await loadClient();
+    expect(await checkWhatsAppConnection()).toEqual({ status: "sin_configurar", missing: ["WHATSAPP_ACCESS_TOKEN"] });
+    vi.stubEnv("WHATSAPP_PHONE_NUMBER_ID", " ");
+    expect(await checkWhatsAppConnection()).toEqual({ status: "sin_configurar", missing: ["WHATSAPP_ACCESS_TOKEN", "WHATSAPP_PHONE_NUMBER_ID"] });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("con WHATSAPP_API_URL local (E2E), consulta el servidor falso", async () => {
+    vi.stubEnv("WHATSAPP_API_URL", "http://localhost:3101/graph");
+    fetchMock.mockResolvedValue(new Response("{}"));
+    const { checkWhatsAppConnection } = await loadClient();
+    await checkWhatsAppConnection();
+    expect(fetchMock.mock.calls[0][0]).toMatch(/^http:\/\/localhost:3101\/graph\/v26\.0\/1418230944702354\?fields=/);
+  });
+});
