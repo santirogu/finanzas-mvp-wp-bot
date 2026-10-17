@@ -85,5 +85,8 @@ export const tooManyTransactionsReply = (max: number) =>
 /** Cuando el admin pausó Claude en /admin/bot: los comandos siguen, el texto libre se registra en la web. */
 export const aiPausedReply = (appUrl: string) =>
   `Por ahora no puedo entender mensajes escritos libremente 🛠️ Registra tus movimientos en la web: ${appUrl}/dashboard. *balance*, *deshacer* y *ayuda* siguen funcionando.`;
+/** Cuando se usó el tope mensual de tokens de /admin/bot: hasta el mes siguiente, como en pausa. */
+export const aiMonthlyLimitReply = (appUrl: string) =>
+  `Este mes ya usé todo mi cupo para entender mensajes escritos libremente 🛠️ Registra tus movimientos en la web: ${appUrl}/dashboard. *balance*, *deshacer* y *ayuda* siguen funcionando.`;
 export const aiUnavailableReply =
   "Por ahora solo entiendo *balance*, *deshacer* y *ayuda*. Muy pronto podrás registrar gastos escribiendo normal ✍️";

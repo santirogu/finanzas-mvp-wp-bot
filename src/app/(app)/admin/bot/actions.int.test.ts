@@ -1,3 +1,4 @@
+import { eq } from "drizzle-orm";
 import { describe, expect, it, vi } from "vitest";
 import { db } from "@/db";
 import { accountEvent, botSetting, whatsappMessage } from "@/db/schema";
@@ -18,7 +19,9 @@ vi.mock("@/modules/bot/claude-extractor", async (original) => ({
   checkClaudeConnection: mocks.claude,
 }));
 
-const { changeAiLimitsAction, pauseClaudeAction, resumeClaudeAction, testConnectionsAction } = await import("./actions");
+const { changeAiLimitsAction, changeMonthlyLimitAction, pauseClaudeAction, resendRepliesAction, resumeClaudeAction, testConnectionsAction } =
+  await import("./actions");
+const { pendingResends, resendFailedReplies } = await import("@/modules/admin/bot/resend");
 const { botSettingsForAdmin } = await import("@/modules/admin/bot/bot-settings");
 const { getBotSettings } = await import("@/modules/bot/settings");
 
@@ -44,7 +47,14 @@ const events = () => db.select({ type: accountEvent.type, userId: accountEvent.u
 describe("pausar y reanudar Claude", () => {
   it("sin cambios nadie la tocó: Claude activo y los topes de siempre", async () => {
     await seed();
-    expect(await botSettingsForAdmin()).toEqual({ claudePaused: false, limits: { perHour: 20, perDay: 100 }, updated: null });
+    expect(await botSettingsForAdmin(new Date("2026-10-16T15:00:00Z"))).toEqual({
+      claudePaused: false,
+      limits: { perHour: 20, perDay: 100 },
+      monthlyTokenLimit: null,
+      month: { used: 0, reached: false, resetsOn: "2026-11-01" },
+      averageTokensPerCall: null,
+      updated: null,
+    });
   });
 
   it("con el código pausa Claude, queda en el historial (sin cuenta) y luego se reanuda", async () => {
@@ -87,7 +97,7 @@ describe("pausar y reanudar Claude", () => {
     const { code } = await seed();
     await db.insert(botSetting).values({ id: 1, aiPerHour: 7, aiPerDay: 70 });
     await pauseClaudeAction({}, form({ code: code() }));
-    expect(await getBotSettings()).toEqual({ claudePaused: true, limits: { perHour: 7, perDay: 70 } });
+    expect(await getBotSettings()).toEqual({ claudePaused: true, limits: { perHour: 7, perDay: 70 }, monthlyTokenLimit: null });
   });
 });
 
@@ -96,7 +106,7 @@ describe("cambiar los topes por cuenta", () => {
     const { admin, code } = await seed();
     const result = await changeAiLimitsAction({}, form({ perHour: "30", perDay: "1.500", code: code() }));
     expect(result).toEqual({ message: "Los topes quedaron en 30 por hora y 1.500 por día, por cuenta." });
-    expect(await getBotSettings()).toEqual({ claudePaused: false, limits: { perHour: 30, perDay: 1500 } });
+    expect(await getBotSettings()).toEqual({ claudePaused: false, limits: { perHour: 30, perDay: 1500 }, monthlyTokenLimit: null });
     expect(await events()).toEqual([
       {
         type: "bot_limits_changed",
@@ -111,7 +121,7 @@ describe("cambiar los topes por cuenta", () => {
     const { code } = await seed();
     await db.insert(botSetting).values({ id: 1, claudePaused: true, aiPerHour: 20, aiPerDay: 100 });
     await changeAiLimitsAction({}, form({ perHour: "5", perDay: "50", code: code() }));
-    expect(await getBotSettings()).toEqual({ claudePaused: true, limits: { perHour: 5, perDay: 50 } });
+    expect(await getBotSettings()).toEqual({ claudePaused: true, limits: { perHour: 5, perDay: 50 }, monthlyTokenLimit: null });
   });
 
   it("fuera de rango o iguales, lo dice en su campo sin gastar el código", async () => {
@@ -183,5 +193,149 @@ describe("probar las conexiones", () => {
     await expect(testConnectionsAction()).rejects.toThrow("NEXT_NOT_FOUND");
     expect(mocks.whatsapp).not.toHaveBeenCalled();
     expect(mocks.claude).not.toHaveBeenCalled();
+  });
+});
+
+describe("el tope mensual de tokens", () => {
+  it("con el código lo pone; la vista dice cuánto va del mes, el promedio y si se alcanzó", async () => {
+    const { admin, code } = await seed();
+    const now = new Date();
+    await db.insert(whatsappMessage).values([
+      { id: "wamid.mes.1", phone: "573001112233", body: "x", aiRequestedAt: now, intent: { kind: "reply", usage: { model: "m", inputTokens: 1600, outputTokens: 100 } } },
+      { id: "wamid.mes.2", phone: "573001112233", body: "x", aiRequestedAt: now, intent: { kind: "reply", usage: { model: "m", inputTokens: 1800, outputTokens: 100 } } },
+    ]);
+    expect(await changeMonthlyLimitAction({}, form({ monthlyLimit: "10.000", code: code() }))).toEqual({
+      message: "El tope mensual quedó en 10.000 tokens: al llegar, el bot deja de usar Claude hasta el mes siguiente.",
+    });
+    expect((await getBotSettings()).monthlyTokenLimit).toBe(10_000);
+    const view = await botSettingsForAdmin();
+    expect(view).toMatchObject({ monthlyTokenLimit: 10_000, month: { used: 3600, reached: false }, averageTokensPerCall: 1800 });
+    expect(view.month.resetsOn).toMatch(/^\d{4}-\d{2}-01$/);
+    expect(await events()).toEqual([
+      { type: "bot_monthly_limit_changed", userId: null, adminId: admin.id, details: { monthlyLimit: 10_000, previousMonthlyLimit: null } },
+    ]);
+
+    // Con lo usado por encima del tope, la vista lo marca como alcanzado.
+    await db.update(botSetting).set({ monthlyTokenLimit: 3600 });
+    expect((await botSettingsForAdmin()).month.reached).toBe(true);
+  });
+
+  it("vacío lo quita; fuera de rango o igual, lo dice sin gastar el código", async () => {
+    const { code } = await seed();
+    await db.insert(botSetting).values({ id: 1, aiPerHour: 20, aiPerDay: 100, monthlyTokenLimit: 500_000 });
+    const unused = code();
+    expect(await changeMonthlyLimitAction({}, form({ monthlyLimit: "500", code: unused }))).toEqual({
+      error: "El tope mensual va de 10.000 a 100.000.000 tokens.",
+      field: "monthlyLimit",
+    });
+    expect(await changeMonthlyLimitAction({}, form({ monthlyLimit: "500.000", code: unused }))).toEqual({
+      error: "El tope mensual ya es ese: cambia el número.",
+    });
+    expect(await changeMonthlyLimitAction({}, form({ monthlyLimit: " ", code: unused }))).toEqual({ message: "Se quitó el tope mensual de tokens." });
+    expect((await getBotSettings()).monthlyTokenLimit).toBeNull();
+    expect(await changeMonthlyLimitAction({}, form({ monthlyLimit: "", code: code() }))).toEqual({ error: "Ya no hay tope mensual." });
+    expect((await events()).map((e) => e.details)).toEqual([{ monthlyLimit: null, previousMonthlyLimit: 500_000 }]);
+  });
+
+  it("con un código equivocado no cambia nada", async () => {
+    await seed();
+    expect(await changeMonthlyLimitAction({}, form({ monthlyLimit: "20000", code: "000000" }))).toMatchObject({ field: "code" });
+    expect((await getBotSettings()).monthlyTokenLimit).toBeNull();
+  });
+});
+
+describe("reenviar las respuestas que no salieron", () => {
+  const HOUR = 3_600_000;
+  const META = '400 {"error":{"message":"(#131030) Recipient phone number not in allowed list","code":131030}}';
+
+  /** Mensajes como los deja el bot cuando WhatsApp rechaza la respuesta. */
+  async function failedReplies(now: Date) {
+    const failed = (id: string, values: Partial<typeof whatsappMessage.$inferInsert>) =>
+      db.insert(whatsappMessage).values({
+        id,
+        phone: "573001112233",
+        body: "almuerzo 20 mil",
+        status: "failed",
+        intent: { kind: "transactions" },
+        reply: `✅ Respuesta de ${id}`,
+        error: `envío: ${META}`,
+        receivedAt: new Date(now.getTime() - HOUR),
+        ...values,
+      });
+    await failed("wamid.ana", {});
+    await failed("wamid.beto", { phone: "573002223344", intent: { kind: "command", command: "balance" } });
+    // No se reenvían: de hace más de 24 horas, un fallo al entender (no al enviar), un aviso de error y
+    // una que sí salió.
+    await failed("wamid.vieja", { receivedAt: new Date(now.getTime() - 25 * HOUR) });
+    await failed("wamid.interno", { error: "TypeError" });
+    await failed("wamid.aviso", { intent: { kind: "error", reason: "api_error: 529" }, error: `api_error: 529 · envío: ${META}` });
+    await failed("wamid.salio", { status: "processed" });
+  }
+  const status = async (id: string) => (await db.select({ status: whatsappMessage.status, error: whatsappMessage.error }).from(whatsappMessage).where(eq(whatsappMessage.id, id)))[0];
+
+  it("cuenta solo las que se pueden reenviar", async () => {
+    await seed();
+    const now = new Date();
+    await failedReplies(now);
+    expect(await pendingResends(now)).toBe(2);
+  });
+
+  it("con el código las reenvía tal cual, las marca como enviadas y lo registra, sin mostrarlas", async () => {
+    const { admin, code } = await seed();
+    const now = new Date();
+    await failedReplies(now);
+    const sent: { to: string; body: string }[] = [];
+    const result = await resendFailedReplies({ code: code() }, now, async (to, body) => {
+      sent.push({ to, body });
+      return { ok: true };
+    });
+
+    expect(result).toEqual({ ok: true, message: "Se reenviaron 2 respuestas." });
+    expect(sent).toEqual(
+      expect.arrayContaining([
+        { to: "573001112233", body: "✅ Respuesta de wamid.ana" },
+        { to: "573002223344", body: "✅ Respuesta de wamid.beto" },
+      ]),
+    );
+    expect(sent).toHaveLength(2);
+    expect(JSON.stringify(result)).not.toContain("Respuesta de");
+    expect(await status("wamid.ana")).toMatchObject({ status: "processed" });
+    expect(await status("wamid.vieja")).toMatchObject({ status: "failed" });
+    expect(await pendingResends(now)).toBe(0);
+    expect(await events()).toEqual([{ type: "bot_replies_resent", userId: null, adminId: admin.id, details: { resent: 2, failed: 0 } }]);
+  });
+
+  it("si WhatsApp rechaza alguna otra vez, queda para reenviar con el error nuevo", async () => {
+    const { code } = await seed();
+    const now = new Date();
+    await failedReplies(now);
+    const result = await resendFailedReplies({ code: code() }, now, async (to) =>
+      to === "573002223344" ? { ok: false, error: "401 token vencido" } : { ok: true },
+    );
+    expect(result).toEqual({ ok: true, message: "Se reenvió 1 respuesta; 1 no salió otra vez." });
+    expect(await status("wamid.beto")).toEqual({ status: "failed", error: "envío: 401 token vencido" });
+    expect(await pendingResends(now)).toBe(1);
+    expect((await events())[0].details).toEqual({ resent: 1, failed: 1 });
+
+    const again = await resendFailedReplies({ code: code() }, now, async () => ({ ok: false, error: "401 token vencido" }));
+    expect(again).toEqual({ ok: false, error: "No salió ninguna: WhatsApp rechazó la respuesta otra vez." });
+  });
+
+  it("sin nada que reenviar no pide el código; con uno equivocado no envía nada", async () => {
+    const { code } = await seed();
+    const send = vi.fn(async () => ({ ok: true as const }));
+    expect(await resendFailedReplies({ code: code() }, new Date(), send)).toEqual({ ok: false, error: "No hay respuestas para reenviar." });
+    await failedReplies(new Date());
+    expect(await resendFailedReplies({ code: "000000" }, new Date(), send)).toMatchObject({ ok: false, field: "code" });
+    expect(send).not.toHaveBeenCalled();
+    expect(await events()).toEqual([]);
+  });
+
+  it("la acción lee el código y vuelve a dibujar la página; sin rol no reenvía nada", async () => {
+    await seed();
+    expect(await resendRepliesAction({}, form({ code: "123" }))).toMatchObject({ error: "No hay respuestas para reenviar." });
+    mocks.requireAdmin.mockRejectedValue(new Error("NEXT_NOT_FOUND"));
+    await expect(resendRepliesAction({}, form({ code: "123456" }))).rejects.toThrow("NEXT_NOT_FOUND");
+    await expect(pendingResends()).rejects.toThrow("NEXT_NOT_FOUND");
   });
 });

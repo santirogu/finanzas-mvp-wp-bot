@@ -4,7 +4,9 @@ import { db } from "@/db";
 import { user, whatsappMessage } from "@/db/schema";
 import { todayInTimezone } from "@/lib/dates";
 import { requireAdmin } from "@/lib/session";
+import { monthlyBudgetReached } from "@/modules/bot/limits";
 import { getBotSettings } from "@/modules/bot/settings";
+import { tokensUsedThisMonth } from "@/modules/bot/token-budget";
 import { ADMIN_TIMEZONE, dateRange, escapeLike, searchDigits } from "../shared/filters";
 import { inDayRange } from "../shared/sql";
 import { OUTCOMES, claudeDays, type BotFilters, type Outcome } from "./bot-filters";
@@ -46,6 +48,7 @@ const outcome = sql<Outcome>`case
   when ${kind} = 'reply' then 'respuesta'
   when ${kind} = 'link' then 'vinculado'
   when ${kind} = 'error' and ${reason} = 'rate_limited' then 'tope_claude'
+  when ${kind} = 'error' and ${reason} = 'monthly_limit' then 'tope_mensual'
   when ${kind} = 'error' and ${reason} = 'paused' then 'pausa'
   when ${notText} then 'no_texto'
   when ${whatsappMessage.userId} is null then 'sin_vincular'
@@ -177,12 +180,12 @@ export async function botActivity(filters: BotFilters, today: string): Promise<B
   };
 }
 
-/** El resumen de la tarjeta de Inicio: mensajes y errores de hoy, y si Claude está en pausa. */
+/** El resumen de la tarjeta de Inicio: mensajes y errores de hoy, y si Claude está en pausa (o en el tope mensual). */
 export async function botSummary(
   today = todayInTimezone(ADMIN_TIMEZONE),
-): Promise<{ today: number; failedToday: number; claudePaused: boolean }> {
+): Promise<{ today: number; failedToday: number; claudePaused: boolean; monthlyLimitReached: boolean }> {
   await requireAdmin();
-  const [[row], settings] = await Promise.all([
+  const [[row], settings, used] = await Promise.all([
     db
       .select({
         today: count(),
@@ -191,6 +194,7 @@ export async function botSummary(
       .from(whatsappMessage)
       .where(and(...inDayRange(whatsappMessage.receivedAt, { from: today, to: today }))),
     getBotSettings(),
+    tokensUsedThisMonth(),
   ]);
-  return { ...row, claudePaused: settings.claudePaused };
+  return { ...row, claudePaused: settings.claudePaused, monthlyLimitReached: monthlyBudgetReached(settings.monthlyTokenLimit, used) };
 }

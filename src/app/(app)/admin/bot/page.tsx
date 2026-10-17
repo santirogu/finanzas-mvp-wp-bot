@@ -6,15 +6,18 @@ import { formatShare } from "@/lib/money";
 import { requireAdmin } from "@/lib/session";
 import { botActivity } from "@/modules/admin/bot/bot-activity";
 import { botSettingsForAdmin } from "@/modules/admin/bot/bot-settings";
+import { pendingResends } from "@/modules/admin/bot/resend";
 import {
   BOT_PATH,
   OUTCOMES,
   OUTCOME_LABELS,
   PROBLEM_OUTCOMES,
+  RESEND_WINDOW_HOURS,
   activeBotFilters,
   botHref,
   errorLabel,
   formatCount,
+  formatDayMonth,
   formatSeconds,
   formatShortDay,
   parseBotFilters,
@@ -24,6 +27,7 @@ import { PageSkeleton } from "../../page-skeleton";
 import { ActiveFilters } from "../active-filters";
 import { BotSettings } from "./bot-settings";
 import { Connections } from "./connections";
+import { ResendReplies } from "./resend-replies";
 import { BotFilterBar } from "./filter-bar";
 
 export const metadata: Metadata = { title: "Bot de WhatsApp · Administración" };
@@ -47,7 +51,7 @@ async function Bot({ params }: { params: Record<string, string | string[] | unde
   await requireAdmin();
   const filters = parseBotFilters(params);
   const today = todayInTimezone(ADMIN_TIMEZONE);
-  const [activity, settings] = await Promise.all([botActivity(filters, today), botSettingsForAdmin()]);
+  const [activity, settings, resends] = await Promise.all([botActivity(filters, today), botSettingsForAdmin(), pendingResends()]);
   const panelOpen = params.panel === "1";
   const filtered = activeBotFilters(filters).length > 0;
   const maxCalls = Math.max(1, ...activity.claude.byDay.map((d) => d.calls));
@@ -85,6 +89,9 @@ async function Bot({ params }: { params: Record<string, string | string[] | unde
       <BotSettings
         claudePaused={settings.claudePaused}
         limits={settings.limits}
+        monthlyTokenLimit={settings.monthlyTokenLimit}
+        month={{ ...settings.month, resetsOn: formatDayMonth(settings.month.resetsOn) }}
+        averageTokensPerCall={settings.averageTokensPerCall}
         lastChange={settings.updated && `${settings.updated.by ?? "Un admin"} · ${formatDateTime(settings.updated.at)}`}
       />
       <Connections />
@@ -224,6 +231,8 @@ async function Bot({ params }: { params: Record<string, string | string[] | unde
         <h2 id="errores" className="font-semibold">
           Errores
         </h2>
+        {/* Las de las últimas 24 horas, de todas las cuentas: no dependen de los filtros. */}
+        <ResendReplies pending={resends} windowHours={RESEND_WINDOW_HOURS} />
         {activity.errors.length === 0 ? (
           <p className="text-sm text-muted">Sin errores{filtered ? " con estos filtros" : ""}.</p>
         ) : (

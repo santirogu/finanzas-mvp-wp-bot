@@ -102,7 +102,8 @@ export default function PrivacyPage() {
               cuántos mensajes llegaron y qué pasó con cada uno (si registró movimientos, fue un comando,
               una respuesta o un error), cuántas veces se usó Claude (llamadas y tokens) y los errores
               técnicos. No ve el texto de tus mensajes, lo que te respondió el bot ni los movimientos
-              que registraste.
+              que registraste. Si una respuesta del bot no te llegó por un problema de WhatsApp, puede
+              hacer que el bot te la vuelva a enviar (sin verla), solo durante las 24 horas siguientes.
             </li>
             <li>
               Saber qué partes de la app se usan más y qué tan rápido cargan, con estadísticas

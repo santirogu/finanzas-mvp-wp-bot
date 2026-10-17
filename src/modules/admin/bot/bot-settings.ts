@@ -1,15 +1,17 @@
 import "server-only";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { botSetting, user } from "@/db/schema";
+import { botSetting, user, whatsappMessage } from "@/db/schema";
 import { requireAdmin } from "@/lib/session";
 import { recordEvent } from "@/modules/account/events";
-import { parseAiLimits, type AiLimits } from "@/modules/bot/limits";
+import { monthlyBudgetReached, parseAiLimits, parseMonthlyTokenLimit, type AiLimits } from "@/modules/bot/limits";
 import { BOT_SETTING_ID, DEFAULT_BOT_SETTINGS, getBotSettings } from "@/modules/bot/settings";
+import { currentBudgetMonth, tokensUsedThisMonth } from "@/modules/bot/token-budget";
 import { confirmAdminCode } from "../shared/confirm-code";
 import { formatCount } from "./bot-filters";
 
-// La configuración del bot desde /admin/bot: pausar o reanudar Claude y cambiar los topes por cuenta.
+// La configuración del bot desde /admin/bot: pausar o reanudar Claude, cambiar los topes por cuenta y
+// el tope mensual de tokens.
 // Como las acciones de Usuarios, cada cambio:
 //  1. valida el rol (requireAdmin);
 //  2. revisa que haya algo que cambiar y que los datos sirvan (si no, no gasta el código);
@@ -21,30 +23,56 @@ import { formatCount } from "./bot-filters";
 export type BotSettingsView = {
   claudePaused: boolean;
   limits: AiLimits;
+  monthlyTokenLimit: number | null;
+  /** Tokens de Claude usados este mes (de todas las cuentas) y el día en que empieza el siguiente. */
+  month: { used: number; reached: boolean; resetsOn: string };
+  /** Tokens por llamada a Claude, en promedio (para elegir el tope); null sin llamadas todavía. */
+  averageTokensPerCall: number | null;
   /** El último cambio, o null si nadie la ha cambiado (valen los de siempre). */
   updated: { at: Date; by: string | null } | null;
 };
 
-export type BotSettingResult = { ok: true; message: string } | { ok: false; error: string; field?: "code" | "perHour" | "perDay" };
+type Field = "code" | "perHour" | "perDay" | "monthlyLimit";
+export type BotSettingResult = { ok: true; message: string } | { ok: false; error: string; field?: Field };
 
-const fail = (error: string, field?: "code" | "perHour" | "perDay"): BotSettingResult => ({ ok: false, error, ...(field && { field }) });
+const fail = (error: string, field?: Field): BotSettingResult => ({ ok: false, error, ...(field && { field }) });
 
-/** La configuración actual, con quién la cambió por última vez. */
-export async function botSettingsForAdmin(): Promise<BotSettingsView> {
+/** La configuración actual, con lo que va del mes y quién la cambió por última vez. */
+export async function botSettingsForAdmin(now = new Date()): Promise<BotSettingsView> {
   await requireAdmin();
-  const [row] = await db
-    .select({
-      claudePaused: botSetting.claudePaused,
-      perHour: botSetting.aiPerHour,
-      perDay: botSetting.aiPerDay,
-      at: botSetting.updatedAt,
-      by: user.name,
-    })
-    .from(botSetting)
-    .leftJoin(user, eq(user.id, botSetting.updatedBy))
-    .where(eq(botSetting.id, BOT_SETTING_ID));
-  if (!row) return { ...DEFAULT_BOT_SETTINGS, updated: null };
-  return { claudePaused: row.claudePaused, limits: { perHour: row.perHour, perDay: row.perDay }, updated: { at: row.at, by: row.by } };
+  const [[row], used, [average]] = await Promise.all([
+    db
+      .select({
+        claudePaused: botSetting.claudePaused,
+        perHour: botSetting.aiPerHour,
+        perDay: botSetting.aiPerDay,
+        monthlyTokenLimit: botSetting.monthlyTokenLimit,
+        at: botSetting.updatedAt,
+        by: user.name,
+      })
+      .from(botSetting)
+      .leftJoin(user, eq(user.id, botSetting.updatedBy))
+      .where(eq(botSetting.id, BOT_SETTING_ID)),
+    tokensUsedThisMonth(now),
+    db
+      .select({
+        tokens: sql<number | null>`round(avg(
+          coalesce((${whatsappMessage.intent}->'usage'->>'inputTokens')::int, 0) +
+          coalesce((${whatsappMessage.intent}->'usage'->>'outputTokens')::int, 0)
+        ))`.mapWith((value) => (value === null ? null : Number(value))),
+      })
+      .from(whatsappMessage)
+      .where(sql`${whatsappMessage.intent}->'usage' is not null`),
+  ]);
+  const settings = row
+    ? { claudePaused: row.claudePaused, limits: { perHour: row.perHour, perDay: row.perDay }, monthlyTokenLimit: row.monthlyTokenLimit }
+    : DEFAULT_BOT_SETTINGS;
+  return {
+    ...settings,
+    month: { used, reached: monthlyBudgetReached(settings.monthlyTokenLimit, used), resetsOn: currentBudgetMonth(now).end },
+    averageTokensPerCall: average.tokens,
+    updated: row ? { at: row.at, by: row.by } : null,
+  };
 }
 
 /** Pausa o reanuda Claude: en pausa, el texto libre recibe un aviso y los comandos siguen. */
@@ -102,5 +130,49 @@ export async function setAiLimits(
   return {
     ok: true,
     message: `Los topes quedaron en ${formatCount(limits.perHour)} por hora y ${formatCount(limits.perDay)} por día, por cuenta.`,
+  };
+}
+
+/** Pone, cambia o quita (vacío) el tope mensual de tokens de Claude, de todas las cuentas. */
+export async function setMonthlyTokenLimit({ limit, code }: { limit: string; code: string }, now = new Date()): Promise<BotSettingResult> {
+  const admin = await requireAdmin();
+  const input = parseMonthlyTokenLimit(limit);
+  if (!input.ok) return fail(input.error, "monthlyLimit");
+  const current = await getBotSettings();
+  if (input.limit === current.monthlyTokenLimit) {
+    return fail(input.limit === null ? "Ya no hay tope mensual." : "El tope mensual ya es ese: cambia el número.");
+  }
+  const check = await confirmAdminCode(code, now);
+  if (!check.ok) return fail(check.error, "code");
+
+  await db.transaction(async (tx) => {
+    await tx
+      .insert(botSetting)
+      .values({
+        id: BOT_SETTING_ID,
+        claudePaused: current.claudePaused,
+        aiPerHour: current.limits.perHour,
+        aiPerDay: current.limits.perDay,
+        monthlyTokenLimit: input.limit,
+        updatedAt: now,
+        updatedBy: admin.id,
+      })
+      .onConflictDoUpdate({ target: botSetting.id, set: { monthlyTokenLimit: input.limit, updatedAt: now, updatedBy: admin.id } });
+    await recordEvent(
+      {
+        type: "bot_monthly_limit_changed",
+        userId: null,
+        adminId: admin.id,
+        details: { monthlyLimit: input.limit, previousMonthlyLimit: current.monthlyTokenLimit },
+      },
+      tx,
+    );
+  });
+  return {
+    ok: true,
+    message:
+      input.limit === null
+        ? "Se quitó el tope mensual de tokens."
+        : `El tope mensual quedó en ${formatCount(input.limit)} tokens: al llegar, el bot deja de usar Claude hasta el mes siguiente.`,
   };
 }

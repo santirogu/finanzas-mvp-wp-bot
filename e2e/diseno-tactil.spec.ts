@@ -177,7 +177,7 @@ test("en pantallas táctiles las páginas caben y los campos no hacen zoom @tact
     }
     // La ventana de los topes del bot, con sus dos campos lado a lado (solo se abre: no se envía).
     await open(page, "/admin/bot");
-    await visible(page.getByRole("region", { name: "Configuración" })).getByRole("button", { name: "Cambiar" }).click();
+    await visible(page.getByRole("region", { name: "Configuración" })).getByRole("button", { name: "Cambiar los topes por cuenta" }).click();
     await expect(page.getByRole("dialog")).toBeVisible();
     await expectFitsOnScreens(page, "ventana de los topes del bot");
     await page.keyboard.press("Escape");

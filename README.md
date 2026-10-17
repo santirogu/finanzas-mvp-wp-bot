@@ -521,6 +521,7 @@ la fecha de los mensajes, en hora de Colombia.
   |---|---|
   | Pausar / reanudar Claude | En pausa, el bot no llama a Claude: a lo escrito libremente responde que lo registren en la web, y *balance*, *deshacer* y *ayuda* siguen. No gasta créditos. Para frenar en segundos si algo sale mal o se dispara el gasto, sin desplegar |
   | Topes por cuenta | Mensajes con Claude por hora y por día (1–200 y 1–2.000, el de la hora no mayor que el del día; `AI_LIMIT_BOUNDS`). Al llegar, el bot pide esperar |
+  | Tope mensual de tokens | Tokens de Claude al mes, de todas las cuentas (10.000–100.000.000, o sin tope; `MONTHLY_TOKEN_BOUNDS`). Muestra cuánto va del mes y, con el promedio por mensaje, para cuántos mensajes alcanza. Al llegar, el bot deja de usar Claude hasta el mes siguiente (en hora de Colombia), como en pausa. Es un tope suave: mensajes simultáneos pueden pasarlo un poco (`src/modules/bot/token-budget.ts`) |
 
   Se guarda en una sola fila (`bot_setting`); sin ella valen los de siempre: Claude activo y
   `AI_LIMITS` (20 por hora y 100 por día). El bot la lee en cada mensaje que necesitaría a Claude
@@ -544,7 +545,11 @@ la fecha de los mensajes, en hora de Colombia.
   mensaje), por día (con "Todo", los últimos 30 días) y por modelo, y las cuentas que llegaron al tope.
   El costo en dinero se ve en la consola de Anthropic: los precios cambian.
 - **Errores:** agrupados por motivo (de Claude, al enviar por WhatsApp o internos), con cuántas veces,
-  cuántos números y la última vez. Lo técnico (el código de Meta o de la API) va aparte, como detalle.
+  cuántos números y la última vez. Si en las últimas 24 horas hubo respuestas que no salieron por
+  WhatsApp (un token vencido o un número fuera de la lista de Meta, ya arreglados), **"Reenviar"** las
+  envía otra vez tal cual, sin volver a interpretar ni registrar nada, y sin que el admin las vea: solo
+  cuántas son (`src/modules/admin/bot/resend.ts`). Pasadas 24 horas, WhatsApp no deja escribirle a la
+  persona. Pide el código y queda en el historial. Lo técnico (el código de Meta o de la API) va aparte, como detalle.
 
 Lo que **no** se muestra, a propósito: el texto de los mensajes, la respuesta del bot y los
 movimientos que entendió Claude. Las consultas solo leen el tipo de intención, el motivo de un error y

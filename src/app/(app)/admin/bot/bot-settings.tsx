@@ -4,25 +4,41 @@ import { useActionState, useId, useState, type ReactNode } from "react";
 import { describedBy, FieldError } from "@/components/field-error";
 import { useFieldErrors } from "@/components/use-field-errors";
 import { TOTP_CODE_MESSAGES, type FieldMessages } from "@/lib/field-errors";
-import { AI_LIMIT_BOUNDS, type AiLimits } from "@/modules/bot/limits";
+import { AI_LIMIT_BOUNDS, MONTHLY_TOKEN_BOUNDS, type AiLimits } from "@/modules/bot/limits";
 import { Buttons, CODE_FIELD_MESSAGES, CodeField, Dialog, DoneMessage, FormError } from "../admin-dialog";
-import { changeAiLimitsAction, pauseClaudeAction, resumeClaudeAction, type BotSettingState } from "./actions";
+import {
+  changeAiLimitsAction,
+  changeMonthlyLimitAction,
+  pauseClaudeAction,
+  resumeClaudeAction,
+  type BotSettingState,
+} from "./actions";
 
-// La configuración del bot en /admin/bot: si Claude está activo o en pausa, y los topes de mensajes
-// con Claude por cuenta. Cada cambio abre una ventana que explica qué va a pasar y pide el código de
+// La configuración del bot en /admin/bot: si Claude está activo o en pausa, los topes de mensajes con
+// Claude por cuenta y el tope mensual de tokens. Cada cambio abre una ventana que explica qué va a pasar y pide el código de
 // Google Authenticator. El servidor vuelve a validar todo (src/modules/admin/bot/bot-settings.ts).
 
-type Kind = "pause" | "resume" | "limits";
+type Kind = "pause" | "resume" | "limits" | "monthly";
 type ServerAction = (prev: BotSettingState, formData: FormData) => Promise<BotSettingState>;
 
 export type BotSettingsProps = {
   claudePaused: boolean;
   limits: AiLimits;
+  monthlyTokenLimit: number | null;
+  /** Lo que va del mes: tokens usados, si se llegó al tope y cuándo vuelve ("1 de noviembre"). */
+  month: { used: number; reached: boolean; resetsOn: string };
+  /** Tokens por llamada, en promedio (para estimar cuánto alcanza un tope); null sin llamadas. */
+  averageTokensPerCall: number | null;
   /** "Ana Admin · 16 de oct de 2026, 6:00 p. m.", o null si nadie la ha cambiado. */
   lastChange: string | null;
 };
 
 const count = new Intl.NumberFormat("es-CO").format;
+/** Qué parte del tope va usada, sin decimales ("<1" si es casi nada). */
+const share = (used: number, limit: number) => {
+  const pct = Math.floor((used / limit) * 100);
+  return used > 0 && pct === 0 ? "<1" : String(pct);
+};
 const limitsText = (limits: AiLimits) => `${count(limits.perHour)} por hora y ${count(limits.perDay)} por día`;
 
 const LIMIT_FIELD: Record<"perHour" | "perDay", FieldMessages> = {
@@ -31,7 +47,7 @@ const LIMIT_FIELD: Record<"perHour" | "perDay", FieldMessages> = {
 };
 const LIMITS_MESSAGES: Record<string, FieldMessages> = { ...LIMIT_FIELD, code: TOTP_CODE_MESSAGES };
 
-export function BotSettings({ claudePaused, limits, lastChange }: BotSettingsProps) {
+export function BotSettings({ claudePaused, limits, monthlyTokenLimit, month, averageTokensPerCall, lastChange }: BotSettingsProps) {
   const [open, setOpen] = useState<Kind | null>(null);
   const [done, setDone] = useState<string | null>(null);
   const close = () => setOpen(null);
@@ -57,6 +73,10 @@ export function BotSettings({ claudePaused, limits, lastChange }: BotSettingsPro
           description={
             claudePaused ? (
               <span className="font-medium text-danger">En pausa: el bot solo responde balance, deshacer y ayuda.</span>
+            ) : month.reached ? (
+              <span className="font-medium text-danger">
+                En pausa por el tope mensual hasta el {month.resetsOn}: el bot solo responde balance, deshacer y ayuda.
+              </span>
             ) : (
               "Activo: entiende los mensajes escritos libremente."
             )
@@ -69,7 +89,25 @@ export function BotSettings({ claudePaused, limits, lastChange }: BotSettingsPro
           title="Topes por cuenta"
           description={`${limitsText(limits)}, de mensajes con Claude.`}
           button="Cambiar"
+          label="Cambiar los topes por cuenta"
           onClick={() => start("limits")}
+        />
+        <Row
+          title="Tope mensual de tokens"
+          description={
+            monthlyTokenLimit === null ? (
+              `Sin tope. Este mes van ${count(month.used)} tokens.`
+            ) : month.reached ? (
+              <span className="font-medium text-danger">
+                Alcanzado: {count(month.used)} de {count(monthlyTokenLimit)}. Claude vuelve el {month.resetsOn}.
+              </span>
+            ) : (
+              `${count(monthlyTokenLimit)} al mes, de todas las cuentas. Este mes van ${count(month.used)} (${share(month.used, monthlyTokenLimit)} %).`
+            )
+          }
+          button="Cambiar"
+          label="Cambiar el tope mensual de tokens"
+          onClick={() => start("monthly")}
         />
       </ul>
       <p className="text-xs text-muted">{lastChange ? `Último cambio: ${lastChange}` : "Sin cambios: valen los de siempre."}</p>
@@ -87,6 +125,9 @@ export function BotSettings({ claudePaused, limits, lastChange }: BotSettingsPro
         </ConfirmDialog>
       )}
       {open === "limits" && <LimitsDialog limits={limits} onClose={close} onDone={finish} />}
+      {open === "monthly" && (
+        <MonthlyLimitDialog limit={monthlyTokenLimit} averageTokensPerCall={averageTokensPerCall} onClose={close} onDone={finish} />
+      )}
     </section>
   );
 }
@@ -95,12 +136,15 @@ function Row({
   title,
   description,
   button,
+  label,
   danger = false,
   onClick,
 }: {
   title: string;
   description: ReactNode;
   button: string;
+  /** El nombre para el lector de pantalla si el texto se repite ("Cambiar"); empieza con ese texto. */
+  label?: string;
   danger?: boolean;
   onClick: () => void;
 }) {
@@ -113,6 +157,7 @@ function Row({
       <button
         type="button"
         onClick={onClick}
+        aria-label={label}
         className={`shrink-0 rounded-lg border px-3 py-1.5 text-sm font-medium transition ${
           danger ? "border-danger/50 text-danger hover:bg-danger/10" : "border-border hover:bg-background"
         }`}
@@ -132,7 +177,7 @@ function useSettingAction(action: ServerAction, onDone: (message: string) => voi
   }, {});
 }
 
-function ConfirmDialog({
+export function ConfirmDialog({
   title,
   action,
   submit,
@@ -241,5 +286,71 @@ function LimitField({
       </label>
       <FieldError id={errorId} message={message} />
     </div>
+  );
+}
+
+const MONTHLY_MESSAGES: Record<string, FieldMessages> = {
+  monthlyLimit: { pattern: "Escribe un número entero de tokens, sin decimales (o déjalo vacío)." },
+  code: TOTP_CODE_MESSAGES,
+};
+
+function MonthlyLimitDialog({
+  limit,
+  averageTokensPerCall,
+  onClose,
+  onDone,
+}: {
+  limit: number | null;
+  averageTokensPerCall: number | null;
+  onClose: () => void;
+  onDone: (message: string) => void;
+}) {
+  const [state, formAction, busy] = useSettingAction(changeMonthlyLimitAction, onDone);
+  const { errors, formProps } = useFieldErrors(MONTHLY_MESSAGES);
+  // Controlado, como los topes: si el servidor lo rechaza, lo escrito sigue ahí.
+  const [value, setValue] = useState(limit === null ? "" : String(limit));
+  const errorId = useId();
+  const hintId = useId();
+  const message = errors.monthlyLimit ?? (state.field === "monthlyLimit" ? state.error : undefined);
+  const typed = Number(value.replace(/[\s.]/g, ""));
+  const estimate = averageTokensPerCall && typed > 0 ? Math.floor(typed / averageTokensPerCall) : null;
+
+  return (
+    <Dialog title="Cambiar el tope mensual de tokens" onClose={onClose}>
+      {(ids) => (
+        <form action={formAction} {...formProps} className="space-y-4">
+          <p id={ids.description} className="text-sm text-muted">
+            Cuántos tokens de Claude se pueden usar al mes, entre todas las cuentas. Al llegar, el bot deja de usar Claude hasta
+            el mes siguiente (los comandos siguen). Vacío: sin tope.
+          </p>
+          <div className="space-y-1.5">
+            <label className="block space-y-1.5">
+              <span className="text-sm font-medium">Tokens al mes</span>
+              <input
+                name="monthlyLimit"
+                inputMode="numeric"
+                pattern="\s*[\d.]*\s*"
+                maxLength={13}
+                value={value}
+                onChange={(event) => setValue(event.target.value)}
+                placeholder="Sin tope"
+                aria-invalid={Boolean(message) || undefined}
+                aria-describedby={describedBy(hintId, message && errorId)}
+                className="input tabular-nums"
+              />
+            </label>
+            <p id={hintId} className="text-xs text-muted">
+              Entre {count(MONTHLY_TOKEN_BOUNDS.min)} y {count(MONTHLY_TOKEN_BOUNDS.max)}.
+              {averageTokensPerCall !== null && ` En promedio, cada mensaje usa ${count(averageTokensPerCall)} tokens`}
+              {estimate !== null ? `: alcanza para unos ${count(estimate)} mensajes.` : averageTokensPerCall !== null ? "." : ""}
+            </p>
+            <FieldError id={errorId} message={message} />
+          </div>
+          <CodeField state={state} clientError={errors.code} />
+          <FormError state={state} />
+          <Buttons submit="Guardar tope" pending="Guardando…" busy={busy} />
+        </form>
+      )}
+    </Dialog>
   );
 }
