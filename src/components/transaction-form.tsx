@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useActionState, useEffect, useId, useRef } from "react";
+import { formatMonthName, monthOf } from "@/lib/dates";
 import type { FieldMessages } from "@/lib/field-errors";
 import { amountInputValue, formatAmountTyping } from "@/lib/money";
 import {
@@ -36,6 +37,7 @@ export function TransactionForm({
   today,
   transaction,
   cancelHref,
+  listMonth,
 }: {
   type: "income" | "expense";
   categories: CategoryOption[];
@@ -43,6 +45,11 @@ export function TransactionForm({
   transaction?: TransactionToEdit;
   /** Adónde vuelve "Cancelar" al editar. */
   cancelHref?: string;
+  /**
+   * El mes de la lista de al lado (YYYY-MM-DD, el primero inclusive y el del mes siguiente). Si el
+   * movimiento nuevo cae en otro mes, no aparece en ella: el aviso dice en cuál quedó.
+   */
+  listMonth?: { start: string; end: string };
 }) {
   const editing = Boolean(transaction);
   // Al editar, si se guarda bien, la Server Action redirige a la lista.
@@ -159,10 +166,16 @@ export function TransactionForm({
         aria-live="polite"
         className={`min-h-5 text-center text-sm ${state.ok ? "text-income" : "text-danger"}`}
       >
-        {state.ok ? `✓ ${state.message}` : (state.message ?? "")}
+        {state.ok ? `✓ ${state.message}${elsewhere(state.occurredOn, listMonth)}` : (state.message ?? "")}
       </p>
     </form>
   );
+}
+
+/** " en septiembre de 2026" si el movimiento registrado quedó fuera del mes de la lista; si no, nada. */
+function elsewhere(occurredOn: string | undefined, listMonth: { start: string; end: string } | undefined) {
+  if (!occurredOn || !listMonth || (occurredOn >= listMonth.start && occurredOn < listMonth.end)) return "";
+  return ` en ${formatMonthName(monthOf(occurredOn), { withYear: true })}`;
 }
 
 /** Valores del formulario a partir de un movimiento guardado (el monto con separadores y sus centavos). */

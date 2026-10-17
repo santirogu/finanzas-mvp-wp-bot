@@ -92,14 +92,15 @@ const transactionForm = (page: Page) =>
     page.locator("form").filter({ has: page.getByRole("heading", { name: /^Nuevo (ingreso|egreso)$/ }) }),
   );
 
-/** Registra un movimiento desde la pestaña actual (Ingresos o Egresos). */
+/** Registra un movimiento desde la pestaña actual (Ingresos o Egresos); sin `date` (YYYY-MM-DD), hoy. */
 export async function addTransaction(
   page: Page,
-  { amount, description, category }: { amount: string; description: string; category?: string },
+  { amount, description, category, date }: { amount: string; description: string; category?: string; date?: string },
 ) {
   const form = transactionForm(page);
   await form.getByLabel("Monto").fill(amount);
   await form.getByLabel("Descripción").fill(description);
+  if (date) await form.getByLabel("Fecha").fill(date);
   if (category) {
     // Las opciones llevan el emoji adelante: se elige por el valor de la que contiene el nombre.
     const select = form.getByLabel("Categoría");

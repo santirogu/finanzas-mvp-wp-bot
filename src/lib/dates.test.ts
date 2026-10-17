@@ -1,9 +1,16 @@
 import { describe, expect, it } from "vitest";
 import {
+  compareMonths,
   currentMonthRange,
   formatLongDate,
   formatMonthLabel,
+  formatMonthName,
+  formatShortDate,
+  monthOf,
+  monthParam,
   monthRange,
+  parseMonthParam,
+  shiftMonth,
   todayInTimezone,
 } from "./dates";
 
@@ -32,6 +39,71 @@ describe("currentMonthRange", () => {
 describe("formatMonthLabel", () => {
   it("muestra el mes en español", () => {
     expect(formatMonthLabel({ year: 2026, month: 10 })).toBe("Octubre de 2026");
+  });
+});
+
+describe("formatMonthName", () => {
+  it("da el mes en minúscula, para usarlo dentro de una frase", () => {
+    expect(formatMonthName({ year: 2026, month: 9 })).toBe("septiembre");
+    expect(formatMonthName({ year: 2025, month: 12 }, { withYear: true })).toBe("diciembre de 2025");
+  });
+});
+
+describe("?mes= (monthParam y parseMonthParam)", () => {
+  it("escribe el mes con dos dígitos y lo vuelve a leer", () => {
+    expect(monthParam({ year: 2026, month: 9 })).toBe("2026-09");
+    expect(monthParam({ year: 2026, month: 12 })).toBe("2026-12");
+    expect(parseMonthParam("2026-09")).toEqual({ year: 2026, month: 9 });
+    expect(parseMonthParam("2026-12")).toEqual({ year: 2026, month: 12 });
+    expect(parseMonthParam("2000-01")).toEqual({ year: 2000, month: 1 });
+  });
+
+  it.each([
+    ["sin el parámetro", undefined],
+    ["repetido en la URL", ["2026-09", "2026-08"]],
+    ["en una lista, aunque sea de uno", ["2026-09"]],
+    ["vacío", ""],
+    ["el mes 13", "2026-13"],
+    ["el mes 0", "2026-00"],
+    ["sin el cero", "2026-9"],
+    ["con el día", "2026-09-01"],
+    ["con texto alrededor", "x2026-09"],
+    ["con texto al final", "2026-09x"],
+    ["antes del 2000", "1999-12"],
+  ])("ignora un mes inválido: %s", (_case, value) => {
+    expect(parseMonthParam(value)).toBeNull();
+  });
+});
+
+describe("monthOf", () => {
+  it("da el mes de una fecha", () => {
+    expect(monthOf("2026-09-30")).toEqual({ year: 2026, month: 9 });
+  });
+});
+
+describe("shiftMonth", () => {
+  it("avanza y retrocede meses, cruzando de año", () => {
+    expect(shiftMonth({ year: 2026, month: 10 }, -1)).toEqual({ year: 2026, month: 9 });
+    expect(shiftMonth({ year: 2026, month: 1 }, -1)).toEqual({ year: 2025, month: 12 });
+    expect(shiftMonth({ year: 2026, month: 12 }, 1)).toEqual({ year: 2027, month: 1 });
+    expect(shiftMonth({ year: 2026, month: 3 }, -15)).toEqual({ year: 2024, month: 12 });
+    expect(shiftMonth({ year: 2026, month: 3 }, 0)).toEqual({ year: 2026, month: 3 });
+  });
+});
+
+describe("compareMonths", () => {
+  it("dice cuál mes va primero, aunque sean de años distintos", () => {
+    expect(compareMonths({ year: 2026, month: 9 }, { year: 2026, month: 10 })).toBe(-1);
+    expect(compareMonths({ year: 2026, month: 1 }, { year: 2025, month: 12 })).toBe(1);
+    expect(compareMonths({ year: 2025, month: 12 }, { year: 2026, month: 2 })).toBe(-2);
+    expect(compareMonths({ year: 2026, month: 10 }, { year: 2026, month: 10 })).toBe(0);
+  });
+});
+
+describe("formatShortDate", () => {
+  it("da el día y el mes corto, sin el punto de la abreviatura", () => {
+    expect(formatShortDate("2026-10-13")).toBe("13 de oct");
+    expect(formatShortDate("2026-09-05")).toBe("5 de sept");
   });
 });
 

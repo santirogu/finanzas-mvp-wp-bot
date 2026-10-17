@@ -80,6 +80,18 @@ export async function listTransactions(
 
 export type TransactionRow = Awaited<ReturnType<typeof listTransactions>>[number];
 
+/** Los meses ("YYYY-MM") en que el usuario tiene movimientos, del más reciente al más antiguo. */
+export async function listActiveMonths(userId: string) {
+  const month = sql<string>`to_char(${transaction.occurredOn}, 'YYYY-MM')`;
+  const rows = await db
+    .select({ month })
+    .from(transaction)
+    .where(and(eq(transaction.userId, userId), isNull(transaction.deletedAt)))
+    .groupBy(month)
+    .orderBy(desc(month));
+  return rows.map((r) => r.month);
+}
+
 /** Un movimiento propio y no eliminado, para editarlo; null si no existe o es de otro usuario. */
 export async function getTransaction(userId: string, id: string) {
   const [row] = await db

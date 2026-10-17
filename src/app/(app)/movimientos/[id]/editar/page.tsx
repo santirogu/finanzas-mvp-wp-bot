@@ -3,7 +3,8 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { z } from "zod";
 import { TransactionForm } from "@/components/transaction-form";
-import { todayInTimezone } from "@/lib/dates";
+import { currentMonthRange, monthOf, todayInTimezone } from "@/lib/dates";
+import { monthHref } from "@/lib/month-nav";
 import { requireUser } from "@/lib/session";
 import { getCategoryOption, getTransaction, listCategories } from "@/modules/transactions/queries";
 import { PageSkeleton } from "../../../page-skeleton";
@@ -34,7 +35,12 @@ async function EditTransaction({ id }: { id: string }) {
   ]);
   // Si el admin archivó su categoría, se sigue ofreciendo (marcada) para no perderla al guardar.
   const categories = current?.archived ? [...active, current] : active;
-  const list = transaction.type === "income" ? "/ingresos" : "/egresos";
+  // "Cancelar" vuelve a la lista de su tipo, en el mes del movimiento.
+  const list = monthHref(
+    transaction.type === "income" ? "/ingresos" : "/egresos",
+    monthOf(transaction.occurredOn),
+    currentMonthRange(user.timezone),
+  );
 
   return (
     <div className="mx-auto max-w-md space-y-6">

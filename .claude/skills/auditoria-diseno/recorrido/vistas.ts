@@ -1,6 +1,6 @@
 import { expect, type Page } from "@playwright/test";
 import { PASSWORD, uniqueEmail, visible } from "../../../../e2e/helpers";
-import type { Datos, Persona } from "./datos";
+import { MES_ANTERIOR, type Datos, type Persona } from "./datos";
 
 // Las páginas y los estados que recorre la auditoría. Para el modo "cambios", el skill elige las
 // vistas de las páginas que tocó la rama (AUDITORIA_VISTAS=id1,id2). Si agregas una página a la app,
@@ -99,6 +99,28 @@ export const VISTAS: Vista[] = [
   { id: "egresos", titulo: "Egresos con datos", persona: "datos", ruta: fija("/egresos") },
   { id: "editar-movimiento", titulo: "Editar un movimiento", persona: "datos", ruta: (d) => d.editar.datos },
   { id: "egresos-borrado", titulo: "Egresos: aviso después de borrar (con Deshacer)", persona: "datos", ruta: (d) => d.borrado },
+  { id: "resumen-mes-anterior", titulo: "Resumen del mes anterior", persona: "datos", ruta: fija(`/dashboard?mes=${MES_ANTERIOR}`) },
+  {
+    id: "resumen-tarjeta-meses",
+    titulo: "Resumen: tarjeta de meses abierta",
+    persona: "datos",
+    ruta: fija(`/dashboard?mes=${MES_ANTERIOR}`),
+    preparar: async (page) => {
+      await visible(page.getByRole("button", { expanded: false }).filter({ hasText: / de \d{4}$/ })).click();
+      await expect(visible(page.getByRole("group", { name: "Elegir un mes" }))).toBeVisible();
+    },
+  },
+  { id: "egresos-mes-anterior", titulo: "Egresos del mes anterior", persona: "datos", ruta: fija(`/egresos?mes=${MES_ANTERIOR}`) },
+  {
+    id: "egresos-tarjeta-meses",
+    titulo: "Egresos: tarjeta de meses abierta",
+    persona: "datos",
+    ruta: fija(`/egresos?mes=${MES_ANTERIOR}`),
+    preparar: async (page) => {
+      await visible(page.getByRole("button", { expanded: false }).filter({ hasText: / de \d{4}$/ })).click();
+      await expect(visible(page.getByRole("group", { name: "Elegir un mes" }))).toBeVisible();
+    },
+  },
 
   // Lo más largo que acepta la app: textos, montos, categorías y una lista de 25 egresos
   { id: "resumen-extremo", titulo: "Resumen con textos y montos máximos", persona: "admin", ruta: fija("/dashboard") },
