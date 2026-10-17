@@ -136,6 +136,23 @@ describe("TransactionForm", () => {
     expect(screen.getByLabelText(/Monto/)).toHaveFocus();
   });
 
+  it.each([
+    ["en el mes de la lista, no dice más", "2026-10-14", { start: "2026-10-01", end: "2026-11-01" }, "✓ Egreso registrado"],
+    ["sin lista al lado, tampoco", "2026-09-30", undefined, "✓ Egreso registrado"],
+    ["en otro mes, dice en cuál quedó", "2026-09-30", { start: "2026-10-01", end: "2026-11-01" }, "✓ Egreso registrado en septiembre de 2026"],
+    ["el primer día del mes siguiente ya es otro mes", "2026-11-01", { start: "2026-10-01", end: "2026-11-01" }, "✓ Egreso registrado en noviembre de 2026"],
+    ["mirando septiembre, uno de hoy queda en octubre", "2026-10-14", { start: "2026-09-01", end: "2026-10-01" }, "✓ Egreso registrado en octubre de 2026"],
+  ])("al registrar, %s", async (_case, occurredOn, listMonth, message) => {
+    action.mockResolvedValue({ ok: true, message: "Egreso registrado", occurredOn });
+    render(<TransactionForm type="expense" categories={CATEGORIES} today="2026-10-14" listMonth={listMonth} />);
+
+    await userEvent.type(screen.getByLabelText(/Monto/), "500000");
+    await userEvent.type(screen.getByLabelText("Descripción"), "Zapatos");
+    await userEvent.click(screen.getByRole("button", { name: "Registrar egreso" }));
+
+    expect(await screen.findByText(message, { exact: true })).toBeVisible();
+  });
+
   it("muestra los errores de cada campo y conserva lo escrito", async () => {
     action.mockResolvedValue({
       ok: false,

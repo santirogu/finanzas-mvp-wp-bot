@@ -12,6 +12,7 @@ import {
   getTransactionNotice,
   isCategoryAvailable,
   UNDO_WINDOW_MS,
+  listActiveMonths,
   listCategories,
   listTransactions,
 } from "./queries";
@@ -221,6 +222,28 @@ describe("getTransaction", () => {
 
     expect(await getTransaction(other.id, tx.id)).toBeNull();
     expect(await getTransaction(owner.id, deleted.id)).toBeNull();
+  });
+});
+
+describe("listActiveMonths", () => {
+  it("da los meses con movimientos, sin repetir y del más reciente al más antiguo", async () => {
+    const user = await createUser();
+    await addTx({ userId: user.id, occurredOn: "2026-10-15" });
+    await addTx({ userId: user.id, occurredOn: "2026-10-01", type: "income" });
+    await addTx({ userId: user.id, occurredOn: "2025-12-31" });
+    await addTx({ userId: user.id, occurredOn: "2026-08-20" });
+
+    expect(await listActiveMonths(user.id)).toEqual(["2026-10", "2026-08", "2025-12"]);
+  });
+
+  it("no cuenta los movimientos eliminados ni los de otro usuario", async () => {
+    const [ana, beto] = [await createUser(), await createUser()];
+    await addTx({ userId: ana.id, occurredOn: "2026-10-15" });
+    await addTx({ userId: ana.id, occurredOn: "2026-07-15", deletedAt: new Date() });
+    await addTx({ userId: beto.id, occurredOn: "2026-09-15" });
+
+    expect(await listActiveMonths(ana.id)).toEqual(["2026-10"]);
+    expect(await listActiveMonths((await createUser()).id)).toEqual([]);
   });
 });
 

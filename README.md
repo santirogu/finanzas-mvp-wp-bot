@@ -189,13 +189,15 @@ Automatically start at login*).
 src/
   app/
     (auth)/login, (auth)/registro   Páginas públicas de acceso
-    (app)/dashboard                 Resumen: balance del mes, últimos movimientos, gastos por categoría
+    (app)/dashboard                 Resumen: balance del mes (y frente al anterior), últimos movimientos, gastos por categoría
     (app)/ingresos, (app)/egresos   Formulario + listado del mes (vista compartida)
+    (app)/month-nav.tsx             Navegador de meses (flechas y tarjeta del año) del Resumen, Ingresos y Egresos
     api/auth/[...all]               Endpoints de Better Auth
   db/schema/                        Tablas: auth (user, session…) y finanzas (category, transaction)
   lib/
     auth.ts, session.ts             Config de auth y Data Access Layer (único lugar que lee la sesión)
     money.ts, dates.ts              Formato/parsing de COP y "mes actual" según zona horaria
+    month-nav.ts                    El mes que pide la URL (?mes=) y los enlaces del navegador de meses
   modules/transactions/             Consultas, Server Actions y validación de movimientos
   modules/bot/                      Intérprete de mensajes (comandos fijos + Claude + validación) y flujo completo
   modules/whatsapp/                 Webhook: firma, payload, envío de mensajes y vinculación de números
@@ -219,6 +221,23 @@ scripts/seed.ts                     Categorías por defecto
   `MAX_AMOUNT` (100 mil millones).
 - **"Mes actual" según la zona horaria del usuario** (`America/Bogota` por defecto), para que un
   gasto del 31 a las 10 p. m. no caiga en el mes siguiente por usar UTC.
+- **Otros meses en el Resumen, Ingresos y Egresos** (`src/lib/month-nav.ts`).
+  - **En la URL:** `?mes=2026-09`, así que funcionan el botón de atrás y los enlaces. Sin él, o con un
+    mes inválido o futuro, se ve el actual. En el mes actual los enlaces van sin `?mes=`.
+  - **Cómo se elige:** cualquier mes, tenga o no movimientos.
+    - Con las flechas ‹ ›: la de la derecha se apaga en el mes actual (no hay movimientos futuros) y la
+      de la izquierda en enero de 2000 (`FIRST_MONTH`, el primero que acepta la URL).
+    - Con la tarjeta que se abre al tocar el nombre del mes: los 12 meses del año, con flechas para
+      cambiar de año sin navegar. Marca el mes que se ve, el actual y, con un punto, los que tienen
+      movimientos (`listActiveMonths`); los futuros están apagados.
+    - Con "Volver a este mes".
+  - **Se mantiene:** las pestañas y las tarjetas del Resumen llevan el mismo `?mes=`, y al editar,
+    borrar o deshacer un movimiento se vuelve a la lista del mes de su fecha.
+  - **El formulario** sigue proponiendo la fecha de hoy. Si el movimiento nuevo cae en otro mes que el
+    de la lista, el aviso dice en cuál quedó ("✓ Egreso registrado en octubre de 2026").
+  - **Comparación con el mes anterior** (`src/modules/transactions/month-comparison.ts`), en las tres
+    tarjetas del Resumen: el balance en plata ("$120.000,00 más que agosto") y los ingresos y egresos
+    en porcentaje ("15% más que agosto"). No aparece si el mes anterior no tuvo movimientos.
 - **Todas las consultas filtran por `userId`** obtenido de la sesión en el servidor; cada Server
   Action vuelve a validar la sesión.
 - **Borrado lógico** (`deleted_at`): permite deshacer.

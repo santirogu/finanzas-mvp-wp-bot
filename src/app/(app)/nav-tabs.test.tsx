@@ -1,8 +1,11 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-const navigation = vi.hoisted(() => ({ pathname: "/dashboard" }));
-vi.mock("next/navigation", () => ({ usePathname: () => navigation.pathname }));
+const navigation = vi.hoisted(() => ({ pathname: "/dashboard", search: "" }));
+vi.mock("next/navigation", () => ({
+  usePathname: () => navigation.pathname,
+  useSearchParams: () => new URLSearchParams(navigation.search),
+}));
 
 const { NavTabs, TabLinks } = await import("./nav-tabs");
 
@@ -35,6 +38,37 @@ describe("NavTabs", () => {
     render(<NavTabs />);
     for (const link of screen.getAllByRole("link")) expect(link).not.toHaveAttribute("aria-current");
   });
+});
+
+describe("NavTabs · el mes que se está viendo", () => {
+  afterEach(() => {
+    navigation.search = "";
+  });
+
+  it("de septiembre en el Resumen se pasa a los ingresos y egresos de septiembre (no al admin)", () => {
+    navigation.pathname = "/dashboard";
+    navigation.search = "mes=2026-09&otro=1";
+    render(<NavTabs showAdmin />);
+    expect(screen.getAllByRole("link").map((l) => l.getAttribute("href"))).toEqual([
+      "/dashboard?mes=2026-09",
+      "/ingresos?mes=2026-09",
+      "/egresos?mes=2026-09",
+      "/admin",
+    ]);
+  });
+
+  it.each(["mes=2026-13", "mes=septiembre", "mes=2026-09%26x%3D1", "otro=1"])(
+    "con %s no se lleva nada (solo un mes bien escrito)",
+    (search) => {
+      navigation.search = search;
+      render(<NavTabs />);
+      expect(screen.getAllByRole("link").map((l) => l.getAttribute("href"))).toEqual([
+        "/dashboard",
+        "/ingresos",
+        "/egresos",
+      ]);
+    },
+  );
 });
 
 describe("NavTabs · pestaña Admin", () => {

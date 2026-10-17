@@ -6,6 +6,8 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/db";
 import { transaction } from "@/db/schema";
+import { currentMonthRange, monthOf } from "@/lib/dates";
+import { monthHref } from "@/lib/month-nav";
 import { requireUser } from "@/lib/session";
 import { isCategoryAvailable, undoableSince } from "./queries";
 import { newTransactionSchema } from "./validation";
@@ -16,6 +18,8 @@ export type FormState = {
   fieldErrors?: Partial<Record<"amount" | "description" | "categoryId" | "occurredOn", string>>;
   // React reinicia el formulario tras cada envío; devolvemos lo escrito para no perderlo si hay error.
   values?: Record<string, string>;
+  /** La fecha del movimiento registrado: si cae en otro mes que el de la lista, el aviso dice en cuál. */
+  occurredOn?: string;
 };
 
 export async function createTransactionAction(
@@ -43,7 +47,11 @@ export async function createTransactionAction(
   });
 
   refresh();
-  return { ok: true, message: input.type === "income" ? "Ingreso registrado" : "Egreso registrado" };
+  return {
+    ok: true,
+    message: input.type === "income" ? "Ingreso registrado" : "Egreso registrado",
+    occurredOn: input.occurredOn,
+  };
 }
 
 /** Lee y valida los campos comunes del formulario de movimientos. */
@@ -103,11 +111,15 @@ export async function updateTransactionAction(
     .returning({ id: transaction.id });
   if (updated.length === 0) return { ok: false, message: "No encontramos ese movimiento", values };
 
-  redirect(input.type === "income" ? "/ingresos" : "/egresos");
+  redirect(listOf(input.type, input.occurredOn, user.timezone));
 }
 
-/** La lista de cada tipo: adonde vuelve el movimiento después de borrarlo o restaurarlo. */
-const listOf = (type: "income" | "expense") => (type === "income" ? "/ingresos" : "/egresos");
+/**
+ * La lista adonde vuelve un movimiento después de editarlo, borrarlo o restaurarlo: la de su tipo, en
+ * el mes de su fecha (`?mes=`, si no es el actual), con el aviso que pida `extra`.
+ */
+const listOf = (type: "income" | "expense", occurredOn: string, timezone: string, extra?: Record<string, string>) =>
+  monthHref(type === "income" ? "/ingresos" : "/egresos", monthOf(occurredOn), currentMonthRange(timezone), extra);
 
 export async function deleteTransactionAction(formData: FormData): Promise<void> {
   const user = await requireUser();
@@ -121,14 +133,14 @@ export async function deleteTransactionAction(formData: FormData): Promise<void>
     .where(
       and(eq(transaction.id, id.data), eq(transaction.userId, user.id), isNull(transaction.deletedAt)),
     )
-    .returning({ type: transaction.type });
+    .returning({ type: transaction.type, occurredOn: transaction.occurredOn });
   if (!deleted) {
     refresh();
     return;
   }
 
   // La lista muestra el aviso "Se borró… · Deshacer" (TransactionsView lee el id de la URL).
-  redirect(`${listOf(deleted.type)}?borrado=${id.data}`);
+  redirect(listOf(deleted.type, deleted.occurredOn, user.timezone, { borrado: id.data }));
 }
 
 /**
@@ -150,11 +162,11 @@ export async function restoreTransactionAction(formData: FormData): Promise<void
         gte(transaction.deletedAt, undoableSince(new Date())),
       ),
     )
-    .returning({ type: transaction.type });
+    .returning({ type: transaction.type, occurredOn: transaction.occurredOn });
   if (!restored) {
     refresh();
     return;
   }
 
-  redirect(`${listOf(restored.type)}?restaurado=${id.data}`);
+  redirect(listOf(restored.type, restored.occurredOn, user.timezone, { restaurado: id.data }));
 }

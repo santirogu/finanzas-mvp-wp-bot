@@ -2,10 +2,17 @@ import { z } from "zod";
 import { TransactionForm } from "@/components/transaction-form";
 import { TransactionList } from "@/components/transaction-list";
 import { TransactionNotice } from "@/components/transaction-notice";
-import { currentMonthRange, formatMonthLabel, todayInTimezone } from "@/lib/dates";
+import { compareMonths, currentMonthRange, todayInTimezone } from "@/lib/dates";
 import { formatMoney, sumAmounts } from "@/lib/money";
+import { inMonthPhrase, monthHref, monthNav, selectedMonth } from "@/lib/month-nav";
 import { requireUser } from "@/lib/session";
-import { getTransactionNotice, listCategories, listTransactions } from "@/modules/transactions/queries";
+import {
+  getTransactionNotice,
+  listActiveMonths,
+  listCategories,
+  listTransactions,
+} from "@/modules/transactions/queries";
+import { MonthNav } from "./month-nav";
 
 type Params = Record<string, string | string[] | undefined>;
 
@@ -18,24 +25,29 @@ function noticeFrom(params: Params) {
   return null;
 }
 
-// Vista compartida por las pestañas de Ingresos y Egresos.
+// Vista compartida por las pestañas de Ingresos y Egresos, en el mes que pide la URL (?mes=).
 export async function TransactionsView({ type, params = {} }: { type: "income" | "expense"; params?: Params }) {
   const user = await requireUser();
-  const range = currentMonthRange(user.timezone);
+  const current = currentMonthRange(user.timezone);
+  const range = selectedMonth(params.mes, current);
   const requested = noticeFrom(params);
-  const [items, categories, notice] = await Promise.all([
+  const [items, categories, notice, activeMonths] = await Promise.all([
     listTransactions(user.id, range, { type }),
     listCategories(user.id, type),
     requested ? getTransactionNotice(user.id, requested.id, requested.kind) : null,
+    listActiveMonths(user.id),
   ]);
   const total = sumAmounts(items.map((t) => t.amount));
   const isIncome = type === "income";
+  const path = isIncome ? "/ingresos" : "/egresos";
+  const inMonth = inMonthPhrase(range, current);
+  const noun = isIncome ? "ingresos" : "egresos";
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
-          <p className="text-sm text-muted">{formatMonthLabel(range)}</p>
+          <MonthNav nav={monthNav(path, range, current, activeMonths)} />
           <h1 className="text-2xl font-semibold tracking-tight">
             {isIncome ? "Ingresos" : "Egresos"}
           </h1>
@@ -49,25 +61,32 @@ export async function TransactionsView({ type, params = {} }: { type: "income" |
           rejilla más que la pantalla del celular (e2e/diseno-tactil.spec.ts). */}
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-5">
         <div className="lg:col-span-2">
-          <TransactionForm type={type} categories={categories} today={todayInTimezone(user.timezone)} />
+          <TransactionForm
+            type={type}
+            categories={categories}
+            today={todayInTimezone(user.timezone)}
+            listMonth={range}
+          />
         </div>
         <section className="card lg:col-span-3">
           <h2 className="border-b border-border px-4 py-3 font-semibold">
-            {items.length} {items.length === 1 ? "movimiento" : "movimientos"} este mes
+            {items.length} {items.length === 1 ? "movimiento" : "movimientos"} {inMonth}
           </h2>
           {requested && notice && (
             <TransactionNotice
               kind={requested.kind}
               id={notice.id}
               description={notice.description}
-              closeHref={isIncome ? "/ingresos" : "/egresos"}
+              closeHref={monthHref(path, range, current)}
             />
           )}
           <TransactionList
             items={items}
             allowDelete
             emptyMessage={
-              isIncome ? "No has registrado ingresos este mes." : "No has registrado egresos este mes."
+              compareMonths(range, current) === 0
+                ? `No has registrado ${noun} este mes.`
+                : `No registraste ${noun} ${inMonth}.`
             }
           />
         </section>

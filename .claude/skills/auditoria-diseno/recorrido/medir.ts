@@ -195,6 +195,11 @@ export function medirDiseno({ tactil }: { tactil: boolean }): Problema[] {
   }
 
   // 6. Elementos tapados por otro (un encabezado fijo, una barra): se revisa toda la página, de a una pantalla.
+  // Lo que queda debajo de una tarjeta abierta por su botón (aria-expanded, como la de los meses) no
+  // cuenta: la tarjeta lo tapa a propósito y se cierra al tocar fuera.
+  const abiertas = [...document.querySelectorAll('[aria-expanded="true"][aria-controls]')]
+    .map((boton) => document.getElementById(boton.getAttribute("aria-controls") ?? ""))
+    .filter((panel): panel is HTMLElement => Boolean(panel));
   const tapados = new Map<Element, Element>();
   const inicioY = window.scrollY;
   const altoPagina = document.documentElement.scrollHeight;
@@ -206,6 +211,7 @@ export function medirDiseno({ tactil }: { tactil: boolean }): Problema[] {
       const { x, y: cy } = centro(r);
       if (x < 0 || x > ancho || cy < 0 || cy > alto) continue;
       const arriba = document.elementFromPoint(x, cy);
+      if (abiertas.some((panel) => panel.contains(arriba) && !panel.contains(el))) continue;
       if (arriba && arriba !== el && !el.contains(arriba) && !arriba.contains(el) && !arriba.closest("label")?.contains(el)) tapados.set(el, arriba);
     }
   }

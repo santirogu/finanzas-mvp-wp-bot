@@ -2,6 +2,7 @@ import { randomInt, randomUUID } from "node:crypto";
 import { expect, type Page } from "@playwright/test";
 import postgres from "postgres";
 import { heading, newAdmin, setUpTwoFactor } from "./admin";
+import { monthOf, monthParam, shiftMonth, todayInTimezone } from "../src/lib/dates";
 import { e2eDatabaseUrl } from "./database-url";
 import { addTransaction, openTab, test, visible } from "./helpers";
 
@@ -116,6 +117,7 @@ async function open(page: Page, path: string) {
 
 test("en pantallas táctiles las páginas caben y los campos no hacen zoom @tactil", async ({ page }) => {
   test.slow();
+  const previousMonth = monthParam(shiftMonth(monthOf(todayInTimezone("America/Bogota")), -1));
   const id = String(randomInt(100_000, 999_999));
   // Lo más largo que se puede escribir: categorías de 40 caracteres y descripciones de 140.
   const category = `Suscripciones y servicios digitales ${id}`.slice(0, 40);
@@ -149,12 +151,23 @@ test("en pantallas táctiles las páginas caben y los campos no hacen zoom @tact
     await openTab(page, "Ingresos");
     await addTransaction(page, { amount: "99999999999,99", description });
     await expect(visible(page.getByText("✓ Ingreso registrado"))).toBeVisible();
+    // Uno del mes anterior: el Resumen compara (el balance cambia en el máximo) y la tarjeta del año marca dos meses.
+    await openTab(page, "Egresos");
+    await addTransaction(page, { amount: "99999999999,99", description, date: `${previousMonth}-28` });
+    await expect(visible(page.getByText(/^✓ Egreso registrado en /))).toBeVisible();
   });
 
   await test.step("las páginas de la persona", async () => {
-    for (const path of ["/dashboard", "/ingresos", "/egresos", "/cuenta"]) {
+    for (const path of ["/dashboard", "/ingresos", "/egresos", "/cuenta", `/dashboard?mes=${previousMonth}`, `/egresos?mes=${previousMonth}`]) {
       await open(page, path);
       await expectFitsOnScreens(page, path);
+    }
+    // La tarjeta para elegir el mes, abierta, en el Resumen y en una lista.
+    for (const path of [`/dashboard?mes=${previousMonth}`, `/egresos?mes=${previousMonth}`]) {
+      await open(page, path);
+      await visible(page.getByRole("button", { expanded: false }).filter({ hasText: / de \d{4}$/ })).click();
+      await expect(visible(page.getByRole("group", { name: "Elegir un mes" }))).toBeVisible();
+      await expectFitsOnScreens(page, `tarjeta de meses en ${path}`);
     }
     await open(page, "/egresos");
     await visible(page.getByRole("link", { name: `Editar ${description}` })).click();

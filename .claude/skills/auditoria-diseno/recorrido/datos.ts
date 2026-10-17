@@ -3,6 +3,7 @@ import { expect, type Browser, type BrowserContext, type Page } from "@playwrigh
 import { newAdmin, setUpTwoFactor } from "../../../../e2e/admin";
 import { addTransaction, fakeIp, register, uniqueEmail, visible } from "../../../../e2e/helpers";
 import { newPhone, nthReply, sendWhatsApp } from "../../../../e2e/whatsapp";
+import { monthOf, monthParam, shiftMonth, todayInTimezone } from "../../../../src/lib/dates";
 
 // Las cuentas de prueba del recorrido, creadas como lo haría una persona (desde la app, en la base
 // de las E2E): una vacía, una con datos normales y WhatsApp vinculado, y un admin con los textos y
@@ -24,7 +25,10 @@ export type Datos = {
   borrado?: string;
 };
 
-type Movimiento = { amount: string; description: string; category?: string };
+type Movimiento = { amount: string; description: string; category?: string; date?: string };
+
+/** El `?mes=` del mes anterior (el Resumen lo compara con el actual y se puede navegar). */
+export const MES_ANTERIOR = monthParam(shiftMonth(monthOf(todayInTimezone("America/Bogota")), -1));
 
 export const opcionesBase = (baseURL: string) => ({
   baseURL,
@@ -36,6 +40,13 @@ export const opcionesBase = (baseURL: string) => ({
 const INGRESOS: Movimiento[] = [
   { amount: "3678748,50", description: "Salario quincenal", category: "Salario" },
   { amount: "450000", description: "Venta de la bicicleta", category: "Ventas" },
+];
+
+// Del mes anterior: el Resumen compara cada total con ese mes y la tarjeta del año marca dos.
+const ANTERIORES: { ruta: "/ingresos" | "/egresos"; movimiento: Movimiento }[] = [
+  { ruta: "/ingresos", movimiento: { amount: "3678748,50", description: "Salario quincenal", category: "Salario", date: `${MES_ANTERIOR}-15` } },
+  { ruta: "/egresos", movimiento: { amount: "1800000", description: "Arriendo del apartamento", category: "Vivienda", date: `${MES_ANTERIOR}-05` } },
+  { ruta: "/egresos", movimiento: { amount: "742100", description: "Mercado del mes", category: "Mercado", date: `${MES_ANTERIOR}-20` } },
 ];
 
 const EGRESOS: Movimiento[] = [
@@ -57,6 +68,15 @@ async function registrar(page: Page, ruta: "/ingresos" | "/egresos", movimientos
     await expect(
       visible(page.getByRole("heading", { name: `${total} ${total === 1 ? "movimiento" : "movimientos"} este mes` })),
     ).toBeVisible();
+  }
+}
+
+/** Registra movimientos de otro mes: la lista de este mes no cambia, el aviso dice en qué mes quedaron. */
+async function registrarAnteriores(page: Page, movimientos: typeof ANTERIORES) {
+  for (const { ruta, movimiento } of movimientos) {
+    await page.goto(ruta);
+    await addTransaction(page, movimiento);
+    await expect(visible(page.getByText(/^✓ (Ingreso|Egreso) registrado en /))).toBeVisible();
   }
 }
 
@@ -88,6 +108,7 @@ async function conDatos(browser: Browser, baseURL: string, datos: Datos) {
   datos.correos.datos = email;
   await registrar(page, "/ingresos", INGRESOS);
   await registrar(page, "/egresos", EGRESOS);
+  await registrarAnteriores(page, ANTERIORES);
 
   // WhatsApp vinculado y dos movimientos registrados por el bot (con el Claude falso de las E2E).
   await page.goto("/dashboard");
@@ -136,6 +157,10 @@ async function admin(browser: Browser, baseURL: string, datos: Datos) {
   // Muchos movimientos: la lista larga y todas las categorías en el resumen.
   const muchos = Array.from({ length: 24 }, (_, i) => EGRESOS[i % EGRESOS.length]);
   await registrar(page, "/egresos", [{ amount: maximo, description: larga, category: categoria }, ...muchos]);
+  // Un egreso máximo el mes anterior: la comparación del balance es la más larga posible.
+  await registrarAnteriores(page, [
+    { ruta: "/egresos", movimiento: { amount: maximo, description: larga, category: categoria, date: `${MES_ANTERIOR}-28` } },
+  ]);
   datos.editar.admin = await primeraEdicion(page);
 
   if (datos.correos.datos) {

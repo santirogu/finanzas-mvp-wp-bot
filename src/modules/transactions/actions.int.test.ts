@@ -1,5 +1,5 @@
 import { eq, inArray, sql } from "drizzle-orm";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "@/db";
 import { category, transaction } from "@/db/schema";
 import type { CurrentUser } from "@/lib/session";
@@ -52,6 +52,15 @@ const validExpense = {
   occurredOn: "2026-10-13",
 };
 
+// Hoy es el 20 de octubre de 2026 en Bogotá: un movimiento de octubre vuelve a su lista sin ?mes= y
+// uno de septiembre, a la de septiembre (?mes=2026-09). Solo se congela la fecha, no los timers.
+beforeAll(() => {
+  vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-10-20T17:00:00Z") });
+});
+afterAll(() => {
+  vi.useRealTimers();
+});
+
 beforeEach(() => {
   session.current = null;
 });
@@ -62,7 +71,7 @@ describe("createTransactionAction", () => {
 
     const state = await createTransactionAction({ ok: false }, form(validExpense));
 
-    expect(state).toEqual({ ok: true, message: "Egreso registrado" });
+    expect(state).toEqual({ ok: true, message: "Egreso registrado", occurredOn: "2026-10-13" });
     expect(await activeTransactions(user.id)).toEqual([
       expect.objectContaining({
         type: "expense",
@@ -213,6 +222,16 @@ describe("deleteTransactionAction", () => {
     await expect(deleteTransactionAction(form({ id: tx.id }))).rejects.toThrow(`NEXT_REDIRECT /ingresos?borrado=${tx.id}`);
   });
 
+  it("uno de un mes anterior vuelve a la lista de ese mes", async () => {
+    const user = await signIn();
+    await createTransactionAction({ ok: false }, form({ ...validExpense, occurredOn: "2026-09-30" }));
+    const [tx] = await activeTransactions(user.id);
+
+    await expect(deleteTransactionAction(form({ id: tx.id }))).rejects.toThrow(
+      `NEXT_REDIRECT /egresos?mes=2026-09&borrado=${tx.id}`,
+    );
+  });
+
   it("no puede eliminar movimientos de otro usuario", async () => {
     const owner = await signIn();
     await createTransactionAction({ ok: false }, form(validExpense));
@@ -256,6 +275,17 @@ describe("restoreTransactionAction", () => {
     await expect(restoreTransactionAction(form({ id: tx.id }))).rejects.toThrow(`NEXT_REDIRECT /egresos?restaurado=${tx.id}`);
 
     expect((await activeTransactions(user.id)).map((t) => t.id)).toEqual([tx.id]);
+  });
+
+  it("uno de un mes anterior vuelve a la lista de ese mes", async () => {
+    const user = await signIn();
+    await createTransactionAction({ ok: false }, form({ ...validExpense, type: "income", occurredOn: "2025-12-31" }));
+    const [tx] = await activeTransactions(user.id);
+    await expect(deleteTransactionAction(form({ id: tx.id }))).rejects.toThrow("NEXT_REDIRECT");
+
+    await expect(restoreTransactionAction(form({ id: tx.id }))).rejects.toThrow(
+      `NEXT_REDIRECT /ingresos?mes=2025-12&restaurado=${tx.id}`,
+    );
   });
 
   it("no restaura movimientos de otro usuario", async () => {
@@ -304,7 +334,7 @@ describe("updateTransactionAction", () => {
 
     await expect(
       updateTransactionAction({ ok: false }, editForm(tx.id, { categoryId: ropa.id, occurredOn: "2026-10-01" })),
-    ).rejects.toThrow("NEXT_REDIRECT /egresos");
+    ).rejects.toThrow(/^NEXT_REDIRECT \/egresos$/);
 
     expect(await activeTransactions(user.id)).toEqual([
       expect.objectContaining({
@@ -327,6 +357,14 @@ describe("updateTransactionAction", () => {
     );
 
     expect(await activeTransactions(user.id)).toEqual([expect.objectContaining({ id: tx.id, amount: 1250000.05 })]);
+  });
+
+  it("si la fecha queda en otro mes, vuelve a la lista de ese mes", async () => {
+    const { tx } = await ownExpense();
+
+    await expect(updateTransactionAction({ ok: false }, editForm(tx.id, { occurredOn: "2026-09-28" }))).rejects.toThrow(
+      "NEXT_REDIRECT /egresos?mes=2026-09",
+    );
   });
 
   it("un ingreso vuelve a la lista de ingresos", async () => {
