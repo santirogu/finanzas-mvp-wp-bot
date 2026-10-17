@@ -27,6 +27,31 @@ export const MAX_TRANSACTIONS_PER_MESSAGE = 20;
 /** Largo máximo de la respuesta libre del modelo (cuando no hay movimientos). */
 export const MAX_REPLY_LENGTH = 300;
 
+/**
+ * El tope mensual de tokens de Claude, de todas las cuentas (opcional: sin él no hay tope). Con
+ * ~1.800 tokens por mensaje, 10.000 son unos 5 mensajes y 100 millones, unos 55.000. Cuenta el mes en
+ * hora de Colombia (la de la administración).
+ */
+export const MONTHLY_TOKEN_BOUNDS = { min: 10_000, max: 100_000_000 } as const;
+export const TOKEN_BUDGET_TIMEZONE = "America/Bogota";
+
+/** ¿Este mes ya se usaron los tokens del tope? Sin tope (null), nunca. */
+export const monthlyBudgetReached = (limit: number | null, used: number) => limit !== null && used >= limit;
+
+export type MonthlyLimitInput = { ok: true; limit: number | null } | { ok: false; error: string };
+
+/** El tope que escribió el admin: vacío es sin tope; si no, un entero dentro de MONTHLY_TOKEN_BOUNDS. */
+export function parseMonthlyTokenLimit(raw: string): MonthlyLimitInput {
+  const text = raw.replace(/[\s.]/g, "");
+  if (text === "") return { ok: true, limit: null };
+  if (!/^\d+$/.test(text)) return { ok: false, error: "Escribe cuántos tokens al mes, en números (o déjalo vacío para no tener tope)." };
+  const limit = Number(text);
+  const { min, max } = MONTHLY_TOKEN_BOUNDS;
+  const count = new Intl.NumberFormat("es-CO").format;
+  if (limit < min || limit > max) return { ok: false, error: `El tope mensual va de ${count(min)} a ${count(max)} tokens.` };
+  return { ok: true, limit };
+}
+
 export const HOUR_MS = 60 * 60 * 1000;
 export const DAY_MS = 24 * HOUR_MS;
 

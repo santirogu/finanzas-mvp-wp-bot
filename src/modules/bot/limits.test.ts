@@ -7,8 +7,12 @@ import {
   LINK_LIMITS,
   MAX_REPLY_LENGTH,
   MAX_TRANSACTIONS_PER_MESSAGE,
+  MONTHLY_TOKEN_BOUNDS,
+  TOKEN_BUDGET_TIMEZONE,
   aiQuotaExceeded,
+  monthlyBudgetReached,
   parseAiLimits,
+  parseMonthlyTokenLimit,
 } from "./limits";
 
 describe("límites del bot", () => {
@@ -73,5 +77,41 @@ describe("parseAiLimits", () => {
 
   it("el de una hora puede ser igual al del día", () => {
     expect(parseAiLimits({ perHour: "40", perDay: "40" })).toEqual({ ok: true, limits: { perHour: 40, perDay: 40 } });
+  });
+});
+
+describe("el tope mensual de tokens", () => {
+  it("los rangos y el mes, en hora de Colombia", () => {
+    expect(MONTHLY_TOKEN_BOUNDS).toEqual({ min: 10_000, max: 100_000_000 });
+    expect(TOKEN_BUDGET_TIMEZONE).toBe("America/Bogota");
+  });
+
+  it.each([
+    [null, 5_000_000, false],
+    [1000, 999, false],
+    [1000, 1000, true],
+    [1000, 1001, true],
+  ])("tope %s con %d usados → alcanzado: %s", (limit, used, reached) => {
+    expect(monthlyBudgetReached(limit, used)).toBe(reached);
+  });
+
+  it.each([
+    ["", null],
+    ["   ", null],
+    ["10000", 10_000],
+    ["2.000.000", 2_000_000],
+    [" 100 000 000 ", 100_000_000],
+  ])("%j → %s", (raw, limit) => {
+    expect(parseMonthlyTokenLimit(raw)).toEqual({ ok: true, limit });
+  });
+
+  it.each([
+    ["dos millones", "Escribe cuántos tokens al mes, en números (o déjalo vacío para no tener tope)."],
+    ["2,5", "Escribe cuántos tokens al mes, en números (o déjalo vacío para no tener tope)."],
+    ["-5", "Escribe cuántos tokens al mes, en números (o déjalo vacío para no tener tope)."],
+    ["9999", "El tope mensual va de 10.000 a 100.000.000 tokens."],
+    ["100000001", "El tope mensual va de 10.000 a 100.000.000 tokens."],
+  ])("%j: %s", (raw, error) => {
+    expect(parseMonthlyTokenLimit(raw)).toEqual({ ok: false, error });
   });
 });

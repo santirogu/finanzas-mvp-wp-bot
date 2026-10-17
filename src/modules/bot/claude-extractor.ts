@@ -41,8 +41,9 @@ export type ExtractionResult =
   | {
       ok: false;
       // rate_limited: la cuenta usó su cupo de mensajes interpretados (no se llamó a Claude).
-      // paused: el admin pausó Claude en /admin/bot (tampoco se llamó).
-      reason: "not_configured" | "refusal" | "invalid_output" | "api_error" | "rate_limited" | "paused";
+      // paused: el admin pausó Claude en /admin/bot; monthly_limit: se usó el tope mensual de tokens
+      // (en los dos casos tampoco se llamó).
+      reason: "not_configured" | "refusal" | "invalid_output" | "api_error" | "rate_limited" | "paused" | "monthly_limit";
       detail?: string;
       usage?: Usage;
     };

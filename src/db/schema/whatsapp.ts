@@ -68,11 +68,15 @@ export const botSetting = pgTable(
     // Tope de mensajes interpretados con Claude por cuenta (src/modules/bot/ai-quota.ts).
     aiPerHour: integer("ai_per_hour").notNull(),
     aiPerDay: integer("ai_per_day").notNull(),
+    // Tokens de Claude al mes, de todas las cuentas (null: sin tope). Al llegar, el bot deja de usar
+    // Claude hasta el mes siguiente, en hora de Colombia (src/modules/bot/token-budget.ts).
+    monthlyTokenLimit: integer("monthly_token_limit"),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
     updatedBy: text("updated_by").references(() => user.id, { onDelete: "set null" }),
   },
   (t) => [
     check("bot_setting_single_row", sql`${t.id} = 1`),
     check("bot_setting_ai_limits", sql`${t.aiPerHour} > 0 and ${t.aiPerHour} <= ${t.aiPerDay}`),
+    check("bot_setting_monthly_token_limit", sql`${t.monthlyTokenLimit} is null or ${t.monthlyTokenLimit} > 0`),
   ],
 );

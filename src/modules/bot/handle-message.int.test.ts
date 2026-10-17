@@ -208,6 +208,47 @@ describe("handleIncomingMessage · configuración del admin (/admin/bot)", () =>
     expect(await activeTransactions(user.id)).toHaveLength(1);
   });
 
+  it("con el tope mensual de tokens alcanzado no llama a Claude: pide usar la web, y los comandos siguen", async () => {
+    const user = await linkedUser();
+    await db.insert(botSetting).values({ id: 1, aiPerHour: 20, aiPerDay: 100, monthlyTokenLimit: 10_000 });
+    // Lo que ya se usó este mes, de otra cuenta.
+    await db.insert(whatsappMessage).values({
+      id: "wamid.usado.mes",
+      phone: "573009998877",
+      body: "x",
+      intent: { kind: "reply", usage: { model: "claude-haiku-5-5", inputTokens: 9_900, outputTokens: 100 } },
+      aiRequestedAt: new Date(),
+    });
+    const extractor = fakeExtractor(ALMUERZO);
+    const { deps: d, sender } = deps(extractor);
+
+    const free = incoming("almuerzo 20 mil");
+    await handleIncomingMessage(free, d);
+    expect(extractor.calls).toBe(0);
+    expect(sender.sent[0].body).toBe(replies.aiMonthlyLimitReply(APP_URL));
+    expect(await loggedMessage(free.id)).toMatchObject({
+      status: "processed",
+      aiRequestedAt: null,
+      intent: { kind: "error", reason: "monthly_limit" },
+    });
+    expect(await activeTransactions(user.id)).toEqual([]);
+    await handleIncomingMessage(incoming("balance"), d);
+    expect(sender.sent[1].body).toContain("Aún no tienes movimientos");
+  });
+
+  it("por debajo del tope mensual, o sin tope, llama a Claude como siempre", async () => {
+    await linkedUser();
+    await db.insert(botSetting).values({ id: 1, aiPerHour: 20, aiPerDay: 100, monthlyTokenLimit: 10_000 });
+    const extractor = fakeExtractor(ALMUERZO);
+    const { deps: d } = deps(extractor);
+    await handleIncomingMessage(incoming("almuerzo 20 mil"), d);
+    expect(extractor.calls).toBe(1);
+
+    await db.update(botSetting).set({ monthlyTokenLimit: null });
+    await handleIncomingMessage(incoming("almuerzo 20 mil"), d);
+    expect(extractor.calls).toBe(2);
+  });
+
   it("usa los topes que dejó el admin", async () => {
     await linkedUser();
     await db.insert(botSetting).values({ id: 1, claudePaused: false, aiPerHour: 1, aiPerDay: 5 });

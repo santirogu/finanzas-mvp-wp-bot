@@ -66,6 +66,8 @@ export const ADMIN_EVENT_TYPES = [
   "bot_claude_paused",
   "bot_claude_resumed",
   "bot_limits_changed",
+  "bot_monthly_limit_changed",
+  "bot_replies_resent",
 ] as const;
 
 /** El chip "Acciones del admin": todo lo que hizo un admin, sea del tipo que sea. */
@@ -202,6 +204,14 @@ export function eventDetail(details: AccountEventDetails): string {
     const count = new Intl.NumberFormat("es-CO").format;
     const limits = (l: { perHour: number; perDay: number }) => `${count(l.perHour)} por hora y ${count(l.perDay)} por día`;
     parts.push(`ahora ${limits(details.limits)}${details.previousLimits ? ` (antes ${limits(details.previousLimits)})` : ""}`);
+  }
+  if ("monthlyLimit" in details) {
+    const count = new Intl.NumberFormat("es-CO").format;
+    const limit = (value: number | null | undefined) => (value == null ? "sin tope" : `${count(value)} tokens al mes`);
+    parts.push(`ahora ${limit(details.monthlyLimit)} (antes ${limit(details.previousMonthlyLimit)})`);
+  }
+  if (details.resent !== undefined) {
+    parts.push(`${details.resent} ${details.resent === 1 ? "reenviada" : "reenviadas"}${details.failed ? ` · ${details.failed} no ${details.failed === 1 ? "salió" : "salieron"} otra vez` : ""}`);
   }
   return parts.join(" · ");
 }

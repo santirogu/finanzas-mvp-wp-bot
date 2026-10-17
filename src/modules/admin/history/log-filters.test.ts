@@ -72,6 +72,8 @@ describe("configuración", () => {
       "bot_claude_paused",
       "bot_claude_resumed",
       "bot_limits_changed",
+      "bot_monthly_limit_changed",
+      "bot_replies_resent",
     ]);
     expect(DATE_PRESETS.map((p) => DATE_PRESET_LABELS[p])).toEqual([
       "Todo",
@@ -390,6 +392,12 @@ describe("formatos", () => {
       "ahora 30 por hora y 1.500 por día (antes 20 por hora y 100 por día)",
     ],
     [{ limits: { perHour: 5, perDay: 50 } }, "ahora 5 por hora y 50 por día"],
+    // El tope mensual de tokens (null: sin tope) y el reenvío de respuestas.
+    [{ monthlyLimit: 2_000_000, previousMonthlyLimit: null }, "ahora 2.000.000 tokens al mes (antes sin tope)"],
+    [{ monthlyLimit: null, previousMonthlyLimit: 500_000 }, "ahora sin tope (antes 500.000 tokens al mes)"],
+    [{ resent: 3, failed: 0 }, "3 reenviadas"],
+    [{ resent: 1, failed: 1 }, "1 reenviada · 1 no salió otra vez"],
+    [{ resent: 0, failed: 2 }, "0 reenviadas · 2 no salieron otra vez"],
   ])("eventDetail(%j) = %j", (details, expected) => {
     expect(eventDetail(details)).toBe(expected);
   });

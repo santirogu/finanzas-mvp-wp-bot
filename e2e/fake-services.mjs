@@ -10,6 +10,7 @@
 //   GET  /graph/<versión>/<teléfono>           → el número del bot (Probar conexiones en /admin/bot)
 //   GET  /anthropic/v1/models/<modelo>         → el modelo del bot (Probar conexiones)
 //   POST /fallar?servicio=whatsapp|claude      → la próxima consulta de ese servicio responde 401
+//   POST /fallar?servicio=envio&to=<número>     → el próximo mensaje a ese número no sale (400 de Meta)
 //   GET  /salud                                → para saber que ya arrancó
 
 import { createServer } from "node:http";
@@ -78,6 +79,12 @@ const server = createServer(async (request, response) => {
 
     if (request.method === "POST" && /^\/graph\/[^/]+\/[^/]+\/messages$/.test(url.pathname)) {
       const body = JSON.parse(await readBody(request));
+      // Lo que responde Meta con un número fuera de la lista de prueba (solo ese número, una vez).
+      if (failNext.delete(`envio:${body.to}`)) {
+        return json(response, 400, {
+          error: { message: "(#131030) Recipient phone number not in allowed list", type: "OAuthException", code: 131030 },
+        });
+      }
       sent.push({ to: body.to, text: body.text?.body ?? "", at: Date.now() });
       return json(response, 200, {
         messaging_product: "whatsapp",
@@ -100,7 +107,8 @@ const server = createServer(async (request, response) => {
     if (request.method === "GET" && url.pathname === "/claude") return json(response, 200, claudeRequests);
 
     if (request.method === "POST" && url.pathname === "/fallar") {
-      failNext.add(url.searchParams.get("servicio"));
+      const service = url.searchParams.get("servicio");
+      failNext.add(service === "envio" ? `envio:${url.searchParams.get("to")}` : service);
       return json(response, 200, { ok: true });
     }
 

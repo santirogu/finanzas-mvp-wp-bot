@@ -101,11 +101,12 @@ describe("botActivity", () => {
     expect(all.outcomes).toMatchObject({ vinculacion_fallida: 1, sin_vincular: 1, no_texto: 1 });
   });
 
-  it("los mensajes que llegaron con Claude en pausa cuentan aparte, sin llamada a Claude", async () => {
+  it("los mensajes que llegaron con Claude en pausa (o en el tope mensual) cuentan aparte, sin llamada a Claude", async () => {
     await message({ intent: { kind: "error", reason: "paused" } });
     await message({ intent: { kind: "error", reason: "paused" } });
+    await message({ intent: { kind: "error", reason: "monthly_limit" } });
     const { outcomes, claude } = await activity({ fecha: "hoy" });
-    expect(outcomes).toMatchObject({ pausa: 2, error: 0, tope_claude: 0 });
+    expect(outcomes).toMatchObject({ pausa: 2, tope_mensual: 1, error: 0, tope_claude: 0 });
     expect(claude.calls).toBe(0);
   });
 
@@ -221,6 +222,6 @@ describe("botActivity", () => {
 describe("botSummary", () => {
   it("los mensajes y errores de hoy", async () => {
     await seed();
-    expect(await botSummary(TODAY)).toEqual({ today: 14, failedToday: 2, claudePaused: false });
+    expect(await botSummary(TODAY)).toEqual({ today: 14, failedToday: 2, claudePaused: false, monthlyLimitReached: false });
   });
 });

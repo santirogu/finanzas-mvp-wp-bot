@@ -21,6 +21,8 @@ export const accountEventType = pgEnum("account_event_type", [
   "bot_claude_paused",
   "bot_claude_resumed",
   "bot_limits_changed",
+  "bot_monthly_limit_changed",
+  "bot_replies_resent",
 ]);
 
 /** Detalle de un evento: el motivo de una desvinculación o de un intento fallido. */
@@ -35,6 +37,12 @@ export type AccountEventDetails = {
   /** Los topes de Claude por cuenta que dejó el admin, y los de antes (bot_limits_changed). */
   limits?: { perHour: number; perDay: number };
   previousLimits?: { perHour: number; perDay: number };
+  /** El tope mensual de tokens que dejó el admin, y el de antes; null: sin tope (bot_monthly_limit_changed). */
+  monthlyLimit?: number | null;
+  previousMonthlyLimit?: number | null;
+  /** Cuántas respuestas reenvió el admin y cuántas no salieron otra vez (bot_replies_resent). */
+  resent?: number;
+  failed?: number;
 };
 
 export const accountEvent = pgTable(

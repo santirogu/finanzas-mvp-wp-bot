@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { monthRange } from "@/lib/dates";
 import {
+  aiMonthlyLimitReply,
   aiPausedReply,
   aiRateLimitedReply,
   aiUnavailableReply,
@@ -191,6 +192,12 @@ describe("textos fijos del bot", () => {
   it("con Claude en pausa (/admin/bot): la web y los comandos que siguen", () => {
     expect(aiPausedReply("https://finanzas.app")).toBe(
       "Por ahora no puedo entender mensajes escritos libremente 🛠️ Registra tus movimientos en la web: https://finanzas.app/dashboard. *balance*, *deshacer* y *ayuda* siguen funcionando.",
+    );
+  });
+
+  it("con el tope mensual de tokens alcanzado: lo mismo que en pausa", () => {
+    expect(aiMonthlyLimitReply("https://finanzas.app")).toBe(
+      "Este mes ya usé todo mi cupo para entender mensajes escritos libremente 🛠️ Registra tus movimientos en la web: https://finanzas.app/dashboard. *balance*, *deshacer* y *ayuda* siguen funcionando.",
     );
   });
 

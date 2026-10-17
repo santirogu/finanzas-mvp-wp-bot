@@ -1,6 +1,10 @@
+import { randomUUID } from "node:crypto";
 import { expect, type Browser, type Page } from "@playwright/test";
+import postgres from "postgres";
 import { totp } from "../test/totp";
 import { heading, newAdmin, seriousViolations, setUpTwoFactor, wrongCode } from "./admin";
+import { e2eDatabaseUrl } from "./database-url";
+import { FAKE_SERVICES_URL } from "./fake-config";
 import { fakeIp, register, test, visible } from "./helpers";
 import { newPhone, nthReply, sendWhatsApp } from "./whatsapp";
 
@@ -28,10 +32,18 @@ async function betoWithWhatsApp(browser: Browser, request: Parameters<typeof sen
   await page.context().close();
   let replies = 1;
   /** Beto escribe y devuelve lo que le respondió el bot. */
-  return async (text: string) => {
+  const say = async (text: string) => {
     await sendWhatsApp(request, phone, text);
     return nthReply(request, phone, ++replies);
   };
+  /** La próxima respuesta a Beto no sale (el WhatsApp falso responde como Meta con un número no autorizado). */
+  const nextReplyFails = async (text: string) => {
+    await request.post(`${FAKE_SERVICES_URL}/fallar?servicio=envio&to=${phone}`);
+    await sendWhatsApp(request, phone, text);
+  };
+  /** La respuesta que le llegó después de un reenvío. */
+  const resentReply = () => nthReply(request, phone, ++replies);
+  return Object.assign(say, { phone, nextReplyFails, resentReply });
 }
 
 async function adminOnBot(page: Page) {
@@ -110,7 +122,7 @@ test("cambiar los topes: fuera de rango avisa en su campo; con 1 por hora, el se
   const code = codeFor(secret);
 
   await test.step("un tope fuera de rango se marca en su campo, sin gastar el código", async () => {
-    await settings(page).getByRole("button", { name: "Cambiar" }).click();
+    await settings(page).getByRole("button", { name: "Cambiar los topes por cuenta" }).click();
     await expect(dialog(page).getByLabel("Por hora")).toHaveValue("20");
     await dialog(page).getByLabel("Por día").fill("3000");
     await confirmWith(page, code, "Guardar topes");
@@ -144,8 +156,88 @@ test("cambiar los topes: fuera de rango avisa en su campo; con 1 por hora, el se
 
   // Los de siempre otra vez, por si alguien corre más pruebas sobre esta misma base.
   await page.goto("/admin/bot");
-  await settings(page).getByRole("button", { name: "Cambiar" }).click();
+  await settings(page).getByRole("button", { name: "Cambiar los topes por cuenta" }).click();
   await dialog(page).getByLabel("Por hora").fill("20");
   await confirmWith(page, codeFor(secret, 1), "Guardar topes");
   await expect(settings(page)).toContainText("20 por hora y 100 por día");
+});
+
+test("el tope mensual de tokens: al alcanzarlo, el bot deja de usar Claude hasta el mes siguiente", async ({ page, browser, request }) => {
+  const beto = await betoWithWhatsApp(browser, request);
+  // Lo que ya se usó este mes, de otra cuenta (el Claude falso cobra apenas 120 tokens por mensaje).
+  const sql = postgres(e2eDatabaseUrl(), { max: 1, onnotice: () => {} });
+  await sql`
+    insert into whatsapp_message (id, phone, body, status, intent, processed_at, ai_requested_at)
+    values (${`wamid.e2e.${randomUUID()}`}, '573000000002', 'mensaje de prueba', 'processed',
+            ${sql.json({ kind: "reply", text: "", usage: { model: "claude-haiku-5-5", inputTokens: 49_000, outputTokens: 1_000 } })},
+            now(), now())`;
+  await sql.end();
+  const secret = await adminOnBot(page);
+  const monthly = () => settings(page).getByRole("listitem").filter({ hasText: "Tope mensual de tokens" });
+  await expect(monthly()).toContainText(/Sin tope\. Este mes van [\d.]+ tokens\./);
+
+  await test.step("con un tope por debajo de lo usado, queda alcanzado", async () => {
+    await settings(page).getByRole("button", { name: "Cambiar el tope mensual de tokens" }).click();
+    await expect(dialog(page).getByLabel("Tokens al mes")).toHaveAccessibleDescription(/En promedio, cada mensaje usa [\d.]+ tokens\.$/);
+    await dialog(page).getByLabel("Tokens al mes").fill("10.000");
+    await expect(dialog(page).getByLabel("Tokens al mes")).toHaveAccessibleDescription(/alcanza para unos [\d.]+ mensajes\.$/);
+    expect(await seriousViolations(page)).toEqual([]);
+    await confirmWith(page, codeFor(secret), "Guardar tope");
+    await expect(settings(page).getByRole("status")).toContainText("El tope mensual quedó en 10.000 tokens");
+    await expect(monthly()).toContainText(/Alcanzado: [\d.]+ de 10\.000\. Claude vuelve el 1 de [a-z]+\./);
+    await expect(settings(page)).toContainText(/En pausa por el tope mensual hasta el 1 de [a-z]+/);
+  });
+
+  await test.step("el bot pide usar la web y los comandos siguen; Inicio lo avisa", async () => {
+    expect(await beto("almuerzo 25.900,50")).toContain("Este mes ya usé todo mi cupo");
+    expect(await beto("balance")).toContain("Aún no tienes movimientos");
+    await page.goto("/admin");
+    const card = visible(page.getByRole("list", { name: "Módulos de administración" })).getByRole("listitem").filter({ hasText: "Bot de WhatsApp" });
+    await expect(card).toContainText(/Tope mensual alcanzado · \d+ mensajes? hoy/);
+  });
+
+  await test.step("vacío lo quita y el bot vuelve a entender los mensajes; queda en el historial", async () => {
+    await page.goto("/admin/bot");
+    await settings(page).getByRole("button", { name: "Cambiar el tope mensual de tokens" }).click();
+    await dialog(page).getByLabel("Tokens al mes").fill("");
+    await confirmWith(page, codeFor(secret, 1), "Guardar tope");
+    await expect(settings(page).getByRole("status")).toContainText("Se quitó el tope mensual de tokens.");
+    expect(await beto("almuerzo 25.900,50")).toMatch(/✅ Egreso registrado/);
+    await page.goto("/admin/historial?tipo=admin");
+    await expect(visible(page.getByRole("listitem").filter({ hasText: "cambió el tope mensual de tokens" })).first()).toContainText(
+      "ahora sin tope (antes 10.000 tokens al mes)",
+    );
+  });
+});
+
+test("reenviar una respuesta que no salió: le llega a la persona y no se registra dos veces", async ({ page, browser, request }) => {
+  const beto = await betoWithWhatsApp(browser, request);
+  await beto.nextReplyFails("almuerzo 25.900,50");
+  const secret = await adminOnBot(page);
+  const errors = visible(page.getByRole("region", { name: "Errores" }));
+
+  await test.step("la página dice cuántas no salieron (el bot la procesa después de responderle a Meta)", async () => {
+    await expect(async () => {
+      await page.reload();
+      await expect(errors).toContainText("1 respuesta no salió en las últimas 24 horas.", { timeout: 1_000 });
+    }).toPass({ timeout: 15_000 });
+    await expect(errors).toContainText("No se pudo enviar la respuesta por WhatsApp");
+  });
+
+  await test.step("con el código se reenvía y a Beto le llega la respuesta de entonces", async () => {
+    await errors.getByRole("button", { name: "Reenviar" }).click();
+    await expect(dialog(page)).toHaveAccessibleName("¿Reenviar 1 respuesta?");
+    expect(await seriousViolations(page)).toEqual([]);
+    await confirmWith(page, codeFor(secret), "Reenviar");
+    await expect(errors.getByRole("status")).toContainText("Se reenvió 1 respuesta.");
+    await expect(errors).not.toContainText("no salió en las últimas 24 horas");
+    expect(await beto.resentReply()).toMatch(/✅ Egreso registrado: \*Almuerzo\*/);
+    // El movimiento se registró una sola vez (al llegar el mensaje), no al reenviar.
+    expect(await beto("balance")).toMatch(/Egresos: \$25\.900,50/);
+  });
+
+  await test.step("el historial dice cuántas se reenviaron", async () => {
+    await page.goto("/admin/historial?tipo=admin");
+    await expect(visible(page.getByRole("listitem").filter({ hasText: "reenvió las respuestas del bot" })).first()).toContainText("1 reenviada");
+  });
 });

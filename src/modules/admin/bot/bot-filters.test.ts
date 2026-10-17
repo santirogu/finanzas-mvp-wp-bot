@@ -6,14 +6,17 @@ import {
   CLAUDE_DAYS_WHEN_ALL,
   NO_BOT_FILTERS,
   OUTCOMES,
+  MAX_RESENDS,
   OUTCOME_LABELS,
   PROBLEM_OUTCOMES,
+  RESEND_WINDOW_HOURS,
   activeBotFilters,
   botHref,
   claudeDays,
   connectionView,
   errorLabel,
   formatCount,
+  formatDayMonth,
   formatSeconds,
   formatShortDay,
   parseBotFilters,
@@ -127,6 +130,17 @@ describe("readableApiError", () => {
   });
 });
 
+describe("formatDayMonth y el reenvío", () => {
+  it("el día con el mes en letras", () => {
+    expect(formatDayMonth("2026-11-01")).toBe("1 de noviembre");
+    expect(formatDayMonth("2027-01-01")).toBe("1 de enero");
+  });
+
+  it("se reenvían como mucho 50, de las últimas 24 horas (la ventana de Meta)", () => {
+    expect([RESEND_WINDOW_HOURS, MAX_RESENDS]).toEqual([24, 50]);
+  });
+});
+
 describe("errorLabel", () => {
   it.each([
     ["not_configured", "Claude no está configurado (falta la API key)", null],
@@ -156,8 +170,8 @@ describe("resultados", () => {
     expect(new Set(Object.values(OUTCOME_LABELS)).size).toBe(OUTCOMES.length);
   });
 
-  it("se resaltan el tope de Claude, los errores y los que no se procesaron", () => {
-    expect(PROBLEM_OUTCOMES).toEqual(["tope_claude", "error", "pendiente"]);
+  it("se resaltan los topes de Claude, los errores y los que no se procesaron", () => {
+    expect(PROBLEM_OUTCOMES).toEqual(["tope_claude", "tope_mensual", "error", "pendiente"]);
   });
 });
 

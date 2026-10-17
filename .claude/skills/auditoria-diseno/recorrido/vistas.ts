@@ -154,12 +154,24 @@ export const VISTAS: Vista[] = [
     },
   },
   {
+    id: "admin-bot-tope-mensual",
+    titulo: "Administración: ventana del tope mensual de tokens",
+    persona: "admin",
+    ruta: fija("/admin/bot"),
+    preparar: async (page) => {
+      await visible(page.getByRole("region", { name: "Configuración" }))
+        .getByRole("button", { name: "Cambiar el tope mensual de tokens" })
+        .click();
+      await expect(dialogo(page)).toBeVisible();
+    },
+  },
+  {
     id: "admin-bot-topes",
     titulo: "Administración: ventana de los topes del bot",
     persona: "admin",
     ruta: fija("/admin/bot"),
     preparar: async (page) => {
-      await visible(page.getByRole("region", { name: "Configuración" })).getByRole("button", { name: "Cambiar" }).click();
+      await visible(page.getByRole("region", { name: "Configuración" })).getByRole("button", { name: "Cambiar los topes por cuenta" }).click();
       await expect(dialogo(page)).toBeVisible();
     },
   },

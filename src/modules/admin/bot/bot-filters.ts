@@ -52,6 +52,7 @@ export const OUTCOMES = [
   "respuesta",
   "vinculado",
   "tope_claude",
+  "tope_mensual",
   "pausa",
   "error",
   "vinculacion_fallida",
@@ -68,6 +69,7 @@ export const OUTCOME_LABELS: Record<Outcome, string> = {
   respuesta: "Respuesta sin registrar nada",
   vinculado: "Vinculó su número",
   tope_claude: "Llegó al tope de Claude",
+  tope_mensual: "Tope mensual de tokens alcanzado (se pidió usar la web)",
   pausa: "Claude en pausa (se pidió usar la web)",
   error: "Error",
   vinculacion_fallida: "Código de vinculación inválido",
@@ -78,7 +80,7 @@ export const OUTCOME_LABELS: Record<Outcome, string> = {
 };
 
 /** Los resultados que piden atención (se resaltan en la página). */
-export const PROBLEM_OUTCOMES: readonly Outcome[] = ["tope_claude", "error", "pendiente"];
+export const PROBLEM_OUTCOMES: readonly Outcome[] = ["tope_claude", "tope_mensual", "error", "pendiente"];
 
 /** Con "Todo", el gráfico de Claude por día muestra los últimos 30 días. */
 export const CLAUDE_DAYS_WHEN_ALL = 30;
@@ -208,3 +210,14 @@ export function connectionView(service: "whatsapp" | "claude", check: ServiceChe
 }
 
 const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
+
+/**
+ * Reenviar respuestas que no salieron: WhatsApp solo deja escribirle a alguien hasta 24 horas después
+ * de su último mensaje (la ventana de servicio de Meta), y se reenvían como mucho 50 por vez.
+ */
+export const RESEND_WINDOW_HOURS = 24;
+export const MAX_RESENDS = 50;
+
+/** Un día (YYYY-MM-DD) con el mes en letras: "1 de noviembre". */
+export const formatDayMonth = (day: string) =>
+  new Intl.DateTimeFormat("es-CO", { day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(`${day}T00:00:00Z`));

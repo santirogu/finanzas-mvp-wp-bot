@@ -9,6 +9,7 @@ const actions = vi.hoisted(() => ({
   pauseClaudeAction: vi.fn(),
   resumeClaudeAction: vi.fn(),
   changeAiLimitsAction: vi.fn(),
+  changeMonthlyLimitAction: vi.fn(),
 }));
 vi.mock("./actions", () => actions);
 
@@ -32,6 +33,9 @@ beforeEach(() => {
 const props = (overrides: Partial<BotSettingsProps> = {}): BotSettingsProps => ({
   claudePaused: false,
   limits: { perHour: 20, perDay: 100 },
+  monthlyTokenLimit: null,
+  month: { used: 37579, reached: false, resetsOn: "1 de noviembre" },
+  averageTokensPerCall: 1708,
   lastChange: null,
   ...overrides,
 });
@@ -94,7 +98,7 @@ describe("BotSettings", () => {
   it("los topes vienen llenos con los actuales y se envían con el código", async () => {
     actions.changeAiLimitsAction.mockResolvedValue({ message: "Los topes quedaron en 30 por hora y 150 por día, por cuenta." });
     render(<BotSettings {...props()} />);
-    await userEvent.click(section().getByRole("button", { name: "Cambiar" }));
+    await userEvent.click(section().getByRole("button", { name: "Cambiar los topes por cuenta" }));
     const perHour = dialog().getByLabelText("Por hora");
     expect(perHour).toHaveValue("20");
     expect(dialog().getByLabelText("Por día")).toHaveValue("100");
@@ -119,7 +123,7 @@ describe("BotSettings", () => {
       .mockResolvedValueOnce({ error: "El tope por día va de 1 a 2.000.", field: "perDay" })
       .mockResolvedValueOnce({ error: "Los topes ya son esos: cambia alguno." });
     render(<BotSettings {...props()} />);
-    await userEvent.click(section().getByRole("button", { name: "Cambiar" }));
+    await userEvent.click(section().getByRole("button", { name: "Cambiar los topes por cuenta" }));
     await userEvent.clear(dialog().getByLabelText("Por día"));
     await userEvent.type(dialog().getByLabelText("Por día"), "3000");
     await userEvent.type(dialog().getByLabelText("Código de Google Authenticator"), "123456");
@@ -139,7 +143,7 @@ describe("BotSettings", () => {
 
   it("sin llenar los campos, los errores salen en español y no se envía nada", async () => {
     render(<BotSettings {...props()} />);
-    await userEvent.click(section().getByRole("button", { name: "Cambiar" }));
+    await userEvent.click(section().getByRole("button", { name: "Cambiar los topes por cuenta" }));
     await userEvent.clear(dialog().getByLabelText("Por hora"));
     await userEvent.click(dialog().getByRole("button", { name: "Guardar topes" }));
     expect(dialog().getByLabelText("Por hora")).toHaveAccessibleDescription("Escribe cuántos mensajes por hora.");
@@ -155,5 +159,80 @@ describe("BotSettings", () => {
     await userEvent.click(dialog().getByRole("button", { name: "Cancelar" }));
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(actions.pauseClaudeAction).not.toHaveBeenCalled();
+  });
+});
+
+describe("BotSettings · tope mensual de tokens", () => {
+  const monthlyRow = () => section().getAllByRole("listitem")[2];
+
+  it("sin tope: lo dice y cuánto va del mes", () => {
+    render(<BotSettings {...props()} />);
+    expect(monthlyRow()).toHaveTextContent("Tope mensual de tokensSin tope. Este mes van 37.579 tokens.");
+  });
+
+  it("con tope: cuánto va y qué parte; casi nada es <1 %", () => {
+    const { rerender } = render(<BotSettings {...props({ monthlyTokenLimit: 2_000_000 })} />);
+    expect(monthlyRow()).toHaveTextContent("2.000.000 al mes, de todas las cuentas. Este mes van 37.579 (1 %).");
+    rerender(<BotSettings {...props({ monthlyTokenLimit: 100_000_000 })} />);
+    expect(monthlyRow()).toHaveTextContent("Este mes van 37.579 (<1 %).");
+  });
+
+  it("alcanzado: en rojo, y Claude en pausa hasta el mes siguiente", () => {
+    render(<BotSettings {...props({ monthlyTokenLimit: 30_000, month: { used: 37_579, reached: true, resetsOn: "1 de noviembre" } })} />);
+    expect(section().getByText("Alcanzado: 37.579 de 30.000. Claude vuelve el 1 de noviembre.")).toHaveClass("text-danger");
+    expect(
+      section().getByText("En pausa por el tope mensual hasta el 1 de noviembre: el bot solo responde balance, deshacer y ayuda."),
+    ).toHaveClass("text-danger");
+  });
+
+  it("la pausa a mano se muestra aunque también se haya alcanzado el tope", () => {
+    render(<BotSettings {...props({ claudePaused: true, monthlyTokenLimit: 30_000, month: { used: 40_000, reached: true, resetsOn: "1 de noviembre" } })} />);
+    expect(section().getByText("En pausa: el bot solo responde balance, deshacer y ayuda.")).toBeInTheDocument();
+  });
+
+  it("la ventana estima para cuántos mensajes alcanza lo que se escribe, y lo envía con el código", async () => {
+    actions.changeMonthlyLimitAction.mockResolvedValue({ message: "El tope mensual quedó en 2.000.000 tokens." });
+    render(<BotSettings {...props()} />);
+    await userEvent.click(section().getByRole("button", { name: "Cambiar el tope mensual de tokens" }));
+    const field = dialog().getByLabelText("Tokens al mes");
+    expect(field).toHaveValue("");
+    expect(field).toHaveAccessibleDescription("Entre 10.000 y 100.000.000. En promedio, cada mensaje usa 1.708 tokens.");
+
+    await userEvent.type(field, "2.000.000");
+    expect(field).toHaveAccessibleDescription(/: alcanza para unos 1\.170 mensajes\.$/);
+    await userEvent.type(dialog().getByLabelText("Código de Google Authenticator"), "123456");
+    await userEvent.click(dialog().getByRole("button", { name: "Guardar tope" }));
+
+    const sent = actions.changeMonthlyLimitAction.mock.calls[0][1] as FormData;
+    expect([sent.get("monthlyLimit"), sent.get("code")]).toEqual(["2.000.000", "123456"]);
+    expect(section().getByRole("status")).toHaveTextContent("El tope mensual quedó en 2.000.000 tokens.");
+  });
+
+  it("vacío se puede enviar (quita el tope); un error del servidor va debajo del campo y lo escrito sigue", async () => {
+    actions.changeMonthlyLimitAction.mockResolvedValue({ error: "El tope mensual va de 10.000 a 100.000.000 tokens.", field: "monthlyLimit" });
+    render(<BotSettings {...props({ monthlyTokenLimit: 500_000, averageTokensPerCall: null })} />);
+    await userEvent.click(section().getByRole("button", { name: "Cambiar el tope mensual de tokens" }));
+    const field = dialog().getByLabelText("Tokens al mes");
+    expect(field).toHaveValue("500000");
+    expect(field).toHaveAccessibleDescription("Entre 10.000 y 100.000.000.");
+    await userEvent.clear(field);
+    await userEvent.type(field, "500");
+    await userEvent.type(dialog().getByLabelText("Código de Google Authenticator"), "123456");
+    await userEvent.click(dialog().getByRole("button", { name: "Guardar tope" }));
+    expect(field).toHaveAccessibleDescription("Entre 10.000 y 100.000.000. El tope mensual va de 10.000 a 100.000.000 tokens.");
+    expect(field).toHaveAttribute("aria-invalid", "true");
+    expect(field).toHaveValue("500");
+  });
+
+  it("con decimales, el error sale en español antes de enviar", async () => {
+    render(<BotSettings {...props()} />);
+    await userEvent.click(section().getByRole("button", { name: "Cambiar el tope mensual de tokens" }));
+    await userEvent.type(dialog().getByLabelText("Tokens al mes"), "2,5");
+    await userEvent.type(dialog().getByLabelText("Código de Google Authenticator"), "123456");
+    await userEvent.click(dialog().getByRole("button", { name: "Guardar tope" }));
+    expect(dialog().getByLabelText("Tokens al mes")).toHaveAccessibleDescription(
+      /Escribe un número entero de tokens, sin decimales \(o déjalo vacío\)\.$/,
+    );
+    expect(actions.changeMonthlyLimitAction).not.toHaveBeenCalled();
   });
 });

@@ -16,8 +16,10 @@ import { reserveAiCall } from "./ai-quota";
 import type { Extractor } from "./claude-extractor";
 import { parseCommand } from "./commands";
 import { interpretMessage, type BotIntent } from "./interpret";
+import { monthlyBudgetReached } from "./limits";
 import * as replies from "./replies";
 import { getBotSettings } from "./settings";
+import { tokensUsedThisMonth } from "./token-budget";
 
 type Deps = { extractor: Extractor; send: Sender; appUrl: string };
 
@@ -134,11 +136,15 @@ async function respond(
   ]);
   const categories = { expense: expenseCategories, income: incomeCategories };
 
-  // Antes de cada llamada a Claude: que el admin no lo haya pausado y que la cuenta tenga cupo
-  // (src/modules/bot/ai-quota.ts), con la configuración de /admin/bot. Los comandos no llegan aquí.
+  // Antes de cada llamada a Claude: que el admin no lo haya pausado, que no se haya usado el tope
+  // mensual de tokens y que la cuenta tenga cupo (src/modules/bot/ai-quota.ts), con la configuración
+  // de /admin/bot. Los comandos no llegan aquí.
   const extractor: Extractor = async (input) => {
     const settings = await getBotSettings();
     if (settings.claudePaused) return { ok: false, reason: "paused" };
+    if (settings.monthlyTokenLimit !== null && monthlyBudgetReached(settings.monthlyTokenLimit, await tokensUsedThisMonth())) {
+      return { ok: false, reason: "monthly_limit" };
+    }
     return (await reserveAiCall(user.id, msg.id, settings.limits)) ? deps.extractor(input) : { ok: false, reason: "rate_limited" };
   };
   const intent = await interpretMessage(
@@ -193,6 +199,7 @@ async function respond(
     case "error":
       if (intent.reason === "rate_limited") return { ...base, reply: replies.aiRateLimitedReply };
       if (intent.reason === "paused") return { ...base, reply: replies.aiPausedReply(deps.appUrl) };
+      if (intent.reason === "monthly_limit") return { ...base, reply: replies.aiMonthlyLimitReply(deps.appUrl) };
       return {
         ...base,
         status: "failed",
