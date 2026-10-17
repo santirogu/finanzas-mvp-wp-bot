@@ -27,7 +27,11 @@ const sessionUser = {
   image: null,
 };
 
-beforeEach(() => mocks.getSession.mockReset());
+// Con llaves: mockReset() devuelve el mock y, si el hook lo devolviera, Vitest lo llamaría como
+// limpieza al terminar cada prueba (una llamada de más, que fallaría si el mock lanza un error).
+beforeEach(() => {
+  mocks.getSession.mockReset();
+});
 
 describe("getCurrentUser", () => {
   it("devuelve null sin sesión", async () => {
