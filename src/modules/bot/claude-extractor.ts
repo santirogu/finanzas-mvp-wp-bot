@@ -39,7 +39,8 @@ export type ExtractionResult =
   | {
       ok: false;
       // rate_limited: la cuenta usó su cupo de mensajes interpretados (no se llamó a Claude).
-      reason: "not_configured" | "refusal" | "invalid_output" | "api_error" | "rate_limited";
+      // paused: el admin pausó Claude en /admin/bot (tampoco se llamó).
+      reason: "not_configured" | "refusal" | "invalid_output" | "api_error" | "rate_limited" | "paused";
       detail?: string;
       usage?: Usage;
     };

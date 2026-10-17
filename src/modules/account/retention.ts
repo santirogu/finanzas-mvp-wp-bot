@@ -24,8 +24,15 @@ function orphanMessages(before: Date) {
   return and(isNull(whatsappMessage.userId), lt(whatsappMessage.receivedAt, before), unlinked(whatsappMessage.phone));
 }
 
+// Solo los que tienen número: un evento sin cuenta ni número es una acción del admin (eliminó una
+// cuenta, pausó Claude…) y se conserva. Sin esto, "phone = null" no encuentra vínculo y se borraría.
 function orphanEvents(before: Date) {
-  return and(isNull(accountEvent.userId), lt(accountEvent.createdAt, before), unlinked(accountEvent.phone));
+  return and(
+    isNull(accountEvent.userId),
+    isNotNull(accountEvent.phone),
+    lt(accountEvent.createdAt, before),
+    unlinked(accountEvent.phone),
+  );
 }
 
 export type OrphanCounts = { messages: number; events: number; phones: number };

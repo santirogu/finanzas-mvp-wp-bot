@@ -69,6 +69,9 @@ describe("configuración", () => {
       "account_suspended",
       "account_reactivated",
       "account_deleted",
+      "bot_claude_paused",
+      "bot_claude_resumed",
+      "bot_limits_changed",
     ]);
     expect(DATE_PRESETS.map((p) => DATE_PRESET_LABELS[p])).toEqual([
       "Todo",
@@ -381,6 +384,12 @@ describe("formatos", () => {
     [{ note: "Usa la cuenta de otra persona" }, "motivo: Usa la cuenta de otra persona"],
     [{ note: "Spam", sessions: 1 }, "motivo: Spam · 1 sesión"],
     [{ note: "" }, ""],
+    // Los topes de Claude que cambió el admin en /admin/bot.
+    [
+      { limits: { perHour: 30, perDay: 1500 }, previousLimits: { perHour: 20, perDay: 100 } },
+      "ahora 30 por hora y 1.500 por día (antes 20 por hora y 100 por día)",
+    ],
+    [{ limits: { perHour: 5, perDay: 50 } }, "ahora 5 por hora y 50 por día"],
   ])("eventDetail(%j) = %j", (details, expected) => {
     expect(eventDetail(details)).toBe(expected);
   });

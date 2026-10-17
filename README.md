@@ -102,7 +102,10 @@ pnpm dev                        # http://localhost:3000 (antes, copia la base lo
   escritorio en 3 con `--shard` de Playwright, y celular y tableta en la cuarta), y el check
   obligatorio **E2E y accesibilidad** pasa solo si pasan todas. Las partes están en la matriz del job
   `e2e-parte` de `.github/workflows/ci.yml`: si agregas un proyecto de Playwright, súmalo ahí
-  (`test/e2e-en-ci.test.ts` falla si falta). La regla de `main` no cambia. En un PR que solo cambia
+  (`test/e2e-en-ci.test.ts` falla si falta). La regla de `main` no cambia. Las pruebas que cambian la
+  configuración de toda la app (pausar Claude, los topes del bot: `e2e/configuracion-*.spec.ts`) van
+  en el proyecto `configuracion`: en local corren después de las demás y en el CI, en su propia parte
+  (`--no-deps`), porque a la vez que las otras les cambiarían lo que responde el bot. En un PR que solo cambia
   cosas que las E2E no ejercitan (documentación, skills, otros workflows, pruebas que no son E2E,
   herramientas de `scripts/`), se saltan y el check pasa igual: lo decide `scripts/e2e-needed.mjs`,
   que ante un archivo desconocido las corre. Todo lo que salta las E2E también salta el despliegue
@@ -511,16 +514,29 @@ En **`/admin/bot`** el admin ve cómo funciona el bot, de todas las cuentas
 (`src/modules/admin/bot/`). Se busca por nombre, correo o número (con espacios o "+") y se filtra por
 la fecha de los mensajes, en hora de Colombia.
 
+- **Configuración** (cada cambio pide el código de Google Authenticator y queda en Historial → Acciones
+  del admin, con "Bot de WhatsApp" en vez de una cuenta):
+
+  | Ajuste | Qué hace |
+  |---|---|
+  | Pausar / reanudar Claude | En pausa, el bot no llama a Claude: a lo escrito libremente responde que lo registren en la web, y *balance*, *deshacer* y *ayuda* siguen. No gasta créditos. Para frenar en segundos si algo sale mal o se dispara el gasto, sin desplegar |
+  | Topes por cuenta | Mensajes con Claude por hora y por día (1–200 y 1–2.000, el de la hora no mayor que el del día; `AI_LIMIT_BOUNDS`). Al llegar, el bot pide esperar |
+
+  Se guarda en una sola fila (`bot_setting`); sin ella valen los de siempre: Claude activo y
+  `AI_LIMITS` (20 por hora y 100 por día). El bot la lee en cada mensaje que necesitaría a Claude
+  (`src/modules/bot/settings.ts`), así que aplica desde el siguiente. Si Claude está en pausa, la
+  tarjeta de Inicio lo dice.
 - **Qué pasó con los mensajes:** cuántos llegaron y el resultado de cada uno: registró movimientos,
-  comando, respuesta sin registrar nada, vinculó su número, llegó al tope de Claude, error, código de
-  vinculación inválido, número sin vincular, no era texto, cuenta suspendida o sin procesar. Sale del
+  comando, respuesta sin registrar nada, vinculó su número, llegó al tope de Claude, Claude en pausa,
+  error, código de vinculación inválido, número sin vincular, no era texto, cuenta suspendida o sin
+  procesar. Sale del
   estado del mensaje, del tipo de intención y de si el número tiene cuenta. También el tiempo de
   respuesta (mediana y p95).
 - **Consumo de Claude:** llamadas y tokens de entrada y salida (los que guarda el bot en cada
-  mensaje), por día (con "Todo", los últimos 30 días) y por modelo, y las cuentas que llegaron al tope
-  (`AI_LIMITS`). El costo en dinero se ve en la consola de Anthropic: los precios cambian.
+  mensaje), por día (con "Todo", los últimos 30 días) y por modelo, y las cuentas que llegaron al tope.
+  El costo en dinero se ve en la consola de Anthropic: los precios cambian.
 - **Errores:** agrupados por motivo (de Claude, al enviar por WhatsApp o internos), con cuántas veces,
-  cuántas cuentas y la última vez. Lo técnico (el código de Meta o de la API) va aparte, como detalle.
+  cuántos números y la última vez. Lo técnico (el código de Meta o de la API) va aparte, como detalle.
 
 Lo que **no** se muestra, a propósito: el texto de los mensajes, la respuesta del bot y los
 movimientos que entendió Claude. Las consultas solo leen el tipo de intención, el motivo de un error y

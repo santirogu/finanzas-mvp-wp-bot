@@ -56,13 +56,16 @@ export const EVENT_TYPES = [
 ] as const;
 export type EventType = (typeof EVENT_TYPES)[number];
 
-/** Los tipos que solo registra una acción del admin (/admin/usuarios). */
+/** Los tipos que solo registra una acción del admin (/admin/usuarios y /admin/bot). */
 export const ADMIN_EVENT_TYPES = [
   "login_unlocked",
   "sessions_revoked",
   "account_suspended",
   "account_reactivated",
   "account_deleted",
+  "bot_claude_paused",
+  "bot_claude_resumed",
+  "bot_limits_changed",
 ] as const;
 
 /** El chip "Acciones del admin": todo lo que hizo un admin, sea del tipo que sea. */
@@ -195,5 +198,10 @@ export function eventDetail(details: AccountEventDetails): string {
   if (details.note) parts.push(`motivo: ${details.note}`);
   if (details.sessions) parts.push(`${details.sessions} ${details.sessions === 1 ? "sesión" : "sesiones"}`);
   if (details.reconstructed) parts.push("reconstruido de datos anteriores");
+  if (details.limits) {
+    const count = new Intl.NumberFormat("es-CO").format;
+    const limits = (l: { perHour: number; perDay: number }) => `${count(l.perHour)} por hora y ${count(l.perDay)} por día`;
+    parts.push(`ahora ${limits(details.limits)}${details.previousLimits ? ` (antes ${limits(details.previousLimits)})` : ""}`);
+  }
   return parts.join(" · ");
 }

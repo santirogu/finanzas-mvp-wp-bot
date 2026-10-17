@@ -17,6 +17,7 @@ import type { Extractor } from "./claude-extractor";
 import { parseCommand } from "./commands";
 import { interpretMessage, type BotIntent } from "./interpret";
 import * as replies from "./replies";
+import { getBotSettings } from "./settings";
 
 type Deps = { extractor: Extractor; send: Sender; appUrl: string };
 
@@ -133,9 +134,13 @@ async function respond(
   ]);
   const categories = { expense: expenseCategories, income: incomeCategories };
 
-  // Antes de cada llamada a Claude se reserva el cupo de la cuenta (src/modules/bot/ai-quota.ts).
-  const extractor: Extractor = async (input) =>
-    (await reserveAiCall(user.id, msg.id)) ? deps.extractor(input) : { ok: false, reason: "rate_limited" };
+  // Antes de cada llamada a Claude: que el admin no lo haya pausado y que la cuenta tenga cupo
+  // (src/modules/bot/ai-quota.ts), con la configuración de /admin/bot. Los comandos no llegan aquí.
+  const extractor: Extractor = async (input) => {
+    const settings = await getBotSettings();
+    if (settings.claudePaused) return { ok: false, reason: "paused" };
+    return (await reserveAiCall(user.id, msg.id, settings.limits)) ? deps.extractor(input) : { ok: false, reason: "rate_limited" };
+  };
   const intent = await interpretMessage(
     msg.text,
     {
@@ -187,6 +192,7 @@ async function respond(
       return { ...base, reply: intent.text };
     case "error":
       if (intent.reason === "rate_limited") return { ...base, reply: replies.aiRateLimitedReply };
+      if (intent.reason === "paused") return { ...base, reply: replies.aiPausedReply(deps.appUrl) };
       return {
         ...base,
         status: "failed",

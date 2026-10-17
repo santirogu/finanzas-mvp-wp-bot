@@ -37,6 +37,9 @@ const ICON_PATHS: Record<LogEntry["type"], ReactNode> = {
   account_deleted: <path d="M4.5 6h11M8 6V4.5h4V6M6 6l.7 10h6.6L14 6M8.5 9v4.5M11.5 9v4.5" />,
   account_suspended: <path d="M10 3a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM8.25 7.5v5M11.75 7.5v5" />,
   account_reactivated: <path d="M10 3a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM8.5 7.25v5.5L13 10z" />,
+  bot_claude_paused: <path d="M4 5.5h12v8H9l-3.5 2.5v-2.5H4zM8.75 8v3M11.25 8v3" />,
+  bot_claude_resumed: <path d="M4 5.5h12v8H9l-3.5 2.5v-2.5H4zM8.75 7.75v3.5L12 9.5z" />,
+  bot_limits_changed: <path d="M4 6h12M4 10h12M4 14h12M7 4.5v3M13 8.5v3M9.5 12.5v3" />,
 };
 
 const ADMIN_COLOR = "bg-admin-surface text-admin";
@@ -53,7 +56,13 @@ const ICON_COLORS: Record<LogEntry["type"], string> = {
   account_deleted: ADMIN_COLOR,
   account_suspended: ADMIN_COLOR,
   account_reactivated: ADMIN_COLOR,
+  bot_claude_paused: ADMIN_COLOR,
+  bot_claude_resumed: ADMIN_COLOR,
+  bot_limits_changed: ADMIN_COLOR,
 };
+
+/** Los cambios de la configuración del bot (/admin/bot): no son de ninguna cuenta. */
+const BOT_EVENTS: readonly LogEntry["type"][] = ["bot_claude_paused", "bot_claude_resumed", "bot_limits_changed"];
 
 /**
  * Con `filters`, tocar el nombre muestra solo los eventos de esa cuenta (en el Historial); sin
@@ -75,8 +84,12 @@ export function EventItem({ entry, filters, inAccount = false }: { entry: LogEnt
   const phone = entry.phone ? <span className="whitespace-nowrap">{formatPhone(entry.phone)}</span> : null;
   const detail = eventDetail(entry.details);
   const color = isAdminAction(entry) ? ADMIN_COLOR : ICON_COLORS[entry.type];
-  // De una cuenta que eliminó el admin no queda ningún dato.
-  const where = entry.type === "account_deleted" ? "Sin datos de la cuenta" : (entry.account?.email ?? "Sin cuenta");
+  // De una cuenta que eliminó el admin no queda ningún dato; la configuración del bot no es de una cuenta.
+  const where = BOT_EVENTS.includes(entry.type)
+    ? "Bot de WhatsApp"
+    : entry.type === "account_deleted"
+      ? "Sin datos de la cuenta"
+      : (entry.account?.email ?? "Sin cuenta");
 
   return (
     <li className="flex gap-3 py-3">
@@ -126,5 +139,11 @@ function sentence(entry: LogEntry, who: ReactNode, phone: ReactNode): ReactNode 
       return <>{admin} reactivó la cuenta de {who}</>;
     case "account_deleted":
       return <>{admin} eliminó una cuenta</>;
+    case "bot_claude_paused":
+      return <>{admin} pausó Claude en el bot</>;
+    case "bot_claude_resumed":
+      return <>{admin} reanudó Claude en el bot</>;
+    case "bot_limits_changed":
+      return <>{admin} cambió los topes de Claude por cuenta</>;
   }
 }

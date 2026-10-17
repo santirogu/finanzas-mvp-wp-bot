@@ -27,7 +27,7 @@ describe("reserveAiCall", () => {
   it("reserva hasta 20 por hora y marca el mensaje con la cuenta y la hora", async () => {
     const ana = await createUser();
     const results: boolean[] = [];
-    for (let i = 0; i < AI_LIMITS.perHour + 2; i++) results.push(await reserveAiCall(ana.id, await message(), NOW));
+    for (let i = 0; i < AI_LIMITS.perHour + 2; i++) results.push(await reserveAiCall(ana.id, await message(), AI_LIMITS, NOW));
 
     expect(results.filter(Boolean)).toHaveLength(20);
     expect(results.slice(20)).toEqual([false, false]);
@@ -40,7 +40,7 @@ describe("reserveAiCall", () => {
     const ana = await createUser();
     await usedAt(ana.id, NOW, AI_LIMITS.perHour);
     const id = await message();
-    expect(await reserveAiCall(ana.id, id, NOW)).toBe(false);
+    expect(await reserveAiCall(ana.id, id, AI_LIMITS, NOW)).toBe(false);
     const [row] = await db.select().from(whatsappMessage).where(eq(whatsappMessage.id, id));
     expect(row).toMatchObject({ aiRequestedAt: null, userId: null });
   });
@@ -49,33 +49,45 @@ describe("reserveAiCall", () => {
     const ana = await createUser();
     // 20 hace 2 horas: el cupo de la hora vuelve a estar libre.
     await usedAt(ana.id, new Date(NOW.getTime() - 2 * HOUR_MS), 20);
-    expect(await reserveAiCall(ana.id, await message(), NOW)).toBe(true);
+    expect(await reserveAiCall(ana.id, await message(), AI_LIMITS, NOW)).toBe(true);
 
     // 99 en las últimas 24 horas (repartidos en horas anteriores): queda uno.
     const beto = await createUser();
     for (let h = 2; h <= 6; h++) await usedAt(beto.id, new Date(NOW.getTime() - h * HOUR_MS), h === 6 ? 19 : 20);
-    expect(await reserveAiCall(beto.id, await message("573002223344"), NOW)).toBe(true);
-    expect(await reserveAiCall(beto.id, await message("573002223344"), NOW)).toBe(false);
+    expect(await reserveAiCall(beto.id, await message("573002223344"), AI_LIMITS, NOW)).toBe(true);
+    expect(await reserveAiCall(beto.id, await message("573002223344"), AI_LIMITS, NOW)).toBe(false);
   });
 
   it("lo de hace más de 24 horas no cuenta", async () => {
     const ana = await createUser();
     await usedAt(ana.id, new Date(NOW.getTime() - 25 * HOUR_MS), 150);
-    expect(await reserveAiCall(ana.id, await message(), NOW)).toBe(true);
+    expect(await reserveAiCall(ana.id, await message(), AI_LIMITS, NOW)).toBe(true);
   });
 
   it("el cupo es de cada cuenta", async () => {
     const ana = await createUser();
     const beto = await createUser();
     await usedAt(ana.id, NOW, AI_LIMITS.perHour);
-    expect(await reserveAiCall(ana.id, await message(), NOW)).toBe(false);
-    expect(await reserveAiCall(beto.id, await message("573002223344"), NOW)).toBe(true);
+    expect(await reserveAiCall(ana.id, await message(), AI_LIMITS, NOW)).toBe(false);
+    expect(await reserveAiCall(beto.id, await message("573002223344"), AI_LIMITS, NOW)).toBe(true);
+  });
+
+  it("usa los topes que le pasan (los que dejó el admin en /admin/bot)", async () => {
+    const ana = await createUser();
+    const limits = { perHour: 2, perDay: 3 };
+    const results: boolean[] = [];
+    for (let i = 0; i < 3; i++) results.push(await reserveAiCall(ana.id, await message(), limits, NOW));
+    expect(results).toEqual([true, true, false]);
+    // Dos horas después, la hora está libre pero el día no: 2 + 1 = 3.
+    const later = new Date(NOW.getTime() + 2 * HOUR_MS);
+    expect(await reserveAiCall(ana.id, await message(), limits, later)).toBe(true);
+    expect(await reserveAiCall(ana.id, await message(), limits, later)).toBe(false);
   });
 
   it("una ráfaga de mensajes simultáneos no supera el tope", async () => {
     const ana = await createUser();
     const ids = await Promise.all(Array.from({ length: 30 }, () => message()));
-    const results = await Promise.all(ids.map((id) => reserveAiCall(ana.id, id, NOW)));
+    const results = await Promise.all(ids.map((id) => reserveAiCall(ana.id, id, AI_LIMITS, NOW)));
     expect(results.filter(Boolean)).toHaveLength(AI_LIMITS.perHour);
   });
 });

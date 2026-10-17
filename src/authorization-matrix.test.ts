@@ -71,6 +71,9 @@ const SERVER_ACTIONS = {
   deleteCategoryAction: "requireAdmin + código de Google Authenticator; sus movimientos pasan a \"Otros\", que no se elimina",
   deleteAccountByAdminAction:
     "requireAdmin + código de Google Authenticator + escribir el correo; nunca la cuenta propia ni la de otro admin",
+  pauseClaudeAction: "requireAdmin + código de Google Authenticator; solo la configuración global del bot",
+  resumeClaudeAction: "requireAdmin + código de Google Authenticator; solo la configuración global del bot",
+  changeAiLimitsAction: "requireAdmin + código de Google Authenticator; topes dentro de AI_LIMIT_BOUNDS",
 } as const;
 
 // Acciones que no necesitan validar la sesión, con el porqué.
@@ -289,6 +292,7 @@ describe("administración", () => {
         "src/modules/admin/shared/confirm-code.ts",
         "src/modules/admin/categories/categories.ts",
         "src/modules/admin/bot/bot-activity.ts",
+        "src/modules/admin/bot/bot-settings.ts",
       ]),
     );
   });
