@@ -9,7 +9,7 @@ import { getBotSettings } from "@/modules/bot/settings";
 import { tokensUsedThisMonth } from "@/modules/bot/token-budget";
 import { ADMIN_TIMEZONE, dateRange, escapeLike, searchDigits } from "../shared/filters";
 import { inDayRange } from "../shared/sql";
-import { OUTCOMES, claudeDays, type BotFilters, type Outcome } from "./bot-filters";
+import { OUTCOMES, claudeDays, type AccountSort, type BotFilters, type Outcome } from "./bot-filters";
 
 // El funcionamiento del bot (/admin/bot), de todas las cuentas. Cada consulta valida el rol ella misma
 // (requireAdmin), además de la página que la usa: la matriz de autorización lo exige.
@@ -55,7 +55,7 @@ const outcome = sql<Outcome>`case
   else 'suspendida'
 end`;
 
-/** El filtro de la URL: fechas (de recibido, o de la llamada a Claude) y la cuenta o el número. */
+/** El filtro de la URL: fechas (de recibido, o de la llamada a Claude), la cuenta o el número, y el resultado. */
 function where(
   filters: BotFilters,
   today: string,
@@ -63,6 +63,8 @@ function where(
   range: { from: string | null; to: string | null } = dateRange(filters, today),
 ): SQL | undefined {
   const conditions: (SQL | undefined)[] = inDayRange(column, range);
+  // Al tocar una barra: solo los mensajes con ese resultado (va como parámetro).
+  if (filters.outcome) conditions.push(sql`${outcome} = ${filters.outcome}`);
   if (filters.search) {
     const text = `%${escapeLike(filters.search)}%`;
     const digits = searchDigits(filters.search);
@@ -80,7 +82,9 @@ function where(
 }
 
 export type BotActivity = {
+  /** Los mensajes con los filtros (también el resultado, si se tocó una barra). */
   total: number;
+  /** Cuántos hubo de cada resultado, sin el filtro de resultado: las barras siguen mostrando todos. */
   outcomes: Record<Outcome, number>;
   /** Tiempo entre que llega el mensaje y se responde, en segundos (null sin mensajes procesados). */
   response: { median: number; p95: number } | null;
@@ -110,7 +114,7 @@ export async function botActivity(filters: BotFilters, today: string): Promise<B
       .select({ outcome, times: count() })
       .from(whatsappMessage)
       .leftJoin(user, eq(user.id, whatsappMessage.userId))
-      .where(where(filters, today))
+      .where(where({ ...filters, outcome: null }, today))
       .groupBy(sql`1`),
     db
       .select({
@@ -171,13 +175,68 @@ export async function botActivity(filters: BotFilters, today: string): Promise<B
   const callsByDay = new Map(byDay.map((row) => [row.day, row.calls]));
 
   return {
-    total: outcomeRows.reduce((sum, row) => sum + row.times, 0),
+    total: filters.outcome ? outcomes[filters.outcome] : outcomeRows.reduce((sum, row) => sum + row.times, 0),
     outcomes,
     response: timing.median === null || timing.p95 === null ? null : { median: Number(timing.median), p95: Number(timing.p95) },
     claude: { ...claude, byDay: days.map((d) => ({ day: d, calls: callsByDay.get(d) ?? 0 })), byModel },
     capped,
     errors: errors.map((row) => ({ ...row, last: new Date(row.last) })),
   };
+}
+
+/** Una fila de "Por cuenta"; sin cuenta (id null), los números que escribieron sin estar vinculados. */
+export type AccountRow = {
+  id: string | null;
+  name: string | null;
+  email: string | null;
+  /** Cuántos números distintos (sirve para la fila de los que no tienen cuenta). */
+  phones: number;
+  messages: number;
+  registered: number;
+  tokens: number;
+  errors: number;
+  last: Date;
+};
+
+const tokensSum = sql<number>`coalesce(sum(
+  coalesce((${whatsappMessage.intent}->'usage'->>'inputTokens')::int, 0) +
+  coalesce((${whatsappMessage.intent}->'usage'->>'outputTokens')::int, 0)
+), 0)::int`;
+const errorsCount = sql<number>`count(*) filter (where ${whatsappMessage.status} = 'failed')::int`;
+const lastReceived = sql<Date>`max(${whatsappMessage.receivedAt})`;
+const SORT_BY: Record<AccountSort, SQL> = {
+  tokens: sql`${tokensSum} desc`,
+  mensajes: sql`count(*) desc`,
+  errores: sql`${errorsCount} desc`,
+  ultimo: sql`${lastReceived} desc`,
+};
+
+/**
+ * "Por cuenta": por cada cuenta, cuántos mensajes, cuántos registraron movimientos, sus tokens de
+ * Claude, sus errores y su último mensaje, con los filtros de la página. Solo cantidades, nunca el
+ * texto. Los números sin cuenta van juntos al final. Devuelve `limit` filas y si hay más.
+ */
+export async function botAccounts(filters: BotFilters, today: string): Promise<{ rows: AccountRow[]; hasMore: boolean }> {
+  await requireAdmin();
+  const rows = await db
+    .select({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      phones: sql<number>`count(distinct ${whatsappMessage.phone})::int`,
+      messages: count(),
+      registered: sql<number>`count(*) filter (where ${outcome} = 'registrado')::int`,
+      tokens: tokensSum,
+      errors: errorsCount,
+      last: lastReceived,
+    })
+    .from(whatsappMessage)
+    .leftJoin(user, eq(user.id, whatsappMessage.userId))
+    .where(where(filters, today))
+    .groupBy(user.id, user.name, user.email)
+    .orderBy(sql`${user.id} is null`, SORT_BY[filters.sort], user.name)
+    .limit(filters.limit + 1);
+  return { rows: rows.slice(0, filters.limit).map((row) => ({ ...row, last: new Date(row.last) })), hasMore: rows.length > filters.limit };
 }
 
 /** El resumen de la tarjeta de Inicio: mensajes y errores de hoy, y si Claude está en pausa (o en el tope mensual). */

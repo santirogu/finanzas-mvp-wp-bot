@@ -2,6 +2,8 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  ACCOUNT_SORTS,
+  ACCOUNT_SORT_LABELS,
   BOT_PATH,
   CLAUDE_DAYS_WHEN_ALL,
   NO_BOT_FILTERS,
@@ -19,7 +21,10 @@ import {
   formatDayMonth,
   formatSeconds,
   formatShortDay,
+  lastSeenLabel,
   parseBotFilters,
+  showMoreAccounts,
+  toggleOutcome,
   readableApiError,
 } from "./bot-filters";
 
@@ -33,7 +38,7 @@ describe("parseBotFilters y botHref", () => {
 
   it("lee la búsqueda y la fecha, y las vuelve a escribir igual", () => {
     const filters = parseBotFilters({ q: "  ana  ", fecha: "personalizado", desde: "2026-10-09", hasta: "2026-10-01" });
-    expect(filters).toEqual({ search: "ana", date: "personalizado", from: "2026-10-01", to: "2026-10-09" });
+    expect(filters).toEqual({ ...NO_BOT_FILTERS, search: "ana", date: "personalizado", from: "2026-10-01", to: "2026-10-09" });
     expect(botHref(filters)).toBe(`${BOT_PATH}?q=ana&fecha=personalizado&desde=2026-10-01&hasta=2026-10-09`);
     expect(parseBotFilters({ fecha: "inventada" }).date).toBe("todo");
   });
@@ -45,6 +50,62 @@ describe("parseBotFilters y botHref", () => {
       { label: "Últimos 7 días", href: `${BOT_PATH}?q=beto` },
     ]);
     expect(activeBotFilters(NO_BOT_FILTERS)).toEqual([]);
+  });
+});
+
+describe("resultado, orden y Ver más", () => {
+  it("lee el resultado, el orden y cuántas cuentas mostrar; lo que no es válido, por defecto", () => {
+    expect(parseBotFilters({ resultado: "error", orden: "errores", mostrar: "100" })).toMatchObject({
+      outcome: "error",
+      sort: "errores",
+      limit: 100,
+    });
+    expect(parseBotFilters({ resultado: "inventado", orden: "nombre", mostrar: "7" })).toMatchObject({
+      outcome: null,
+      sort: "tokens",
+      limit: 50,
+    });
+  });
+
+  it("los escribe en la URL solo si no son los de siempre", () => {
+    const filters = parseBotFilters({ q: "ana", resultado: "tope_claude", fecha: "7d", orden: "ultimo", mostrar: "100" });
+    expect(botHref(filters)).toBe(`${BOT_PATH}?q=ana&resultado=tope_claude&fecha=7d&orden=ultimo&mostrar=100`);
+    expect(botHref({ ...filters, sort: "tokens", limit: 50 })).toBe(`${BOT_PATH}?q=ana&resultado=tope_claude&fecha=7d`);
+  });
+
+  it("el resultado es un filtro activo con su ✕; quitar cualquiera vuelve a la primera página", () => {
+    const filters = parseBotFilters({ resultado: "error", fecha: "hoy", orden: "mensajes", mostrar: "150" });
+    expect(activeBotFilters(filters)).toEqual([
+      { label: "Resultado: Error", href: `${BOT_PATH}?fecha=hoy&orden=mensajes` },
+      { label: "Hoy", href: `${BOT_PATH}?resultado=error&orden=mensajes` },
+    ]);
+  });
+
+  it("tocar una barra filtra por ese resultado; tocarla otra vez lo quita", () => {
+    const filters = parseBotFilters({ resultado: "registrado", mostrar: "100" });
+    expect(toggleOutcome(filters, "error")).toMatchObject({ outcome: "error", limit: 50 });
+    expect(toggleOutcome(filters, "registrado")).toMatchObject({ outcome: null, limit: 50 });
+  });
+
+  it("Ver más suma 50 cuentas, hasta 500", () => {
+    expect(showMoreAccounts(NO_BOT_FILTERS).limit).toBe(100);
+    expect(showMoreAccounts({ ...NO_BOT_FILTERS, limit: 480 }).limit).toBe(500);
+  });
+
+  it("los órdenes tienen su nombre", () => {
+    expect(ACCOUNT_SORTS.map((s) => ACCOUNT_SORT_LABELS[s])).toEqual(["Tokens", "Mensajes", "Errores", "Último mensaje"]);
+  });
+});
+
+describe("lastSeenLabel", () => {
+  it.each([
+    ["2026-10-12T15:00:00Z", "hoy"],
+    // 11:30 p. m. del 11 en Colombia (ya es el 12 en UTC): ayer.
+    ["2026-10-12T04:30:00Z", "ayer"],
+    ["2026-10-11T05:00:00Z", "ayer"],
+    ["2026-10-02T15:00:00Z", "2 oct"],
+  ])("%s → %s", (iso, label) => {
+    expect(lastSeenLabel(new Date(iso), TODAY)).toBe(label);
   });
 });
 

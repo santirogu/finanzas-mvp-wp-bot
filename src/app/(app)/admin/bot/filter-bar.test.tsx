@@ -60,6 +60,21 @@ describe("BotFilterBar", () => {
     expect(submitted[0].get("q")).toBe("beto");
   });
 
+  it("al cambiar la fecha conserva el resultado (la barra tocada) y el orden de Por cuenta", async () => {
+    render(<BotFilterBar filters={f({ outcome: "error", sort: "errores" })} panelOpen />);
+    await userEvent.click(screen.getByRole("radio", { name: "Hoy" }));
+    expect(submitted[0].get("resultado")).toBe("error");
+    expect(submitted[0].get("orden")).toBe("errores");
+    expect(submitted[0].get("fecha")).toBe("hoy");
+  });
+
+  it("sin resultado ni orden elegidos, no los envía", async () => {
+    render(<BotFilterBar filters={f()} panelOpen />);
+    await userEvent.click(screen.getByRole("radio", { name: "Hoy" }));
+    expect(submitted[0].has("resultado")).toBe(false);
+    expect(submitted[0].has("orden")).toBe(false);
+  });
+
   it("el formulario va a /admin/bot", () => {
     render(<BotFilterBar filters={f()} panelOpen={false} />);
     expect(document.querySelector("form")).toHaveAttribute("action", "/admin/bot");

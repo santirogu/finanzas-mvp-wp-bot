@@ -4,10 +4,35 @@
 // El módulo muestra cómo funciona el bot, nunca lo que la gente escribe: la política de privacidad
 // promete que el admin no ve los mensajes (ni sus montos). Cada mensaje cuenta por su resultado.
 
+import { todayInTimezone } from "@/lib/dates";
 import type { ServiceCheck } from "@/lib/service-check";
-import { addDays, appendDateFilter, dateFilterLabel, dateRange, parseDateFilter, parseSearch, type DatePreset, type Params } from "../shared/filters";
+import {
+  ADMIN_MAX_ROWS,
+  ADMIN_PAGE_SIZE,
+  ADMIN_TIMEZONE,
+  addDays,
+  appendDateFilter,
+  dateFilterLabel,
+  dateRange,
+  first,
+  parseDateFilter,
+  parseLimit,
+  parseSearch,
+  type DatePreset,
+  type Params,
+} from "../shared/filters";
 
 export const BOT_PATH = "/admin/bot";
+
+/** Cómo se ordena la tabla "Por cuenta" (?orden=); por defecto, de la que más tokens usa. */
+export const ACCOUNT_SORTS = ["tokens", "mensajes", "errores", "ultimo"] as const;
+export type AccountSort = (typeof ACCOUNT_SORTS)[number];
+export const ACCOUNT_SORT_LABELS: Record<AccountSort, string> = {
+  tokens: "Tokens",
+  mensajes: "Mensajes",
+  errores: "Errores",
+  ultimo: "Último mensaje",
+};
 
 export type BotFilters = {
   /** Nombre o correo de la cuenta, o el número. */
@@ -15,32 +40,72 @@ export type BotFilters = {
   date: DatePreset;
   from: string | null;
   to: string | null;
+  /** Solo los mensajes con ese resultado (?resultado=, al tocar una barra); null: todos. */
+  outcome: Outcome | null;
+  sort: AccountSort;
+  /** Cuántas cuentas se ven en "Por cuenta" (?mostrar=, "Ver más" suma de a ADMIN_PAGE_SIZE). */
+  limit: number;
 };
 
-export const NO_BOT_FILTERS: BotFilters = { search: "", date: "todo", from: null, to: null };
+export const NO_BOT_FILTERS: BotFilters = {
+  search: "",
+  date: "todo",
+  from: null,
+  to: null,
+  outcome: null,
+  sort: "tokens",
+  limit: ADMIN_PAGE_SIZE,
+};
 
 export function parseBotFilters(params: Params): BotFilters {
-  return { search: parseSearch(params), ...parseDateFilter(params) };
+  const outcome = first(params.resultado);
+  const sort = first(params.orden);
+  return {
+    search: parseSearch(params),
+    ...parseDateFilter(params),
+    outcome: (OUTCOMES as readonly string[]).includes(outcome) ? (outcome as Outcome) : null,
+    sort: (ACCOUNT_SORTS as readonly string[]).includes(sort) ? (sort as AccountSort) : "tokens",
+    limit: parseLimit(params),
+  };
 }
 
 /** La URL de la página con esos filtros. */
 export function botHref(filters: BotFilters): string {
   const params = new URLSearchParams();
   if (filters.search) params.set("q", filters.search);
+  if (filters.outcome) params.set("resultado", filters.outcome);
   appendDateFilter(params, filters);
+  if (filters.sort !== "tokens") params.set("orden", filters.sort);
+  if (filters.limit > ADMIN_PAGE_SIZE) params.set("mostrar", String(filters.limit));
   const query = params.toString();
   return query ? `${BOT_PATH}?${query}` : BOT_PATH;
 }
 
-/** Las etiquetas de los filtros activos, cada una con la URL que lo quita. */
+/**
+ * Las etiquetas de los filtros activos, cada una con la URL que lo quita. Quitar uno vuelve a la
+ * primera página de "Por cuenta": con otros filtros, las cuentas son otras.
+ */
 export function activeBotFilters(filters: BotFilters): { label: string; href: string }[] {
+  const base = { ...filters, limit: ADMIN_PAGE_SIZE };
   return [
-    ...(filters.search ? [{ label: `“${filters.search}”`, href: botHref({ ...filters, search: "" }) }] : []),
-    ...(filters.date !== "todo"
-      ? [{ label: dateFilterLabel(filters), href: botHref({ ...filters, date: "todo", from: null, to: null }) }]
-      : []),
+    ...(filters.search ? [{ label: `“${filters.search}”`, href: botHref({ ...base, search: "" }) }] : []),
+    ...(filters.outcome ? [{ label: `Resultado: ${OUTCOME_LABELS[filters.outcome]}`, href: botHref({ ...base, outcome: null }) }] : []),
+    ...(filters.date !== "todo" ? [{ label: dateFilterLabel(filters), href: botHref({ ...base, date: "todo", from: null, to: null }) }] : []),
   ];
 }
+
+/** Al tocar una barra: filtra por ese resultado, o lo quita si ya era ese. */
+export const toggleOutcome = (filters: BotFilters, outcome: Outcome): BotFilters => ({
+  ...filters,
+  outcome: filters.outcome === outcome ? null : outcome,
+  limit: ADMIN_PAGE_SIZE,
+});
+
+/** "Ver más" en "Por cuenta": ADMIN_PAGE_SIZE cuentas más, hasta ADMIN_MAX_ROWS. */
+export const showMoreAccounts = (filters: BotFilters): BotFilters => ({
+  ...filters,
+  limit: Math.min(ADMIN_MAX_ROWS, filters.limit + ADMIN_PAGE_SIZE),
+});
 
 /**
  * Qué pasó con cada mensaje, en el orden en que se muestran. Sale del estado, del tipo de intención
@@ -221,3 +286,11 @@ export const MAX_RESENDS = 50;
 /** Un día (YYYY-MM-DD) con el mes en letras: "1 de noviembre". */
 export const formatDayMonth = (day: string) =>
   new Intl.DateTimeFormat("es-CO", { day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(`${day}T00:00:00Z`));
+
+/** El último mensaje de una cuenta, corto: "hoy", "ayer" o "13 oct" (días de Colombia). */
+export function lastSeenLabel(last: Date, today: string): string {
+  const day = todayInTimezone(ADMIN_TIMEZONE, last);
+  if (day === today) return "hoy";
+  if (day === addDays(today, -1)) return "ayer";
+  return formatShortDay(day);
+}

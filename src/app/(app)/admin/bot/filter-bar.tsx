@@ -3,11 +3,18 @@
 import { BOT_PATH, type BotFilters } from "@/modules/admin/bot/bot-filters";
 import { ChipFilterBar, dateChipGroup } from "../chip-filter-bar";
 
-/** Los filtros del bot: la cuenta o el número, y la fecha de los mensajes. */
+/**
+ * Los filtros del bot: la cuenta o el número, y la fecha de los mensajes. El resultado (al tocar una
+ * barra) y el orden de "Por cuenta" no están en la barra, pero se conservan al buscar.
+ */
 export function BotFilterBar({ filters, panelOpen }: { filters: BotFilters; panelOpen: boolean }) {
+  const hidden: Record<string, string> = {};
+  if (filters.outcome) hidden.resultado = filters.outcome;
+  if (filters.sort !== "tokens") hidden.orden = filters.sort;
   return (
     <ChipFilterBar
       action={BOT_PATH}
+      hidden={hidden}
       search={filters.search}
       searchPlaceholder="Nombre, correo o número"
       activeCount={filters.date === "todo" ? 0 : 1}

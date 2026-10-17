@@ -47,6 +47,7 @@ export function ChipFilterBar({
   groups,
   activeCount,
   panelOpen,
+  hidden = {},
 }: {
   action: string;
   search: string;
@@ -54,6 +55,8 @@ export function ChipFilterBar({
   groups: readonly ChipGroup[];
   activeCount: number;
   panelOpen: boolean;
+  /** Filtros que no están en la barra pero se conservan al buscar o tocar un chip (?resultado= del bot). */
+  hidden?: Record<string, string>;
 }) {
   const [open, setOpen] = useState(panelOpen);
   // Qué grupos tienen el rango personalizado elegido (muestran Desde y Hasta).
@@ -78,6 +81,9 @@ export function ChipFilterBar({
 
   return (
     <Form action={action} scroll={false} onChange={onChange} className="space-y-3">
+      {Object.entries(hidden).map(([name, value]) => (
+        <input key={name} type="hidden" name={name} value={value} />
+      ))}
       <div className="flex gap-2">
         <label className="min-w-0 flex-1">
           <span className="sr-only">Buscar</span>

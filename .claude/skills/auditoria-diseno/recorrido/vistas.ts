@@ -130,6 +130,14 @@ export const VISTAS: Vista[] = [
   },
   // Con la persona de datos, para que haya mensajes del bot (vinculación, movimientos y Claude).
   { id: "admin-bot", titulo: "Administración: bot de WhatsApp", persona: "admin", necesita: ["datos"], ruta: fija("/admin/bot") },
+  // Con una barra tocada (un resultado) y Por cuenta ordenado por mensajes.
+  {
+    id: "admin-bot-filtrado",
+    titulo: "Administración: bot de WhatsApp filtrado por un resultado",
+    persona: "admin",
+    necesita: ["datos"],
+    ruta: fija("/admin/bot?resultado=registrado&orden=mensajes"),
+  },
   // Probar las conexiones solo lee (contra los servidores falsos): se ven los resultados.
   {
     id: "admin-bot-conexiones",

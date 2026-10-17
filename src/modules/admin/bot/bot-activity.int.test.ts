@@ -9,7 +9,7 @@ import { parseBotFilters } from "./bot-filters";
 // la de un admin con la verificación activa.
 const auth = vi.hoisted(() => ({ requireAdmin: vi.fn() }));
 vi.mock("@/lib/session", () => ({ requireAdmin: auth.requireAdmin }));
-const { botActivity, botSummary } = await import("./bot-activity");
+const { botAccounts, botActivity, botSummary } = await import("./bot-activity");
 
 beforeEach(() => {
   auth.requireAdmin.mockReset().mockResolvedValue({ id: "admin", role: "admin", twoFactorEnabled: true });
@@ -216,6 +216,72 @@ describe("botActivity", () => {
     auth.requireAdmin.mockRejectedValue(new Error("NEXT_NOT_FOUND"));
     await expect(activity()).rejects.toThrow("NEXT_NOT_FOUND");
     await expect(botSummary(TODAY)).rejects.toThrow("NEXT_NOT_FOUND");
+  });
+});
+
+describe("filtrar por resultado (al tocar una barra)", () => {
+  it("las barras siguen mostrando todos los resultados; lo demás, solo el elegido", async () => {
+    await seed();
+    const capped = await activity({ fecha: "hoy", resultado: "tope_claude" });
+    expect(capped.total).toBe(3);
+    expect(capped.outcomes).toMatchObject({ registrado: 1, tope_claude: 3, error: 2 });
+    expect(capped.claude.calls).toBe(0);
+    expect(capped.errors).toEqual([]);
+
+    const failed = await activity({ fecha: "hoy", resultado: "error" });
+    expect(failed.total).toBe(2);
+    expect(failed.claude).toMatchObject({ calls: 1, inputTokens: 700 });
+    expect(failed.errors).toHaveLength(2);
+  });
+});
+
+describe("botAccounts", () => {
+  const accounts = (params: Record<string, string> = {}) => botAccounts(parseBotFilters(params), TODAY);
+
+  it("una fila por cuenta, de la que más tokens usa a la que menos; los números sin cuenta, al final", async () => {
+    const { ana, beto } = await seed();
+    const { rows, hasMore } = await accounts({ fecha: "hoy" });
+    expect(hasMore).toBe(false);
+    expect(rows.map(({ last, ...row }) => row)).toEqual([
+      { id: ana.id, name: "Ana Bot", email: "ana-bot@correo.com", phones: 2, messages: 8, registered: 1, tokens: 2560, errors: 2 },
+      { id: beto.id, name: "Beto Bot", email: "beto-bot@correo.com", phones: 1, messages: 3, registered: 0, tokens: 0, errors: 0 },
+      { id: null, name: null, email: null, phones: 1, messages: 3, registered: 0, tokens: 0, errors: 0 },
+    ]);
+    expect(rows[0].last).toEqual(at("2026-10-12T16:00:00Z"));
+  });
+
+  it("nunca devuelve el texto ni la respuesta de un mensaje", async () => {
+    await seed();
+    const json = JSON.stringify(await accounts());
+    for (const secret of [SECRET_TEXT, "Regalo secreto", "Balance de octubre", "hola"]) expect(json).not.toContain(secret);
+  });
+
+  it("se ordena por mensajes, errores o último mensaje, y respeta los filtros", async () => {
+    const { ana, beto } = await seed();
+    expect((await accounts({ fecha: "hoy", orden: "mensajes" })).rows.map((r) => r.id)).toEqual([ana.id, beto.id, null]);
+    expect((await accounts({ fecha: "hoy", orden: "errores" })).rows.map((r) => r.id)).toEqual([ana.id, beto.id, null]);
+    // Con todo, el de Ana de hace 10 días suma sus tokens.
+    expect((await accounts()).rows[0]).toMatchObject({ id: ana.id, messages: 9, tokens: 3660 });
+    // Solo los que llegaron al tope de Claude: Beto tuvo 2, Ana 1.
+    const capped = await accounts({ fecha: "hoy", resultado: "tope_claude", orden: "mensajes" });
+    expect(capped.rows.map((r) => [r.id, r.messages])).toEqual([
+      [beto.id, 2],
+      [ana.id, 1],
+    ]);
+    expect((await accounts({ q: "Beto" })).rows.map((r) => r.id)).toEqual([beto.id]);
+  });
+
+  it("muestra hasta el límite y dice si hay más", async () => {
+    const { ana } = await seed();
+    const filters = { ...parseBotFilters({ fecha: "hoy" }), limit: 1 };
+    const page = await botAccounts(filters, TODAY);
+    expect(page.rows.map((r) => r.id)).toEqual([ana.id]);
+    expect(page.hasMore).toBe(true);
+  });
+
+  it("sin rol de admin no consulta nada", async () => {
+    auth.requireAdmin.mockRejectedValue(new Error("NEXT_NOT_FOUND"));
+    await expect(accounts()).rejects.toThrow("NEXT_NOT_FOUND");
   });
 });
 
