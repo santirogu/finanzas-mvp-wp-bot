@@ -10,6 +10,7 @@ import {
   whatsappLinkCode,
   whatsappMessage,
 } from "@/db/schema";
+import { formatMonthLabel, formatMonthName, monthOf, monthParam, shiftMonth, todayInTimezone } from "@/lib/dates";
 import { createLinkCode } from "@/modules/whatsapp/link";
 import {
   activeTransactions,
@@ -393,6 +394,80 @@ describe("handleIncomingMessage · registro de movimientos", () => {
 
     expect(sender.sent[0].body).toBe("¿Cuánto fue?");
     expect(await activeTransactions(user.id)).toEqual([]);
+  });
+});
+
+describe("handleIncomingMessage · balance de otro mes", () => {
+  // Las fechas salen de hoy en Bogotá (la zona de las cuentas de prueba).
+  const current = monthOf(todayInTimezone("America/Bogota"));
+  const previous = shiftMonth(current, -1);
+  const twoBefore = shiftMonth(current, -2);
+  const day = (month: { year: number; month: number }) => `${monthParam(month)}-10`;
+  const add = (userId: string, type: "income" | "expense", amount: number, month: { year: number; month: number }) =>
+    db.insert(transaction).values({ userId, type, amount, description: "Movimiento", occurredOn: day(month) });
+  const replyTo = async (text: string) => {
+    const { deps: d, sender } = deps();
+    await handleIncomingMessage(incoming(text), d);
+    return sender.sent[0].body.replace(/\u00a0/g, " ");
+  };
+
+  it("\"balance <mes>\" resume ese mes, solo del usuario, y lo compara con el anterior", async () => {
+    const user = await linkedUser();
+    const other = await linkedUser("573007777777", "Otro");
+    await add(user.id, "income", 2000000, previous);
+    await add(user.id, "expense", 500000, previous);
+    await add(user.id, "expense", 300000, twoBefore);
+    await add(user.id, "expense", 999999, current);
+    await add(other.id, "income", 7777777, previous);
+
+    const reply = await replyTo(`balance ${formatMonthName(previous)} ${previous.year}`);
+    expect(reply.split("\n")).toEqual([
+      `📊 *${formatMonthLabel(previous)}*`,
+      "Ingresos: $2.000.000,00",
+      "Egresos: $500.000,00",
+      "Balance: *$1.500.000,00*",
+      `_↗ $1.800.000,00 más que ${formatMonthName(twoBefore)}_`,
+    ]);
+  });
+
+  it("\"balance mes pasado\" es el anterior; sin movimientos antes, no compara", async () => {
+    const user = await linkedUser();
+    await add(user.id, "expense", 45900.5, previous);
+
+    const reply = await replyTo("balance mes pasado");
+    expect(reply).toContain(`📊 *${formatMonthLabel(previous)}*`);
+    expect(reply).toContain("Egresos: $45.900,50");
+    expect(reply).not.toContain("_");
+  });
+
+  it("el balance de siempre (este mes) también compara con el anterior", async () => {
+    const user = await linkedUser();
+    await add(user.id, "income", 100000, current);
+    await add(user.id, "income", 250000, previous);
+
+    const reply = await replyTo("balance");
+    expect(reply).toContain(`📊 *${formatMonthLabel(current)}*`);
+    expect(reply.split("\n").at(-1)).toBe(`_↘ $150.000,00 menos que ${formatMonthName(previous)}_`);
+  });
+
+  it("un mes que todavía no llega lo dice, sin consultar nada", async () => {
+    await linkedUser();
+    const next = shiftMonth(current, 2);
+    expect(await replyTo(`balance ${formatMonthName(next)} ${next.year}`)).toBe(replies.futureMonthReply(next));
+  });
+
+  it("un mes de antes del 2000 (o un año como 0000) responde sin consultar la base ni fallar", async () => {
+    await linkedUser();
+    expect(await replyTo("balance enero 0000")).toBe(replies.tooOldMonthReply);
+    expect(await replyTo("balance diciembre 1999")).toBe(replies.tooOldMonthReply);
+  });
+
+  it("un número sin vincular no ve el balance de otro mes de nadie", async () => {
+    const user = await linkedUser();
+    await add(user.id, "income", 2000000, previous);
+    const { deps: d, sender } = deps();
+    await handleIncomingMessage(incoming("balance mes pasado", "573005550000"), d);
+    expect(sender.sent[0].body).not.toContain("2.000.000");
   });
 });
 

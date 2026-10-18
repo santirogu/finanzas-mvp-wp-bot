@@ -7,6 +7,8 @@ import {
   aiUnavailableReply,
   balanceReply,
   errorReply,
+  futureMonthReply,
+  tooOldMonthReply,
   helpReply,
   linkedReply,
   linkInvalidReply,
@@ -113,6 +115,44 @@ describe("balanceReply", () => {
       balanceReply({ income: 0, expense: 0, balance: 0, count: 0 }, { currency: "COP", range }),
     ).toContain("Aún no tienes movimientos en octubre de 2026");
   });
+
+  const september = { year: 2026, month: 9 };
+  const summary = (balance: number, count = 3) => ({ income: balance > 0 ? balance : 0, expense: balance < 0 ? -balance : 0, balance, count });
+
+  it("con el mes anterior, una línea más con cómo cambió el balance (como en el Resumen)", () => {
+    const up = balanceReply(summary(2940627.25), { currency: "COP", range, previous: { month: september, summary: summary(1136648.5) } });
+    expect(nbsp(up).split("\n").at(-1)).toBe("_↗ $1.803.978,75 más que septiembre_");
+    const down = balanceReply(summary(100000), { currency: "COP", range, previous: { month: september, summary: summary(250000) } });
+    expect(nbsp(down).split("\n").at(-1)).toBe("_↘ $150.000,00 menos que septiembre_");
+    const same = balanceReply(summary(100000), { currency: "COP", range, previous: { month: september, summary: summary(100000) } });
+    expect(nbsp(same).split("\n").at(-1)).toBe("_Igual que septiembre_");
+  });
+
+  it("sin movimientos el mes anterior, no compara (y el título dice el mes pedido)", () => {
+    const reply = balanceReply(summary(100000), {
+      currency: "COP",
+      range: { year: 2025, month: 12 },
+      previous: { month: { year: 2025, month: 11 }, summary: summary(0, 0) },
+    });
+    expect(reply.split("\n")).toHaveLength(4);
+    expect(reply).toContain("📊 *Diciembre de 2025*");
+  });
+});
+
+describe("tooOldMonthReply", () => {
+  it("dice desde cuándo hay balances y cómo pedir otro", () => {
+    expect(tooOldMonthReply).toBe(
+      "Solo puedo darte balances desde enero de 2000. Prueba con *balance* (este mes) o *balance mes pasado*.",
+    );
+  });
+});
+
+describe("futureMonthReply", () => {
+  it("dice que el mes todavía no llega y cómo pedir otro", () => {
+    expect(futureMonthReply({ year: 2026, month: 12 })).toBe(
+      "Diciembre de 2026 todavía no llega 🙂 Prueba con *balance* (este mes) o *balance mes pasado*.",
+    );
+  });
 });
 
 describe("undoReply", () => {
@@ -168,6 +208,7 @@ describe("textos fijos del bot", () => {
         "",
         "También entiendo:",
         "• *balance* — cómo vas este mes",
+        "• *balance septiembre* o *balance mes pasado* — otro mes",
         "• *deshacer* — borra el último registro",
       ].join("\n"),
     );

@@ -282,6 +282,19 @@ scripts/seed.ts                     Categorías por defecto
 3. Se deduplica por el ID del mensaje, se resuelven los comandos fijos (`balance`, `deshacer`,
    `ayuda`) y el texto libre se interpreta con Claude. El bot responde por WhatsApp.
 
+**Balance de otro mes** (`src/modules/bot/commands.ts`): un comando fijo más, sin Claude (no gasta
+tokens y funciona con Claude en pausa).
+- **Qué entiende:**
+  - `balance septiembre`, `saldo de agosto`, `resumen del mes de marzo`;
+  - abreviado (`balance sept`) o con año (`balance septiembre 2025`);
+  - `balance mes pasado`;
+  - `¿cuánto gasté en septiembre?`.
+- **Qué mes es** (`balanceMonth`): sin año, el último que ya pasó con ese nombre (en octubre,
+  "noviembre" es el del año pasado). Uno que todavía no llega lo dice.
+- **La respuesta,** como la de `balance`, suma una línea con cómo cambió el balance frente al mes
+  anterior ("↗ $1.803.978,75 más que agosto"), si ese mes tuvo movimientos. El `balance` de siempre
+  también la lleva.
+
 **Límites** (`src/modules/bot/limits.ts`): cada mensaje interpretado es una llamada a Claude con
 costo, y la vinculación por código no debe poder adivinarse.
 - **Mensajes interpretados por cuenta:**
