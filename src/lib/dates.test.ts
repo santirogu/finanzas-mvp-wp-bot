@@ -10,6 +10,7 @@ import {
   monthParam,
   monthRange,
   parseMonthParam,
+  sameDayIn,
   shiftMonth,
   todayInTimezone,
 } from "./dates";
@@ -78,6 +79,21 @@ describe("?mes= (monthParam y parseMonthParam)", () => {
 describe("monthOf", () => {
   it("da el mes de una fecha", () => {
     expect(monthOf("2026-09-30")).toEqual({ year: 2026, month: 9 });
+  });
+});
+
+describe("sameDayIn", () => {
+  it("en el mes de hoy, hoy; en otro, el mismo día de ese mes", () => {
+    expect(sameDayIn({ year: 2026, month: 10 }, "2026-10-17")).toBe("2026-10-17");
+    expect(sameDayIn({ year: 2026, month: 9 }, "2026-10-17")).toBe("2026-09-17");
+    expect(sameDayIn({ year: 2025, month: 1 }, "2026-10-05")).toBe("2025-01-05");
+  });
+
+  it("si el mes no tiene ese día, el último del mes", () => {
+    expect(sameDayIn({ year: 2026, month: 9 }, "2026-10-31")).toBe("2026-09-30");
+    expect(sameDayIn({ year: 2026, month: 2 }, "2026-03-30")).toBe("2026-02-28");
+    expect(sameDayIn({ year: 2024, month: 2 }, "2024-03-31")).toBe("2024-02-29");
+    expect(sameDayIn({ year: 2026, month: 12 }, "2027-01-31")).toBe("2026-12-31");
   });
 });
 

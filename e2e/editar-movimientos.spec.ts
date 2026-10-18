@@ -25,7 +25,7 @@ test("corregir un egreso: monto, descripción y categoría @principal", async ({
 
   await test.step("abrir el movimiento muestra sus datos", async () => {
     await openEdit(page, "Zapatos");
-    await expect(visible(page.getByLabel("Monto"))).toHaveValue("500.000");
+    await expect(visible(page.getByLabel("Monto"))).toHaveValue("500.000,00");
     await expect(visible(page.getByLabel("Descripción"))).toHaveValue("Zapatos");
     await expect(visible(page.getByLabel("Categoría")).locator("option:checked")).toHaveText(/Ropa/);
   });
@@ -62,6 +62,8 @@ test("los centavos se escriben después de la coma y se corrigen como el resto d
     await amount.pressSequentially("25900.5");
     await expect(amount).toHaveValue("25.900,5");
     await visible(page.getByLabel("Descripción")).fill("Almuerzo");
+    // Al salir del campo, el monto se completa con sus dos decimales.
+    await expect(amount).toHaveValue("25.900,50");
     await visible(page.getByRole("button", { name: "Registrar egreso" })).click();
 
     await expect(row(page, "Almuerzo")).toContainText(/−\$25\.900,50/);

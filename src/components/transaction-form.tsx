@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useActionState, useEffect, useId, useRef } from "react";
 import { formatMonthName, monthOf } from "@/lib/dates";
 import type { FieldMessages } from "@/lib/field-errors";
-import { amountInputValue, formatAmountTyping } from "@/lib/money";
+import { amountInputValue, completeAmountDecimals, formatAmountTyping } from "@/lib/money";
 import {
   createTransactionAction,
   updateTransactionAction,
@@ -36,13 +36,17 @@ export function TransactionForm({
   type,
   categories,
   today,
+  defaultDate = today,
   transaction,
   cancelHref,
   listMonth,
 }: {
   type: "income" | "expense";
   categories: CategoryOption[];
+  /** El límite de la fecha (no se registran movimientos futuros). */
   today: string;
+  /** La fecha que propone un movimiento nuevo: hoy o, mirando otro mes, el mismo día de ese mes. */
+  defaultDate?: string;
   transaction?: TransactionToEdit;
   /** Adónde vuelve "Cancelar" al editar. */
   cancelHref?: string;
@@ -87,11 +91,18 @@ export function TransactionForm({
 
   return (
     <form action={formAction} {...formProps} className="card space-y-4 p-4 sm:p-5">
-      <h2 className="font-semibold">{editing ? `Editar ${noun}` : `Nuevo ${noun}`}</h2>
+      <div className="flex items-baseline justify-between gap-2">
+        <h2 className="font-semibold">{editing ? `Editar ${noun}` : `Nuevo ${noun}`}</h2>
+        {/* La explicación del asterisco, solo a la vista: el lector de pantalla ya anuncia cada campo
+            obligatorio. */}
+        <p aria-hidden className="text-xs text-muted">
+          <RequiredMark /> Obligatorio
+        </p>
+      </div>
       <input type="hidden" name="type" value={type} />
       {transaction && <input type="hidden" name="id" value={transaction.id} />}
 
-      <Field label="Monto" error={errorOf("amount")} errorId={ids.amount}>
+      <Field label="Monto" required error={errorOf("amount")} errorId={ids.amount}>
         <div className="relative">
           <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-base text-muted pointer-fine:text-sm">
             $
@@ -100,7 +111,7 @@ export function TransactionForm({
             ref={amountRef}
             name="amount"
             inputMode="decimal"
-            placeholder="500.000"
+            placeholder="500.000,00"
             defaultValue={values.amount}
             required
             {...aria("amount")}
@@ -109,11 +120,15 @@ export function TransactionForm({
               // Puntos de miles mientras se escribe y, tras la coma, hasta dos centavos: 45900,5 → 45.900,5
               e.target.value = formatAmountTyping(e.target.value);
             }}
+            onBlur={(e) => {
+              // Al salir del campo, con sus dos decimales: 500.000 → 500.000,00 y 45.900,5 → 45.900,50
+              e.target.value = completeAmountDecimals(e.target.value);
+            }}
           />
         </div>
       </Field>
 
-      <Field label="Descripción" error={errorOf("description")} errorId={ids.description}>
+      <Field label="Descripción" required error={errorOf("description")} errorId={ids.description}>
         <input
           name="description"
           required
@@ -147,11 +162,11 @@ export function TransactionForm({
             ))}
           </select>
         </Field>
-        <Field label="Fecha" error={errorOf("occurredOn")} errorId={ids.occurredOn}>
+        <Field label="Fecha" required error={errorOf("occurredOn")} errorId={ids.occurredOn}>
           <input
             name="occurredOn"
             type="date"
-            defaultValue={values.occurredOn ?? today}
+            defaultValue={values.occurredOn ?? defaultDate}
             max={today}
             required
             {...aria("occurredOn")}
@@ -185,6 +200,14 @@ function elsewhere(occurredOn: string | undefined, listMonth: { start: string; e
   return ` en ${formatMonthName(monthOf(occurredOn), { withYear: true })}`;
 }
 
+function RequiredMark() {
+  return (
+    <span aria-hidden className="ml-0.5 text-danger">
+      *
+    </span>
+  );
+}
+
 /** Valores del formulario a partir de un movimiento guardado (el monto con separadores y sus centavos). */
 function valuesOf(transaction: TransactionToEdit): Record<string, string> {
   return {
@@ -195,14 +218,20 @@ function valuesOf(transaction: TransactionToEdit): Record<string, string> {
   };
 }
 
-/** Un campo con su etiqueta y, debajo, su error (fuera de la etiqueta: si no, cambiaría su nombre). */
+/**
+ * Un campo con su etiqueta y, debajo, su error (fuera de la etiqueta: si no, cambiaría su nombre). Los
+ * obligatorios llevan un asterisco rojo; el lector de pantalla no lo lee (ya anuncia "obligatorio"
+ * por el `required` del campo).
+ */
 function Field({
   label,
+  required = false,
   error,
   errorId,
   children,
 }: {
   label: string;
+  required?: boolean;
   error?: string;
   errorId: string;
   children: React.ReactNode;
@@ -210,7 +239,10 @@ function Field({
   return (
     <div className="space-y-1.5">
       <label className="block space-y-1.5">
-        <span className="text-sm font-medium">{label}</span>
+        <span className="text-sm font-medium">
+          {label}
+          {required && <RequiredMark />}
+        </span>
         {children}
       </label>
       <FieldError id={errorId} message={error} />

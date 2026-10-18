@@ -4,6 +4,7 @@ import {
   formatMonthName,
   monthOf,
   monthParam,
+  sameDayIn,
   shiftMonth,
   todayInTimezone,
   type Month,
@@ -85,9 +86,10 @@ test("ver otros meses en el Resumen, Ingresos y Egresos @principal", async ({ pa
     await expect(card(page, "Egresos")).toContainText(`400% más que ${before}`);
   });
 
-  await test.step("las pestañas siguen en ese mes", async () => {
+  await test.step("las pestañas siguen en ese mes, y el formulario propone una fecha de ese mes", async () => {
     await openTab(page, "Egresos");
     await expectMonth(page, previous, "/egresos");
+    await expect(visible(page.getByLabel("Fecha"))).toHaveValue(sameDayIn(previous, today));
     await expect(text(page, `1 movimiento en ${nameOf(previous)}`)).toBeVisible();
     await expect(row(page, "Mercado anterior")).toContainText("−$500.000,00");
   });
@@ -132,10 +134,11 @@ test("ver otros meses en el Resumen, Ingresos y Egresos @principal", async ({ pa
     await expectMonth(page, before, "/egresos");
   });
 
-  await test.step("'Volver a este mes' vuelve al actual", async () => {
+  await test.step("'Volver a este mes' vuelve al actual, y la fecha vuelve a ser hoy", async () => {
     await visible(page.getByRole("link", { name: "Volver a este mes" })).click();
     await expectMonth(page, current, "/egresos");
     await expect(row(page, "Mercado de hoy")).toBeVisible();
+    await expect(visible(page.getByLabel("Fecha"))).toHaveValue(today);
   });
 });
 

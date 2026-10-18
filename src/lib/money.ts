@@ -84,12 +84,22 @@ export function formatAmountTyping(raw: string): string {
   return `${groupThousands(whole || "0")},${decimals}`;
 }
 
-/** Un monto guardado como se escribe en el formulario: "45.900" o, si tiene centavos, "45.900,50". */
+/** Un monto guardado como se escribe en el formulario, siempre con sus centavos: "45.900,00", "45.900,50". */
 export function amountInputValue(amount: number): string {
   const cents = Math.round(amount * 100);
   const rest = cents % 100;
-  const whole = groupThousands(String((cents - rest) / 100));
-  return rest ? `${whole},${String(rest).padStart(2, "0")}` : whole;
+  return `${groupThousands(String((cents - rest) / 100))},${String(rest).padStart(2, "0")}`;
+}
+
+/**
+ * Lo escrito en el campo de monto, completado con sus dos decimales al salir del campo:
+ * "500.000" → "500.000,00", "45.900,5" → "45.900,50". Vacío sigue vacío (el campo avisa que falta).
+ */
+export function completeAmountDecimals(raw: string): string {
+  const typed = formatAmountTyping(raw);
+  if (!typed) return "";
+  const [whole, decimals = ""] = typed.split(",");
+  return `${whole},${decimals.padEnd(2, "0")}`;
 }
 
 /**

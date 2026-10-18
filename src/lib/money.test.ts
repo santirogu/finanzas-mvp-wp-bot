@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { amountInputValue, formatAmountTyping, formatMoney, formatShare, parseAmountInput, roundToCents, sumAmounts } from "./money";
+import { amountInputValue, completeAmountDecimals, formatAmountTyping, formatMoney, formatShare, parseAmountInput, roundToCents, sumAmounts } from "./money";
 
 describe("parseAmountInput", () => {
   it.each([
@@ -138,21 +138,46 @@ describe("formatAmountTyping", () => {
 
 describe("amountInputValue", () => {
   it.each([
-    [45900, "45.900"],
-    [500, "500"],
-    [1250000, "1.250.000"],
+    [45900, "45.900,00"],
+    [500, "500,00"],
+    [1250000, "1.250.000,00"],
     [45900.5, "45.900,50"],
     [45900.05, "45.900,05"],
     [0.01, "0,01"],
     [0.1 + 0.2, "0,30"],
-    [100000000000, "100.000.000.000"],
-  ])("%d → %j", (amount, expected) => {
+    [100000000000, "100.000.000.000,00"],
+  ])("%d → %j (siempre con sus dos decimales)", (amount, expected) => {
     expect(amountInputValue(amount)).toBe(expected);
   });
 
   it("al guardarlo de nuevo sin tocarlo, el monto no cambia", () => {
     for (const amount of [45900, 45900.5, 0.01, 1250000.99]) {
       expect(parseAmountInput(amountInputValue(amount))).toBe(amount);
+    }
+  });
+});
+
+describe("completeAmountDecimals", () => {
+  it.each([
+    ["500.000", "500.000,00"],
+    ["500000", "500.000,00"],
+    ["45.900,5", "45.900,50"],
+    ["45.900,", "45.900,00"],
+    ["45.900,05", "45.900,05"],
+    ["0,5", "0,50"],
+    ["$ 1250000,5", "1.250.000,50"],
+  ])("al salir del campo: %j → %j", (typed, expected) => {
+    expect(completeAmountDecimals(typed)).toBe(expected);
+  });
+
+  it("vacío (o sin dígitos) sigue vacío: el campo avisa que falta", () => {
+    expect(completeAmountDecimals("")).toBe("");
+    expect(completeAmountDecimals("abc")).toBe("");
+  });
+
+  it("lo completado se lee igual que lo escrito", () => {
+    for (const typed of ["500.000", "45.900,5", "0,01"]) {
+      expect(parseAmountInput(completeAmountDecimals(typed))).toBe(parseAmountInput(typed));
     }
   });
 });

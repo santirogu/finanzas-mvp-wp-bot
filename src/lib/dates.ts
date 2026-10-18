@@ -75,6 +75,16 @@ export function monthOf(isoDate: string): Month {
   return { year, month };
 }
 
+/**
+ * La fecha que propone el formulario de un mes (YYYY-MM-DD): el mismo día que `today` en ese mes o,
+ * si el mes no lo tiene, su último día (el 31 en septiembre es el 30). En el mes de hoy, hoy.
+ */
+export function sameDayIn(month: Month, today: string): string {
+  const day = Number(today.slice(8, 10));
+  const lastDay = new Date(Date.UTC(month.year, month.month, 0)).getUTCDate();
+  return `${monthParam(month)}-${String(Math.min(day, lastDay)).padStart(2, "0")}`;
+}
+
 /** El mes `delta` meses después (o antes, si es negativo). */
 export function shiftMonth({ year, month }: Month, delta: number): Month {
   const index = year * 12 + (month - 1) + delta;

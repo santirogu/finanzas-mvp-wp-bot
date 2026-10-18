@@ -218,7 +218,11 @@ scripts/seed.ts                     Categorías por defecto
   base: las sumas las hace Postgres. En la app son `number` con hasta dos decimales; para sumar o
   restar en JavaScript, `sumAmounts` y `roundToCents` (`src/lib/money.ts`). Al escribir, el punto
   separa miles y la coma los centavos ("45.900,50"), en el formulario y en el bot; el tope es
-  `MAX_AMOUNT` (100 mil millones).
+  `MAX_AMOUNT` (100 mil millones). En el formulario, al salir del campo, el monto se completa con sus
+  dos decimales (`completeAmountDecimals`: "500.000" → "500.000,00"), y al editar ya viene con ellos.
+- **Campos obligatorios del formulario de movimientos:** monto, descripción y fecha llevan un asterisco
+  rojo, explicado con "* Obligatorio" arriba. La categoría es opcional ("Sin categoría"). El asterisco
+  es solo visual: el lector de pantalla anuncia "obligatorio" por el `required` de cada campo.
 - **"Mes actual" según la zona horaria del usuario** (`America/Bogota` por defecto), para que un
   gasto del 31 a las 10 p. m. no caiga en el mes siguiente por usar UTC.
 - **Otros meses en el Resumen, Ingresos y Egresos** (`src/lib/month-nav.ts`).
@@ -233,8 +237,10 @@ scripts/seed.ts                     Categorías por defecto
     - Con "Volver a este mes".
   - **Se mantiene:** las pestañas y las tarjetas del Resumen llevan el mismo `?mes=`, y al editar,
     borrar o deshacer un movimiento se vuelve a la lista del mes de su fecha.
-  - **El formulario** sigue proponiendo la fecha de hoy. Si el movimiento nuevo cae en otro mes que el
-    de la lista, el aviso dice en cuál quedó ("✓ Egreso registrado en octubre de 2026").
+  - **El formulario** propone el mismo día del mes que se ve (`sameDayIn`): mirando septiembre el 17 de
+    octubre, el 17/09; si el mes no tiene ese día, el último (el 31 en septiembre es el 30). En el mes
+    actual, hoy. Si el movimiento nuevo cae en otro mes que el de la lista, el aviso dice en cuál quedó
+    ("Egreso registrado en octubre de 2026").
   - **Comparación con el mes anterior** (`src/modules/transactions/month-comparison.ts`), en las tres
     tarjetas del Resumen: el balance en plata ("$120.000,00 más que agosto") y los ingresos y egresos
     en porcentaje ("15% más que agosto"). No aparece si el mes anterior no tuvo movimientos.
