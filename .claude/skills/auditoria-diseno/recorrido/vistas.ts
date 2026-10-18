@@ -95,6 +95,26 @@ export const VISTAS: Vista[] = [
 
   // Una cuenta con datos normales y WhatsApp vinculado
   { id: "resumen", titulo: "Resumen con datos", persona: "datos", ruta: fija("/dashboard") },
+  {
+    id: "menu-cuenta",
+    titulo: "Menú de la cuenta abierto (nombre largo)",
+    persona: "datos",
+    ruta: fija("/dashboard"),
+    preparar: async (page) => {
+      await visible(page.getByRole("button", { name: /^Tu cuenta: / })).click();
+      await expect(visible(page.getByRole("group", { name: "Tu cuenta" }))).toBeVisible();
+    },
+  },
+  {
+    id: "menu-cuenta-admin",
+    titulo: "Menú de la cuenta abierto, de un admin (escudo y etiqueta)",
+    persona: "admin",
+    ruta: fija("/dashboard"),
+    preparar: async (page) => {
+      await visible(page.getByRole("button", { name: /^Tu cuenta: / })).click();
+      await expect(visible(page.getByRole("group", { name: "Tu cuenta" }))).toBeVisible();
+    },
+  },
   { id: "ingresos", titulo: "Ingresos con datos", persona: "datos", ruta: fija("/ingresos") },
   { id: "egresos", titulo: "Egresos con datos", persona: "datos", ruta: fija("/egresos") },
   { id: "editar-movimiento", titulo: "Editar un movimiento", persona: "datos", ruta: (d) => d.editar.datos },

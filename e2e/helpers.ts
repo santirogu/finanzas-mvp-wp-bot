@@ -162,8 +162,22 @@ export async function logIn(page: Page, email: string, password = PASSWORD) {
   await page.getByRole("button", { name: "Entrar" }).click();
 }
 
-/** Cierra sesión con el botón del encabezado. */
+/** Abre el menú de la cuenta del encabezado (el círculo con las iniciales) y devuelve su tarjeta. */
+export async function openAccountMenu(page: Page) {
+  await visible(page.getByRole("button", { name: /^Tu cuenta: / })).click();
+  const card = visible(page.getByRole("group", { name: "Tu cuenta" }));
+  await expect(card).toBeVisible();
+  return card;
+}
+
+/** Va a Mi cuenta desde el menú de la cuenta, como lo haría una persona. */
+export async function goToAccount(page: Page) {
+  await (await openAccountMenu(page)).getByRole("link", { name: "Mi cuenta" }).click();
+  await expect(visible(page.getByRole("heading", { name: "Mi cuenta", exact: true }))).toBeVisible();
+}
+
+/** Cierra sesión con Salir, en el menú de la cuenta. */
 export async function logOut(page: Page) {
-  await visible(page.getByRole("button", { name: "Salir" })).click();
+  await (await openAccountMenu(page)).getByRole("button", { name: "Salir" }).click();
   await expect(page).toHaveURL(/\/login$/);
 }
