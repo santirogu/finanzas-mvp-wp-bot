@@ -22,7 +22,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               Finanzas <span className="text-brand">MVP</span>
             </Link>
             {/* La sesión se lee dentro de Suspense para no bloquear el resto del layout. */}
-            <Suspense fallback={<div className="h-8 w-32 animate-pulse rounded-lg bg-border/60" />}>
+            <Suspense fallback={<div className="h-11 w-16 animate-pulse rounded-full bg-border/60 pointer-fine:h-[2.625rem]" />}>
               <UserMenu />
             </Suspense>
           </div>

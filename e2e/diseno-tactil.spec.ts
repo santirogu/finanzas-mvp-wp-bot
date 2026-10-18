@@ -4,7 +4,7 @@ import postgres from "postgres";
 import { heading, newAdmin, setUpTwoFactor } from "./admin";
 import { monthOf, monthParam, shiftMonth, todayInTimezone } from "../src/lib/dates";
 import { e2eDatabaseUrl } from "./database-url";
-import { addTransaction, openTab, register, test, toast, visible } from "./helpers";
+import { addTransaction, openAccountMenu, openTab, register, test, toast, visible } from "./helpers";
 
 // En las pantallas táctiles todo cabe en la pantalla, aunque los textos sean largos (sin scroll de
 // lado), y los campos tienen letra de 16 px o más: con menos, Safari del iPhone y del iPad hace zoom
@@ -181,6 +181,11 @@ test("en pantallas táctiles las páginas caben y los campos no hacen zoom @tact
       await open(page, path);
       await expectFitsOnScreens(page, path);
     }
+    // El menú de la cuenta, abierto (con el nombre y la etiqueta Admin).
+    await open(page, "/dashboard");
+    await openAccountMenu(page);
+    await expectFitsOnScreens(page, "menú de la cuenta");
+    await page.keyboard.press("Escape");
     // La tarjeta para elegir el mes, abierta, en el Resumen y en una lista.
     for (const path of [`/dashboard?mes=${previousMonth}`, `/egresos?mes=${previousMonth}`]) {
       await open(page, path);

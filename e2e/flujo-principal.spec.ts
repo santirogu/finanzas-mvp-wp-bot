@@ -1,5 +1,5 @@
 import { expect, type Page } from "@playwright/test";
-import { addTransaction, openTab, register, test, toast, visible } from "./helpers";
+import { addTransaction, logOut, openTab, register, test, toast, visible } from "./helpers";
 
 const text = (page: Page, value: string | RegExp) => visible(page.getByText(value));
 const balance = (page: Page) => text(page, "Balance del mes").locator("..");
@@ -55,8 +55,7 @@ test("registrarse, llevar ingresos y egresos, ver el balance y salir @principal"
   });
 
   await test.step("salir cierra la sesión", async () => {
-    await page.getByRole("button", { name: "Salir" }).click();
-    await expect(page).toHaveURL(/\/login$/);
+    await logOut(page);
     await page.goto("/dashboard");
     await expect(page).toHaveURL(/\/login$/);
   });

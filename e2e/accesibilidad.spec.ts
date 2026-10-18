@@ -2,7 +2,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, type Locator, type Page } from "@playwright/test";
 import { totp } from "../test/totp";
 import { newAdmin, setUpTwoFactor, wrongCode } from "./admin";
-import { addTransaction, logIn, logOut, openTab, PASSWORD, register, test, toast, visible } from "./helpers";
+import { addTransaction, goToAccount, logIn, logOut, openTab, PASSWORD, register, test, toast, visible } from "./helpers";
 import { newPhone, nthReply, sendWhatsApp } from "./whatsapp";
 
 // Accesibilidad con axe-core (reglas WCAG 2.1 A y AA): falla ante problemas graves o críticos,
@@ -141,7 +141,7 @@ for (const [colorScheme, scheme] of Object.entries(SCHEMES) as [keyof typeof SCH
       });
 
       test("Mi cuenta tampoco, ni con el botón de eliminar activo y el mouse encima @principal", async ({ page }) => {
-        await visible(page.getByRole("link", { name: "Mi cuenta" })).click();
+        await goToAccount(page);
         await expect(visible(page.getByRole("heading", { name: "Mi cuenta", exact: true }))).toBeVisible();
         await expect(visible(page.locator("[aria-busy=true]"))).toHaveCount(0);
         expect(await seriousViolations(page)).toEqual([]);

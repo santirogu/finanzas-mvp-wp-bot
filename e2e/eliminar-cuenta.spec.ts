@@ -1,8 +1,8 @@
 import { expect, type Page } from "@playwright/test";
-import { addTransaction, formAlert, openTab, PASSWORD, register, test, toast, uniqueEmail, visible } from "./helpers";
+import { addTransaction, formAlert, goToAccount, openTab, PASSWORD, register, test, toast, uniqueEmail, visible } from "./helpers";
 
 async function openAccount(page: Page) {
-  await visible(page.getByRole("link", { name: "Mi cuenta" })).click();
+  await goToAccount(page);
   await expect(page).toHaveURL(/\/cuenta$/);
   await expect(visible(page.getByRole("heading", { name: "Mi cuenta", exact: true }))).toBeVisible();
 }

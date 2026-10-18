@@ -192,6 +192,7 @@ src/
     (app)/dashboard                 Resumen: balance del mes (y frente al anterior), últimos movimientos, gastos por categoría
     (app)/ingresos, (app)/egresos   Formulario + listado del mes (vista compartida)
     (app)/month-nav.tsx             Navegador de meses (flechas y tarjeta del año) del Resumen, Ingresos y Egresos
+    (app)/account-menu.tsx          Menú de la cuenta del encabezado (iniciales, escudo de admin, Mi cuenta y Salir)
     api/auth/[...all]               Endpoints de Better Auth
   db/schema/                        Tablas: auth (user, session…) y finanzas (category, transaction)
   lib/
