@@ -4,7 +4,7 @@ import postgres from "postgres";
 import { heading, newAdmin, setUpTwoFactor } from "./admin";
 import { monthOf, monthParam, shiftMonth, todayInTimezone } from "../src/lib/dates";
 import { e2eDatabaseUrl } from "./database-url";
-import { addTransaction, openTab, test, toast, visible } from "./helpers";
+import { addTransaction, openTab, register, test, toast, visible } from "./helpers";
 
 // En las pantallas táctiles todo cabe en la pantalla, aunque los textos sean largos (sin scroll de
 // lado), y los campos tienen letra de 16 px o más: con menos, Safari del iPhone y del iPad hace zoom
@@ -114,6 +114,25 @@ async function open(page: Page, path: string) {
   await expect(visible(page.locator("[aria-busy=true]"))).toHaveCount(0);
   await expect(visible(page.getByRole("heading", { level: 1 })).first()).toBeVisible();
 }
+
+test("en pantallas de menos de 360 px, la categoría y la fecha van una debajo de la otra @tactil", async ({ page }) => {
+  await register(page);
+  await openTab(page, "Egresos");
+  const box = async (label: string) => (await visible(page.getByLabel(label)).boundingBox())!;
+
+  // 320 px: el ancho más chico (y el de 1280 px con zoom al 400 %, WCAG 1.4.10).
+  await page.setViewportSize({ width: 320, height: 700 });
+  const [category, date] = [await box("Categoría"), await box("Fecha")];
+  expect(date.y, "la fecha va debajo de la categoría").toBeGreaterThan(category.y + category.height);
+  expect(category.width, "a todo el ancho del formulario").toBeGreaterThan(220);
+  expect(date.width).toBeCloseTo(category.width, 0);
+
+  // Desde 360 px, lado a lado.
+  await page.setViewportSize({ width: 360, height: 700 });
+  const [besideCategory, besideDate] = [await box("Categoría"), await box("Fecha")];
+  expect(besideDate.y).toBeCloseTo(besideCategory.y, 0);
+  expect(besideDate.x).toBeGreaterThan(besideCategory.x + besideCategory.width);
+});
 
 test("en pantallas táctiles las páginas caben y los campos no hacen zoom @tactil", async ({ page }) => {
   test.slow();
