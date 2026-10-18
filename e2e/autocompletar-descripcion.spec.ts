@@ -1,5 +1,8 @@
 import { expect, type Page } from "@playwright/test";
+import postgres from "postgres";
+import { todayInTimezone } from "../src/lib/dates";
 import { seriousViolations } from "./admin";
+import { e2eDatabaseUrl } from "./database-url";
 import { addTransaction, newPerson, openTab, register, test, visible } from "./helpers";
 
 // Al escribir la descripción de un movimiento nuevo, debajo del campo aparecen las que la persona ya
@@ -53,4 +56,29 @@ test("la descripción sugiere lo que ya registró y propone su categoría @princ
     await form(beto).getByLabel("Descripción").pressSequentially("merc");
     await expect(suggestionList(beto)).toHaveCount(0);
   });
+});
+
+test("una poco usada aparece aunque haya muchas que se repiten más, y a mitad de palabra no sugiere nada", async ({ page }) => {
+  const { email } = await register(page);
+  // Como la cuenta de la captura: más de 20 egresos que se repiten (créditos, gastos varios) y un
+  // "Arriendo Civita" de una sola vez. Se cargan en la base de las E2E (por la app serían 51 registros).
+  const sql = postgres(e2eDatabaseUrl(), { max: 1, onnotice: () => {} });
+  const [{ id }] = await sql<{ id: string }[]>`select id from "user" where email = ${email}`;
+  const today = todayInTimezone("America/Bogota");
+  const descriptions = [
+    ...["Crédito Hipotecario Villa Verde", "Gastos Varios", ...Array.from({ length: 23 }, (_, i) => `Cuota ${i + 1}`)].flatMap((d) => [d, d]),
+    "Arriendo Civita",
+  ];
+  for (const description of descriptions) {
+    await sql`insert into transaction (user_id, type, amount, description, occurred_on) values (${id}, 'expense', 1000, ${description}, ${today})`;
+  }
+  await sql.end();
+
+  await openTab(page, "Egresos");
+  await description(page).pressSequentially("Ari");
+  // "ari" solo está a mitad de palabra (hipotecario, varios): no es lo que se busca.
+  await expect(suggestionList(page)).toBeHidden();
+  await description(page).fill("");
+  await description(page).pressSequentially("Arri");
+  await expect(suggestionList(page).getByRole("option")).toHaveText(["Arriendo Civita"]);
 });

@@ -23,13 +23,37 @@ describe("matchSuggestions", () => {
     expect(matchSuggestions("café", items("Cafetería"))).toEqual([{ item: { description: "Cafetería" }, start: 0, end: 4 }]);
   });
 
-  it("primero las que empiezan igual, después una palabra que empieza igual, al final en el medio", () => {
-    const list = items("Supermercado", "El mercado", "Mercado del barrio", "Mercadolibre", "Taxi");
-    expect(found("merc", list)).toEqual(["Mercado del barrio", "Mercadolibre", "El mercado", "Supermercado"]);
+  it("primero las que empiezan igual, después las que tienen una palabra que empieza igual", () => {
+    const list = items("El mercado", "Mercado del barrio", "Mercadolibre", "Taxi");
+    expect(found("merc", list)).toEqual(["Mercado del barrio", "Mercadolibre", "El mercado"]);
+  });
+
+  it("a mitad de palabra no cuenta (\"ari\" no trae hipotecario ni varios)", () => {
+    const list = items("Crédito hipotecario Villa Verde", "Gastos varios", "Supermercado", "Arriendo Civita");
+    expect(found("ari", list)).toEqual([]);
+    expect(found("merc", list)).toEqual([]);
+    expect(found("arri", list)).toEqual(["Arriendo Civita"]);
+    expect(found("civ", list)).toEqual(["Arriendo Civita"]);
+  });
+
+  it("si aparece varias veces, cuenta la que está al comienzo de una palabra", () => {
+    expect(matchSuggestions("ar", items("Varios arriendos"))).toEqual([{ item: { description: "Varios arriendos" }, start: 7, end: 9 }]);
+  });
+
+  it("después de un guion, una barra o un paréntesis también empieza una palabra", () => {
+    const list = items("Crédito Bancolombia - María", "Cuota (Bogotá)", "Luz/agua");
+    expect(found("mar", list)).toEqual(["Crédito Bancolombia - María"]);
+    expect(found("bog", list)).toEqual(["Cuota (Bogotá)"]);
+    expect(found("agu", list)).toEqual(["Luz/agua"]);
   });
 
   it("en cada grupo conserva el orden en que llegaron (las más usadas primero)", () => {
-    expect(found("ta", items("Taxi", "Tarjeta", "Pasta", "Tapas"))).toEqual(["Taxi", "Tarjeta", "Tapas", "Pasta"]);
+    expect(found("ta", items("Taxi", "Tarjeta", "Pasta", "Tapas", "Pago de tarjeta"))).toEqual([
+      "Taxi",
+      "Tarjeta",
+      "Tapas",
+      "Pago de tarjeta",
+    ]);
   });
 
   it("no sugiere la que ya está escrita igual", () => {

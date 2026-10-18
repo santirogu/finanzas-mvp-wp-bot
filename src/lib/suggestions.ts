@@ -15,10 +15,14 @@ export function searchKey(text: string): string {
 /** Una sugerencia que coincide, con dónde está la coincidencia en su texto (para marcarla). */
 export type SuggestionMatch<T> = { item: T; start: number; end: number };
 
+/** Un comienzo de palabra: lo que va después de algo que no es letra ni número (espacio, guion, paréntesis). */
+const startsWord = (letters: string, at: number) => at === 0 || /[^\p{L}\p{N}]/u.test(letters[at - 1]);
+
 /**
- * Las sugerencias que coinciden con lo escrito: primero las que empiezan igual, después las que tienen
- * una palabra que empieza igual y al final las que lo tienen en el medio; en cada grupo, en el orden
- * en que llegaron (las más usadas primero). La que es igual a lo escrito no se sugiere (ya está).
+ * Las sugerencias que coinciden con lo escrito al comienzo de una palabra: primero las que empiezan
+ * igual, después las que tienen otra palabra que empieza igual; en cada grupo, en el orden en que
+ * llegaron (las más usadas primero). A mitad de palabra no cuenta ("ari" no trae "hipotecario"). La
+ * que es igual a lo escrito no se sugiere (ya está).
  */
 export function matchSuggestions<T extends { description: string }>(
   typed: string,
@@ -27,7 +31,7 @@ export function matchSuggestions<T extends { description: string }>(
 ): SuggestionMatch<T>[] {
   const query = searchKey(typed);
   if (!query) return [];
-  const groups: SuggestionMatch<T>[][] = [[], [], []];
+  const groups: SuggestionMatch<T>[][] = [[], []];
   for (const item of items) {
     if (searchKey(item.description) === query) continue;
     // Letra por letra, recordando de dónde salió cada una: así la coincidencia se marca en el texto
@@ -42,10 +46,11 @@ export function matchSuggestions<T extends { description: string }>(
       index += char.length;
     }
     from.push(item.description.length);
-    const at = letters.indexOf(query);
+    // La primera vez que aparece al comienzo de una palabra ("ar" en "Varios arriendos": la segunda).
+    let at = letters.indexOf(query);
+    while (at >= 0 && !startsWord(letters, at)) at = letters.indexOf(query, at + 1);
     if (at < 0) continue;
-    const group = at === 0 ? 0 : /\s/.test(letters[at - 1]) ? 1 : 2;
-    groups[group].push({ item, start: from[at], end: from[at + query.length] });
+    groups[at === 0 ? 0 : 1].push({ item, start: from[at], end: from[at + query.length] });
   }
   return groups.flat().slice(0, limit);
 }
