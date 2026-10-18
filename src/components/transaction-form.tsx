@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useEffect, useId, useRef } from "react";
+import { useActionState, useEffect, useId, useRef, useState } from "react";
 import { formatMonthName, monthOf } from "@/lib/dates";
 import type { FieldMessages } from "@/lib/field-errors";
 import { amountInputValue, completeAmountDecimals, formatAmountTyping } from "@/lib/money";
@@ -15,6 +15,9 @@ import { useToast } from "./toaster";
 import { useFieldErrors } from "./use-field-errors";
 
 type CategoryOption = { id: string; name: string; emoji: string; archived?: boolean };
+
+/** Una descripción que la persona ya usó, con la categoría de la última vez (src/modules/transactions/queries.ts). */
+export type DescriptionSuggestion = { description: string; categoryId: string | null };
 
 /** Movimiento a editar; sin él, el formulario registra uno nuevo. */
 export type TransactionToEdit = {
@@ -40,6 +43,7 @@ export function TransactionForm({
   transaction,
   cancelHref,
   listMonth,
+  suggestions = [],
 }: {
   type: "income" | "expense";
   categories: CategoryOption[];
@@ -55,6 +59,8 @@ export function TransactionForm({
    * movimiento nuevo cae en otro mes, no aparece en ella: el aviso dice en cuál quedó.
    */
   listMonth?: { start: string; end: string };
+  /** Lo que se sugiere al escribir la descripción (solo al registrar uno nuevo). */
+  suggestions?: DescriptionSuggestion[];
 }) {
   const editing = Boolean(transaction);
   // Al editar, si se guarda bien, la Server Action redirige a la lista.
@@ -67,10 +73,17 @@ export function TransactionForm({
   // El aviso de cada registro, una sola vez (la página se vuelve a renderizar con el mismo resultado,
   // p. ej. al cambiar de mes).
   const announced = useRef<FormState | null>(null);
+  // La categoría que propone una descripción conocida, salvo que la persona ya haya elegido una a mano.
+  const categoryRef = useRef<HTMLSelectElement>(null);
+  const categoryChosen = useRef(false);
+  const [proposed, setProposed] = useState("");
+  const suggestionsId = useId();
 
   useEffect(() => {
     if (!state.ok || announced.current === state) return;
     announced.current = state;
+    categoryChosen.current = false;
+    setProposed("");
     amountRef.current?.focus();
     toast({ tone: "success", message: `${state.message}${elsewhere(state.occurredOn, listMonth)}` });
   }, [state, toast, listMonth]);
@@ -137,7 +150,23 @@ export function TransactionForm({
           placeholder={isIncome ? "Pago de nómina" : "Zapatos"}
           {...aria("description")}
           className="input"
+          // Las descripciones que ya usó, como sugerencias del navegador (sin mezclar su historial).
+          list={suggestions.length > 0 ? suggestionsId : undefined}
+          autoComplete={suggestions.length > 0 ? "off" : undefined}
+          onChange={(e) => {
+            const category = proposedCategory(e.target.value, suggestions, categories);
+            if (!category || categoryChosen.current || !categoryRef.current) return;
+            categoryRef.current.value = category.id;
+            setProposed(`Se eligió la categoría ${category.name}, la de la última vez.`);
+          }}
         />
+        {suggestions.length > 0 && (
+          <datalist id={suggestionsId}>
+            {suggestions.map((s) => (
+              <option key={s.description} value={s.description} />
+            ))}
+          </datalist>
+        )}
       </Field>
 
       <div className="grid grid-cols-2 gap-3">
@@ -147,7 +176,12 @@ export function TransactionForm({
               categoría que había elegido la persona (si no, tras un error volvería a "Sin
               categoría"). */}
           <select
+            ref={categoryRef}
             key={values.categoryId ?? ""}
+            onChange={() => {
+              categoryChosen.current = true;
+              setProposed("");
+            }}
             name="categoryId"
             {...aria("categoryId")}
             className="input"
@@ -174,6 +208,12 @@ export function TransactionForm({
           />
         </Field>
       </div>
+
+      {/* Cuando una descripción conocida elige la categoría, el lector de pantalla lo dice (el cambio
+          se ve, pero no se anuncia). Fuera de las etiquetas, para no cambiar el nombre de los campos. */}
+      <p aria-live="polite" className="sr-only">
+        {proposed}
+      </p>
 
       <button type="submit" disabled={pending} className="btn-primary w-full">
         {pending ? "Guardando…" : editing ? "Guardar cambios" : `Registrar ${noun}`}
@@ -206,6 +246,16 @@ function RequiredMark() {
       *
     </span>
   );
+}
+
+/**
+ * La categoría que propone lo escrito en la descripción: si es (sin importar mayúsculas ni espacios)
+ * una que ya usó, la de la última vez, siempre que se pueda elegir (no archivada).
+ */
+function proposedCategory(typed: string, suggestions: DescriptionSuggestion[], categories: CategoryOption[]) {
+  const text = typed.trim().toLowerCase();
+  const match = text ? suggestions.find((s) => s.description.toLowerCase() === text) : undefined;
+  return categories.find((c) => c.id === match?.categoryId && !c.archived) ?? null;
 }
 
 /** Valores del formulario a partir de un movimiento guardado (el monto con separadores y sus centavos). */

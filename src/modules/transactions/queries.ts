@@ -80,6 +80,37 @@ export async function listTransactions(
 
 export type TransactionRow = Awaited<ReturnType<typeof listTransactions>>[number];
 
+/** Cuántas descripciones sugiere el formulario al escribir. */
+export const DESCRIPTION_SUGGESTIONS = 20;
+
+/**
+ * Las descripciones que el usuario ya usó en movimientos de ese tipo desde `since` (YYYY-MM-DD), para
+ * sugerirlas al escribir: las más usadas primero (y, a igual uso, la más reciente). "Mercado" y
+ * "mercado " cuentan como una sola, escrita como la última vez. Cada una trae la categoría de su
+ * último movimiento (o null), para proponerla.
+ */
+export async function listDescriptionSuggestions(userId: string, type: TransactionType, since: string) {
+  const key = sql`lower(trim(${transaction.description}))`;
+  const latest = sql`${transaction.occurredOn} desc, ${transaction.createdAt} desc`;
+  return db
+    .select({
+      description: sql<string>`(array_agg(trim(${transaction.description}) order by ${latest}))[1]`,
+      categoryId: sql<string | null>`(array_agg(${transaction.categoryId} order by ${latest}))[1]`,
+    })
+    .from(transaction)
+    .where(
+      and(
+        eq(transaction.userId, userId),
+        eq(transaction.type, type),
+        isNull(transaction.deletedAt),
+        gte(transaction.occurredOn, since),
+      ),
+    )
+    .groupBy(key)
+    .orderBy(desc(sql`count(*)`), desc(sql`max(${transaction.occurredOn})`), key)
+    .limit(DESCRIPTION_SUGGESTIONS);
+}
+
 /** Los meses ("YYYY-MM") en que el usuario tiene movimientos, del más reciente al más antiguo. */
 export async function listActiveMonths(userId: string) {
   const month = sql<string>`to_char(${transaction.occurredOn}, 'YYYY-MM')`;

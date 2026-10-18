@@ -303,6 +303,80 @@ describe("TransactionForm", () => {
   });
 });
 
+describe("TransactionForm · sugerencias de la descripción", () => {
+  const SUGGESTIONS = [
+    { description: "Mercado del barrio", categoryId: "c-mercado" },
+    { description: "Tenis", categoryId: "c-ropa" },
+    { description: "Regalo", categoryId: null },
+    { description: "Vieja", categoryId: "c-archivada" },
+  ];
+  const renderSuggesting = (categories: Parameters<typeof TransactionForm>[0]["categories"] = CATEGORIES) =>
+    render(<TransactionForm type="expense" categories={categories} today="2026-10-14" suggestions={SUGGESTIONS} />);
+  const description = () => screen.getByRole("combobox", { name: "Descripción" });
+  const category = () => screen.getByLabelText("Categoría");
+
+  it("ofrece las descripciones que ya usó, como sugerencias del navegador (sin su historial)", () => {
+    const { container } = renderSuggesting();
+    const list = container.querySelector(`datalist#${CSS.escape(description().getAttribute("list")!)}`);
+    expect([...list!.querySelectorAll("option")].map((o) => o.value)).toEqual(["Mercado del barrio", "Tenis", "Regalo", "Vieja"]);
+    expect(description()).toHaveAttribute("autocomplete", "off");
+  });
+
+  it("sin sugerencias (o al editar) es un campo normal", () => {
+    renderForm();
+    const input = screen.getByRole("textbox", { name: "Descripción" });
+    expect(input).not.toHaveAttribute("list");
+    expect(input).not.toHaveAttribute("autocomplete");
+  });
+
+  it("al elegir una que ya usó, propone su última categoría y el lector de pantalla lo dice", async () => {
+    renderSuggesting();
+    await userEvent.type(description(), "mercado del barrio ");
+    expect(category()).toHaveValue("c-mercado");
+    expect(screen.getByText("Se eligió la categoría Mercado, la de la última vez.")).toHaveClass("sr-only");
+
+    // Lo envía con esa categoría.
+    action.mockResolvedValue({ ok: true, message: "Egreso registrado" });
+    await userEvent.type(screen.getByLabelText(/Monto/), "85000");
+    await userEvent.click(screen.getByRole("button", { name: "Registrar egreso" }));
+    expect(action.mock.calls[0][1].get("categoryId")).toBe("c-mercado");
+  });
+
+  it("si ya eligió una categoría a mano, no se la cambia", async () => {
+    renderSuggesting();
+    await userEvent.selectOptions(category(), "c-ropa");
+    await userEvent.type(description(), "Mercado del barrio");
+    expect(category()).toHaveValue("c-ropa");
+  });
+
+  it("no propone nada si la de la última vez no se puede elegir, si no tenía o si no es una que ya usó", async () => {
+    renderSuggesting([...CATEGORIES, { id: "c-archivada", name: "Viejita", emoji: "📦", archived: true }]);
+    for (const text of ["Vieja", "Regalo", "Mercado"]) {
+      await userEvent.clear(description());
+      await userEvent.type(description(), text);
+      expect(category()).toHaveValue("");
+    }
+  });
+
+  it("después de registrar, vuelve a proponer aunque antes la hubiera elegido a mano", async () => {
+    action.mockResolvedValue({ ok: true, message: "Egreso registrado" });
+    renderSuggesting();
+    await userEvent.selectOptions(category(), "c-ropa");
+    await userEvent.type(screen.getByLabelText(/Monto/), "1000");
+    await userEvent.type(description(), "Café");
+    await userEvent.click(screen.getByRole("button", { name: "Registrar egreso" }));
+    await toast("Egreso registrado");
+
+    // (userEvent recuerda lo escrito antes de que React reiniciara el formulario: se limpia primero.)
+    await userEvent.clear(description());
+    await userEvent.type(description(), "Tenis");
+    expect(category()).toHaveValue("c-ropa");
+    await userEvent.clear(description());
+    await userEvent.type(description(), "Mercado del barrio");
+    expect(category()).toHaveValue("c-mercado");
+  });
+});
+
 describe("TransactionForm · editar", () => {
   const TX = {
     id: "00000000-0000-4000-8000-000000000001",

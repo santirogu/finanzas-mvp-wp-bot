@@ -12,7 +12,9 @@ import {
   getTransactionNotice,
   isCategoryAvailable,
   UNDO_WINDOW_MS,
+  DESCRIPTION_SUGGESTIONS,
   listActiveMonths,
+  listDescriptionSuggestions,
   listCategories,
   listTransactions,
 } from "./queries";
@@ -222,6 +224,54 @@ describe("getTransaction", () => {
 
     expect(await getTransaction(other.id, tx.id)).toBeNull();
     expect(await getTransaction(owner.id, deleted.id)).toBeNull();
+  });
+});
+
+describe("listDescriptionSuggestions", () => {
+  const since = "2026-04-18";
+
+  it("las descripciones del tipo, de la más usada a la menos (a igual uso, la más reciente)", async () => {
+    const user = await createUser();
+    for (const occurredOn of ["2026-10-01", "2026-09-01", "2026-08-01"]) await addTx({ userId: user.id, description: "Mercado", occurredOn });
+    await addTx({ userId: user.id, description: "Taxi", occurredOn: "2026-10-10" });
+    await addTx({ userId: user.id, description: "Almuerzo", occurredOn: "2026-10-12" });
+    await addTx({ userId: user.id, description: "Almuerzo", occurredOn: "2026-10-02" });
+    await addTx({ userId: user.id, description: "Cine", occurredOn: "2026-10-05" });
+    await addTx({ userId: user.id, type: "income", description: "Sueldo", occurredOn: "2026-10-01" });
+
+    const suggestions = await listDescriptionSuggestions(user.id, "expense", since);
+    expect(suggestions.map((s) => s.description)).toEqual(["Mercado", "Almuerzo", "Taxi", "Cine"]);
+    expect((await listDescriptionSuggestions(user.id, "income", since)).map((s) => s.description)).toEqual(["Sueldo"]);
+  });
+
+  it("junta mayúsculas y espacios de más, escrita como la última vez, con la categoría de la última vez", async () => {
+    const user = await createUser();
+    const [mercado, otros] = [await globalCategory("expense", "Mercado"), await globalCategory("expense", "Otros")];
+    await addTx({ userId: user.id, description: "mercado ", categoryId: otros.id, occurredOn: "2026-09-01" });
+    await addTx({ userId: user.id, description: "Mercado del barrio", occurredOn: "2026-09-02" });
+    await addTx({ userId: user.id, description: "MERCADO", categoryId: mercado.id, occurredOn: "2026-10-03" });
+
+    expect(await listDescriptionSuggestions(user.id, "expense", since)).toEqual([
+      { description: "MERCADO", categoryId: mercado.id },
+      { description: "Mercado del barrio", categoryId: null },
+    ]);
+  });
+
+  it("solo desde `since`, sin los eliminados ni los de otro usuario", async () => {
+    const [ana, beto] = [await createUser(), await createUser()];
+    await addTx({ userId: ana.id, description: "Vieja", occurredOn: "2026-04-17" });
+    await addTx({ userId: ana.id, description: "Del límite", occurredOn: since });
+    await addTx({ userId: ana.id, description: "Borrada", deletedAt: new Date() });
+    await addTx({ userId: beto.id, description: "De Beto" });
+
+    expect((await listDescriptionSuggestions(ana.id, "expense", since)).map((s) => s.description)).toEqual(["Del límite"]);
+    expect(await listDescriptionSuggestions((await createUser()).id, "expense", since)).toEqual([]);
+  });
+
+  it(`sugiere hasta ${DESCRIPTION_SUGGESTIONS}`, async () => {
+    const user = await createUser();
+    for (let i = 0; i < DESCRIPTION_SUGGESTIONS + 3; i++) await addTx({ userId: user.id, description: `Gasto ${i}` });
+    expect(await listDescriptionSuggestions(user.id, "expense", since)).toHaveLength(DESCRIPTION_SUGGESTIONS);
   });
 });
 
