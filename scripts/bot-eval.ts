@@ -37,6 +37,9 @@ function grade(c: EvalCase, intent: BotIntent): string[] {
   const problems: string[] = [];
   if (c.expect.kind === "reply") {
     if (intent.kind !== "reply") problems.push(`esperaba una respuesta sin registrar, obtuvo ${intent.kind}`);
+    else if (c.expect.mentions && !c.expect.mentions.test(intent.text)) {
+      problems.push(`la respuesta no dice ${c.expect.mentions}: "${intent.text}"`);
+    }
     return problems;
   }
   if (intent.kind !== "transactions") {

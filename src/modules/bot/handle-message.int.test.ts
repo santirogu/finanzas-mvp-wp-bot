@@ -450,6 +450,15 @@ describe("handleIncomingMessage · balance de otro mes", () => {
     expect(reply.split("\n").at(-1)).toBe(`_↘ $150.000,00 menos que ${formatMonthName(previous)}_`);
   });
 
+  it("una pregunta como llegó por WhatsApp (\"¿Cuántos fueron mis ingresos en septiembre?\") responde el balance de ese mes", async () => {
+    const user = await linkedUser();
+    await add(user.id, "income", 2000000, previous);
+    const name = formatMonthName(previous);
+    const reply = await replyTo(`¿Cuántos fueron mis ingresos en ${name.charAt(0).toUpperCase()}${name.slice(1)} ${previous.year}?`);
+    expect(reply).toContain(`📊 *${formatMonthLabel(previous)}*`);
+    expect(reply).toContain("Ingresos: $2.000.000,00");
+  });
+
   it("un mes que todavía no llega lo dice, sin consultar nada", async () => {
     await linkedUser();
     const next = shiftMonth(current, 2);

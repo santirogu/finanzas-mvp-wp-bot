@@ -83,6 +83,14 @@ test("vincular el número desde el dashboard y llevar las cuentas por WhatsApp",
     await sendWhatsApp(request, phone, `balance ${formatMonthName(later)} ${later.year}`);
     expect(await nthReply(request, phone, 7)).toContain(`${formatMonthLabel(later)} todavía no llega`);
   });
+
+  await test.step("una pregunta en palabras también da el balance de ese mes, sin Claude", async () => {
+    const previous = shiftMonth(monthOf(todayInTimezone("America/Bogota")), -1);
+    await sendWhatsApp(request, phone, `¿Cuántos fueron mis egresos en ${formatMonthName(previous)} de ${previous.year}?`);
+    const reply = await nthReply(request, phone, 8);
+    expect(reply).toContain(`📊 *${formatMonthLabel(previous)}*`);
+    expect(reply).toContain("Egresos: $1.200.000,00");
+  });
 });
 
 test("un número sin vincular recibe instrucciones y no puede usar el bot", async ({ request }) => {

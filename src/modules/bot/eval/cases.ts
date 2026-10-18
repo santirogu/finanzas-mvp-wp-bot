@@ -9,7 +9,7 @@ type Expected =
       kind: "transactions";
       items: { type: "income" | "expense"; amount: number; categories?: string[]; date?: string }[];
     }
-  | { kind: "reply" };
+  | { kind: "reply"; mentions?: RegExp };
 
 export type EvalCase = { text: string; expect: Expected };
 
@@ -30,6 +30,8 @@ const tx = (...items: Extract<Expected, { kind: "transactions" }>["items"]): Exp
   items,
 });
 const reply: Expected = { kind: "reply" };
+/** Una respuesta sin registrar que, además, tiene que decir algo (p. ej. cómo pedir el balance). */
+const replyMentioning = (mentions: RegExp): Expected => ({ kind: "reply", mentions });
 
 export const EVAL_CASES: EvalCase[] = [
   // Egresos con formato colombiano y jerga
@@ -107,4 +109,8 @@ export const EVAL_CASES: EvalCase[] = [
   { text: "hola, ¿cómo estás?", expect: reply },
   { text: "¿cuál es la capital de Francia?", expect: reply },
   { text: "200.000", expect: reply },
+  // Preguntas por los totales que no reconocen los comandos: no calcula, indica cómo pedir el balance.
+  { text: "¿cuánto he gastado en comida este mes?", expect: replyMentioning(/\*?balance\b/i) },
+  { text: "¿me alcanzó la plata en septiembre?", expect: replyMentioning(/\*?balance\b/i) },
+  { text: "quiero ver mis totales de agosto", expect: replyMentioning(/\*?balance\b/i) },
 ];
