@@ -1,0 +1,55 @@
+import { describe, expect, it } from "vitest";
+import { MAX_SHOWN_SUGGESTIONS, matchSuggestions, searchKey } from "./suggestions";
+
+const items = (...descriptions: string[]) => descriptions.map((description) => ({ description }));
+const found = (typed: string, list: { description: string }[]) => matchSuggestions(typed, list).map((m) => m.item.description);
+
+describe("searchKey", () => {
+  it("sin tildes, en minúscula y sin espacios de más", () => {
+    expect(searchKey("  Café   con LECHE ")).toBe("cafe con leche");
+    expect(searchKey("Ñandú")).toBe("nandu");
+    expect(searchKey("café")).toBe("cafe");
+  });
+});
+
+describe("matchSuggestions", () => {
+  it("sin nada escrito no sugiere nada", () => {
+    expect(matchSuggestions("", items("Mercado"))).toEqual([]);
+    expect(matchSuggestions("   ", items("Mercado"))).toEqual([]);
+  });
+
+  it("encuentra sin importar mayúsculas ni tildes, y marca dónde coincide", () => {
+    expect(matchSuggestions("CAFE", items("Un café", "Mercado"))).toEqual([{ item: { description: "Un café" }, start: 3, end: 7 }]);
+    expect(matchSuggestions("café", items("Cafetería"))).toEqual([{ item: { description: "Cafetería" }, start: 0, end: 4 }]);
+  });
+
+  it("primero las que empiezan igual, después una palabra que empieza igual, al final en el medio", () => {
+    const list = items("Supermercado", "El mercado", "Mercado del barrio", "Mercadolibre", "Taxi");
+    expect(found("merc", list)).toEqual(["Mercado del barrio", "Mercadolibre", "El mercado", "Supermercado"]);
+  });
+
+  it("en cada grupo conserva el orden en que llegaron (las más usadas primero)", () => {
+    expect(found("ta", items("Taxi", "Tarjeta", "Pasta", "Tapas"))).toEqual(["Taxi", "Tarjeta", "Tapas", "Pasta"]);
+  });
+
+  it("no sugiere la que ya está escrita igual", () => {
+    expect(found("mercado ", items("Mercado", "Mercado del barrio"))).toEqual(["Mercado del barrio"]);
+  });
+
+  it(`muestra hasta ${MAX_SHOWN_SUGGESTIONS} (o las que se pidan)`, () => {
+    const many = items(...Array.from({ length: 10 }, (_, i) => `Gasto ${i}`));
+    expect(matchSuggestions("gasto", many)).toHaveLength(MAX_SHOWN_SUGGESTIONS);
+    expect(MAX_SHOWN_SUGGESTIONS).toBe(6);
+    expect(matchSuggestions("gasto", many, 2)).toHaveLength(2);
+  });
+
+  it("con una tilde escrita como letra + acento, marca la letra con su acento", () => {
+    const [match] = matchSuggestions("cafe", items("Un café doble"));
+    expect(match).toMatchObject({ start: 3, end: 8 });
+    expect("Un café doble".slice(match.start, match.end)).toBe("café");
+  });
+
+  it("las letras que no se parecen a nada no rompen la búsqueda (emojis)", () => {
+    expect(matchSuggestions("cine", items("🎬 Cine"))).toEqual([{ item: { description: "🎬 Cine" }, start: 3, end: 7 }]);
+  });
+});

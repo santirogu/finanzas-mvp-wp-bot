@@ -2,7 +2,7 @@ import { z } from "zod";
 import { TransactionForm } from "@/components/transaction-form";
 import { TransactionList } from "@/components/transaction-list";
 import { ToastOnLoad } from "@/components/toaster";
-import { compareMonths, currentMonthRange, sameDayIn, todayInTimezone } from "@/lib/dates";
+import { compareMonths, currentMonthRange, monthOf, sameDayIn, shiftMonth, todayInTimezone } from "@/lib/dates";
 import { formatMoney, sumAmounts } from "@/lib/money";
 import { inMonthPhrase, monthHref, monthNav, selectedMonth } from "@/lib/month-nav";
 import { requireUser } from "@/lib/session";
@@ -11,11 +11,15 @@ import {
   getTransactionNotice,
   listActiveMonths,
   listCategories,
+  listDescriptionSuggestions,
   listTransactions,
 } from "@/modules/transactions/queries";
 import { MonthNav } from "./month-nav";
 
 type Params = Record<string, string | string[] | undefined>;
+
+/** De cuántos meses atrás salen las descripciones que se sugieren al escribir. */
+const SUGGESTION_MONTHS = 6;
 
 /**
  * El aviso que pide la URL: ?borrado=<id> después de borrar (rojo, con "Deshacer"), ?restaurado=<id>
@@ -37,11 +41,13 @@ export async function TransactionsView({ type, params = {} }: { type: "income" |
   const current = currentMonthRange(user.timezone);
   const range = selectedMonth(params.mes, current);
   const requested = noticeFrom(params);
-  const [items, categories, notice, activeMonths] = await Promise.all([
+  const [items, categories, notice, activeMonths, suggestions] = await Promise.all([
     listTransactions(user.id, range, { type }),
     listCategories(user.id, type),
     requested ? getTransactionNotice(user.id, requested.id, requested.kind) : null,
     listActiveMonths(user.id),
+    // Las descripciones de los últimos meses, para sugerirlas al escribir.
+    listDescriptionSuggestions(user.id, type, sameDayIn(shiftMonth(monthOf(today), -SUGGESTION_MONTHS), today)),
   ]);
   const total = sumAmounts(items.map((t) => t.amount));
   const isIncome = type === "income";
@@ -75,6 +81,7 @@ export async function TransactionsView({ type, params = {} }: { type: "income" |
             today={today}
             defaultDate={sameDayIn(range, today)}
             listMonth={range}
+            suggestions={suggestions}
           />
         </div>
         <section className="card lg:col-span-3">

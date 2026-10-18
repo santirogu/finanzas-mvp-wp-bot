@@ -1,4 +1,4 @@
-import { render as renderAlone, screen, within } from "@testing-library/react";
+import { act, render as renderAlone, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { FormState } from "@/modules/transactions/actions";
@@ -300,6 +300,153 @@ describe("TransactionForm", () => {
     expect(await screen.findByRole("button", { name: "Guardando…" })).toBeDisabled();
     finish({ ok: true, message: "Ingreso registrado" });
     expect(await screen.findByRole("button", { name: "Registrar ingreso" })).toBeEnabled();
+  });
+});
+
+describe("TransactionForm · sugerencias de la descripción", () => {
+  const SUGGESTIONS = [
+    { description: "Mercado del barrio", categoryId: "c-mercado" },
+    { description: "Tenis", categoryId: "c-ropa" },
+    { description: "Regalo", categoryId: null },
+    { description: "Vieja", categoryId: "c-archivada" },
+  ];
+  const renderSuggesting = (categories: Parameters<typeof TransactionForm>[0]["categories"] = CATEGORIES) =>
+    render(<TransactionForm type="expense" categories={categories} today="2026-10-14" suggestions={SUGGESTIONS} />);
+  const description = () => screen.getByRole("combobox", { name: "Descripción" });
+  const category = () => screen.getByLabelText("Categoría");
+
+  // La lista que abre el campo (aria-controls): está en la página, oculta (`hidden`) mientras no hay nada que sugerir.
+  const listbox = () => document.getElementById(description().getAttribute("aria-controls")!)!;
+  const options = () => within(listbox()).queryAllByRole("option", { hidden: true }).map((o) => o.textContent);
+
+  it("al escribir, muestra debajo las que ya usó que coinciden, con la parte que coincide y su categoría", async () => {
+    renderSuggesting();
+    expect(listbox()).not.toBeVisible();
+    expect(description()).toHaveAttribute("aria-expanded", "false");
+    expect(description()).toHaveAttribute("autocomplete", "off");
+
+    await userEvent.type(description(), "ba");
+    expect(screen.getByRole("listbox", { name: "Descripciones que ya usaste" })).toBe(listbox());
+    expect(listbox()).toBeVisible();
+    expect(description()).toHaveAttribute("aria-expanded", "true");
+    expect(description()).toHaveAttribute("aria-controls", listbox().id);
+    // Una palabra de "Mercado del barrio" empieza igual (el orden entre grupos lo prueba src/lib/suggestions.test.ts).
+    expect(options()).toEqual(["Mercado del barrio🛒 Mercado"]);
+    const [first] = within(listbox()).getAllByRole("option");
+    expect(within(first).getByText("ba")).toHaveClass("font-semibold");
+  });
+
+  it("sin sugerencias (o al editar) es un campo normal", () => {
+    renderForm();
+    const input = screen.getByRole("textbox", { name: "Descripción" });
+    expect(input).not.toHaveAttribute("aria-controls");
+    expect(input).not.toHaveAttribute("autocomplete");
+    expect(screen.queryByRole("listbox", { hidden: true })).toBeNull();
+  });
+
+  it("con las flechas se recorre (y da la vuelta), Enter elige sin enviar el formulario y propone la categoría", async () => {
+    renderSuggesting();
+    await userEvent.type(description(), "e");
+    expect(options()).toHaveLength(4);
+    await userEvent.keyboard("{ArrowDown}");
+    const marked = () => description().getAttribute("aria-activedescendant");
+    expect(marked()).toBe(within(listbox()).getAllByRole("option")[0].id);
+    expect(within(listbox()).getAllByRole("option")[0]).toHaveAttribute("aria-selected", "true");
+    // Desde la primera, arriba da la vuelta a la última, y abajo desde la última vuelve a la primera.
+    await userEvent.keyboard("{ArrowUp}");
+    expect(marked()).toBe(within(listbox()).getAllByRole("option")[3].id);
+    await userEvent.keyboard("{ArrowDown}");
+    expect(marked()).toBe(within(listbox()).getAllByRole("option")[0].id);
+    await userEvent.keyboard("{ArrowDown}{Enter}");
+    expect(description()).toHaveValue("Tenis");
+    expect(category()).toHaveValue("c-ropa");
+    expect(listbox()).not.toBeVisible();
+    expect(action).not.toHaveBeenCalled();
+  });
+
+  it("con Escape se cierra, y con un toque (o clic) elige", async () => {
+    renderSuggesting();
+    await userEvent.type(description(), "merc");
+    await userEvent.keyboard("{Escape}");
+    expect(listbox()).not.toBeVisible();
+
+    await userEvent.type(description(), "a");
+    await userEvent.click(within(listbox()).getByRole("option", { name: /Mercado del barrio/ }));
+    expect(description()).toHaveValue("Mercado del barrio");
+    expect(description()).toHaveFocus();
+    expect(category()).toHaveValue("c-mercado");
+    expect(listbox()).not.toBeVisible();
+  });
+
+  it("con Tab se cierra enseguida (no tapa el campo que recibe el foco)", async () => {
+    renderSuggesting();
+    await userEvent.type(description(), "merc");
+    await userEvent.tab();
+    expect(category()).toHaveFocus();
+    expect(listbox()).not.toBeVisible();
+  });
+
+  it("si el campo pierde el foco sin ir a otro (un toque fuera), se cierra un instante después", async () => {
+    renderSuggesting();
+    await userEvent.type(description(), "merc");
+    act(() => description().blur());
+    expect(listbox()).toBeVisible();
+    await waitFor(() => expect(listbox()).not.toBeVisible());
+  });
+
+  it("y si en ese instante el foco entra a otro campo, se cierra en el acto", async () => {
+    renderSuggesting();
+    await userEvent.type(description(), "merc");
+    act(() => description().blur());
+    act(() => category().focus());
+    expect(listbox()).not.toBeVisible();
+  });
+
+  it("al elegir una que ya usó, propone su última categoría y el lector de pantalla lo dice", async () => {
+    renderSuggesting();
+    await userEvent.type(description(), "mercado del barrio ");
+    expect(category()).toHaveValue("c-mercado");
+    expect(screen.getByText("Se eligió la categoría Mercado, la de la última vez.")).toHaveClass("sr-only");
+
+    // Lo envía con esa categoría.
+    action.mockResolvedValue({ ok: true, message: "Egreso registrado" });
+    await userEvent.type(screen.getByLabelText(/Monto/), "85000");
+    await userEvent.click(screen.getByRole("button", { name: "Registrar egreso" }));
+    expect(action.mock.calls[0][1].get("categoryId")).toBe("c-mercado");
+  });
+
+  it("si ya eligió una categoría a mano, no se la cambia", async () => {
+    renderSuggesting();
+    await userEvent.selectOptions(category(), "c-ropa");
+    await userEvent.type(description(), "Mercado del barrio");
+    expect(category()).toHaveValue("c-ropa");
+  });
+
+  it("no propone nada si la de la última vez no se puede elegir, si no tenía o si no es una que ya usó", async () => {
+    renderSuggesting([...CATEGORIES, { id: "c-archivada", name: "Viejita", emoji: "📦", archived: true }]);
+    for (const text of ["Vieja", "Regalo", "Mercado"]) {
+      await userEvent.clear(description());
+      await userEvent.type(description(), text);
+      expect(category()).toHaveValue("");
+    }
+  });
+
+  it("después de registrar, vuelve a proponer aunque antes la hubiera elegido a mano", async () => {
+    action.mockResolvedValue({ ok: true, message: "Egreso registrado" });
+    renderSuggesting();
+    await userEvent.selectOptions(category(), "c-ropa");
+    await userEvent.type(screen.getByLabelText(/Monto/), "1000");
+    await userEvent.type(description(), "Café");
+    await userEvent.click(screen.getByRole("button", { name: "Registrar egreso" }));
+    await toast("Egreso registrado");
+
+    // (userEvent recuerda lo escrito antes de que React reiniciara el formulario: se limpia primero.)
+    await userEvent.clear(description());
+    await userEvent.type(description(), "Tenis");
+    expect(category()).toHaveValue("c-ropa");
+    await userEvent.clear(description());
+    await userEvent.type(description(), "Mercado del barrio");
+    expect(category()).toHaveValue("c-mercado");
   });
 });
 
