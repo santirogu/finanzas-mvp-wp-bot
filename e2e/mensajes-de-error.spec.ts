@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, type Locator, type Page } from "@playwright/test";
-import { openTab, register, test, visible } from "./helpers";
+import { openTab, register, test, toasts, visible } from "./helpers";
 
 // Los errores de los campos, en un navegador de verdad: en español, debajo de cada campo y nunca el
 // globo del navegador (eso lo revisa en todas las pruebas el fixture nativeValidation de helpers.ts).
@@ -51,7 +51,7 @@ for (const colorScheme of ["light", "dark"] as const) {
       await describedAs(form.getByLabel("Descripción"), 'Escribe una descripción, por ejemplo "Almuerzo".');
       await describedAs(date, "La fecha no puede ser después de hoy.");
       await expect(form.getByLabel(/^Monto/)).toBeFocused();
-      await expect(visible(page.getByText("✓ Egreso registrado"))).toHaveCount(0);
+      await expect(toasts(page)).toHaveCount(0);
       expect(await seriousViolations(page)).toEqual([]);
     });
   });

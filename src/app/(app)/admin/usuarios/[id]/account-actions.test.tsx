@@ -1,4 +1,5 @@
-import { render, screen, within } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
+import { findToast, renderWithToaster as render } from "../../../../../../test/toaster";
 import userEvent from "@testing-library/user-event";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ActionTarget } from "./account-actions";
@@ -123,20 +124,21 @@ describe("AccountActions", () => {
     expect(codeField()).not.toHaveAttribute("aria-invalid");
   });
 
-  it("con éxito, cierra la ventana y avisa qué pasó; al abrir otra, el aviso se va", async () => {
+  it("con éxito, cierra la ventana y avisa qué pasó (verde al desbloquear); la ventana siguiente empieza vacía", async () => {
     actions.unlockLoginAction.mockResolvedValue({ message: "Se desbloqueó el inicio de sesión de Beto Ruiz." });
     render(<AccountActions target={target()} />);
     await userEvent.click(actionsSection().getByRole("button", { name: "Desbloquear" }));
     await userEvent.type(codeField(), "123456");
     await userEvent.click(within(dialog()).getByRole("button", { name: "Desbloquear" }));
 
-    expect(await actionsSection().findByRole("status")).toHaveTextContent("Se desbloqueó el inicio de sesión de Beto Ruiz.");
+    const toast = await findToast();
+    expect(toast).toHaveTextContent("Se desbloqueó el inicio de sesión de Beto Ruiz.");
+    expect(toast).toHaveAttribute("data-tone", "success");
     expect(screen.queryByRole("dialog")).toBeNull();
     // El botón que abrió la ventana ya no existe (la cuenta se desbloqueó): el foco va al aviso.
-    expect(actionsSection().getByRole("status")).toHaveFocus();
+    expect(toast).toHaveFocus();
 
     await userEvent.click(actionsSection().getByRole("button", { name: "Desvincular" }));
-    expect(actionsSection().queryByRole("status")).toBeNull();
     // La ventana nueva empieza vacía.
     expect(codeField()).toHaveValue("");
   });
@@ -203,7 +205,9 @@ describe("AccountActions", () => {
       await userEvent.click(within(dialog()).getByRole("button", { name: "Suspender" }));
       const sent = actions.suspendAccountAction.mock.calls[0][1] as FormData;
       expect(Object.fromEntries(sent)).toEqual({ userId: "cuenta-1", reason: "Usa la cuenta de otra persona", code: "123456" });
-      expect(await actionsSection().findByRole("status")).toHaveTextContent("Se suspendió la cuenta de Beto Ruiz.");
+      const toast = await findToast();
+      expect(toast).toHaveTextContent("Se suspendió la cuenta de Beto Ruiz.");
+      expect(toast).toHaveAttribute("data-tone", "removal");
     });
 
     it("una cuenta suspendida se reactiva desde Acciones (con desde cuándo y el motivo) y ya no se puede suspender", async () => {
@@ -227,7 +231,9 @@ describe("AccountActions", () => {
       await userEvent.type(codeField(), "123456");
       await userEvent.click(within(dialog()).getByRole("button", { name: "Reactivar" }));
       expect(Object.fromEntries(actions.reactivateAccountAction.mock.calls[0][1] as FormData)).toEqual({ userId: "cuenta-1", code: "123456" });
-      expect(await actionsSection().findByRole("status")).toHaveTextContent("Se reactivó la cuenta de Beto Ruiz.");
+      const toast = await findToast();
+      expect(toast).toHaveTextContent("Se reactivó la cuenta de Beto Ruiz.");
+      expect(toast).toHaveAttribute("data-tone", "success");
     });
 
     it("suspendida sin motivo, no lo menciona", () => {

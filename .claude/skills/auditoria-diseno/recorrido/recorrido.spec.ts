@@ -39,7 +39,21 @@ async function esperarEstable(page: Page) {
   await page.evaluate(() => document.fonts.ready);
   await page.evaluate(() => new Promise((listo) => requestAnimationFrame(() => requestAnimationFrame(listo))));
   await page
-    .waitForFunction(() => document.getAnimations().every((a) => a.playState !== "running" || a.effect?.getTiming().iterations === Infinity), null, { timeout: 5_000 })
+    // Sin esperar las que no terminan (el esqueleto de carga) ni la barrita del tiempo de un aviso
+    // emergente (toast-timer): con ella, la captura saldría sin el aviso.
+    .waitForFunction(
+      () =>
+        document
+          .getAnimations()
+          .every(
+            (a) =>
+              a.playState !== "running" ||
+              a.effect?.getTiming().iterations === Infinity ||
+              (a as CSSAnimation).animationName === "toast-timer",
+          ),
+      null,
+      { timeout: 5_000 },
+    )
     .catch(() => {});
 }
 

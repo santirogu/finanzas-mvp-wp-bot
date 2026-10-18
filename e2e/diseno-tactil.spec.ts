@@ -4,7 +4,7 @@ import postgres from "postgres";
 import { heading, newAdmin, setUpTwoFactor } from "./admin";
 import { monthOf, monthParam, shiftMonth, todayInTimezone } from "../src/lib/dates";
 import { e2eDatabaseUrl } from "./database-url";
-import { addTransaction, openTab, test, visible } from "./helpers";
+import { addTransaction, openTab, test, toast, visible } from "./helpers";
 
 // En las pantallas táctiles todo cabe en la pantalla, aunque los textos sean largos (sin scroll de
 // lado), y los campos tienen letra de 16 px o más: con menos, Safari del iPhone y del iPad hace zoom
@@ -140,21 +140,21 @@ test("en pantallas táctiles las páginas caben y los campos no hacen zoom @tact
     await expectFitsOnScreens(page, "ventana de nueva categoría");
     await dialog.getByLabel("Nombre").fill(category);
     await dialog.getByRole("button", { name: "Crear" }).click();
-    await expect(visible(page.getByRole("status"))).toContainText(category);
+    await expect(toast(page, category)).toBeVisible();
     await expectFitsOnScreens(page, "/admin/categorias");
   });
 
   await test.step("movimientos con la descripción y el monto más largos", async () => {
     await open(page, "/egresos");
     await addTransaction(page, { amount: "99999999999,99", description, category });
-    await expect(visible(page.getByText("✓ Egreso registrado"))).toBeVisible();
+    await expect(toast(page, /^Egreso registrado$/)).toBeVisible();
     await openTab(page, "Ingresos");
     await addTransaction(page, { amount: "99999999999,99", description });
-    await expect(visible(page.getByText("✓ Ingreso registrado"))).toBeVisible();
+    await expect(toast(page, /^Ingreso registrado$/)).toBeVisible();
     // Uno del mes anterior: el Resumen compara (el balance cambia en el máximo) y la tarjeta del año marca dos meses.
     await openTab(page, "Egresos");
     await addTransaction(page, { amount: "99999999999,99", description, date: `${previousMonth}-28` });
-    await expect(visible(page.getByText(/^✓ Egreso registrado en /))).toBeVisible();
+    await expect(toast(page, /^Egreso registrado en /)).toBeVisible();
   });
 
   await test.step("las páginas de la persona", async () => {

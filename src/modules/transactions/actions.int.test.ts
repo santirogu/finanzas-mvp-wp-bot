@@ -328,13 +328,13 @@ describe("updateTransactionAction", () => {
     return { user, tx };
   }
 
-  it("guarda los cambios de un movimiento propio y vuelve a la lista de su tipo", async () => {
+  it("guarda los cambios de un movimiento propio y vuelve a la lista de su tipo, con el aviso", async () => {
     const { user, tx } = await ownExpense();
     const [ropa] = await db.select().from(category).where(eq(category.name, "Ropa"));
 
     await expect(
       updateTransactionAction({ ok: false }, editForm(tx.id, { categoryId: ropa.id, occurredOn: "2026-10-01" })),
-    ).rejects.toThrow(/^NEXT_REDIRECT \/egresos$/);
+    ).rejects.toThrow(/^NEXT_REDIRECT \/egresos\?aviso=guardado$/);
 
     expect(await activeTransactions(user.id)).toEqual([
       expect.objectContaining({
@@ -363,7 +363,7 @@ describe("updateTransactionAction", () => {
     const { tx } = await ownExpense();
 
     await expect(updateTransactionAction({ ok: false }, editForm(tx.id, { occurredOn: "2026-09-28" }))).rejects.toThrow(
-      "NEXT_REDIRECT /egresos?mes=2026-09",
+      "NEXT_REDIRECT /egresos?mes=2026-09&aviso=guardado",
     );
   });
 

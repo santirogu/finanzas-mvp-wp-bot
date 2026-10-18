@@ -120,6 +120,25 @@ export async function openTab(page: Page, tab: "Resumen" | "Ingresos" | "Egresos
   await expect(visible(page.getByRole("heading", { level: 1 }))).toBeVisible();
 }
 
+/**
+ * El aviso emergente con ese texto (src/components/toaster.tsx), el más nuevo si hay varios iguales.
+ * Un aviso de éxito lleva solo su mensaje: con una expresión anclada (/^Egreso registrado$/) se pide
+ * ese exacto.
+ */
+export const toast = (page: Page, text: string | RegExp) => toasts(page).filter({ hasText: text }).last();
+
+/** Todos los avisos emergentes que se ven. */
+export const toasts = (page: Page) => page.getByRole("region", { name: "Avisos" }).getByRole("listitem");
+
+/**
+ * Cierra con su X los avisos emergentes que se vean: están fijos abajo y pueden tapar un botón (con el
+ * mouse encima, además, se pausan). Es lo que haría una persona para tocar lo que queda debajo.
+ */
+export async function closeToasts(page: Page) {
+  const close = toasts(page).getByRole("button", { name: "Cerrar el aviso" });
+  while ((await close.count()) > 0) await close.first().click();
+}
+
 /** Mensaje de error del formulario (Next también tiene un role="alert" vacío para anunciar rutas). */
 export const formAlert = (page: Page) => page.locator("form").getByRole("alert");
 

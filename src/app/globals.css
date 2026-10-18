@@ -24,6 +24,15 @@
   /* Errores y alertas (p. ej. intentos fallidos en el historial de /admin). */
   --danger: #b91c1c;
   --danger-foreground: #ffffff;
+  /* Los avisos emergentes (src/components/toaster.tsx): verde lo que se guardó o se activó, rojo lo
+     que se borró o se desactivó. El fondo suave y el borde son del color; el ícono, la barrita del
+     tiempo y el botón, del color fuerte (--success es el mismo verde de --income, con otro nombre: el
+     de "salió bien", no el de "ingreso"). src/color-contrast.test.ts revisa su contraste. */
+  --success: #137337;
+  --success-surface: #e9f4ec;
+  --success-border: #9ccdaa;
+  --danger-surface: #fcecec;
+  --danger-border: #efb1b1;
   /* Etiqueta "Admin": violeta, distinto de la marca (verde azulado), ingresos y egresos. */
   --admin: #3c3489;
   --admin-surface: #eeedfe;
@@ -49,6 +58,11 @@
     --expense: #fb923c;
     --danger: #f87171;
     --danger-foreground: #450a0a;
+    --success: #4ade80;
+    --success-surface: #15291d;
+    --success-border: #2d6a43;
+    --danger-surface: #2c1719;
+    --danger-border: #7a3438;
     --admin: #cecbf6;
     --admin-surface: #3c3489;
     --admin-border: #7f77dd;
@@ -74,6 +88,11 @@
   --expense: #fb923c;
   --danger: #f87171;
   --danger-foreground: #450a0a;
+  --success: #4ade80;
+  --success-surface: #15291d;
+  --success-border: #2d6a43;
+  --danger-surface: #2c1719;
+  --danger-border: #7a3438;
   --admin: #cecbf6;
   --admin-surface: #3c3489;
   --admin-border: #7f77dd;
@@ -94,6 +113,11 @@
   --color-expense: var(--expense);
   --color-danger: var(--danger);
   --color-danger-foreground: var(--danger-foreground);
+  --color-success: var(--success);
+  --color-success-surface: var(--success-surface);
+  --color-success-border: var(--success-border);
+  --color-danger-surface: var(--danger-surface);
+  --color-danger-border: var(--danger-border);
   --color-admin: var(--admin);
   --color-admin-surface: var(--admin-surface);
   --color-admin-border: var(--admin-border);
@@ -158,5 +182,19 @@ body {
 
   .card {
     @apply rounded-xl border border-border bg-surface;
+  }
+}
+
+/* Los avisos emergentes (src/components/toaster.tsx): entran desde abajo, y la barrita de abajo se
+   achica en el tiempo que les queda (se pausa junto con el aviso). */
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+}
+@keyframes toast-timer {
+  to {
+    transform: scaleX(0);
   }
 }

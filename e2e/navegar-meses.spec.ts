@@ -9,7 +9,7 @@ import {
   type Month,
 } from "../src/lib/dates";
 import { seriousViolations } from "./admin";
-import { addTransaction, openTab, register, test, visible } from "./helpers";
+import { addTransaction, openTab, register, test, toast, visible } from "./helpers";
 
 // El Resumen, Ingresos y Egresos muestran el mes que pide la URL (?mes=2026-09): con las flechas, la
 // tarjeta del año o "Volver a este mes". Las fechas salen de hoy en Bogotá (la zona de las cuentas nuevas).
@@ -26,9 +26,9 @@ const text = (page: Page, value: string | RegExp) => visible(page.getByText(valu
 /** La tarjeta del Resumen con ese título ("Balance del mes", "Ingresos", "Egresos"). */
 const card = (page: Page, title: string) =>
   visible(page.locator(".card").filter({ has: page.getByText(title, { exact: true }) }));
+// Las filas de la lista (en la página, no en los avisos emergentes, que también son elementos de lista).
 const row = (page: Page, description: string) =>
-  visible(page.getByRole("listitem").filter({ hasText: description }));
-const notice = (page: Page, value: string) => visible(page.getByRole("status").filter({ hasText: value }));
+  visible(page.getByRole("main").getByRole("listitem").filter({ hasText: description }));
 
 /** Espera la página del mes (el título, sin el esqueleto de carga). */
 async function expectMonth(page: Page, month: Month, path: string) {
@@ -44,14 +44,14 @@ test("ver otros meses en el Resumen, Ingresos y Egresos @principal", async ({ pa
   await test.step("un movimiento de otro mes avisa dónde quedó", async () => {
     await openTab(page, "Ingresos");
     await addTransaction(page, { amount: "2000000", description: "Sueldo anterior", date: dayOf(previous, 15) });
-    await expect(text(page, `✓ Ingreso registrado en ${formatMonthName(previous, { withYear: true })}`)).toBeVisible();
+    await expect(toast(page, `Ingreso registrado en ${formatMonthName(previous, { withYear: true })}`)).toBeVisible();
     await openTab(page, "Egresos");
     await addTransaction(page, { amount: "500000", description: "Mercado anterior", date: dayOf(previous, 20) });
-    await expect(text(page, /^✓ Egreso registrado en /)).toBeVisible();
+    await expect(toast(page, `Egreso registrado en ${formatMonthName(previous, { withYear: true })}`)).toBeVisible();
     await addTransaction(page, { amount: "100000", description: "Cine de hace dos meses", date: dayOf(twoBefore, 10) });
-    await expect(text(page, `✓ Egreso registrado en ${formatMonthName(twoBefore, { withYear: true })}`)).toBeVisible();
+    await expect(toast(page, `Egreso registrado en ${formatMonthName(twoBefore, { withYear: true })}`)).toBeVisible();
     await addTransaction(page, { amount: "575000", description: "Mercado de hoy", date: today });
-    await expect(text(page, "✓ Egreso registrado")).toHaveText("✓ Egreso registrado");
+    await expect(toast(page, /^Egreso registrado$/)).toBeVisible();
     await expect(text(page, "1 movimiento este mes")).toBeVisible();
   });
 
@@ -94,14 +94,14 @@ test("ver otros meses en el Resumen, Ingresos y Egresos @principal", async ({ pa
 
   await test.step("borrar y deshacer dejan la lista en ese mes", async () => {
     await visible(page.getByRole("button", { name: "Eliminar Mercado anterior" })).click();
-    await expect(notice(page, "Se borró «Mercado anterior».")).toBeFocused();
-    await expect(page).toHaveURL(new RegExp(`/egresos\\?mes=${monthParam(previous)}&borrado=[0-9a-f-]{36}$`));
+    await expect(toast(page, "Se borró «Mercado anterior»")).toBeFocused();
+    // El aviso venía en la URL (?borrado=) y se quita: queda la lista de ese mes.
+    await expect(page).toHaveURL(new RegExp(`/egresos\\?mes=${monthParam(previous)}$`));
     await expect(text(page, `No registraste egresos en ${nameOf(previous)}.`)).toBeVisible();
-    await notice(page, "Se borró").getByRole("button", { name: "Deshacer" }).click();
-    await expect(notice(page, "Se restauró «Mercado anterior».")).toBeFocused();
-    await expect(page).toHaveURL(new RegExp(`/egresos\\?mes=${monthParam(previous)}&restaurado=`));
-    await notice(page, "Se restauró").getByRole("link", { name: "Cerrar el aviso" }).click();
+    await toast(page, "Se borró").getByRole("button", { name: "Deshacer" }).click();
+    await expect(toast(page, "Se restauró «Mercado anterior»")).toBeFocused();
     await expectMonth(page, previous, "/egresos");
+    await expect(row(page, "Mercado anterior")).toBeVisible();
   });
 
   await test.step("la tarjeta del año lleva a cualquier mes, tenga o no movimientos", async () => {

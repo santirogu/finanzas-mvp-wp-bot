@@ -1,4 +1,5 @@
-import { render, screen, within } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
+import { findToast, renderWithToaster as render, toasts } from "../../../../../test/toaster";
 import userEvent from "@testing-library/user-event";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { BotSettingsProps } from "./bot-settings";
@@ -72,7 +73,10 @@ describe("BotSettings", () => {
     expect(actions.pauseClaudeAction).toHaveBeenCalledTimes(1);
     expect((actions.pauseClaudeAction.mock.calls[0][1] as FormData).get("code")).toBe("123456");
     expect(screen.queryByRole("dialog")).toBeNull();
-    expect(section().getByRole("status")).toHaveTextContent("Claude quedó en pausa.");
+    const toast = await findToast();
+    expect(toast).toHaveTextContent("Claude quedó en pausa.");
+    // Pausar es apagar algo: en rojo.
+    expect(toast).toHaveAttribute("data-tone", "removal");
   });
 
   it("reanudar usa su propia acción", async () => {
@@ -83,6 +87,7 @@ describe("BotSettings", () => {
     await userEvent.click(dialog().getByRole("button", { name: "Reanudar" }));
     expect(actions.resumeClaudeAction).toHaveBeenCalledTimes(1);
     expect(actions.pauseClaudeAction).not.toHaveBeenCalled();
+    expect(await findToast()).toHaveAttribute("data-tone", "success");
   });
 
   it("un código equivocado se muestra en su campo y la ventana sigue abierta", async () => {
@@ -92,7 +97,7 @@ describe("BotSettings", () => {
     await userEvent.type(dialog().getByLabelText("Código de Google Authenticator"), "111111");
     await userEvent.click(dialog().getByRole("button", { name: "Pausar" }));
     expect(dialog().getByLabelText("Código de Google Authenticator")).toHaveAccessibleDescription("El código no es correcto.");
-    expect(section().queryByRole("status")).toBeNull();
+    expect(toasts()).toHaveLength(0);
   });
 
   it("los topes vienen llenos con los actuales y se envían con el código", async () => {
@@ -115,7 +120,7 @@ describe("BotSettings", () => {
 
     const sent = actions.changeAiLimitsAction.mock.calls[0][1] as FormData;
     expect([sent.get("perHour"), sent.get("perDay"), sent.get("code")]).toEqual(["30", "150", "123456"]);
-    expect(section().getByRole("status")).toHaveTextContent("Los topes quedaron en 30 por hora y 150 por día");
+    expect(await findToast()).toHaveTextContent("Los topes quedaron en 30 por hora y 150 por día");
   });
 
   it("un tope fuera de rango se muestra debajo de su campo; uno que no cambia, en la ventana", async () => {
@@ -205,7 +210,7 @@ describe("BotSettings · tope mensual de tokens", () => {
 
     const sent = actions.changeMonthlyLimitAction.mock.calls[0][1] as FormData;
     expect([sent.get("monthlyLimit"), sent.get("code")]).toEqual(["2.000.000", "123456"]);
-    expect(section().getByRole("status")).toHaveTextContent("El tope mensual quedó en 2.000.000 tokens.");
+    expect(await findToast()).toHaveTextContent("El tope mensual quedó en 2.000.000 tokens.");
   });
 
   it("vacío se puede enviar (quita el tope); un error del servidor va debajo del campo y lo escrito sigue", async () => {

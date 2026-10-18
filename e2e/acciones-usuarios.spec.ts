@@ -3,7 +3,7 @@ import postgres from "postgres";
 import { totp } from "../test/totp";
 import { heading, newAdmin, seriousViolations, setUpTwoFactor, wrongCode } from "./admin";
 import { e2eDatabaseUrl } from "./database-url";
-import { fakeIp, logIn, logOut, register, test, uniqueEmail, visible } from "./helpers";
+import { fakeIp, logIn, logOut, register, test, toast, toasts, uniqueEmail, visible } from "./helpers";
 import { newPhone, nthReply, sendWhatsApp } from "./whatsapp";
 
 // Las acciones del admin sobre una cuenta (/admin/usuarios/[id]), de punta a punta: cada una pide el
@@ -14,7 +14,8 @@ const actionsRegion = (page: Page) => visible(page.getByRole("region", { name: "
 const dangerRegion = (page: Page) => visible(page.getByRole("region", { name: "Zona de peligro" }));
 const dialog = (page: Page) => page.getByRole("dialog");
 const codeField = (page: Page) => dialog(page).getByLabel("Código de Google Authenticator");
-const status = (page: Page) => actionsRegion(page).getByRole("status");
+/** El aviso emergente de la última acción. */
+const status = (page: Page) => toasts(page).last();
 const adminActions = (page: Page) => visible(page.getByRole("list", { name: "Acciones del admin" })).getByRole("listitem");
 
 /** El código de ahora o, para la segunda acción seguida, el del período siguiente (un código sirve una vez). */
@@ -167,8 +168,9 @@ test("el admin desvincula el WhatsApp y elimina una cuenta; de ella solo queda '
   });
 
   await test.step("vuelve a la lista con el aviso; la cuenta y su sesión ya no existen", async () => {
-    await expect(page).toHaveURL(/\/admin\/usuarios\?eliminada=1$/);
-    await expect(visible(page.getByRole("status"))).toHaveText("Se eliminó la cuenta.");
+    await expect(toast(page, "Se eliminó la cuenta")).toHaveAttribute("data-tone", "removal");
+    // El aviso venía en la URL (?aviso=cuenta-eliminada) y se quita al mostrarlo.
+    await expect(page).toHaveURL(/\/admin\/usuarios$/);
     await page.goto(`/admin/usuarios?q=${encodeURIComponent(carla.email)}`);
     await expect(visible(page.getByText("No hay cuentas con estos filtros.", { exact: true }))).toBeVisible();
     await carla.page.reload();

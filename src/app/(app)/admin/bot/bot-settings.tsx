@@ -5,7 +5,8 @@ import { describedBy, FieldError } from "@/components/field-error";
 import { useFieldErrors } from "@/components/use-field-errors";
 import { TOTP_CODE_MESSAGES, type FieldMessages } from "@/lib/field-errors";
 import { AI_LIMIT_BOUNDS, MONTHLY_TOKEN_BOUNDS, type AiLimits } from "@/modules/bot/limits";
-import { Buttons, CODE_FIELD_MESSAGES, CodeField, Dialog, DoneMessage, FormError } from "../admin-dialog";
+import { type ToastTone, useToast } from "@/components/toaster";
+import { Buttons, CODE_FIELD_MESSAGES, CodeField, Dialog, FormError } from "../admin-dialog";
 import {
   changeAiLimitsAction,
   changeMonthlyLimitAction,
@@ -49,16 +50,14 @@ const LIMITS_MESSAGES: Record<string, FieldMessages> = { ...LIMIT_FIELD, code: T
 
 export function BotSettings({ claudePaused, limits, monthlyTokenLimit, month, averageTokensPerCall, lastChange }: BotSettingsProps) {
   const [open, setOpen] = useState<Kind | null>(null);
-  const [done, setDone] = useState<string | null>(null);
+  const toast = useToast();
   const close = () => setOpen(null);
-  const finish = (message: string) => {
-    setDone(message);
+  // Con éxito, la ventana se cierra y el aviso emergente recibe el foco. Rojo al pausar Claude; verde lo demás.
+  const finish = (tone: ToastTone) => (message: string) => {
     setOpen(null);
+    toast({ tone, message, focus: true });
   };
-  const start = (kind: Kind) => {
-    setDone(null);
-    setOpen(kind);
-  };
+  const start = (kind: Kind) => setOpen(kind);
 
   return (
     <section className="card space-y-1 p-4" aria-labelledby="configuracion">
@@ -66,7 +65,6 @@ export function BotSettings({ claudePaused, limits, monthlyTokenLimit, month, av
         Configuración
       </h2>
       <p className="text-sm text-muted">Aplica desde el siguiente mensaje. Cada cambio pide el código de Google Authenticator.</p>
-      {done && <DoneMessage message={done} className="!mt-3" />}
       <ul className="divide-y divide-border">
         <Row
           title="Claude"
@@ -113,20 +111,20 @@ export function BotSettings({ claudePaused, limits, monthlyTokenLimit, month, av
       <p className="text-xs text-muted">{lastChange ? `Último cambio: ${lastChange}` : "Sin cambios: valen los de siempre."}</p>
 
       {open === "pause" && (
-        <ConfirmDialog title="¿Pausar Claude?" action={pauseClaudeAction} submit="Pausar" pending="Pausando…" danger onClose={close} onDone={finish}>
+        <ConfirmDialog title="¿Pausar Claude?" action={pauseClaudeAction} submit="Pausar" pending="Pausando…" danger onClose={close} onDone={finish("removal")}>
           El bot deja de llamar a Claude: a lo escrito libremente responde que lo registren en la web, y balance, deshacer y
           ayuda siguen funcionando. Mientras esté en pausa no gasta créditos de Anthropic.
         </ConfirmDialog>
       )}
       {open === "resume" && (
-        <ConfirmDialog title="¿Reanudar Claude?" action={resumeClaudeAction} submit="Reanudar" pending="Reanudando…" onClose={close} onDone={finish}>
+        <ConfirmDialog title="¿Reanudar Claude?" action={resumeClaudeAction} submit="Reanudar" pending="Reanudando…" onClose={close} onDone={finish("success")}>
           El bot vuelve a entender los mensajes escritos libremente. Cada uno usa una llamada a Claude, dentro de los topes de
           cada cuenta.
         </ConfirmDialog>
       )}
-      {open === "limits" && <LimitsDialog limits={limits} onClose={close} onDone={finish} />}
+      {open === "limits" && <LimitsDialog limits={limits} onClose={close} onDone={finish("success")} />}
       {open === "monthly" && (
-        <MonthlyLimitDialog limit={monthlyTokenLimit} averageTokensPerCall={averageTokensPerCall} onClose={close} onDone={finish} />
+        <MonthlyLimitDialog limit={monthlyTokenLimit} averageTokensPerCall={averageTokensPerCall} onClose={close} onDone={finish("success")} />
       )}
     </section>
   );

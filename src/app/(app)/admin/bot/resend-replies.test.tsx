@@ -1,4 +1,5 @@
-import { render, screen, within } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
+import { findToast, renderWithToaster as render } from "../../../../../test/toaster";
 import userEvent from "@testing-library/user-event";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -46,9 +47,11 @@ describe("ResendReplies", () => {
     await userEvent.click(within(dialog).getByRole("button", { name: "Reenviar" }));
 
     expect((actions.resendRepliesAction.mock.calls[0][1] as FormData).get("code")).toBe("123456");
-    // La página se vuelve a dibujar con 0 pendientes: el aviso sigue a la vista.
+    // La página se vuelve a dibujar con 0 pendientes: el aviso sigue a la vista (verde).
     rerender(<ResendReplies pending={0} windowHours={24} />);
-    expect(screen.getByRole("status")).toHaveTextContent("Se reenviaron 2 respuestas.");
+    const toast = await findToast();
+    expect(toast).toHaveTextContent("Se reenviaron 2 respuestas.");
+    expect(toast).toHaveAttribute("data-tone", "success");
     expect(screen.queryByRole("button", { name: "Reenviar" })).toBeNull();
   });
 

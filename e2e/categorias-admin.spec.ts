@@ -2,7 +2,7 @@ import { randomInt } from "node:crypto";
 import { expect, type Browser, type Page } from "@playwright/test";
 import { totp } from "../test/totp";
 import { heading, newAdmin, seriousViolations, setUpTwoFactor } from "./admin";
-import { addTransaction, fakeIp, openTab, register, test, uniqueEmail, visible } from "./helpers";
+import { addTransaction, closeToasts, fakeIp, openTab, register, test, toast, toasts, uniqueEmail, visible } from "./helpers";
 
 // Categorías en la administración (/admin/categorias), de punta a punta: lo que hace el admin se ve
 // de inmediato en los formularios de las personas. Las pruebas corren en paralelo y comparten las
@@ -10,7 +10,7 @@ import { addTransaction, fakeIp, openTab, register, test, uniqueEmail, visible }
 
 const tag = () => String(randomInt(100_000, 999_999));
 const dialog = (page: Page) => page.getByRole("dialog");
-const statusMessage = (page: Page) => visible(page.getByRole("status"));
+const statusMessage = (page: Page) => toasts(page).last();
 const row = (page: Page, name: string) =>
   visible(page.getByRole("listitem").filter({ has: page.locator("p", { hasText: new RegExp(`^${name}`) }) }));
 const changes = (page: Page) => visible(page.getByRole("list", { name: "Cambios recientes" })).getByRole("listitem");
@@ -69,7 +69,7 @@ test("el admin crea, renombra, archiva y restaura una categoría, y las personas
     // Otros sigue al final.
     await expect(categoryOptions(ana).last()).toHaveText(/Otros$/);
     await addTransaction(ana, { amount: "8000", description: `Tinto ${id}`, category: `Café ${id}` });
-    await expect(visible(ana.getByText("✓ Egreso registrado"))).toBeVisible();
+    await expect(toast(ana, /^Egreso registrado$/)).toBeVisible();
   });
 
   await test.step("renombrar: su movimiento se ve con el nombre nuevo", async () => {
@@ -105,6 +105,8 @@ test("el admin crea, renombra, archiva y restaura una categoría, y las personas
   });
 
   await test.step("restaurar (sin código): vuelve al formulario", async () => {
+    // El aviso de archivar puede tapar el botón (la lista de archivadas queda abajo).
+    await closeToasts(page);
     await row(page, `Cafetería ${id}`).getByRole("button", { name: `Restaurar Cafetería ${id}` }).click();
     await expect(statusMessage(page)).toHaveText(`Se restauró la categoría ☕ Cafetería ${id}.`);
     await ana.reload();
@@ -130,7 +132,7 @@ test("eliminar: sin movimientos se borra; con movimientos avisa y estos pasan a 
   await createCategory(page, `Mascotas ${id}`, "🐾");
   const ana = await person(browser);
   await addTransaction(ana, { amount: "50000", description: `Veterinario ${id}`, category: `Mascotas ${id}` });
-  await expect(visible(ana.getByText("✓ Egreso registrado"))).toBeVisible();
+  await expect(toast(ana, /^Egreso registrado$/)).toBeVisible();
 
   await test.step("sin movimientos", async () => {
     await page.reload();

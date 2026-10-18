@@ -5,7 +5,7 @@ import { totp } from "../test/totp";
 import { heading, newAdmin, seriousViolations, setUpTwoFactor, wrongCode } from "./admin";
 import { e2eDatabaseUrl } from "./database-url";
 import { FAKE_SERVICES_URL } from "./fake-config";
-import { fakeIp, register, test, visible } from "./helpers";
+import { fakeIp, register, test, toast, visible } from "./helpers";
 import { newPhone, nthReply, sendWhatsApp } from "./whatsapp";
 
 // La configuración del bot en /admin/bot, de punta a punta: pausar y reanudar Claude, y cambiar los
@@ -77,11 +77,11 @@ test("el admin pausa Claude: el bot pide usar la web, los comandos siguen y qued
     await expect(codeField(page)).toHaveAttribute("aria-invalid", "true");
     await confirmWith(page, codeFor(secret), "Pausar");
     await expect(dialog(page)).toBeHidden();
-    await expect(settings(page).getByRole("status")).toContainText("Claude quedó en pausa");
+    // El aviso emergente (rojo: se apagó algo) recibe el foco: la ventana ya se cerró.
+    await expect(toast(page, "Claude quedó en pausa")).toBeFocused();
+    await expect(toast(page, "Claude quedó en pausa")).toHaveAttribute("data-tone", "removal");
     await expect(settings(page)).toContainText("En pausa: el bot solo responde balance, deshacer y ayuda.");
     await expect(settings(page)).toContainText(/Último cambio: Ana Admin · /);
-    // El aviso recibe el foco: la ventana ya se cerró.
-    await expect(settings(page).getByRole("status")).toBeFocused();
   });
 
   await test.step("en pausa, a lo escrito libremente responde que use la web; balance sigue", async () => {
@@ -105,7 +105,7 @@ test("el admin pausa Claude: el bot pide usar la web, los comandos siguen y qued
     await page.goto("/admin/bot");
     await settings(page).getByRole("button", { name: "Reanudar Claude" }).click();
     await confirmWith(page, codeFor(secret, 1), "Reanudar");
-    await expect(settings(page).getByRole("status")).toContainText("Claude volvió a funcionar");
+    await expect(toast(page, "Claude volvió a funcionar")).toHaveAttribute("data-tone", "success");
     await expect(settings(page)).toContainText("Activo: entiende los mensajes escritos libremente.");
     expect(await beto("almuerzo 25.900,50")).toMatch(/✅ Egreso registrado: \*Almuerzo\*/);
     expect(await seriousViolations(page)).toEqual([]);
@@ -136,7 +136,7 @@ test("cambiar los topes: fuera de rango avisa en su campo; con 1 por hora, el se
     await dialog(page).getByLabel("Por hora").fill("1");
     await dialog(page).getByLabel("Por día").fill("100");
     await confirmWith(page, code, "Guardar topes");
-    await expect(settings(page).getByRole("status")).toContainText("Los topes quedaron en 1 por hora y 100 por día, por cuenta.");
+    await expect(toast(page, "Los topes quedaron en 1 por hora y 100 por día, por cuenta.")).toBeVisible();
     await expect(settings(page)).toContainText("1 por hora y 100 por día, de mensajes con Claude.");
     await expect(visible(page.getByRole("heading", { name: /Cuentas que llegaron al tope/ }))).toContainText("(1 por hora o 100 por día)");
   });
@@ -183,7 +183,7 @@ test("el tope mensual de tokens: al alcanzarlo, el bot deja de usar Claude hasta
     await expect(dialog(page).getByLabel("Tokens al mes")).toHaveAccessibleDescription(/alcanza para unos [\d.]+ mensajes\.$/);
     expect(await seriousViolations(page)).toEqual([]);
     await confirmWith(page, codeFor(secret), "Guardar tope");
-    await expect(settings(page).getByRole("status")).toContainText("El tope mensual quedó en 10.000 tokens");
+    await expect(toast(page, "El tope mensual quedó en 10.000 tokens")).toBeVisible();
     await expect(monthly()).toContainText(/Alcanzado: [\d.]+ de 10\.000\. Claude vuelve el 1 de [a-z]+\./);
     await expect(settings(page)).toContainText(/En pausa por el tope mensual hasta el 1 de [a-z]+/);
   });
@@ -201,7 +201,7 @@ test("el tope mensual de tokens: al alcanzarlo, el bot deja de usar Claude hasta
     await settings(page).getByRole("button", { name: "Cambiar el tope mensual de tokens" }).click();
     await dialog(page).getByLabel("Tokens al mes").fill("");
     await confirmWith(page, codeFor(secret, 1), "Guardar tope");
-    await expect(settings(page).getByRole("status")).toContainText("Se quitó el tope mensual de tokens.");
+    await expect(toast(page, "Se quitó el tope mensual de tokens.")).toBeVisible();
     expect(await beto("almuerzo 25.900,50")).toMatch(/✅ Egreso registrado/);
     await page.goto("/admin/historial?tipo=admin");
     await expect(visible(page.getByRole("listitem").filter({ hasText: "cambió el tope mensual de tokens" })).first()).toContainText(
@@ -229,7 +229,7 @@ test("reenviar una respuesta que no salió: le llega a la persona y no se regist
     await expect(dialog(page)).toHaveAccessibleName("¿Reenviar 1 respuesta?");
     expect(await seriousViolations(page)).toEqual([]);
     await confirmWith(page, codeFor(secret), "Reenviar");
-    await expect(errors.getByRole("status")).toContainText("Se reenvió 1 respuesta.");
+    await expect(toast(page, "Se reenvió 1 respuesta.")).toBeVisible();
     await expect(errors).not.toContainText("no salió en las últimas 24 horas");
     expect(await beto.resentReply()).toMatch(/✅ Egreso registrado: \*Almuerzo\*/);
     // El movimiento se registró una sola vez (al llegar el mensaje), no al reenviar.

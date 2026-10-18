@@ -185,6 +185,12 @@ de Vercel ni muevas las migraciones fuera del job `deploy`.
   - Antes de abrir un PR que cambie páginas, componentes, `globals.css` o el layout, corre
     `/auditoria-diseno cambios`.
   - Su informe y sus capturas van a `reports/diseno/` y no se suben.
+- **Avisos emergentes** (README → Decisiones importantes): la confirmación de algo que ya pasó va con
+  `useToast()` (`src/components/toaster.tsx`): `tone: "success"` (verde) si se guardó o se activó,
+  `"removal"` (rojo) si se borró o se desactivó; con `focus: true` si lo que se tocó ya no está (una
+  ventana que se cerró, una fila borrada). Después de una redirección del servidor, un código de
+  `URL_TOASTS` (`src/lib/toasts.ts`, con sus páginas) en `?aviso=`, nunca datos de la persona. Los
+  errores no van ahí: se quedan junto a su campo.
 - **Colores** (`src/app/globals.css`): solo los tokens. Los errores, las alertas y lo que no se
   deshace van en rojo (`danger`, y `btn-danger` para su botón); el naranja (`expense`) es solo para
   los egresos (`src/forms.test.ts` lo revisa en los avisos con `role="alert"`). El borde de un campo es `border-control` (3:1

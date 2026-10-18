@@ -4,7 +4,8 @@ import { useActionState, useId, useState, type ReactNode } from "react";
 import { describedBy, FieldError } from "@/components/field-error";
 import { useFieldErrors } from "@/components/use-field-errors";
 import { EMAIL_MESSAGE, TOTP_CODE_MESSAGES, type FieldMessages } from "@/lib/field-errors";
-import { Buttons, CODE_FIELD_MESSAGES, CodeField, Dialog, DoneMessage, FormError } from "../../admin-dialog";
+import { type ToastTone, useToast } from "@/components/toaster";
+import { Buttons, CODE_FIELD_MESSAGES, CodeField, Dialog, FormError } from "../../admin-dialog";
 import { NOTE_MAX_LENGTH } from "@/modules/admin/shared/filters";
 import {
   deleteAccountByAdminAction,
@@ -50,16 +51,15 @@ const DELETE_MESSAGES: Record<string, FieldMessages> = {
 
 export function AccountActions({ target }: { target: ActionTarget }) {
   const [open, setOpen] = useState<Kind | null>(null);
-  const [done, setDone] = useState<string | null>(null);
+  const toast = useToast();
   const close = () => setOpen(null);
-  const finish = (message: string) => {
-    setDone(message);
+  // Con éxito, la ventana se cierra y el aviso emergente recibe el foco (el botón que la abrió a veces
+  // ya no está: un "Desbloquear" ya hecho). Verde lo que se activa; rojo lo que se quita o se apaga.
+  const finish = (tone: ToastTone) => (message: string) => {
     setOpen(null);
+    toast({ tone, message, focus: true });
   };
-  const start = (kind: Kind) => {
-    setDone(null);
-    setOpen(kind);
-  };
+  const start = (kind: Kind) => setOpen(kind);
   const sessions = plural(target.openSessions, "1 sesión abierta", "sesiones abiertas");
 
   return (
@@ -69,7 +69,6 @@ export function AccountActions({ target }: { target: ActionTarget }) {
           Acciones
         </h2>
         <p className="text-sm text-muted">Cada una pide el código de Google Authenticator.</p>
-        {done && <DoneMessage message={done} className="!mt-3" />}
         {target.suspendedSince || target.lockedUntil || target.openSessions > 0 || target.phone ? (
           <ul className="divide-y divide-border">
             {target.suspendedSince && (
@@ -139,7 +138,7 @@ export function AccountActions({ target }: { target: ActionTarget }) {
           pending="Desbloqueando…"
           userId={target.id}
           onClose={close}
-          onDone={finish}
+          onDone={finish("success")}
         >
           Podrá volver a intentar con su contraseña de inmediato, sin esperar a que pase el bloqueo.
         </ConfirmDialog>
@@ -152,7 +151,7 @@ export function AccountActions({ target }: { target: ActionTarget }) {
           pending="Cerrando…"
           userId={target.id}
           onClose={close}
-          onDone={finish}
+          onDone={finish("removal")}
         >
           Tendrá que volver a iniciar sesión en {plural(target.openSessions, "su dispositivo", "dispositivos")}. Su
           WhatsApp sigue vinculado.
@@ -166,7 +165,7 @@ export function AccountActions({ target }: { target: ActionTarget }) {
           pending="Desvinculando…"
           userId={target.id}
           onClose={close}
-          onDone={finish}
+          onDone={finish("removal")}
         >
           El bot dejará de registrar lo que escriba desde <span className="whitespace-nowrap">{target.phone}</span>. Podrá
           vincularlo otra vez desde su Resumen.
@@ -181,7 +180,7 @@ export function AccountActions({ target }: { target: ActionTarget }) {
           danger
           userId={target.id}
           onClose={close}
-          onDone={finish}
+          onDone={finish("removal")}
           extra={<ReasonField />}
         >
           No podrá entrar a la web ni registrar movimientos por WhatsApp hasta que la reactives. Se cierran sus
@@ -196,7 +195,7 @@ export function AccountActions({ target }: { target: ActionTarget }) {
           pending="Reactivando…"
           userId={target.id}
           onClose={close}
-          onDone={finish}
+          onDone={finish("success")}
         >
           Podrá volver a entrar y a usar el bot de WhatsApp.
         </ConfirmDialog>

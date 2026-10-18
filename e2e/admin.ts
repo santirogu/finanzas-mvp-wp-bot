@@ -13,7 +13,10 @@ export async function seriousViolations(page: Page) {
   // Sin animaciones a medias: un botón que todavía cambia de color daría un contraste falso. Dos
   // cuadros antes: una transición que recién empieza todavía no aparece en getAnimations().
   await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
-  await page.waitForFunction(() => document.getAnimations().every((a) => a.playState !== "running"));
+  // La barrita del tiempo de los avisos emergentes (toast-timer) no cambia colores: no se espera.
+  await page.waitForFunction(() =>
+    document.getAnimations().every((a) => a.playState !== "running" || (a as CSSAnimation).animationName === "toast-timer"),
+  );
   const { violations } = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
     .analyze();
