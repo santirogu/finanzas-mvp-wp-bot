@@ -221,8 +221,10 @@ scripts/seed.ts                     Categorías por defecto
   `MAX_AMOUNT` (100 mil millones). En el formulario, al salir del campo, el monto se completa con sus
   dos decimales (`completeAmountDecimals`: "500.000" → "500.000,00"), y al editar ya viene con ellos.
 - **Sugerencias de la descripción** (al registrar un movimiento nuevo):
-  - **Qué sugiere:** las descripciones que la persona ya usó en ese tipo en los últimos 6 meses (`listDescriptionSuggestions`), las 20 más usadas. Las muestra el navegador (`<datalist>`, también en Safari de iPhone y iPad).
-  - **Cómo las cuenta:** "Mercado" y "mercado " son la misma, escrita como la última vez.
+  - **Qué sugiere:** las descripciones que la persona ya usó en ese tipo en los últimos 6 meses (`listDescriptionSuggestions`), las 20 más usadas. "Mercado" y "mercado " son la misma, escrita como la última vez.
+  - **Cómo se ven:** en una lista propia debajo del campo (`src/components/description-suggestions.tsx`), no en la del navegador (`<datalist>`, que cada sistema dibuja a su manera y pinta el campo de azul).
+    - Muestra hasta 6 que coincidan con lo escrito (`src/lib/suggestions.ts`), sin importar mayúsculas ni tildes: primero las que empiezan igual. La parte que coincide va resaltada, y a la derecha va su categoría.
+    - Es el patrón "combobox" de ARIA: el foco se queda en el campo, las flechas recorren la lista, Enter elige (sin enviar el formulario), Escape y Tab la cierran, y también se elige con un toque.
   - **La categoría:** al elegir una, se propone la de la última vez, salvo que la persona ya haya elegido una a mano o que esa categoría ya no se pueda elegir (archivada). El lector de pantalla avisa qué categoría se eligió.
   - **Privacidad:** solo salen los movimientos propios, no los eliminados (prueba de integración con dos usuarios). No se guarda nada nuevo.
 - **Campos obligatorios del formulario de movimientos:** monto, descripción y fecha llevan un asterisco

@@ -10,6 +10,7 @@ import {
   updateTransactionAction,
   type FormState,
 } from "@/modules/transactions/actions";
+import { type Suggestion, useDescriptionSuggestions } from "./description-suggestions";
 import { describedBy, FieldError } from "./field-error";
 import { useToast } from "./toaster";
 import { useFieldErrors } from "./use-field-errors";
@@ -17,7 +18,7 @@ import { useFieldErrors } from "./use-field-errors";
 type CategoryOption = { id: string; name: string; emoji: string; archived?: boolean };
 
 /** Una descripción que la persona ya usó, con la categoría de la última vez (src/modules/transactions/queries.ts). */
-export type DescriptionSuggestion = { description: string; categoryId: string | null };
+export type DescriptionSuggestion = Suggestion;
 
 /** Movimiento a editar; sin él, el formulario registra uno nuevo. */
 export type TransactionToEdit = {
@@ -73,20 +74,33 @@ export function TransactionForm({
   // El aviso de cada registro, una sola vez (la página se vuelve a renderizar con el mismo resultado,
   // p. ej. al cambiar de mes).
   const announced = useRef<FormState | null>(null);
+  const descriptionSuggestions = useDescriptionSuggestions({
+    suggestions,
+    categories,
+    onPick: (suggestion) => proposeCategoryFor(suggestion.description),
+  });
+  const resetSuggestions = descriptionSuggestions.reset;
   // La categoría que propone una descripción conocida, salvo que la persona ya haya elegido una a mano.
   const categoryRef = useRef<HTMLSelectElement>(null);
   const categoryChosen = useRef(false);
   const [proposed, setProposed] = useState("");
-  const suggestionsId = useId();
+  /** Pone la categoría de la última vez de una descripción conocida (si no la eligió a mano). */
+  function proposeCategoryFor(text: string) {
+    const category = proposedCategory(text, suggestions, categories);
+    if (!category || categoryChosen.current || !categoryRef.current) return;
+    categoryRef.current.value = category.id;
+    setProposed(`Se eligió la categoría ${category.name}, la de la última vez.`);
+  }
 
   useEffect(() => {
     if (!state.ok || announced.current === state) return;
     announced.current = state;
     categoryChosen.current = false;
     setProposed("");
+    resetSuggestions();
     amountRef.current?.focus();
     toast({ tone: "success", message: `${state.message}${elsewhere(state.occurredOn, listMonth)}` });
-  }, [state, toast, listMonth]);
+  }, [state, toast, listMonth, resetSuggestions]);
 
   // Los del navegador (antes de enviar, en español) y, si no hay, los del servidor.
   const { errors: fieldErrors, formProps } = useFieldErrors(MESSAGES);
@@ -141,7 +155,13 @@ export function TransactionForm({
         </div>
       </Field>
 
-      <Field label="Descripción" required error={errorOf("description")} errorId={ids.description}>
+      <Field
+        label="Descripción"
+        required
+        error={errorOf("description")}
+        errorId={ids.description}
+        popup={descriptionSuggestions.popup}
+      >
         <input
           name="description"
           required
@@ -150,23 +170,10 @@ export function TransactionForm({
           placeholder={isIncome ? "Pago de nómina" : "Zapatos"}
           {...aria("description")}
           className="input"
-          // Las descripciones que ya usó, como sugerencias del navegador (sin mezclar su historial).
-          list={suggestions.length > 0 ? suggestionsId : undefined}
-          autoComplete={suggestions.length > 0 ? "off" : undefined}
-          onChange={(e) => {
-            const category = proposedCategory(e.target.value, suggestions, categories);
-            if (!category || categoryChosen.current || !categoryRef.current) return;
-            categoryRef.current.value = category.id;
-            setProposed(`Se eligió la categoría ${category.name}, la de la última vez.`);
-          }}
+          // Las descripciones que ya usó: la lista de abajo (src/components/description-suggestions.tsx).
+          {...descriptionSuggestions.inputProps}
+          onChange={(e) => proposeCategoryFor(e.target.value)}
         />
-        {suggestions.length > 0 && (
-          <datalist id={suggestionsId}>
-            {suggestions.map((s) => (
-              <option key={s.description} value={s.description} />
-            ))}
-          </datalist>
-        )}
       </Field>
 
       <div className="grid grid-cols-2 gap-3">
@@ -278,12 +285,15 @@ function Field({
   required = false,
   error,
   errorId,
+  popup,
   children,
 }: {
   label: string;
   required?: boolean;
   error?: string;
   errorId: string;
+  /** Lo que se abre debajo del campo (las sugerencias): fuera de la etiqueta, para no cambiar su nombre. */
+  popup?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
@@ -295,6 +305,7 @@ function Field({
         </span>
         {children}
       </label>
+      {popup && <div className="relative !mt-0">{popup}</div>}
       <FieldError id={errorId} message={error} />
     </div>
   );

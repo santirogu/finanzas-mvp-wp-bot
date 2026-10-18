@@ -99,6 +99,16 @@ export const VISTAS: Vista[] = [
   { id: "egresos", titulo: "Egresos con datos", persona: "datos", ruta: fija("/egresos") },
   { id: "editar-movimiento", titulo: "Editar un movimiento", persona: "datos", ruta: (d) => d.editar.datos },
   { id: "egresos-borrado", titulo: "Egresos: aviso emergente rojo después de borrar (con Deshacer)", persona: "datos", ruta: (d) => d.borrado },
+  {
+    id: "egresos-sugerencias",
+    titulo: "Egresos: sugerencias de la descripción abiertas",
+    persona: "datos",
+    ruta: fija("/egresos"),
+    preparar: async (page) => {
+      await visible(page.getByRole("combobox", { name: "Descripción" })).pressSequentially("al");
+      await expect(visible(page.getByRole("listbox", { name: "Descripciones que ya usaste" }))).toBeVisible();
+    },
+  },
   // El aviso verde que pide la URL después de guardar cambios (?aviso=guardado); dura 4 segundos.
   { id: "egresos-guardado", titulo: "Egresos: aviso emergente verde (Cambios guardados)", persona: "datos", ruta: fija("/egresos?aviso=guardado") },
   { id: "resumen-mes-anterior", titulo: "Resumen del mes anterior", persona: "datos", ruta: fija(`/dashboard?mes=${MES_ANTERIOR}`) },
