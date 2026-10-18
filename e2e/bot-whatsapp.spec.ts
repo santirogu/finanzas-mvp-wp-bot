@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { expect } from "@playwright/test";
 import { FAKE_SERVICES_URL } from "./fake-config";
-import { openTab, register, test, visible } from "./helpers";
+import { formatMonthLabel, formatMonthName, monthOf, monthParam, shiftMonth, todayInTimezone } from "../src/lib/dates";
+import { addTransaction, openTab, register, test, toast, visible } from "./helpers";
 import { newPhone, nthReply, sendWhatsApp, sentTo } from "./whatsapp";
 
 // El bot de WhatsApp de punta a punta: los mensajes llegan al webhook firmados igual que los manda
@@ -64,6 +65,23 @@ test("vincular el número desde el dashboard y llevar las cuentas por WhatsApp",
     expect(await nthReply(request, phone, 5)).toMatch(/✅ Egreso registrado: \*Almuerzo\* — \$25\.900,50 \(Alimentación\)/);
     await page.reload();
     await expect(visible(page.getByRole("listitem").filter({ hasText: "Almuerzo" }))).toContainText(/−\$25\.900,50/);
+  });
+
+  await test.step("\"balance mes pasado\" y \"balance <mes>\" dan los totales de otro mes", async () => {
+    // Un egreso del mes pasado, registrado desde la web.
+    const previous = shiftMonth(monthOf(todayInTimezone("America/Bogota")), -1);
+    await addTransaction(page, { amount: "1200000", description: "Arriendo", date: `${monthParam(previous)}-05` });
+    await expect(toast(page, /^Egreso registrado en /)).toBeVisible();
+
+    await sendWhatsApp(request, phone, "balance mes pasado");
+    const reply = await nthReply(request, phone, 6);
+    expect(reply).toContain(`📊 *${formatMonthLabel(previous)}*`);
+    expect(reply).toMatch(/Egresos: \$1\.200\.000,00\nBalance: \*−\$1\.200\.000,00\*$/);
+
+    // Un mes que todavía no llega.
+    const later = shiftMonth(previous, 3);
+    await sendWhatsApp(request, phone, `balance ${formatMonthName(later)} ${later.year}`);
+    expect(await nthReply(request, phone, 7)).toContain(`${formatMonthLabel(later)} todavía no llega`);
   });
 });
 

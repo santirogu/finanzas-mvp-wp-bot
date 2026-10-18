@@ -1,7 +1,8 @@
 // Textos que el bot envía por WhatsApp. WhatsApp usa *negrita* y _cursiva_.
 import { CONTACT_EMAIL } from "@/lib/contact";
-import { formatMonthLabel, formatShortDate, type MonthRange } from "@/lib/dates";
+import { formatMonthLabel, formatMonthName, formatShortDate, type Month, type MonthRange } from "@/lib/dates";
 import { formatMoney } from "@/lib/money";
+import { balanceChange } from "@/modules/transactions/month-comparison";
 import type { ParsedTransaction } from "./normalize";
 
 export function registeredReply(
@@ -24,21 +25,43 @@ export function registeredReply(
   ].join("\n");
 }
 
+type Summary = { income: number; expense: number; balance: number; count: number };
+
+// La flecha de la comparación con el mes anterior (como en la tarjeta del Resumen).
+const CHANGE_ARROWS = { up: "↗ ", down: "↘ ", same: "" } as const;
+
+/**
+ * Los totales de un mes ("balance", "balance septiembre"). Con `previous` (el mes anterior), una línea
+ * más con cómo cambió el balance, solo si ese mes tuvo movimientos.
+ */
 export function balanceReply(
-  summary: { income: number; expense: number; balance: number; count: number },
-  ctx: { currency: string; range: MonthRange },
+  summary: Summary,
+  ctx: { currency: string; range: Month; previous?: { month: Month; summary: Summary } },
 ): string {
   const money = (n: number) => formatMoney(n, ctx.currency);
   if (summary.count === 0) {
     return `Aún no tienes movimientos en ${formatMonthLabel(ctx.range).toLowerCase()}. Escríbeme algo como “gasté 20 mil en almuerzo”.`;
   }
+  const previous = ctx.previous && ctx.previous.summary.count > 0 ? ctx.previous : null;
+  const change = previous
+    ? balanceChange(summary.balance, previous.summary.balance, formatMonthName(previous.month), ctx.currency)
+    : null;
   return [
     `📊 *${formatMonthLabel(ctx.range)}*`,
     `Ingresos: ${money(summary.income)}`,
     `Egresos: ${money(summary.expense)}`,
     `Balance: *${money(summary.balance)}*`,
+    ...(change ? [`_${CHANGE_ARROWS[change.direction]}${change.text}_`] : []),
   ].join("\n");
 }
+
+/** "balance enero 1999": antes del primer mes que se puede ver (el mismo límite de la web). */
+export const tooOldMonthReply =
+  "Solo puedo darte balances desde enero de 2000. Prueba con *balance* (este mes) o *balance mes pasado*.";
+
+/** "balance diciembre 2026" cuando todavía es octubre de 2026. */
+export const futureMonthReply = (month: Month) =>
+  `${formatMonthLabel(month)} todavía no llega 🙂 Prueba con *balance* (este mes) o *balance mes pasado*.`;
 
 export function undoReply(
   removed: { description: string; amount: number; type: string }[],
@@ -59,6 +82,7 @@ export const helpReply = (name?: string) =>
     "",
     "También entiendo:",
     "• *balance* — cómo vas este mes",
+    "• *balance septiembre* o *balance mes pasado* — otro mes",
     "• *deshacer* — borra el último registro",
   ].join("\n");
 

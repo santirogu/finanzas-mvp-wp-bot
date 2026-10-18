@@ -2,7 +2,7 @@ import "server-only";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { whatsappMessage } from "@/db/schema";
-import { currentMonthRange, todayInTimezone } from "@/lib/dates";
+import { currentMonthRange, monthRange, shiftMonth, todayInTimezone } from "@/lib/dates";
 import { describeError } from "@/lib/safe-log";
 import {
   createTransactionsFromMessage,
@@ -14,7 +14,7 @@ import { consumeLinkCode, getUserByPhone } from "@/modules/whatsapp/link";
 import type { IncomingMessage } from "@/modules/whatsapp/payload";
 import { reserveAiCall } from "./ai-quota";
 import type { Extractor } from "./claude-extractor";
-import { parseCommand } from "./commands";
+import { balanceMonth, parseCommand } from "./commands";
 import { interpretMessage, type BotIntent } from "./interpret";
 import { monthlyBudgetReached } from "./limits";
 import * as replies from "./replies";
@@ -182,10 +182,22 @@ async function respond(
     }
     case "command": {
       if (intent.command === "balance") {
-        const summary = await getMonthlySummary(user.id, range);
+        // El mes que pidió ("balance septiembre", "balance mes pasado") o, sin decir, este.
+        const asked = balanceMonth(intent.period, range);
+        if ("future" in asked) return { ...base, reply: replies.futureMonthReply(asked.future) };
+        if ("tooOld" in asked) return { ...base, reply: replies.tooOldMonthReply };
+        const previous = shiftMonth(asked.month, -1);
+        const [summary, before] = await Promise.all([
+          getMonthlySummary(user.id, monthRange(asked.month.year, asked.month.month)),
+          getMonthlySummary(user.id, monthRange(previous.year, previous.month)),
+        ]);
         return {
           ...base,
-          reply: replies.balanceReply(summary, { currency: user.currency, range }),
+          reply: replies.balanceReply(summary, {
+            currency: user.currency,
+            range: asked.month,
+            previous: { month: previous, summary: before },
+          }),
         };
       }
       if (intent.command === "undo") {
