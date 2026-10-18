@@ -268,9 +268,37 @@ describe("listDescriptionSuggestions", () => {
     expect(await listDescriptionSuggestions((await createUser()).id, "expense", since)).toEqual([]);
   });
 
-  it(`sugiere hasta ${DESCRIPTION_SUGGESTIONS}`, async () => {
+  it("una poco usada llega aunque haya más de 20 que se repiten más (el caso de \"Arriendo Civita\")", async () => {
     const user = await createUser();
-    for (let i = 0; i < DESCRIPTION_SUGGESTIONS + 3; i++) await addTx({ userId: user.id, description: `Gasto ${i}` });
+    const rows = Array.from({ length: 25 }, (_, i) =>
+      ["2026-08-30", "2026-09-30"].map((occurredOn) => ({
+        userId: user.id,
+        type: "expense" as const,
+        amount: 1000,
+        description: `Crédito ${i}`,
+        occurredOn,
+      })),
+    ).flat();
+    await db.insert(transaction).values(rows);
+    await addTx({ userId: user.id, description: "Arriendo Civita", occurredOn: "2026-09-30" });
+
+    const suggestions = await listDescriptionSuggestions(user.id, "expense", since);
+    expect(suggestions).toHaveLength(26);
+    expect(suggestions.at(-1)).toEqual({ description: "Arriendo Civita", categoryId: null });
+  });
+
+  it(`llegan hasta ${DESCRIPTION_SUGGESTIONS}`, async () => {
+    const user = await createUser();
+    expect(DESCRIPTION_SUGGESTIONS).toBe(300);
+    await db.insert(transaction).values(
+      Array.from({ length: DESCRIPTION_SUGGESTIONS + 3 }, (_, i) => ({
+        userId: user.id,
+        type: "expense" as const,
+        amount: 1000,
+        description: `Gasto ${i}`,
+        occurredOn: "2026-10-15",
+      })),
+    );
     expect(await listDescriptionSuggestions(user.id, "expense", since)).toHaveLength(DESCRIPTION_SUGGESTIONS);
   });
 });

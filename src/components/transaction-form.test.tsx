@@ -336,6 +336,13 @@ describe("TransactionForm · sugerencias de la descripción", () => {
     expect(within(first).getByText("ba")).toHaveClass("font-semibold");
   });
 
+  it("a mitad de palabra no sugiere nada (\"rr\" no trae \"Mercado del barrio\")", async () => {
+    renderSuggesting();
+    await userEvent.type(description(), "rr");
+    expect(listbox()).not.toBeVisible();
+    expect(description()).toHaveAttribute("aria-expanded", "false");
+  });
+
   it("sin sugerencias (o al editar) es un campo normal", () => {
     renderForm();
     const input = screen.getByRole("textbox", { name: "Descripción" });
@@ -345,9 +352,11 @@ describe("TransactionForm · sugerencias de la descripción", () => {
   });
 
   it("con las flechas se recorre (y da la vuelta), Enter elige sin enviar el formulario y propone la categoría", async () => {
-    renderSuggesting();
-    await userEvent.type(description(), "e");
-    expect(options()).toHaveLength(4);
+    const withT = ["Taxi", "Tenis", "Tinto", "Pago de tarjeta"].map((d) => ({ description: d, categoryId: d === "Tenis" ? "c-ropa" : null }));
+    render(<TransactionForm type="expense" categories={CATEGORIES} today="2026-10-14" suggestions={withT} />);
+    await userEvent.type(description(), "t");
+    // Las que empiezan por "t" y, después, la que tiene una palabra que empieza por "t".
+    expect(options()).toEqual(["Taxi", "Tenis👟 Ropa", "Tinto", "Pago de tarjeta"]);
     await userEvent.keyboard("{ArrowDown}");
     const marked = () => description().getAttribute("aria-activedescendant");
     expect(marked()).toBe(within(listbox()).getAllByRole("option")[0].id);
@@ -358,6 +367,7 @@ describe("TransactionForm · sugerencias de la descripción", () => {
     await userEvent.keyboard("{ArrowDown}");
     expect(marked()).toBe(within(listbox()).getAllByRole("option")[0].id);
     await userEvent.keyboard("{ArrowDown}{Enter}");
+    // (La segunda: Tenis.)
     expect(description()).toHaveValue("Tenis");
     expect(category()).toHaveValue("c-ropa");
     expect(listbox()).not.toBeVisible();

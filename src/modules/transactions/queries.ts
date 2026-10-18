@@ -80,8 +80,12 @@ export async function listTransactions(
 
 export type TransactionRow = Awaited<ReturnType<typeof listTransactions>>[number];
 
-/** Cuántas descripciones sugiere el formulario al escribir. */
-export const DESCRIPTION_SUGGESTIONS = 20;
+/**
+ * Cuántas descripciones distintas le llegan al formulario para sugerir (la lista muestra hasta 6 de
+ * las que coinciden con lo escrito; la búsqueda es en el navegador). Con 20 se perdían las que se usan
+ * cada tanto: con 36 egresos en un mes, una poco usada quedaba por fuera aunque se escribiera exacta.
+ */
+export const DESCRIPTION_SUGGESTIONS = 300;
 
 /**
  * Las descripciones que el usuario ya usó en movimientos de ese tipo desde `since` (YYYY-MM-DD), para
