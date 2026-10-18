@@ -3,9 +3,10 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { TransactionList } from "@/components/transaction-list";
 import { compareMonths, currentMonthRange, formatMonthName, monthRange, shiftMonth } from "@/lib/dates";
-import { formatMoney, formatShare } from "@/lib/money";
+import { formatMoney } from "@/lib/money";
 import { inMonthPhrase, monthHref, monthNav, selectedMonth } from "@/lib/month-nav";
 import { requireUser } from "@/lib/session";
+import { chartSlices } from "@/modules/transactions/category-chart";
 import { balanceChange, type MonthChange, totalChange } from "@/modules/transactions/month-comparison";
 import {
   getMonthlySummary,
@@ -15,6 +16,7 @@ import {
 } from "@/modules/transactions/queries";
 import { MonthNav } from "../month-nav";
 import { PageSkeleton } from "../page-skeleton";
+import { CategoryChart } from "./category-chart";
 import { WhatsAppCard } from "./whatsapp-card";
 
 export const metadata: Metadata = { title: "Resumen" };
@@ -115,29 +117,7 @@ async function Dashboard({ month }: { month: string | string[] | undefined }) {
             {byCategory.length === 0 ? (
               <p className="py-8 text-center text-sm text-muted">Sin egresos {inMonth}.</p>
             ) : (
-              <ul className="mt-4 space-y-3">
-                {byCategory.map((c) => {
-                  const pct = summary.expense ? Math.round((c.total / summary.expense) * 100) : 0;
-                  return (
-                    <li key={c.name}>
-                      <div className="flex justify-between gap-2 text-sm">
-                        <span className="truncate">
-                          {c.emoji} {c.name}
-                        </span>
-                        <span className="shrink-0 tabular-nums text-muted">
-                          {money(c.total)} · {formatShare(c.total, summary.expense)}%
-                        </span>
-                      </div>
-                      <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-background">
-                        <div
-                          className="h-full rounded-full bg-expense"
-                          style={{ width: `${Math.max(pct, 2)}%` }}
-                        />
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
+              <CategoryChart slices={chartSlices(byCategory, summary.expense)} total={summary.expense} currency={user.currency} />
             )}
           </section>
         </div>

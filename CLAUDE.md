@@ -193,7 +193,9 @@ de Vercel ni muevas las migraciones fuera del job `deploy`.
   errores no van ahí: se quedan junto a su campo.
 - **Colores** (`src/app/globals.css`): solo los tokens. Los errores, las alertas y lo que no se
   deshace van en rojo (`danger`, y `btn-danger` para su botón); el naranja (`expense`) es solo para
-  los egresos (`src/forms.test.ts` lo revisa en los avisos con `role="alert"`). El borde de un campo es `border-control` (3:1
+  los egresos (`src/forms.test.ts` lo revisa en los avisos con `role="alert"`). Los tokens `admin` (violeta) son solo
+  para lo de administración (la pestaña, la etiqueta y el escudo). Los gráficos usan su paleta (`chart-1` a
+  `chart-7` y `chart-rest`), no los colores con significado. El borde de un campo es `border-control` (3:1
   contra la tarjeta y el fondo, WCAG 1.4.11), nunca `border-border`, que es para divisores y tarjetas.
   Si cambias un color, `src/color-contrast.test.ts` revisa ese contraste (axe solo el del texto).
   El modo oscuro está en dos bloques iguales (el del sistema y el elegido en Mi cuenta, `src/lib/theme.ts`):

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
+import { ShieldIcon } from "@/components/shield-icon";
 import { parseMonthParam } from "@/lib/dates";
 
 const TABS = [
@@ -46,17 +47,22 @@ export function TabLinks({
     <nav className="-mb-px mt-3 flex gap-1 overflow-x-auto">
       {tabs.map((tab) => {
         const active = isActive(tab.href, pathname);
+        const admin = tab.href === ADMIN_TAB.href;
+        // Admin, siempre en el violeta de admin y con su escudo (como la etiqueta y el escudo del menú
+        // de la cuenta): se ve desde lejos que es una zona con permisos especiales.
+        const look = admin
+          ? `inline-flex items-center gap-1.5 rounded-t-md text-admin ${active ? "border-admin bg-admin-surface" : "border-transparent hover:border-admin-border"}`
+          : active
+            ? "border-brand text-foreground"
+            : "border-transparent text-muted hover:text-foreground";
         return (
           <Link
             key={tab.href}
-            href={tab.href === ADMIN_TAB.href ? tab.href : tab.href + query}
+            href={admin ? tab.href : tab.href + query}
             aria-current={active ? "page" : undefined}
-            className={`whitespace-nowrap border-b-2 px-3 py-2.5 text-sm font-medium transition ${
-              active
-                ? "border-brand text-foreground"
-                : "border-transparent text-muted hover:text-foreground"
-            }`}
+            className={`whitespace-nowrap border-b-2 px-3 py-2.5 text-sm font-medium transition ${look}`}
           >
+            {admin && <ShieldIcon className="size-4" />}
             {tab.label}
           </Link>
         );

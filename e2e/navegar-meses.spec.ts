@@ -24,9 +24,12 @@ const dayOf = (month: Month, day: number) => `${monthParam(month)}-${String(day)
 const nameOf = (month: Month) => formatMonthName(month, { withYear: month.year !== current.year });
 
 const text = (page: Page, value: string | RegExp) => visible(page.getByText(value));
-/** La tarjeta del Resumen con ese título ("Balance del mes", "Ingresos", "Egresos"). */
+/**
+ * La tarjeta del Resumen con ese título ("Balance del mes", "Ingresos", "Egresos"). El título es un
+ * párrafo: el "Egresos" del centro de la dona de "Gastos por categoría" no cuenta.
+ */
 const card = (page: Page, title: string) =>
-  visible(page.locator(".card").filter({ has: page.getByText(title, { exact: true }) }));
+  visible(page.locator(".card").filter({ has: page.locator(`p:text-is("${title}")`) }));
 // Las filas de la lista (en la página, no en los avisos emergentes, que también son elementos de lista).
 const row = (page: Page, description: string) =>
   visible(page.getByRole("main").getByRole("listitem").filter({ hasText: description }));

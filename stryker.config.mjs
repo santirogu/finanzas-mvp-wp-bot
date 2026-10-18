@@ -20,7 +20,7 @@ const config = {
     "src/modules/admin/{modules,history/log-filters,shared/filters,shared/totp,users/user-filters,users/session-info,categories/category-input,bot/bot-filters}.ts",
     "src/modules/bot/{commands,normalize,interpret,replies,prompt,claude-extractor,limits}.ts",
     "src/modules/whatsapp/{signature,payload,phone,client,actions}.ts",
-    "src/modules/transactions/{validation,default-categories,month-comparison}.ts",
+    "src/modules/transactions/{validation,default-categories,month-comparison,category-chart}.ts",
     "src/app/api/{whatsapp/webhook,health}/route.ts",
     "src/app/*/simulador/actions.ts",
     "src/proxy.ts",
