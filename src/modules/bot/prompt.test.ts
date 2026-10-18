@@ -24,6 +24,13 @@ describe("buildSystemPrompt", () => {
     expect(prompt).toContain("Conserva los centavos solo si el usuario los escribe");
   });
 
+  it("a una pregunta por los totales responde cómo pedir el balance, sin calcular cifras", () => {
+    const prompt = buildSystemPrompt(categories);
+    expect(prompt).toContain("Pregunta por saldos, totales o cuánto lleva, gastó o ganó");
+    expect(prompt).toContain("no calcules ni inventes cifras");
+    expect(prompt).toContain("*balance septiembre*");
+  });
+
   it("no depende de la fecha, para que se pueda cachear entre mensajes", () => {
     expect(buildSystemPrompt(categories)).toBe(buildSystemPrompt(categories));
     expect(buildSystemPrompt(categories)).not.toMatch(/\d{4}-\d{2}-\d{2}/);

@@ -288,7 +288,12 @@ tokens y funciona con Claude en pausa).
   - `balance septiembre`, `saldo de agosto`, `resumen del mes de marzo`;
   - abreviado (`balance sept`) o con año (`balance septiembre 2025`);
   - `balance mes pasado`;
-  - `¿cuánto gasté en septiembre?`.
+  - en pregunta, para un mes, el mes pasado o este: `¿cuánto gasté en septiembre?`, `¿cuántos fueron
+    mis ingresos en septiembre?`, `¿cuánto gané el mes pasado?`, `mis gastos de agosto`, `¿cómo me fue
+    en marzo?` (`ASK_*`). Los totales solos ("mis gastos") no cuentan: podrían ser otra cosa.
+- **Lo que se escapa de esas reglas** lo responde Claude. Si es una pregunta por saldos o totales
+  (por ejemplo "¿cuánto he gastado en comida?"), su prompt le pide no calcular cifras y decir que
+  escriba *balance* o *balance septiembre*. Lo prueban 3 casos de `pnpm bot:eval`.
 - **Qué mes es** (`balanceMonth`): sin año, el último que ya pasó con ese nombre (en octubre,
   "noviembre" es el del año pasado). Uno que todavía no llega lo dice.
 - **La respuesta,** como la de `balance`, suma una línea con cómo cambió el balance frente al mes

@@ -19,7 +19,8 @@ const strip = (text: string) =>
     .replace(/[¿?¡!.]+/g, "")
     .trim();
 
-const BALANCE = /^(mi )?(balance|saldo|resumen)( del mes)?$|^cuanto (llevo|tengo|he gastado)( este mes)?$/;
+// "balance", "mi saldo", "resumen del mes" (las preguntas, como "¿cuánto llevo?", van en ASK_CURRENT).
+const BALANCE = /^(mi )?(balance|saldo|resumen)( del mes)?$/;
 
 // Los meses como se escriben (sin tildes: `strip` ya las quitó), con sus abreviaturas.
 const MONTHS: Record<string, number> = {
@@ -40,11 +41,26 @@ const MONTH_WORD = "([a-z]+)";
 const YEAR = "(?: (?:de |del )?(\\d{4}))?";
 // "balance septiembre", "saldo de agosto", "resumen del mes de marzo", "balance sept 2025".
 const BALANCE_MONTH = new RegExp(`^(?:mi )?(?:balance|saldo|resumen)(?: del mes de| de| del)? ${MONTH_WORD}${YEAR}$`);
-// "cuánto gasté en septiembre", "cuánto llevo en agosto de 2025".
-const SPENT_IN_MONTH = new RegExp(`^cuanto (?:llevo|tengo|he gastado|gaste)(?: gastado)? en(?: el mes de)? ${MONTH_WORD}${YEAR}$`);
-// "balance mes pasado", "saldo del mes anterior", "cuánto gasté el mes pasado".
-const PREVIOUS_MONTH =
-  /^(?:mi )?(?:balance|saldo|resumen)(?: del?)? mes (?:pasado|anterior)$|^cuanto (?:llevo|tengo|he gastado|gaste)(?: gastado)? (?:el|en el) mes (?:pasado|anterior)$/;
+// "balance mes pasado", "saldo del mes anterior".
+const PREVIOUS_MONTH = /^(?:mi )?(?:balance|saldo|resumen)(?: del?)? mes (?:pasado|anterior)$/;
+
+// Las preguntas por los totales, como se hacen: "¿cuánto gasté…?", "¿cuántos fueron mis ingresos…?",
+// "¿cuánto gané…?", "¿cómo me fue…?". Responden lo mismo que "balance": ingresos, egresos y balance.
+const ASKING = [
+  "cuanto (?:llevo|tengo|he gastado|gaste|gane|recibi|ingrese|he ganado|he recibido|me entro|me entraron|me pagaron)(?: gastado| ganado)?",
+  "cuant(?:o|os|as) (?:fue|fueron|son|van|llevo|llevan) (?:(?:mis|los|las) )?(?:ingresos|egresos|gastos)",
+  "cuant(?:os|as) (?:ingresos|egresos|gastos) (?:tuve|tengo|llevo|hubo)",
+  "como me (?:fue|va)",
+].join("|");
+// Solo los totales ("mis ingresos de septiembre"): con el mes dicho; solos, no (podrían ser otra cosa).
+const TOTALS = "(?:(?:mis|los|las) )?(?:ingresos|egresos|gastos)";
+const IN_MONTH = ` (?:en|de|del mes de|en el mes de) ${MONTH_WORD}${YEAR}`;
+// "cuánto gasté en septiembre", "mis ingresos de agosto de 2025", "cómo me fue en marzo".
+const ASK_MONTH = new RegExp(`^(?:${ASKING}|${TOTALS})${IN_MONTH}$`);
+// "cuánto gasté el mes pasado", "gastos del mes anterior".
+const ASK_PREVIOUS = new RegExp(`^(?:${ASKING}|${TOTALS}) (?:el|en el|del) mes (?:pasado|anterior)$`);
+// "cuánto gané este mes", "cuántos fueron mis ingresos", "mis gastos del mes", "cómo me va".
+const ASK_CURRENT = new RegExp(`^(?:(?:${ASKING})(?: este mes| en este mes| del mes)?|${TOTALS}(?: este mes| en este mes| del mes))$`);
 
 /** El número del mes que se escribió ("sept" → 9); null si no es un mes. */
 function monthNumber(word: string): number | null {
@@ -53,8 +69,8 @@ function monthNumber(word: string): number | null {
 
 /** "balance septiembre 2025" → { month: 9, year: 2025 }; null si no pide un mes. */
 function balancePeriod(text: string): BalancePeriod | null {
-  if (PREVIOUS_MONTH.test(text)) return "previous";
-  const match = BALANCE_MONTH.exec(text) ?? SPENT_IN_MONTH.exec(text);
+  if (PREVIOUS_MONTH.test(text) || ASK_PREVIOUS.test(text)) return "previous";
+  const match = BALANCE_MONTH.exec(text) ?? ASK_MONTH.exec(text);
   const month = match ? monthNumber(match[1]) : null;
   if (!match || !month) return null;
   return match[2] ? { month, year: Number(match[2]) } : { month };
@@ -88,7 +104,7 @@ export function parseCommand(text: string): BotCommand | null {
   const normalized = strip(text);
   const link = normalized.match(LINK);
   if (link) return { kind: "link", code: link[1] };
-  if (BALANCE.test(normalized)) return { kind: "command", command: "balance" };
+  if (BALANCE.test(normalized) || ASK_CURRENT.test(normalized)) return { kind: "command", command: "balance" };
   const period = balancePeriod(normalized);
   if (period) return { kind: "command", command: "balance", period };
   if (UNDO.test(normalized)) return { kind: "command", command: "undo" };

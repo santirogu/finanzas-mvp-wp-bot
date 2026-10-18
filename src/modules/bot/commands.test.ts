@@ -53,6 +53,27 @@ describe("parseCommand · balance de otro mes", () => {
     ["resumen de mes anterior", "previous"],
     ["¿Cuánto gasté el mes pasado?", "previous"],
     ["cuanto llevo en el mes anterior", "previous"],
+    // Otras formas de preguntar (la primera, tal cual llegó por WhatsApp).
+    ["Cuántos fueron mis ingresos en Septiembre?", { month: 9 }],
+    ["¿cuánto fueron mis gastos en agosto?", { month: 8 }],
+    ["cuantos son los egresos de julio de 2025", { month: 7, year: 2025 }],
+    ["cuantas fueron las salidas en junio", null],
+    ["¿Cuánto gané en septiembre?", { month: 9 }],
+    ["cuanto recibi en agosto", { month: 8 }],
+    ["cuanto me entro en marzo", { month: 3 }],
+    ["cuanto me pagaron en mayo", { month: 5 }],
+    ["cuanto he ganado en el mes de abril", { month: 4 }],
+    ["cuanto llevo ganado en junio", { month: 6 }],
+    ["cuantos gastos tuve en septiembre", { month: 9 }],
+    ["cuantos ingresos hubo en octubre", { month: 10 }],
+    ["mis ingresos de septiembre", { month: 9 }],
+    ["Mis gastos de agosto del 2025", { month: 8, year: 2025 }],
+    ["egresos en enero", { month: 1 }],
+    ["¿Cómo me fue en septiembre?", { month: 9 }],
+    ["gastos del mes pasado", "previous"],
+    ["¿cuánto gané el mes pasado?", "previous"],
+    ["cuantos fueron mis ingresos el mes anterior", "previous"],
+    ["como me fue el mes pasado", "previous"],
   ])("%j → %j", (text, period) => {
     expect(balanceOf(text)).toEqual(period);
   });
@@ -61,6 +82,35 @@ describe("parseCommand · balance de otro mes", () => {
     expect(parseCommand("balance")).toEqual({ kind: "command", command: "balance" });
     expect(parseCommand("cuánto llevo este mes")).toEqual({ kind: "command", command: "balance" });
     expect(parseCommand("¿Cuánto llevo?")).toEqual({ kind: "command", command: "balance" });
+  });
+
+  it.each([
+    "¿Cuánto gané este mes?",
+    "cuantos fueron mis ingresos",
+    "cuantos son mis gastos este mes",
+    "mis gastos del mes",
+    "ingresos este mes",
+    "¿cómo me va?",
+    "como me va en este mes",
+    "cuanto me entro",
+  ])("%j es el balance de este mes", (text) => {
+    expect(parseCommand(text)).toEqual({ kind: "command", command: "balance" });
+  });
+
+  it.each([
+    "mis gastos",
+    "ingresos",
+    "gastos de mercado",
+    "mis ingresos de la quincena",
+    "cuanto gane en la rifa",
+    "como me fue en el trabajo",
+    "cuantos fueron mis gastos en ropa",
+    "me pagaron en septiembre 500 mil",
+    "gastos de septiembre en mercado",
+    "dime cuanto gane este mes",
+    "cuanto gane este mes en ventas",
+  ])("%j no es un balance (lo interpreta la IA)", (text) => {
+    expect(parseCommand(text)).toBeNull();
   });
 
   it("los comandos van solos: dentro de una frase, no", () => {
