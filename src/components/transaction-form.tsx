@@ -176,7 +176,9 @@ export function TransactionForm({
         />
       </Field>
 
-      <div className="grid grid-cols-2 gap-3">
+      {/* Categoría y fecha lado a lado desde 360 px; en pantallas más angostas (o con mucho zoom), una
+          debajo de la otra: si no, no caben ("Sin categ", "18 / 10 / 202"). */}
+      <div className="grid grid-cols-1 gap-3 min-[22.5rem]:grid-cols-2">
         <Field label="Categoría" error={errorOf("categoryId")} errorId={ids.categoryId}>
           {/* key: React 19 reinicia el formulario al terminar la acción y un <select> no toma un
               defaultValue nuevo después de montarse; con la key se vuelve a montar con la
