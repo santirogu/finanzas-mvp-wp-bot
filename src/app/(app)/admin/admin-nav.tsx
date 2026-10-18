@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef } from "react";
+import { useCurrentInView } from "@/components/use-current-in-view";
 import { adminNavItems, isCurrentAdminItem } from "@/modules/admin/modules";
 
 /**
@@ -12,21 +12,7 @@ import { adminNavItems, isCurrentAdminItem } from "@/modules/admin/modules";
  */
 export function AdminNav() {
   const pathname = usePathname();
-  const nav = useRef<HTMLElement>(null);
-  useEffect(() => {
-    // Solo la franja se desliza (scrollIntoView podría mover también la página). También al girar el
-    // celular, que cambia el ancho.
-    const showCurrent = () => {
-      const strip = nav.current;
-      const current = strip?.querySelector<HTMLElement>('[aria-current="page"]');
-      if (!strip || !current) return;
-      const overflow = current.getBoundingClientRect().right - strip.getBoundingClientRect().right;
-      if (overflow > 0) strip.scrollLeft += overflow + 16;
-    };
-    showCurrent();
-    window.addEventListener("resize", showCurrent);
-    return () => window.removeEventListener("resize", showCurrent);
-  }, [pathname]);
+  const nav = useCurrentInView(pathname);
   return (
     <nav ref={nav} aria-label="Secciones de administración" className="-mx-4 overflow-x-auto px-4">
       <ul className="flex w-max gap-2 py-1">

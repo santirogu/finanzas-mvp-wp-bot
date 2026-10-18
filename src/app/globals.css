@@ -33,6 +33,18 @@
   --success-border: #9ccdaa;
   --danger-surface: #fcecec;
   --danger-border: #efb1b1;
+  /* La dona de "Gastos por categoría" (src/app/(app)/dashboard/category-chart.tsx): un color por puesto
+     (la categoría más grande, el primero) y el gris de las chicas juntas. Cada uno, al menos 3:1 contra
+     la tarjeta (WCAG 1.4.11): src/color-contrast.test.ts. Sin el verde de los ingresos ni el rojo de
+     los errores, que dicen otra cosa. */
+  --chart-1: #2563eb;
+  --chart-2: #7c3aed;
+  --chart-3: #b45309;
+  --chart-4: #db2777;
+  --chart-5: #0e7490;
+  --chart-6: #475569;
+  --chart-7: #c2410c;
+  --chart-rest: #868e9c;
   /* Etiqueta "Admin": violeta, distinto de la marca (verde azulado), ingresos y egresos. */
   --admin: #3c3489;
   --admin-surface: #eeedfe;
@@ -63,6 +75,14 @@
     --success-border: #2d6a43;
     --danger-surface: #2c1719;
     --danger-border: #7a3438;
+    --chart-1: #60a5fa;
+    --chart-2: #a78bfa;
+    --chart-3: #fbbf24;
+    --chart-4: #f472b6;
+    --chart-5: #22d3ee;
+    --chart-6: #94a3b8;
+    --chart-7: #fb923c;
+    --chart-rest: #6b7585;
     --admin: #cecbf6;
     --admin-surface: #3c3489;
     --admin-border: #7f77dd;
@@ -93,6 +113,14 @@
   --success-border: #2d6a43;
   --danger-surface: #2c1719;
   --danger-border: #7a3438;
+  --chart-1: #60a5fa;
+  --chart-2: #a78bfa;
+  --chart-3: #fbbf24;
+  --chart-4: #f472b6;
+  --chart-5: #22d3ee;
+  --chart-6: #94a3b8;
+  --chart-7: #fb923c;
+  --chart-rest: #6b7585;
   --admin: #cecbf6;
   --admin-surface: #3c3489;
   --admin-border: #7f77dd;
@@ -118,6 +146,14 @@
   --color-success-border: var(--success-border);
   --color-danger-surface: var(--danger-surface);
   --color-danger-border: var(--danger-border);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-chart-6: var(--chart-6);
+  --color-chart-7: var(--chart-7);
+  --color-chart-rest: var(--chart-rest);
   --color-admin: var(--admin);
   --color-admin-surface: var(--admin-surface);
   --color-admin-border: var(--admin-border);

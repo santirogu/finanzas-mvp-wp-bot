@@ -97,6 +97,36 @@ describe("NavTabs · pestaña Admin", () => {
     render(<NavTabs showAdmin />);
     expect(screen.getByRole("link", { name: "Admin" })).not.toHaveAttribute("aria-current");
   });
+
+  it("va siempre en el violeta de admin, con su escudo (decorativo: el nombre sigue siendo Admin)", () => {
+    navigation.pathname = "/dashboard";
+    render(<NavTabs showAdmin />);
+    const admin = screen.getByRole("link", { name: "Admin" });
+    expect(admin).toHaveClass("text-admin", "border-transparent");
+    expect(admin).not.toHaveClass("text-muted", "bg-admin-surface");
+    expect(admin.querySelector("svg")).toHaveAttribute("aria-hidden");
+    // Las demás, sin escudo ni violeta.
+    const resumen = screen.getByRole("link", { name: "Resumen" });
+    expect(resumen.querySelector("svg")).toBeNull();
+    expect(resumen).not.toHaveClass("text-admin");
+  });
+
+  it("marcada, con el borde y el fondo de admin (no el de las demás pestañas)", () => {
+    navigation.pathname = "/admin/usuarios";
+    render(<NavTabs showAdmin />);
+    const admin = screen.getByRole("link", { name: "Admin" });
+    expect(admin).toHaveClass("text-admin", "border-admin", "bg-admin-surface");
+    expect(admin).not.toHaveClass("border-brand", "border-transparent");
+  });
+});
+
+describe("NavTabs · las pestañas comunes", () => {
+  it("la marcada, con el borde de la marca; las demás, apagadas", () => {
+    navigation.pathname = "/egresos";
+    render(<NavTabs showAdmin />);
+    expect(screen.getByRole("link", { name: "Egresos" })).toHaveClass("border-brand", "text-foreground");
+    expect(screen.getByRole("link", { name: "Ingresos" })).toHaveClass("border-transparent", "text-muted");
+  });
 });
 
 describe("TabLinks", () => {

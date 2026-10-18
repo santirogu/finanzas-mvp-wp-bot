@@ -189,7 +189,7 @@ Automatically start at login*).
 src/
   app/
     (auth)/login, (auth)/registro   Páginas públicas de acceso
-    (app)/dashboard                 Resumen: balance del mes (y frente al anterior), últimos movimientos, gastos por categoría
+    (app)/dashboard                 Resumen: balance del mes (y frente al anterior), últimos movimientos, gastos por categoría (dona)
     (app)/ingresos, (app)/egresos   Formulario + listado del mes (vista compartida)
     (app)/month-nav.tsx             Navegador de meses (flechas y tarjeta del año) del Resumen, Ingresos y Egresos
     (app)/account-menu.tsx          Menú de la cuenta del encabezado (iniciales, escudo de admin, Mi cuenta y Salir)
@@ -252,6 +252,17 @@ scripts/seed.ts                     Categorías por defecto
   - **Comparación con el mes anterior** (`src/modules/transactions/month-comparison.ts`), en las tres
     tarjetas del Resumen: el balance en plata ("$120.000,00 más que agosto") y los ingresos y egresos
     en porcentaje ("15% más que agosto"). No aparece si el mes anterior no tuvo movimientos.
+- **Gastos por categoría en el Resumen:** una dona con el total de egresos del mes al centro y, al
+  lado o debajo, la lista con el color, el monto y el porcentaje de cada categoría
+  (`src/app/(app)/dashboard/category-chart.tsx`).
+  - **Las tajadas** (`src/modules/transactions/category-chart.ts`): de la más grande a la más chica,
+    hasta 7 con su color. Las de menos del 3% (y las que no alcanzaron color) van juntas en una gris,
+    "3 más", con cada una listada debajo. Si solo quedaría una junta, va sola con su color.
+  - **Los colores** van por puesto, no por categoría (`--chart-1` a `--chart-7` y `--chart-rest`, en
+    `globals.css`): nunca se repiten en una misma dona. Cada uno tiene al menos 3:1 contra la tarjeta,
+    en los dos modos (`src/color-contrast.test.ts`).
+  - **Tocar** una fila de la lista o una tajada la resalta (más gruesa, y las demás apagadas); otra vez,
+    lo quita. La dona es decorativa: el lector de pantalla lee la lista, que dice lo mismo.
 - **Todas las consultas filtran por `userId`** obtenido de la sesión en el servidor; cada Server
   Action vuelve a validar la sesión.
 - **Borrado lógico** (`deleted_at`): permite deshacer.
@@ -497,6 +508,10 @@ La pestaña **Admin** (solo para admins) abre `/admin`, organizada en **módulos
 marco (`src/app/(app)/admin/layout.tsx`): el título y una subnavegación con chips (Inicio y los
 módulos activos). **Inicio** muestra una tarjeta por módulo, con un resumen de los activos; los que
 vienen aparecen como "Pronto".
+
+La pestaña va siempre en violeta (los colores `admin`) y con el escudo, como la etiqueta y el escudo del
+menú de la cuenta (`src/components/admin-badge.tsx`): se distingue de las de todos y avisa que ahí se
+actúa con permisos de admin.
 
 | Módulo | Ruta | Estado |
 |---|---|---|

@@ -75,6 +75,17 @@ describe("contraste (WCAG)", () => {
     });
   }
 
+  // La dona de "Gastos por categoría": cada tajada se distingue de la tarjeta (3:1, WCAG 1.4.11).
+  for (const [mode, colors] of Object.entries(MODES)) {
+    it.each(["chart-1", "chart-2", "chart-3", "chart-4", "chart-5", "chart-6", "chart-7", "chart-rest"])(
+      `modo ${mode}: --%s contra --surface, al menos 3:1`,
+      (token) => {
+        expect(colors[token], `--${token}`).toBeDefined();
+        expect(contrast(colors[token], colors.surface)).toBeGreaterThanOrEqual(3);
+      },
+    );
+  }
+
   it("el modo oscuro elegido en Mi cuenta es igual al del sistema, y define los mismos colores que el claro", () => {
     const normalize = (block: string) => block.split(";").map((line) => line.trim()).filter(Boolean);
     expect(normalize(darkChosen)).toEqual(normalize(darkFromSystem));
