@@ -2,7 +2,7 @@ import { z } from "zod";
 import { TransactionForm } from "@/components/transaction-form";
 import { TransactionList } from "@/components/transaction-list";
 import { ToastOnLoad } from "@/components/toaster";
-import { compareMonths, currentMonthRange, todayInTimezone } from "@/lib/dates";
+import { compareMonths, currentMonthRange, sameDayIn, todayInTimezone } from "@/lib/dates";
 import { formatMoney, sumAmounts } from "@/lib/money";
 import { inMonthPhrase, monthHref, monthNav, selectedMonth } from "@/lib/month-nav";
 import { requireUser } from "@/lib/session";
@@ -33,6 +33,7 @@ function noticeFrom(params: Params) {
 // Vista compartida por las pestañas de Ingresos y Egresos, en el mes que pide la URL (?mes=).
 export async function TransactionsView({ type, params = {} }: { type: "income" | "expense"; params?: Params }) {
   const user = await requireUser();
+  const today = todayInTimezone(user.timezone);
   const current = currentMonthRange(user.timezone);
   const range = selectedMonth(params.mes, current);
   const requested = noticeFrom(params);
@@ -66,10 +67,13 @@ export async function TransactionsView({ type, params = {} }: { type: "income" |
           rejilla más que la pantalla del celular (e2e/diseno-tactil.spec.ts). */}
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-5">
         <div className="lg:col-span-2">
+          {/* key: al cambiar de mes, el formulario vuelve a empezar con la fecha de ese mes. */}
           <TransactionForm
+            key={range.start}
             type={type}
             categories={categories}
-            today={todayInTimezone(user.timezone)}
+            today={today}
+            defaultDate={sameDayIn(range, today)}
             listMonth={range}
           />
         </div>

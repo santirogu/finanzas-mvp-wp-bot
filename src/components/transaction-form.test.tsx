@@ -60,6 +60,46 @@ describe("TransactionForm", () => {
     expect(amount).toHaveValue("");
   });
 
+  it("al salir del campo, el monto se completa con sus dos decimales (el ejemplo ya los muestra)", async () => {
+    renderForm();
+    const amount = screen.getByLabelText(/Monto/);
+    expect(amount).toHaveAttribute("placeholder", "500.000,00");
+    await userEvent.type(amount, "500000");
+    await userEvent.tab();
+    expect(amount).toHaveValue("500.000,00");
+
+    await userEvent.clear(amount);
+    await userEvent.type(amount, "45900,5");
+    await userEvent.tab();
+    expect(amount).toHaveValue("45.900,50");
+
+    // Vacío sigue vacío: el campo avisa que falta (no inventa un 0,00).
+    await userEvent.clear(amount);
+    await userEvent.tab();
+    expect(amount).toHaveValue("");
+  });
+
+  it("los campos obligatorios llevan un asterisco rojo que el lector de pantalla no lee", () => {
+    const { container } = renderForm();
+    for (const name of ["Monto", "Descripción", "Fecha"]) {
+      const label = screen.getByText(name, { exact: true });
+      expect(label).toHaveTextContent(`${name}*`);
+      expect(label.querySelector("[aria-hidden]")).toHaveClass("text-danger");
+    }
+    // El nombre que lee el lector de pantalla no lleva el asterisco, y el campo se anuncia como obligatorio.
+    expect(screen.getByRole("textbox", { name: "Descripción" })).toBeRequired();
+    // La categoría es opcional: sin asterisco.
+    expect(screen.getByText("Categoría", { exact: true })).toHaveTextContent(/^Categoría$/);
+    // La explicación del asterisco se ve, pero el lector de pantalla no la necesita.
+    expect(within(container).getByText("Obligatorio").closest("[aria-hidden]")).not.toBeNull();
+  });
+
+  it("propone la fecha que le pasan (la del mes que se ve) y no deja fechas después de hoy", () => {
+    render(<TransactionForm type="expense" categories={CATEGORIES} today="2026-10-14" defaultDate="2026-09-14" />);
+    expect(screen.getByLabelText(/^Fecha/)).toHaveValue("2026-09-14");
+    expect(screen.getByLabelText(/^Fecha/)).toHaveAttribute("max", "2026-10-14");
+  });
+
   it("acepta centavos después de la coma, máximo dos, con el teclado decimal", async () => {
     renderForm();
     const amount = screen.getByLabelText(/Monto/);
@@ -90,7 +130,7 @@ describe("TransactionForm", () => {
       ["👟 Ropa", "c-ropa"],
       ["🛒 Mercado", "c-mercado"],
     ]);
-    const date = screen.getByLabelText("Fecha");
+    const date = screen.getByLabelText(/^Fecha/);
     expect(date).toHaveValue("2026-10-14");
     expect(date).toHaveAttribute("max", "2026-10-14");
   });
@@ -112,11 +152,12 @@ describe("TransactionForm", () => {
     renderForm();
 
     await userEvent.type(screen.getByLabelText(/Monto/), "25900,5");
-    await userEvent.type(screen.getByLabelText("Descripción"), "Almuerzo");
+    await userEvent.type(screen.getByLabelText(/^Descripción/), "Almuerzo");
     await userEvent.click(screen.getByRole("button", { name: "Registrar egreso" }));
 
     expect(await toast("Egreso registrado")).toBeVisible();
-    expect(action.mock.calls[0][1].get("amount")).toBe("25.900,5");
+    // Al salir del campo se completó con sus dos decimales.
+    expect(action.mock.calls[0][1].get("amount")).toBe("25.900,50");
   });
 
   it("envía lo escrito a la Server Action y avisa cuando se registró (aviso verde)", async () => {
@@ -124,7 +165,7 @@ describe("TransactionForm", () => {
     renderForm();
 
     await userEvent.type(screen.getByLabelText(/Monto/), "500000");
-    await userEvent.type(screen.getByLabelText("Descripción"), "Zapatos");
+    await userEvent.type(screen.getByLabelText(/^Descripción/), "Zapatos");
     await userEvent.selectOptions(screen.getByLabelText("Categoría"), "c-ropa");
     await userEvent.click(screen.getByRole("button", { name: "Registrar egreso" }));
 
@@ -133,7 +174,7 @@ describe("TransactionForm", () => {
     const data = action.mock.calls[0][1];
     expect(Object.fromEntries(data)).toEqual({
       type: "expense",
-      amount: "500.000",
+      amount: "500.000,00",
       description: "Zapatos",
       categoryId: "c-ropa",
       occurredOn: "2026-10-14",
@@ -153,7 +194,7 @@ describe("TransactionForm", () => {
     render(<TransactionForm type="expense" categories={CATEGORIES} today="2026-10-14" listMonth={listMonth} />);
 
     await userEvent.type(screen.getByLabelText(/Monto/), "500000");
-    await userEvent.type(screen.getByLabelText("Descripción"), "Zapatos");
+    await userEvent.type(screen.getByLabelText(/^Descripción/), "Zapatos");
     await userEvent.click(screen.getByRole("button", { name: "Registrar egreso" }));
 
     expect(await toast(message)).toBeVisible();
@@ -168,7 +209,7 @@ describe("TransactionForm", () => {
     );
     const { rerender } = renderAlone(page({ start: "2026-10-01", end: "2026-11-01" }));
     await userEvent.type(screen.getByLabelText(/Monto/), "500000");
-    await userEvent.type(screen.getByLabelText("Descripción"), "Zapatos");
+    await userEvent.type(screen.getByLabelText(/^Descripción/), "Zapatos");
     await userEvent.click(screen.getByRole("button", { name: "Registrar egreso" }));
     await toast("Egreso registrado");
 
@@ -181,7 +222,7 @@ describe("TransactionForm", () => {
     action.mockResolvedValue({ ok: false, message: "No pudimos guardar el movimiento" });
     renderForm();
     await userEvent.type(screen.getByLabelText(/Monto/), "500000");
-    await userEvent.type(screen.getByLabelText("Descripción"), "Zapatos");
+    await userEvent.type(screen.getByLabelText(/^Descripción/), "Zapatos");
     await userEvent.click(screen.getByRole("button", { name: "Registrar egreso" }));
 
     const error = await screen.findByText("No pudimos guardar el movimiento");
@@ -199,12 +240,12 @@ describe("TransactionForm", () => {
     renderForm();
 
     await userEvent.type(screen.getByLabelText(/Monto/), "0");
-    await userEvent.type(screen.getByLabelText("Descripción"), "Zapatos");
+    await userEvent.type(screen.getByLabelText(/^Descripción/), "Zapatos");
     await userEvent.click(screen.getByRole("button", { name: "Registrar egreso" }));
 
     expect(await screen.findByText("Ingresa un monto mayor que cero")).toBeVisible();
-    expect(screen.getByLabelText("Descripción")).toHaveValue("Zapatos");
-    expect(screen.getByLabelText("Fecha")).toHaveValue("2026-10-01");
+    expect(screen.getByLabelText(/^Descripción/)).toHaveValue("Zapatos");
+    expect(screen.getByLabelText(/^Fecha/)).toHaveValue("2026-10-01");
     expect(screen.getByRole("region", { name: "Avisos" }).querySelectorAll("li")).toHaveLength(0);
   });
 
@@ -217,7 +258,7 @@ describe("TransactionForm", () => {
     renderForm();
 
     await userEvent.type(screen.getByLabelText(/Monto/), "0");
-    await userEvent.type(screen.getByLabelText("Descripción"), "Zapatos");
+    await userEvent.type(screen.getByLabelText(/^Descripción/), "Zapatos");
     await userEvent.selectOptions(screen.getByLabelText("Categoría"), "c-mercado");
     await userEvent.click(screen.getByRole("button", { name: "Registrar egreso" }));
 
@@ -235,7 +276,7 @@ describe("TransactionForm", () => {
     renderForm();
 
     await userEvent.type(screen.getByLabelText(/Monto/), "0");
-    await userEvent.type(screen.getByLabelText("Descripción"), "Zapatos");
+    await userEvent.type(screen.getByLabelText(/^Descripción/), "Zapatos");
     await userEvent.selectOptions(screen.getByLabelText("Categoría"), "c-ropa");
     await userEvent.click(screen.getByRole("button", { name: "Registrar egreso" }));
     expect(await screen.findByText("Ingresa un monto mayor que cero")).toBeVisible();
@@ -253,7 +294,7 @@ describe("TransactionForm", () => {
     renderForm("income");
 
     await userEvent.type(screen.getByLabelText(/Monto/), "1000");
-    await userEvent.type(screen.getByLabelText("Descripción"), "Venta");
+    await userEvent.type(screen.getByLabelText(/^Descripción/), "Venta");
     await userEvent.click(screen.getByRole("button", { name: "Registrar ingreso" }));
 
     expect(await screen.findByRole("button", { name: "Guardando…" })).toBeDisabled();
@@ -281,13 +322,13 @@ describe("TransactionForm · editar", () => {
       />,
     );
 
-  it("muestra el movimiento con sus datos, el monto con separadores", () => {
+  it("muestra el movimiento con sus datos, el monto con separadores y sus dos decimales", () => {
     renderEdit();
     expect(screen.getByRole("heading", { name: "Editar egreso" })).toBeVisible();
-    expect(screen.getByLabelText(/Monto/)).toHaveValue("500.000");
-    expect(screen.getByLabelText("Descripción")).toHaveValue("Zapatos");
+    expect(screen.getByLabelText(/Monto/)).toHaveValue("500.000,00");
+    expect(screen.getByLabelText(/^Descripción/)).toHaveValue("Zapatos");
     expect(screen.getByLabelText("Categoría")).toHaveValue("c-ropa");
-    expect(screen.getByLabelText("Fecha")).toHaveValue("2026-10-10");
+    expect(screen.getByLabelText(/^Fecha/)).toHaveValue("2026-10-10");
     expect(screen.getByRole("button", { name: "Guardar cambios" })).toBeEnabled();
     expect(screen.getByRole("link", { name: "Cancelar" })).toHaveAttribute("href", "/egresos");
   });
@@ -320,7 +361,7 @@ describe("TransactionForm · editar", () => {
     expect(Object.fromEntries(update.mock.calls[0][1])).toEqual({
       type: "expense",
       id: TX.id,
-      amount: "450.000",
+      amount: "450.000,00",
       description: "Zapatos",
       categoryId: "c-mercado",
       occurredOn: "2026-10-10",
@@ -337,7 +378,7 @@ describe("TransactionForm · editar", () => {
     await userEvent.click(screen.getByRole("button", { name: "Guardar cambios" }));
 
     expect(await screen.findByText("Ingresa un monto mayor que cero")).toBeVisible();
-    expect(screen.getByLabelText("Descripción")).toHaveValue("Otra cosa");
+    expect(screen.getByLabelText(/^Descripción/)).toHaveValue("Otra cosa");
     expect(screen.getByLabelText("Categoría")).toHaveValue("c-mercado");
   });
 
@@ -361,13 +402,13 @@ describe("TransactionForm · errores de los campos en español", () => {
     await userEvent.click(screen.getByRole("button", { name: "Registrar egreso" }));
     expect(action).not.toHaveBeenCalled();
     expect(screen.getByLabelText(/^Monto/)).toHaveAccessibleDescription("Escribe el monto.");
-    expect(screen.getByLabelText("Descripción")).toHaveAccessibleDescription('Escribe una descripción, por ejemplo "Almuerzo".');
+    expect(screen.getByLabelText(/^Descripción/)).toHaveAccessibleDescription('Escribe una descripción, por ejemplo "Almuerzo".');
     expect(screen.getByLabelText(/^Monto/)).toHaveFocus();
   });
 
   it("sin fecha, o con una futura, lo dice", async () => {
     renderForm();
-    const date = screen.getByLabelText("Fecha");
+    const date = screen.getByLabelText(/^Fecha/);
     await userEvent.clear(date);
     await userEvent.click(screen.getByRole("button", { name: "Registrar egreso" }));
     expect(date).toHaveAccessibleDescription("Elige la fecha.");
@@ -379,7 +420,7 @@ describe("TransactionForm · errores de los campos en español", () => {
     action.mockResolvedValue({ ok: false, fieldErrors: { amount: "Ingresa un monto mayor que cero" }, values: { amount: "0", description: "X" } });
     renderForm();
     await userEvent.type(screen.getByLabelText(/^Monto/), "0");
-    await userEvent.type(screen.getByLabelText("Descripción"), "X");
+    await userEvent.type(screen.getByLabelText(/^Descripción/), "X");
     await userEvent.click(screen.getByRole("button", { name: "Registrar egreso" }));
     expect(await screen.findByText("Ingresa un monto mayor que cero")).toBeInTheDocument();
     expect(screen.getByLabelText(/^Monto/)).toHaveAccessibleDescription("Ingresa un monto mayor que cero");
