@@ -1,4 +1,5 @@
-import { render, screen, within } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
+import { findToast, renderWithToaster as render, toasts } from "../../../../../test/toaster";
 import userEvent from "@testing-library/user-event";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ManagedCategory } from "./category-manager";
@@ -131,7 +132,9 @@ describe("la lista", () => {
 
     await userEvent.click(archived.getByRole("button", { name: "Restaurar Videojuegos" }));
     expect(Object.fromEntries(actions.restoreCategoryAction.mock.calls[0][1] as FormData)).toEqual({ id: "c4" });
-    expect(await screen.findByRole("status")).toHaveTextContent("Se restauró la categoría 🎮 Videojuegos.");
+    const toast = await findToast();
+    expect(toast).toHaveTextContent("Se restauró la categoría 🎮 Videojuegos.");
+    expect(toast).toHaveAttribute("data-tone", "success");
   });
 
   it("si restaurar falla, lo dice junto al botón", async () => {
@@ -162,10 +165,12 @@ describe("crear y editar (sin código)", () => {
     await userEvent.click(within(dialog()).getByRole("button", { name: "Crear" }));
 
     expect(Object.fromEntries(actions.createCategoryAction.mock.calls[0][1] as FormData)).toEqual({ type: "expense", name: "Mascotas", emoji: "🐾" });
-    expect(await screen.findByRole("status")).toHaveTextContent("Se creó la categoría 🐾 Mascotas.");
+    const toast = await findToast();
+    expect(toast).toHaveTextContent("Se creó la categoría 🐾 Mascotas.");
+    expect(toast).toHaveAttribute("data-tone", "success");
     expect(screen.queryByRole("dialog")).toBeNull();
-    // La ventana ya no está: el foco va al aviso, no al principio de la página.
-    expect(screen.getByRole("status")).toHaveFocus();
+    // La ventana ya no está: el foco va al aviso emergente, no al principio de la página.
+    expect(toast).toHaveFocus();
   });
 
   it("editar trae lo de ahora y envía el id; los errores van junto a su campo", async () => {
@@ -238,7 +243,9 @@ describe("archivar y eliminar (con código)", () => {
     await userEvent.type(within(dialog()).getByLabelText("Código de Google Authenticator"), "123456");
     await userEvent.click(within(dialog()).getByRole("button", { name: "Archivar" }));
     expect(Object.fromEntries(actions.archiveCategoryAction.mock.calls[0][1] as FormData)).toEqual({ id: "c1", code: "123456" });
-    expect(await screen.findByRole("status")).toHaveTextContent("Se archivó la categoría 🛒 Mercado.");
+    const toast = await findToast();
+    expect(toast).toHaveTextContent("Se archivó la categoría 🛒 Mercado.");
+    expect(toast).toHaveAttribute("data-tone", "removal");
   });
 
   it("archivar una sin movimientos (o con uno) lo dice", async () => {
@@ -280,15 +287,17 @@ describe("archivar y eliminar (con código)", () => {
     );
   });
 
-  it("al abrir otra acción, el aviso anterior se va", async () => {
-    actions.archiveCategoryAction.mockResolvedValue({ message: "Se archivó la categoría 🛒 Mercado." });
+  it("eliminar avisa en rojo, y el aviso no está dentro de la lista (es un aviso emergente)", async () => {
+    actions.deleteCategoryAction.mockResolvedValue({ message: "Se eliminó la categoría 🛒 Mercado." });
     renderManager();
-    await openFromMenu("Mercado", "Archivar");
+    await openFromMenu("Mercado", "Eliminar");
     await userEvent.type(within(dialog()).getByLabelText("Código de Google Authenticator"), "123456");
-    await userEvent.click(within(dialog()).getByRole("button", { name: "Archivar" }));
-    expect(await screen.findByRole("status")).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Nueva categoría" }));
-    expect(screen.queryByRole("status")).toBeNull();
+    await userEvent.click(within(dialog()).getByRole("button", { name: /^Eliminar/ }));
+    const toast = await findToast();
+    expect(toast).toHaveTextContent("Se eliminó la categoría 🛒 Mercado.");
+    expect(toast).toHaveAttribute("data-tone", "removal");
+    expect(screen.getByRole("list", { name: "Categorías de egresos" })).not.toContainElement(toast);
+    expect(toasts()).toHaveLength(1);
   });
 });
 

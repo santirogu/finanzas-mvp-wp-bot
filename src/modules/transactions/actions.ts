@@ -8,6 +8,7 @@ import { db } from "@/db";
 import { transaction } from "@/db/schema";
 import { currentMonthRange, monthOf } from "@/lib/dates";
 import { monthHref } from "@/lib/month-nav";
+import { TOAST_PARAM } from "@/lib/toasts";
 import { requireUser } from "@/lib/session";
 import { isCategoryAvailable, undoableSince } from "./queries";
 import { newTransactionSchema } from "./validation";
@@ -111,7 +112,8 @@ export async function updateTransactionAction(
     .returning({ id: transaction.id });
   if (updated.length === 0) return { ok: false, message: "No encontramos ese movimiento", values };
 
-  redirect(listOf(input.type, input.occurredOn, user.timezone));
+  // La lista muestra el aviso "Cambios guardados" (?aviso=, src/lib/toasts.ts).
+  redirect(listOf(input.type, input.occurredOn, user.timezone, { [TOAST_PARAM]: "guardado" }));
 }
 
 /**

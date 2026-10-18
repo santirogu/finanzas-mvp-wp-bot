@@ -1,11 +1,12 @@
 import { z } from "zod";
 import { TransactionForm } from "@/components/transaction-form";
 import { TransactionList } from "@/components/transaction-list";
-import { TransactionNotice } from "@/components/transaction-notice";
+import { ToastOnLoad } from "@/components/toaster";
 import { compareMonths, currentMonthRange, todayInTimezone } from "@/lib/dates";
 import { formatMoney, sumAmounts } from "@/lib/money";
 import { inMonthPhrase, monthHref, monthNav, selectedMonth } from "@/lib/month-nav";
 import { requireUser } from "@/lib/session";
+import { restoreTransactionAction } from "@/modules/transactions/actions";
 import {
   getTransactionNotice,
   listActiveMonths,
@@ -16,7 +17,11 @@ import { MonthNav } from "./month-nav";
 
 type Params = Record<string, string | string[] | undefined>;
 
-/** El aviso que pide la URL: ?borrado=<id> después de borrar, ?restaurado=<id> después de deshacer. */
+/**
+ * El aviso que pide la URL: ?borrado=<id> después de borrar (rojo, con "Deshacer"), ?restaurado=<id>
+ * después de deshacer (verde). Lleva el id, no la descripción: el servidor la busca, solo si el
+ * movimiento es de la persona (y, el borrado, de hace menos de 10 minutos).
+ */
 function noticeFrom(params: Params) {
   for (const [key, kind] of [["borrado", "deleted"], ["restaurado", "restored"]] as const) {
     const id = z.uuid().safeParse(params[key]);
@@ -73,11 +78,19 @@ export async function TransactionsView({ type, params = {} }: { type: "income" |
             {items.length} {items.length === 1 ? "movimiento" : "movimientos"} {inMonth}
           </h2>
           {requested && notice && (
-            <TransactionNotice
-              kind={requested.kind}
-              id={notice.id}
-              description={notice.description}
-              closeHref={monthHref(path, range, current)}
+            <ToastOnLoad
+              cleanHref={monthHref(path, range, current)}
+              toast={
+                requested.kind === "deleted"
+                  ? {
+                      id: `borrado:${notice.id}`,
+                      tone: "removal",
+                      message: `Se borró «${notice.description}»`,
+                      action: { label: "Deshacer", formAction: restoreTransactionAction, fields: { id: notice.id } },
+                      focus: true,
+                    }
+                  : { id: `restaurado:${notice.id}`, tone: "success", message: `Se restauró «${notice.description}»`, focus: true }
+              }
             />
           )}
           <TransactionList

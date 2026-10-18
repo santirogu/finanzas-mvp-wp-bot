@@ -1,5 +1,5 @@
 import { expect } from "@playwright/test";
-import { addTransaction, newPerson, openTab, register, test, visible } from "./helpers";
+import { addTransaction, newPerson, openTab, register, test, toast, visible } from "./helpers";
 
 // Dos personas en dos navegadores distintos: lo que registra una nunca aparece para la otra.
 test("los movimientos de un usuario no aparecen en la cuenta de otro", async ({ browser }) => {
@@ -7,7 +7,7 @@ test("los movimientos de un usuario no aparecen en la cuenta de otro", async ({ 
   await register(ana, "Ana");
   await openTab(ana, "Egresos");
   await addTransaction(ana, { amount: "750000", description: "Secreto de Ana", category: "Ropa" });
-  await expect(visible(ana.getByText("✓ Egreso registrado"))).toBeVisible();
+  await expect(toast(ana, /^Egreso registrado$/)).toBeVisible();
 
   const beto = await newPerson(browser);
   await register(beto, "Beto");

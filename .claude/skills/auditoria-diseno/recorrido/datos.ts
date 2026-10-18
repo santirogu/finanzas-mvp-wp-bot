@@ -1,7 +1,7 @@
 import { randomInt } from "node:crypto";
 import { expect, type Browser, type BrowserContext, type Page } from "@playwright/test";
 import { newAdmin, setUpTwoFactor } from "../../../../e2e/admin";
-import { addTransaction, fakeIp, register, uniqueEmail, visible } from "../../../../e2e/helpers";
+import { addTransaction, fakeIp, register, toast, uniqueEmail, visible } from "../../../../e2e/helpers";
 import { newPhone, nthReply, sendWhatsApp } from "../../../../e2e/whatsapp";
 import { monthOf, monthParam, shiftMonth, todayInTimezone } from "../../../../src/lib/dates";
 
@@ -21,7 +21,7 @@ export type Datos = {
   cuentaDatos?: string;
   /** La categoría de 40 caracteres que crea el admin. */
   categoriaLarga?: string;
-  /** Egresos con el aviso "Se borró… · Deshacer" de un movimiento de la cuenta "datos" (dura 10 minutos). */
+  /** Egresos con el aviso emergente "Se borró… · Deshacer" de un movimiento de la cuenta "datos" (la URL lo pide durante 10 minutos). */
   borrado?: string;
 };
 
@@ -76,7 +76,7 @@ async function registrarAnteriores(page: Page, movimientos: typeof ANTERIORES) {
   for (const { ruta, movimiento } of movimientos) {
     await page.goto(ruta);
     await addTransaction(page, movimiento);
-    await expect(visible(page.getByText(/^✓ (Ingreso|Egreso) registrado en /))).toBeVisible();
+    await expect(toast(page, /^(Ingreso|Egreso) registrado en /)).toBeVisible();
   }
 }
 
@@ -127,10 +127,13 @@ async function conDatos(browser: Browser, baseURL: string, datos: Datos) {
   // Un movimiento borrado, para el aviso "Se borró… · Deshacer" (se puede deshacer 10 minutos).
   await page.goto("/egresos");
   await addTransaction(page, { amount: "9500", description: "Café para borrar", category: "Alimentación" });
-  await expect(visible(page.getByText("✓ Egreso registrado"))).toBeVisible();
+  await expect(toast(page, /^Egreso registrado$/)).toBeVisible();
+  // La dirección que pide el aviso: la app la limpia al mostrarlo, así que se arma con el id de la fila.
+  const fila = visible(page.getByRole("main").getByRole("listitem").filter({ hasText: "Café para borrar" }));
+  const id = await fila.locator('input[name="id"]').getAttribute("value");
   await visible(page.getByRole("button", { name: "Eliminar Café para borrar" })).click();
-  await page.waitForURL(/\?borrado=/);
-  datos.borrado = new URL(page.url()).pathname + new URL(page.url()).search;
+  await expect(toast(page, "Se borró «Café para borrar»")).toBeVisible();
+  datos.borrado = `/egresos?borrado=${id}`;
 
   datos.sesiones.datos = await page.context().storageState();
   await page.context().close();
@@ -149,7 +152,7 @@ async function admin(browser: Browser, baseURL: string, datos: Datos) {
   await visible(page.getByRole("button", { name: "Nueva categoría" })).click();
   await page.getByRole("dialog").getByLabel("Nombre").fill(categoria);
   await page.getByRole("dialog").getByRole("button", { name: "Crear" }).click();
-  await expect(visible(page.getByRole("status"))).toContainText(categoria);
+  await expect(toast(page, categoria)).toBeVisible();
 
   const larga = `Pago de la cuota de administración del conjunto residencial ${id} `.repeat(3).slice(0, 140).trim();
   const maximo = "99999999999,99";

@@ -3,6 +3,7 @@
 import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/session";
+import { TOAST_PARAM } from "@/lib/toasts";
 import {
   deleteAccount,
   reactivateAccount,
@@ -69,5 +70,6 @@ export async function deleteAccountByAdminAction(
   const result = await deleteAccount({ ...readInput(formData), email: String(formData.get("email") ?? "") });
   if (!result.ok) return { error: result.error, field: result.field };
   // La cuenta ya no existe: de vuelta a la lista, con el aviso.
-  redirect(`${USERS_PATH}?eliminada=1`);
+  // La lista muestra el aviso "Se eliminó la cuenta" (?aviso=, src/lib/toasts.ts).
+  redirect(`${USERS_PATH}?${TOAST_PARAM}=cuenta-eliminada`);
 }

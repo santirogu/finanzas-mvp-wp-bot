@@ -98,7 +98,9 @@ export const VISTAS: Vista[] = [
   { id: "ingresos", titulo: "Ingresos con datos", persona: "datos", ruta: fija("/ingresos") },
   { id: "egresos", titulo: "Egresos con datos", persona: "datos", ruta: fija("/egresos") },
   { id: "editar-movimiento", titulo: "Editar un movimiento", persona: "datos", ruta: (d) => d.editar.datos },
-  { id: "egresos-borrado", titulo: "Egresos: aviso después de borrar (con Deshacer)", persona: "datos", ruta: (d) => d.borrado },
+  { id: "egresos-borrado", titulo: "Egresos: aviso emergente rojo después de borrar (con Deshacer)", persona: "datos", ruta: (d) => d.borrado },
+  // El aviso verde que pide la URL después de guardar cambios (?aviso=guardado); dura 4 segundos.
+  { id: "egresos-guardado", titulo: "Egresos: aviso emergente verde (Cambios guardados)", persona: "datos", ruta: fija("/egresos?aviso=guardado") },
   { id: "resumen-mes-anterior", titulo: "Resumen del mes anterior", persona: "datos", ruta: fija(`/dashboard?mes=${MES_ANTERIOR}`) },
   {
     id: "resumen-tarjeta-meses",

@@ -3,8 +3,9 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 // El contraste de los colores de globals.css que axe no revisa: el borde de los campos y sus estados
-// (con el foco, con un error) contra lo que los rodea, 3:1 (WCAG 1.4.11). El texto lo revisa axe en
-// las E2E, en modo claro y oscuro.
+// (con el foco, con un error) contra lo que los rodea, 3:1 (WCAG 1.4.11), y los avisos emergentes
+// (aparecen unos segundos: axe casi nunca los alcanza). El resto del texto lo revisa axe en las E2E,
+// en modo claro y oscuro.
 
 const css = readFileSync(path.join(__dirname, "app/globals.css"), "utf8");
 
@@ -57,6 +58,20 @@ describe("contraste (WCAG)", () => {
         expect(colors[border], `--${border}`).toBeDefined();
         expect(contrast(colors[border], colors[around])).toBeGreaterThanOrEqual(3);
       });
+    });
+  }
+
+  // Los avisos emergentes: el texto (y el botón "Deshacer", en el color fuerte) sobre su fondo suave,
+  // 4,5:1; el ícono y la barrita del tiempo también lo cumplen.
+  for (const [mode, colors] of Object.entries(MODES)) {
+    it.each([
+      ["foreground", "success-surface"],
+      ["success", "success-surface"],
+      ["foreground", "danger-surface"],
+      ["danger", "danger-surface"],
+    ])(`modo ${mode}: --%s sobre --%s, al menos 4,5:1`, (text, surface) => {
+      expect(colors[surface], `--${surface}`).toBeDefined();
+      expect(contrast(colors[text], colors[surface])).toBeGreaterThanOrEqual(4.5);
     });
   }
 

@@ -85,7 +85,7 @@ describe("con éxito", () => {
   it("deleteAccountByAdminAction borra la cuenta y lleva a la lista con el aviso", async () => {
     const { ana, code } = await seed();
     await expect(deleteAccountByAdminAction({}, form({ userId: ana.id, code: code(), email: ana.email }))).rejects.toThrow(
-      "NEXT_REDIRECT /admin/usuarios?eliminada=1",
+      "NEXT_REDIRECT /admin/usuarios?aviso=cuenta-eliminada",
     );
     expect(await db.select().from(user).where(eq(user.id, ana.id))).toEqual([]);
   });

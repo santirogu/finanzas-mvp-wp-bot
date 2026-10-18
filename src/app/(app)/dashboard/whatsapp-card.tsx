@@ -1,7 +1,7 @@
 import { requireUser } from "@/lib/session";
-import { unlinkWhatsAppAction } from "@/modules/whatsapp/actions";
 import { getLinkForUser } from "@/modules/whatsapp/link";
 import { maskPhone } from "@/modules/whatsapp/phone";
+import { UnlinkWhatsApp } from "./unlink-whatsapp";
 import { WhatsAppConnect } from "./whatsapp-connect";
 import { envVar } from "@/lib/env";
 
@@ -27,14 +27,7 @@ export async function WhatsAppCard() {
             <span className="whitespace-nowrap font-medium text-foreground">{maskPhone(link.phone)}</span>. Prueba:{" "}
             <em>“gasté 20 mil en almuerzo”</em>.
           </p>
-          <form action={unlinkWhatsAppAction}>
-            <button
-              type="submit"
-              className="text-xs font-medium text-muted underline underline-offset-2 hover:text-danger"
-            >
-              Desvincular número
-            </button>
-          </form>
+          <UnlinkWhatsApp />
         </div>
       ) : (
         <WhatsAppConnect

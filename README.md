@@ -242,8 +242,20 @@ scripts/seed.ts                     Categorías por defecto
   Action vuelve a validar la sesión.
 - **Borrado lógico** (`deleted_at`): permite deshacer.
   - **En el bot:** `deshacer` borra el último movimiento registrado.
-  - **En la web:** al borrar un movimiento de Ingresos o Egresos, la lista muestra "Se borró… · Deshacer". El aviso viene en la URL (`?borrado=<id>`) y recibe el foco.
+  - **En la web:** al borrar un movimiento de Ingresos o Egresos aparece el aviso emergente rojo "Se borró… · Deshacer", que dura 10 segundos y recibe el foco. Lo pide la URL (`?borrado=<id>`): el servidor busca la descripción solo si el movimiento es de la persona, y la app quita el parámetro al mostrarlo.
   - **Límite:** `restoreTransactionAction` solo restaura un movimiento propio borrado hace menos de 10 minutos (`UNDO_WINDOW_MS`). Después queda borrado hasta que la limpieza diaria lo elimina del todo.
+- **Avisos emergentes** (`src/components/toaster.tsx`, con `useToast()`): la confirmación de algo que ya pasó, en toda la app.
+  - **Colores:** verde (`success`) para lo que se guardó o se activó; rojo (`removal`) para lo que se borró o se desactivó.
+  - **Dónde y cuánto:** abajo al centro en celular y tableta, y abajo a la derecha en computador, como máximo 3 a la vez.
+    - Duran 4 segundos, o 10 los que tienen un botón ("Deshacer").
+    - Se pausan con el mouse encima, al tocarlos o con el foco del teclado.
+    - Se cierran con la X.
+  - **Accesibilidad:** el lector de pantalla los anuncia (una región `aria-live` que existe siempre). Los que siguen a una ventana que se cerró, o a una fila que ya no está, reciben el foco; al cerrarse, el foco vuelve a `#contenido`.
+  - **Después de una redirección del servidor:** la URL lleva un código fijo (`?aviso=guardado`, `src/lib/toasts.ts`), nunca datos de la persona. Cada código vale solo en las páginas adonde redirige su acción, para que un enlace no pueda inventar un aviso.
+  - **No son avisos emergentes:**
+    - los errores, que se quedan junto a su campo;
+    - los resultados que se consultan ("Probar conexiones", el código para vincular WhatsApp);
+    - el paso a paso de la verificación en dos pasos.
 - **`transaction.external_id` único**: guardará el ID del mensaje de WhatsApp para no registrar
   dos veces el mismo gasto si Meta reenvía el webhook.
 

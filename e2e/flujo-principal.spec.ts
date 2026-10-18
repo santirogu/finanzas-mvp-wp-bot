@@ -1,10 +1,11 @@
 import { expect, type Page } from "@playwright/test";
-import { addTransaction, openTab, register, test, visible } from "./helpers";
+import { addTransaction, openTab, register, test, toast, visible } from "./helpers";
 
 const text = (page: Page, value: string | RegExp) => visible(page.getByText(value));
 const balance = (page: Page) => text(page, "Balance del mes").locator("..");
+// Las filas de la lista (en la página, no en los avisos emergentes, que también son elementos de lista).
 const row = (page: Page, description: string) =>
-  visible(page.getByRole("listitem").filter({ hasText: description }));
+  visible(page.getByRole("main").getByRole("listitem").filter({ hasText: description }));
 
 // El recorrido que hace cualquier usuario. Corre en escritorio y en celular (@principal).
 test("registrarse, llevar ingresos y egresos, ver el balance y salir @principal", async ({ page }) => {
@@ -19,7 +20,7 @@ test("registrarse, llevar ingresos y egresos, ver el balance y salir @principal"
   await test.step("registrar un ingreso", async () => {
     await openTab(page, "Ingresos");
     await addTransaction(page, { amount: "2000000", description: "Pago de nómina", category: "Salario" });
-    await expect(text(page, "✓ Ingreso registrado")).toBeVisible();
+    await expect(toast(page, /^Ingreso registrado$/)).toHaveAttribute("data-tone", "success");
     await expect(row(page, "Pago de nómina")).toContainText("Salario");
     await expect(row(page, "Pago de nómina")).toContainText("+$2.000.000,00");
     await expect(text(page, "1 movimiento este mes")).toBeVisible();
@@ -28,7 +29,7 @@ test("registrarse, llevar ingresos y egresos, ver el balance y salir @principal"
   await test.step("registrar un egreso", async () => {
     await openTab(page, "Egresos");
     await addTransaction(page, { amount: "500000", description: "Zapatos", category: "Ropa" });
-    await expect(text(page, "✓ Egreso registrado")).toBeVisible();
+    await expect(toast(page, /^Egreso registrado$/)).toBeVisible();
     await expect(row(page, "Zapatos")).toContainText("−$500.000,00");
   });
 

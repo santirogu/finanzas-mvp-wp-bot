@@ -5,7 +5,8 @@ import { CATEGORY_NAME_MAX, CATEGORY_TYPE_LABELS, DEFAULT_CATEGORY, EMOJI_SUGGES
 import { describedBy } from "@/components/field-error";
 import { useFieldErrors } from "@/components/use-field-errors";
 import type { FieldMessages } from "@/lib/field-errors";
-import { Buttons, CODE_FIELD_MESSAGES, CodeField, Dialog, DoneMessage, FormError } from "../admin-dialog";
+import { type ToastTone, useToast } from "@/components/toaster";
+import { Buttons, CODE_FIELD_MESSAGES, CodeField, Dialog, FormError } from "../admin-dialog";
 import {
   archiveCategoryAction,
   createCategoryAction,
@@ -43,19 +44,18 @@ const CATEGORY_MESSAGES: Record<string, FieldMessages> = { name: { required: "Es
 
 export function CategoryManager({ type, categories }: { type: CategoryType; categories: ManagedCategory[] }) {
   const [open, setOpen] = useState<Open>(null);
-  const [done, setDone] = useState<string | null>(null);
+  const toast = useToast();
   const kind = CATEGORY_TYPE_LABELS[type].toLowerCase();
   const active = categories.filter((c) => !c.archived);
   const archived = categories.filter((c) => c.archived);
   const fallbackEmoji = categories.find((c) => c.isDefault)?.emoji ?? "📦";
-  const start = (next: Open) => {
-    setDone(null);
-    setOpen(next);
-  };
+  const start = (next: Open) => setOpen(next);
   const close = () => setOpen(null);
-  const finish = (message: string) => {
-    setDone(message);
+  // Con éxito, la ventana se cierra y el aviso emergente (verde o rojo) recibe el foco: el botón que la
+  // abrió a veces ya no está (la fila pasó a Archivadas).
+  const finish = (tone: ToastTone) => (message: string) => {
     setOpen(null);
+    toast({ tone, message, focus: true });
   };
 
   return (
@@ -66,7 +66,6 @@ export function CategoryManager({ type, categories }: { type: CategoryType; cate
           Nueva categoría
         </button>
       </div>
-      {done && <DoneMessage message={done} />}
 
       <ul aria-label={`Categorías de ${kind}`} className="divide-y divide-border">
         {active.map((category) => (
@@ -99,7 +98,7 @@ export function CategoryManager({ type, categories }: { type: CategoryType; cate
           <ul aria-label={`Categorías archivadas de ${kind}`} className="divide-y divide-border">
             {archived.map((category) => (
               <CategoryRow key={category.id} category={category}>
-                <RestoreButton category={category} onDone={finish} />
+                <RestoreButton category={category} onDone={finish("success")} />
                 <MoreActions name={category.name} actions={[{ label: "Eliminar", danger: true, onClick: () => start({ kind: "delete", category }) }]} />
               </CategoryRow>
             ))}
@@ -107,8 +106,10 @@ export function CategoryManager({ type, categories }: { type: CategoryType; cate
         </section>
       )}
 
-      {open?.kind === "create" && <CategoryFormDialog type={type} onClose={close} onDone={finish} />}
-      {open?.kind === "edit" && <CategoryFormDialog type={type} category={open.category} onClose={close} onDone={finish} />}
+      {open?.kind === "create" && <CategoryFormDialog type={type} onClose={close} onDone={finish("success")} />}
+      {open?.kind === "edit" && (
+        <CategoryFormDialog type={type} category={open.category} onClose={close} onDone={finish("success")} />
+      )}
       {open?.kind === "archive" && (
         <CodeDialog
           title={`¿Archivar la categoría ${open.category.name}?`}
@@ -117,7 +118,7 @@ export function CategoryManager({ type, categories }: { type: CategoryType; cate
           submit="Archivar"
           pending="Archivando…"
           onClose={close}
-          onDone={finish}
+          onDone={finish("removal")}
           description={
             <>
               Dejará de aparecer en los formularios y el bot no la usará.{" "}
@@ -140,7 +141,7 @@ export function CategoryManager({ type, categories }: { type: CategoryType; cate
           pending="Eliminando…"
           danger
           onClose={close}
-          onDone={finish}
+          onDone={finish("removal")}
           description={
             open.category.movements > 0 ? (
               <>
@@ -286,7 +287,7 @@ function RestoreButton({ category, onDone }: { category: ManagedCategory; onDone
   );
 }
 
-/** Con éxito, la ventana se cierra y la lista muestra el aviso (la página se vuelve a dibujar). */
+/** Con éxito, la ventana se cierra y aparece el aviso emergente (la página se vuelve a dibujar). */
 function useNotifyingAction(action: ServerAction, onDone: (message: string) => void) {
   return useActionState<CategoryActionState, FormData>(async (prev, formData) => {
     const result = await action(prev, formData);

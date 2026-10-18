@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render as renderAlone, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { FormState } from "@/modules/transactions/actions";
@@ -13,6 +13,11 @@ vi.mock("@/modules/transactions/actions", () => ({
 }));
 
 const { TransactionForm } = await import("./transaction-form");
+const { Toaster } = await import("./toaster");
+
+// Como en la app: lo que salió bien va en un aviso emergente del Toaster.
+const render = (ui: React.ReactElement) => renderAlone(<Toaster>{ui}</Toaster>);
+const toast = (message: string) => within(screen.getByRole("region", { name: "Avisos" })).findByText(message, { exact: true });
 
 const CATEGORIES = [
   { id: "c-ropa", name: "Ropa", emoji: "👟" },
@@ -110,11 +115,11 @@ describe("TransactionForm", () => {
     await userEvent.type(screen.getByLabelText("Descripción"), "Almuerzo");
     await userEvent.click(screen.getByRole("button", { name: "Registrar egreso" }));
 
-    expect(await screen.findByText("✓ Egreso registrado")).toBeVisible();
+    expect(await toast("Egreso registrado")).toBeVisible();
     expect(action.mock.calls[0][1].get("amount")).toBe("25.900,5");
   });
 
-  it("envía lo escrito a la Server Action y avisa cuando se registró", async () => {
+  it("envía lo escrito a la Server Action y avisa cuando se registró (aviso verde)", async () => {
     action.mockResolvedValue({ ok: true, message: "Egreso registrado" });
     renderForm();
 
@@ -123,7 +128,8 @@ describe("TransactionForm", () => {
     await userEvent.selectOptions(screen.getByLabelText("Categoría"), "c-ropa");
     await userEvent.click(screen.getByRole("button", { name: "Registrar egreso" }));
 
-    expect(await screen.findByText("✓ Egreso registrado")).toBeVisible();
+    expect(await toast("Egreso registrado")).toBeVisible();
+    expect((await toast("Egreso registrado")).closest("li")).toHaveAttribute("data-tone", "success");
     const data = action.mock.calls[0][1];
     expect(Object.fromEntries(data)).toEqual({
       type: "expense",
@@ -137,11 +143,11 @@ describe("TransactionForm", () => {
   });
 
   it.each([
-    ["en el mes de la lista, no dice más", "2026-10-14", { start: "2026-10-01", end: "2026-11-01" }, "✓ Egreso registrado"],
-    ["sin lista al lado, tampoco", "2026-09-30", undefined, "✓ Egreso registrado"],
-    ["en otro mes, dice en cuál quedó", "2026-09-30", { start: "2026-10-01", end: "2026-11-01" }, "✓ Egreso registrado en septiembre de 2026"],
-    ["el primer día del mes siguiente ya es otro mes", "2026-11-01", { start: "2026-10-01", end: "2026-11-01" }, "✓ Egreso registrado en noviembre de 2026"],
-    ["mirando septiembre, uno de hoy queda en octubre", "2026-10-14", { start: "2026-09-01", end: "2026-10-01" }, "✓ Egreso registrado en octubre de 2026"],
+    ["en el mes de la lista, no dice más", "2026-10-14", { start: "2026-10-01", end: "2026-11-01" }, "Egreso registrado"],
+    ["sin lista al lado, tampoco", "2026-09-30", undefined, "Egreso registrado"],
+    ["en otro mes, dice en cuál quedó", "2026-09-30", { start: "2026-10-01", end: "2026-11-01" }, "Egreso registrado en septiembre de 2026"],
+    ["el primer día del mes siguiente ya es otro mes", "2026-11-01", { start: "2026-10-01", end: "2026-11-01" }, "Egreso registrado en noviembre de 2026"],
+    ["mirando septiembre, uno de hoy queda en octubre", "2026-10-14", { start: "2026-09-01", end: "2026-10-01" }, "Egreso registrado en octubre de 2026"],
   ])("al registrar, %s", async (_case, occurredOn, listMonth, message) => {
     action.mockResolvedValue({ ok: true, message: "Egreso registrado", occurredOn });
     render(<TransactionForm type="expense" categories={CATEGORIES} today="2026-10-14" listMonth={listMonth} />);
@@ -150,7 +156,38 @@ describe("TransactionForm", () => {
     await userEvent.type(screen.getByLabelText("Descripción"), "Zapatos");
     await userEvent.click(screen.getByRole("button", { name: "Registrar egreso" }));
 
-    expect(await screen.findByText(message, { exact: true })).toBeVisible();
+    expect(await toast(message)).toBeVisible();
+  });
+
+  it("el aviso sale una sola vez, aunque la página se vuelva a dibujar (p. ej. al cambiar de mes)", async () => {
+    action.mockResolvedValue({ ok: true, message: "Egreso registrado", occurredOn: "2026-10-14" });
+    const page = (listMonth: { start: string; end: string }) => (
+      <Toaster>
+        <TransactionForm type="expense" categories={CATEGORIES} today="2026-10-14" listMonth={listMonth} />
+      </Toaster>
+    );
+    const { rerender } = renderAlone(page({ start: "2026-10-01", end: "2026-11-01" }));
+    await userEvent.type(screen.getByLabelText(/Monto/), "500000");
+    await userEvent.type(screen.getByLabelText("Descripción"), "Zapatos");
+    await userEvent.click(screen.getByRole("button", { name: "Registrar egreso" }));
+    await toast("Egreso registrado");
+
+    rerender(page({ start: "2026-09-01", end: "2026-10-01" }));
+
+    expect(screen.getByRole("region", { name: "Avisos" }).querySelectorAll("li")).toHaveLength(1);
+  });
+
+  it("un error que no es de un campo se queda en el formulario, en rojo (no es un aviso emergente)", async () => {
+    action.mockResolvedValue({ ok: false, message: "No pudimos guardar el movimiento" });
+    renderForm();
+    await userEvent.type(screen.getByLabelText(/Monto/), "500000");
+    await userEvent.type(screen.getByLabelText("Descripción"), "Zapatos");
+    await userEvent.click(screen.getByRole("button", { name: "Registrar egreso" }));
+
+    const error = await screen.findByText("No pudimos guardar el movimiento");
+    expect(error.closest("form")).not.toBeNull();
+    expect(error).toHaveClass("text-danger");
+    expect(screen.getByRole("region", { name: "Avisos" }).querySelectorAll("li")).toHaveLength(0);
   });
 
   it("muestra los errores de cada campo y conserva lo escrito", async () => {
@@ -168,7 +205,7 @@ describe("TransactionForm", () => {
     expect(await screen.findByText("Ingresa un monto mayor que cero")).toBeVisible();
     expect(screen.getByLabelText("Descripción")).toHaveValue("Zapatos");
     expect(screen.getByLabelText("Fecha")).toHaveValue("2026-10-01");
-    expect(screen.queryByText(/✓/)).not.toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Avisos" }).querySelectorAll("li")).toHaveLength(0);
   });
 
   it("tras un error también conserva la categoría elegida", async () => {
@@ -206,7 +243,7 @@ describe("TransactionForm", () => {
 
     await userEvent.type(screen.getByLabelText(/Monto/), "5");
     await userEvent.click(screen.getByRole("button", { name: "Registrar egreso" }));
-    expect(await screen.findByText("✓ Egreso registrado")).toBeVisible();
+    expect(await toast("Egreso registrado")).toBeVisible();
     expect(screen.getByLabelText("Categoría")).toHaveValue("");
   });
 

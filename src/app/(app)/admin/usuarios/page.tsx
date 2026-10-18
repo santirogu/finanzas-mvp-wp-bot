@@ -43,12 +43,6 @@ async function Users({ params }: { params: Record<string, string | string[] | un
 
   return (
     <section className="card space-y-4 p-4" aria-labelledby="usuarios">
-      {/* Al volver de eliminar una cuenta desde su detalle. */}
-      {params.eliminada === "1" && (
-        <p role="status" className="rounded-lg bg-income/10 px-3 py-2 text-sm text-income">
-          Se eliminó la cuenta.
-        </p>
-      )}
       <div className="space-y-1">
         <h2 id="usuarios" className="font-semibold">
           Cuentas

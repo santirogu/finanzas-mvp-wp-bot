@@ -11,6 +11,7 @@ import {
   type FormState,
 } from "@/modules/transactions/actions";
 import { describedBy, FieldError } from "./field-error";
+import { useToast } from "./toaster";
 import { useFieldErrors } from "./use-field-errors";
 
 type CategoryOption = { id: string; name: string; emoji: string; archived?: boolean };
@@ -58,10 +59,17 @@ export function TransactionForm({
     { ok: false },
   );
   const amountRef = useRef<HTMLInputElement>(null);
+  const toast = useToast();
+  // El aviso de cada registro, una sola vez (la página se vuelve a renderizar con el mismo resultado,
+  // p. ej. al cambiar de mes).
+  const announced = useRef<FormState | null>(null);
 
   useEffect(() => {
-    if (state.ok) amountRef.current?.focus();
-  }, [state]);
+    if (!state.ok || announced.current === state) return;
+    announced.current = state;
+    amountRef.current?.focus();
+    toast({ tone: "success", message: `${state.message}${elsewhere(state.occurredOn, listMonth)}` });
+  }, [state, toast, listMonth]);
 
   // Los del navegador (antes de enviar, en español) y, si no hay, los del servidor.
   const { errors: fieldErrors, formProps } = useFieldErrors(MESSAGES);
@@ -162,11 +170,10 @@ export function TransactionForm({
         </Link>
       )}
 
-      <p
-        aria-live="polite"
-        className={`min-h-5 text-center text-sm ${state.ok ? "text-income" : "text-danger"}`}
-      >
-        {state.ok ? `✓ ${state.message}${elsewhere(state.occurredOn, listMonth)}` : (state.message ?? "")}
+      {/* Los errores que no son de un campo ("No encontramos ese movimiento"); lo que salió bien va en un
+          aviso emergente. */}
+      <p aria-live="polite" className="min-h-5 text-center text-sm text-danger empty:min-h-0">
+        {state.ok ? "" : (state.message ?? "")}
       </p>
     </form>
   );

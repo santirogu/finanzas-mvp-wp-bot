@@ -2,7 +2,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, type Locator, type Page } from "@playwright/test";
 import { totp } from "../test/totp";
 import { newAdmin, setUpTwoFactor, wrongCode } from "./admin";
-import { addTransaction, logIn, logOut, openTab, PASSWORD, register, test, visible } from "./helpers";
+import { addTransaction, logIn, logOut, openTab, PASSWORD, register, test, toast, visible } from "./helpers";
 import { newPhone, nthReply, sendWhatsApp } from "./whatsapp";
 
 // Accesibilidad con axe-core (reglas WCAG 2.1 A y AA): falla ante problemas graves o críticos,
@@ -16,7 +16,10 @@ async function seriousViolations(page: Page, { only, waitForAnimations = true }:
     // Dos cuadros: una transición que recién empieza (un botón que deja de estar deshabilitado)
     // todavía no aparece en getAnimations().
     await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
-    await page.waitForFunction(() => document.getAnimations().every((a) => a.playState !== "running"));
+    // La barrita del tiempo de los avisos emergentes (toast-timer) no cambia colores: no se espera.
+    await page.waitForFunction(() =>
+      document.getAnimations().every((a) => a.playState !== "running" || (a as CSSAnimation).animationName === "toast-timer"),
+    );
   }
   let builder = new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]);
   if (only) builder = builder.include(only);
@@ -98,7 +101,7 @@ for (const [colorScheme, scheme] of Object.entries(SCHEMES) as [keyof typeof SCH
         await register(page);
         await openTab(page, "Egresos");
         await addTransaction(page, { amount: "120000", description: "Mercado", category: "Mercado" });
-        await expect(visible(page.getByText("✓ Egreso registrado"))).toBeVisible();
+        await expect(toast(page, /^Egreso registrado$/)).toBeVisible();
       });
 
       for (const tab of ["Resumen", "Ingresos", "Egresos"] as const) {

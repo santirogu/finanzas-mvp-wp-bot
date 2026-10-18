@@ -1,5 +1,5 @@
 import { expect, type Page } from "@playwright/test";
-import { PASSWORD, addTransaction, formAlert, openTab, register, test, uniqueEmail, visible } from "./helpers";
+import { addTransaction, formAlert, openTab, PASSWORD, register, test, toast, uniqueEmail, visible } from "./helpers";
 
 async function openAccount(page: Page) {
   await visible(page.getByRole("link", { name: "Mi cuenta" })).click();
@@ -12,7 +12,7 @@ test("eliminar la cuenta borra todo y permite empezar de cero con el mismo corre
   await register(page, "Ana Pérez", email);
   await openTab(page, "Egresos");
   await addTransaction(page, { amount: "500000", description: "Zapatos" });
-  await expect(visible(page.getByText("✓ Egreso registrado"))).toBeVisible();
+  await expect(toast(page, /^Egreso registrado$/)).toBeVisible();
 
   await test.step("Mi cuenta muestra los datos y qué se va a borrar", async () => {
     await openAccount(page);
