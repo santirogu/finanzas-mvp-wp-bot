@@ -1,6 +1,6 @@
 import { z } from "zod";
+import { SearchableTransactionList } from "@/components/searchable-transaction-list";
 import { TransactionForm } from "@/components/transaction-form";
-import { TransactionList } from "@/components/transaction-list";
 import { ToastOnLoad } from "@/components/toaster";
 import { compareMonths, currentMonthRange, monthOf, sameDayIn, shiftMonth, todayInTimezone } from "@/lib/dates";
 import { formatMoney, sumAmounts } from "@/lib/money";
@@ -85,9 +85,6 @@ export async function TransactionsView({ type, params = {} }: { type: "income" |
           />
         </div>
         <section className="card lg:col-span-3">
-          <h2 className="border-b border-border px-4 py-3 font-semibold">
-            {items.length} {items.length === 1 ? "movimiento" : "movimientos"} {inMonth}
-          </h2>
           {requested && notice && (
             <ToastOnLoad
               cleanHref={monthHref(path, range, current)}
@@ -104,9 +101,13 @@ export async function TransactionsView({ type, params = {} }: { type: "income" |
               }
             />
           )}
-          <TransactionList
+          {/* key: al cambiar de mes, la búsqueda vuelve a empezar. */}
+          <SearchableTransactionList
+            key={range.start}
             items={items}
-            allowDelete
+            type={type}
+            inMonth={inMonth}
+            currency={user.currency}
             emptyMessage={
               compareMonths(range, current) === 0
                 ? `No has registrado ${noun} este mes.`

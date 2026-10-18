@@ -48,7 +48,7 @@ export type MonthNavData = {
   prev: { href: string; name: string } | null;
   /** La flecha "›"; null en el mes actual (no hay movimientos futuros). */
   next: { href: string; name: string } | null;
-  /** "Volver a este mes": null si ya es el actual. */
+  /** "Volver al mes actual": null si ya es el actual. */
   backToCurrent: string | null;
   /** Los meses con movimientos ("YYYY-MM"): llevan un punto en la cuadrícula del año. */
   activeMonths: string[];

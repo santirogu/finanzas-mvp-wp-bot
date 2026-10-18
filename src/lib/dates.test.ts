@@ -121,6 +121,15 @@ describe("formatShortDate", () => {
     expect(formatShortDate("2026-10-13")).toBe("13 de oct");
     expect(formatShortDate("2026-09-05")).toBe("5 de sept");
   });
+
+  it("los doce meses, sin depender de cómo abrevie cada motor (Safari diría \"sep.\")", () => {
+    const months = Array.from({ length: 12 }, (_, i) => formatShortDate(`2026-${String(i + 1).padStart(2, "0")}-01`));
+    expect(months).toEqual([
+      "1 de ene", "1 de feb", "1 de mar", "1 de abr", "1 de may", "1 de jun",
+      "1 de jul", "1 de ago", "1 de sept", "1 de oct", "1 de nov", "1 de dic",
+    ]);
+    expect(formatShortDate("2026-12-31")).toBe("31 de dic");
+  });
 });
 
 describe("formatLongDate", () => {

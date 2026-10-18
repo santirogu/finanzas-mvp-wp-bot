@@ -242,7 +242,7 @@ scripts/seed.ts                     Categorías por defecto
     - Con la tarjeta que se abre al tocar el nombre del mes: los 12 meses del año, con flechas para
       cambiar de año sin navegar. Marca el mes que se ve, el actual y, con un punto, los que tienen
       movimientos (`listActiveMonths`); los futuros están apagados.
-    - Con "Volver a este mes".
+    - Con "Volver al mes actual".
   - **Se mantiene:** las pestañas y las tarjetas del Resumen llevan el mismo `?mes=`, y al editar,
     borrar o deshacer un movimiento se vuelve a la lista del mes de su fecha.
   - **El formulario** propone el mismo día del mes que se ve (`sameDayIn`): mirando septiembre el 17 de
@@ -252,6 +252,20 @@ scripts/seed.ts                     Categorías por defecto
   - **Comparación con el mes anterior** (`src/modules/transactions/month-comparison.ts`), en las tres
     tarjetas del Resumen: el balance en plata ("$120.000,00 más que agosto") y los ingresos y egresos
     en porcentaje ("15% más que agosto"). No aparece si el mes anterior no tuvo movimientos.
+- **Buscar en la lista del mes de Ingresos y Egresos** (`src/components/searchable-transaction-list.tsx`):
+  - **Cuándo aparece:** desde 6 movimientos en el mes (`SEARCH_FROM`). Con menos se ven todos de un
+    vistazo. Si ya se estaba usando, no desaparece aunque queden menos (al borrar uno mientras se busca).
+  - **Qué busca:** la descripción y la categoría (también "Sin categoría"), al comienzo de una palabra
+    y sin importar mayúsculas, tildes ni espacios de más (`src/modules/transactions/search.ts`, con la
+    misma regla que las sugerencias). "claro" trae "Claro Hogar"; "deu", los de Deudas. La parte que
+    coincide va marcada.
+  - **El título** dice cuántos coinciden de cuántos ("3 de 36 movimientos en septiembre") y cuánto
+    suman. El total grande de arriba sigue siendo el del mes.
+  - **Sin resultados** lo dice, con un botón para borrar la búsqueda. La ✕ y Escape también la borran,
+    y Enter cierra el teclado del celular.
+  - **En el navegador:** filtra los movimientos del mes que ya llegaron (hasta 500), así que no
+    consulta la base ni agrega rutas. La búsqueda no se guarda en la URL: al cambiar de mes o de
+    página vuelve a empezar, y sigue al borrar un movimiento.
 - **Gastos por categoría en el Resumen:** una dona con el total de egresos del mes al centro y, al
   lado o debajo, la lista con el color, el monto y el porcentaje de cada categoría
   (`src/app/(app)/dashboard/category-chart.tsx`).

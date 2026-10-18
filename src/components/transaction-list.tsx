@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { deleteTransactionAction } from "@/modules/transactions/actions";
 import type { TransactionRow } from "@/modules/transactions/queries";
+import { NO_CATEGORY } from "@/modules/transactions/search";
 import { formatShortDate } from "@/lib/dates";
 import { formatMoney } from "@/lib/money";
 
@@ -8,14 +9,32 @@ import { formatMoney } from "@/lib/money";
 const ROW_BUTTON =
   "inline-flex size-11 items-center justify-center rounded-md text-muted transition pointer-fine:size-7";
 
+type Range = { start: number; end: number };
+/** Dónde coincidió la búsqueda en cada movimiento (por id), para marcarlo (src/modules/transactions/search.ts). */
+export type ListMarks = ReadonlyMap<string, { description: Range | null; category: Range | null }>;
+
+/** El texto con la parte que coincidió con la búsqueda marcada (si hay). */
+function Marked({ text, range }: { text: string; range: Range | null | undefined }) {
+  if (!range) return text;
+  return (
+    <>
+      {text.slice(0, range.start)}
+      <mark className="rounded-sm bg-brand/15 text-current">{text.slice(range.start, range.end)}</mark>
+      {text.slice(range.end)}
+    </>
+  );
+}
+
 export function TransactionList({
   items,
   emptyMessage,
   allowDelete = false,
+  marks,
 }: {
   items: TransactionRow[];
   emptyMessage: string;
   allowDelete?: boolean;
+  marks?: ListMarks;
 }) {
   if (items.length === 0) {
     return <p className="px-4 py-10 text-center text-sm text-muted">{emptyMessage}</p>;
@@ -37,7 +56,9 @@ export function TransactionList({
             <div
               className={`grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 ${allowDelete ? "sm:grid-cols-[minmax(0,1fr)_auto_auto]" : ""}`}
             >
-              <p className="truncate text-sm font-medium">{t.description}</p>
+              <p className="truncate text-sm font-medium">
+                <Marked text={t.description} range={marks?.get(t.id)?.description} />
+              </p>
               <span
                 className={`col-start-2 row-start-1 whitespace-nowrap text-right text-sm font-semibold tabular-nums sm:row-span-2 ${isIncome ? "text-income" : "text-expense"}`}
               >
@@ -45,7 +66,7 @@ export function TransactionList({
                 {formatMoney(t.amount, t.currency)}
               </span>
               <p className={`truncate text-xs text-muted ${allowDelete ? "" : "col-span-2 sm:col-span-1"}`}>
-                {formatShortDate(t.occurredOn)} · {t.categoryName ?? "Sin categoría"}
+                {formatShortDate(t.occurredOn)} · <Marked text={t.categoryName ?? NO_CATEGORY} range={marks?.get(t.id)?.category} />
                 {t.source === "whatsapp" && " · vía WhatsApp"}
               </p>
               {allowDelete && (

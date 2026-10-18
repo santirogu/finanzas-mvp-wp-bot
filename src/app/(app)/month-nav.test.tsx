@@ -15,22 +15,22 @@ const shownYear = () => within(card()).getByText(/^\d{4}$/).textContent;
 const month = (name: string | RegExp) => within(card()).getByRole("link", { name });
 
 describe("MonthNav", () => {
-  it("las flechas llevan al mes anterior y al siguiente, y 'Volver a este mes' al actual", () => {
+  it("las flechas llevan al mes anterior y al siguiente, y 'Volver al mes actual' al de hoy", () => {
     render(<MonthNav nav={SEPTEMBER} />);
     expect(screen.getByRole("link", { name: "Mes anterior: agosto de 2026" })).toHaveAttribute(
       "href",
       "/egresos?mes=2026-08",
     );
     expect(screen.getByRole("link", { name: "Mes siguiente: octubre de 2026" })).toHaveAttribute("href", "/egresos");
-    expect(screen.getByRole("link", { name: "Volver a este mes" })).toHaveAttribute("href", "/egresos");
+    expect(screen.getByRole("link", { name: "Volver al mes actual" })).toHaveAttribute("href", "/egresos");
   });
 
-  it("en el mes actual, la flecha siguiente está apagada y no hay 'Volver a este mes'", () => {
+  it("en el mes actual, la flecha siguiente está apagada y no hay 'Volver al mes actual'", () => {
     render(<MonthNav nav={monthNav("/egresos", OCTOBER, OCTOBER, [])} />);
     const next = screen.getByRole("link", { name: "Mes siguiente" });
     expect(next).toHaveAttribute("aria-disabled", "true");
     expect(next).not.toHaveAttribute("href");
-    expect(screen.queryByRole("link", { name: "Volver a este mes" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Volver al mes actual" })).toBeNull();
     // La anterior sí: lleva a septiembre aunque no haya movimientos.
     expect(screen.getByRole("link", { name: "Mes anterior: septiembre de 2026" })).toHaveAttribute(
       "href",

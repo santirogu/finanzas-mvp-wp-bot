@@ -129,6 +129,27 @@ export const VISTAS: Vista[] = [
       await expect(visible(page.getByRole("listbox", { name: "Descripciones que ya usaste" }))).toBeVisible();
     },
   },
+  {
+    id: "egresos-buscar",
+    titulo: "Egresos: buscando en la lista del mes (con lo que coincide marcado)",
+    persona: "datos",
+    ruta: fija("/egresos"),
+    preparar: async (page) => {
+      // "ta": "Taxi al aeropuerto" (al comienzo) y "Pago de la tarjeta de crédito" (a mitad del texto).
+      await visible(page.getByRole("searchbox", { name: "Buscar egresos" })).fill("ta");
+      await expect(visible(page.getByRole("heading", { name: /^2 de \d+ movimientos/ }))).toBeVisible();
+    },
+  },
+  {
+    id: "egresos-buscar-sin-resultados",
+    titulo: "Egresos: una búsqueda sin resultados",
+    persona: "datos",
+    ruta: fija("/egresos"),
+    preparar: async (page) => {
+      await visible(page.getByRole("searchbox", { name: "Buscar egresos" })).fill("zzz");
+      await expect(visible(page.getByText(/^Ningún egreso coincide/))).toBeVisible();
+    },
+  },
   // El aviso verde que pide la URL después de guardar cambios (?aviso=guardado); dura 4 segundos.
   { id: "egresos-guardado", titulo: "Egresos: aviso emergente verde (Cambios guardados)", persona: "datos", ruta: fija("/egresos?aviso=guardado") },
   { id: "resumen-mes-anterior", titulo: "Resumen del mes anterior", persona: "datos", ruta: fija(`/dashboard?mes=${MES_ANTERIOR}`) },
