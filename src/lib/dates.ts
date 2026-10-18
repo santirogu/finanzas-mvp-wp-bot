@@ -96,12 +96,17 @@ export function compareMonths(a: Month, b: Month): number {
   return a.year * 12 + a.month - (b.year * 12 + b.month);
 }
 
-/** "2026-10-13" → "13 de oct" */
+/**
+ * Los meses cortos de las listas. Escritos aquí y no con Intl: cada motor abrevia distinto (Node y
+ * Chrome dicen "sept"; Safari, "sep."), y la lista de Ingresos y Egresos se dibuja en el servidor y
+ * también en el navegador (el buscador): si no dicen lo mismo, React da un error de hidratación.
+ */
+const SHORT_MONTHS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sept", "oct", "nov", "dic"];
+
+/** "2026-10-13" → "13 de oct" (igual en el servidor y en cualquier navegador). */
 export function formatShortDate(isoDate: string): string {
-  const [y, m, d] = isoDate.split("-").map(Number);
-  return new Intl.DateTimeFormat("es-CO", { day: "numeric", month: "short", timeZone: "UTC" })
-    .format(new Date(Date.UTC(y, m - 1, d)))
-    .replace(".", "");
+  const [, m, d] = isoDate.split("-").map(Number);
+  return `${d} de ${SHORT_MONTHS[m - 1]}`;
 }
 
 /** "2026-10-13" → "martes 13 de octubre de 2026" */

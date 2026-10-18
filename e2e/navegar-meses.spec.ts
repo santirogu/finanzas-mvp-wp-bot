@@ -13,7 +13,7 @@ import { seriousViolations } from "./admin";
 import { addTransaction, openTab, register, test, toast, visible } from "./helpers";
 
 // El Resumen, Ingresos y Egresos muestran el mes que pide la URL (?mes=2026-09): con las flechas, la
-// tarjeta del año o "Volver a este mes". Las fechas salen de hoy en Bogotá (la zona de las cuentas nuevas).
+// tarjeta del año o "Volver al mes actual". Las fechas salen de hoy en Bogotá (la zona de las cuentas nuevas).
 
 const today = todayInTimezone("America/Bogota");
 const current = monthOf(today);
@@ -67,12 +67,12 @@ test("ver otros meses en el Resumen, Ingresos y Egresos @principal", async ({ pa
     await expect(card(page, "Balance del mes")).toContainText(`$2.075.000,00 menos que ${before}`);
     await expect(card(page, "Ingresos")).toContainText(`100% menos que ${before}`);
     await expect(card(page, "Egresos")).toContainText(`15% más que ${before}`);
-    // En el mes actual, la flecha siguiente está apagada y no hace falta "Volver a este mes".
+    // En el mes actual, la flecha siguiente está apagada y no hace falta "Volver al mes actual".
     await expect(visible(page.getByRole("link", { name: "Mes siguiente", exact: true }))).toHaveAttribute(
       "aria-disabled",
       "true",
     );
-    await expect(page.getByRole("link", { name: "Volver a este mes" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Volver al mes actual" })).toHaveCount(0);
   });
 
   await test.step("la flecha lleva al mes anterior, con sus movimientos y su comparación", async () => {
@@ -137,8 +137,8 @@ test("ver otros meses en el Resumen, Ingresos y Egresos @principal", async ({ pa
     await expectMonth(page, before, "/egresos");
   });
 
-  await test.step("'Volver a este mes' vuelve al actual, y la fecha vuelve a ser hoy", async () => {
-    await visible(page.getByRole("link", { name: "Volver a este mes" })).click();
+  await test.step("'Volver al mes actual' lleva a este mes, y la fecha vuelve a ser hoy", async () => {
+    await visible(page.getByRole("link", { name: "Volver al mes actual" })).click();
     await expectMonth(page, current, "/egresos");
     await expect(row(page, "Mercado de hoy")).toBeVisible();
     await expect(visible(page.getByLabel("Fecha"))).toHaveValue(today);
@@ -150,7 +150,7 @@ test("un mes futuro o inválido en la URL muestra el actual; sin movimientos, la
   for (const mes of [monthParam(shiftMonth(current, 1)), "2026-13", "septiembre"]) {
     await page.goto(`/dashboard?mes=${mes}`);
     await expect(visible(page.getByRole("heading", { level: 1 }))).toHaveText(formatMonthLabel(current));
-    await expect(page.getByRole("link", { name: "Volver a este mes" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Volver al mes actual" })).toHaveCount(0);
   }
   // Sin movimientos, la flecha anterior igual lleva al mes anterior.
   await expect(

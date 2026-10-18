@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MAX_SHOWN_SUGGESTIONS, matchSuggestions, searchKey } from "./suggestions";
+import { MAX_SHOWN_SUGGESTIONS, matchSuggestions, searchKey, wordStartMatch } from "./suggestions";
 
 const items = (...descriptions: string[]) => descriptions.map((description) => ({ description }));
 const found = (typed: string, list: { description: string }[]) => matchSuggestions(typed, list).map((m) => m.item.description);
@@ -9,6 +9,18 @@ describe("searchKey", () => {
     expect(searchKey("  Café   con LECHE ")).toBe("cafe con leche");
     expect(searchKey("Ñandú")).toBe("nandu");
     expect(searchKey("café")).toBe("cafe");
+  });
+});
+
+describe("wordStartMatch", () => {
+  it("dónde está, en posiciones del texto original", () => {
+    expect(wordStartMatch("Varios arriendos", "ar")).toEqual({ start: 7, end: 9 });
+    expect(wordStartMatch("Café Áki", "aki")).toEqual({ start: 5, end: 8 });
+  });
+
+  it("a mitad de palabra, o sin nada buscado, no hay coincidencia (no se marca nada)", () => {
+    expect(wordStartMatch("hipotecario", "ari")).toBeNull();
+    expect(wordStartMatch("Claro", "")).toBeNull();
   });
 });
 

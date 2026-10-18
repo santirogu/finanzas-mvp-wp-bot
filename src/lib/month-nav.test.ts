@@ -47,7 +47,7 @@ describe("inMonthPhrase", () => {
 describe("monthNav", () => {
   const active = ["2026-10", "2026-08", "2026-07"];
 
-  it("en el mes actual: sin flecha siguiente ni 'Volver a este mes'", () => {
+  it("en el mes actual: sin flecha siguiente ni 'Volver al mes actual'", () => {
     expect(monthNav("/dashboard", october, october, active)).toEqual({
       path: "/dashboard",
       label: "Octubre de 2026",
@@ -60,7 +60,7 @@ describe("monthNav", () => {
     });
   });
 
-  it("en uno anterior: las dos flechas y 'Volver a este mes'", () => {
+  it("en uno anterior: las dos flechas y 'Volver al mes actual'", () => {
     expect(monthNav("/egresos", september, october, active)).toMatchObject({
       label: "Septiembre de 2026",
       selected: { year: 2026, month: 9 },

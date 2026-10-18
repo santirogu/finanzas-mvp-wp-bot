@@ -19,6 +19,31 @@ export type SuggestionMatch<T> = { item: T; start: number; end: number };
 const startsWord = (letters: string, at: number) => at === 0 || /[^\p{L}\p{N}]/u.test(letters[at - 1]);
 
 /**
+ * Dónde está lo buscado (ya pasado por `searchKey`) en un texto, la primera vez que aparece al
+ * comienzo de una palabra ("ar" en "Varios arriendos": la segunda), en posiciones del texto original
+ * (para marcarlo con sus tildes). null si no está, o si solo está a mitad de palabra ("ari" en
+ * "hipotecario").
+ */
+export function wordStartMatch(text: string, query: string): { start: number; end: number } | null {
+  if (!query) return null;
+  // Letra por letra, recordando de dónde salió cada una: así la coincidencia se marca en el texto
+  // original, con sus tildes (aunque una venga como letra + acento, al pegarla de otro lado).
+  let letters = "";
+  const from: number[] = [];
+  let index = 0;
+  for (const char of text) {
+    const letter = plain(char);
+    for (let k = 0; k < letter.length; k++) from.push(index);
+    letters += letter;
+    index += char.length;
+  }
+  from.push(text.length);
+  let at = letters.indexOf(query);
+  while (at >= 0 && !startsWord(letters, at)) at = letters.indexOf(query, at + 1);
+  return at < 0 ? null : { start: from[at], end: from[at + query.length] };
+}
+
+/**
  * Las sugerencias que coinciden con lo escrito al comienzo de una palabra: primero las que empiezan
  * igual, después las que tienen otra palabra que empieza igual; en cada grupo, en el orden en que
  * llegaron (las más usadas primero). A mitad de palabra no cuenta ("ari" no trae "hipotecario"). La
@@ -29,28 +54,14 @@ export function matchSuggestions<T extends { description: string }>(
   items: readonly T[],
   limit = MAX_SHOWN_SUGGESTIONS,
 ): SuggestionMatch<T>[] {
+  // Sin nada escrito, wordStartMatch no encuentra nada: ninguna sugerencia.
   const query = searchKey(typed);
-  if (!query) return [];
   const groups: SuggestionMatch<T>[][] = [[], []];
   for (const item of items) {
     if (searchKey(item.description) === query) continue;
-    // Letra por letra, recordando de dónde salió cada una: así la coincidencia se marca en el texto
-    // original, con sus tildes (aunque una venga como letra + acento, al pegarla de otro lado).
-    let letters = "";
-    const from: number[] = [];
-    let index = 0;
-    for (const char of item.description) {
-      const letter = plain(char);
-      for (let k = 0; k < letter.length; k++) from.push(index);
-      letters += letter;
-      index += char.length;
-    }
-    from.push(item.description.length);
-    // La primera vez que aparece al comienzo de una palabra ("ar" en "Varios arriendos": la segunda).
-    let at = letters.indexOf(query);
-    while (at >= 0 && !startsWord(letters, at)) at = letters.indexOf(query, at + 1);
-    if (at < 0) continue;
-    groups[at === 0 ? 0 : 1].push({ item, start: from[at], end: from[at + query.length] });
+    const match = wordStartMatch(item.description, query);
+    if (!match) continue;
+    groups[match.start === 0 ? 0 : 1].push({ item, ...match });
   }
   return groups.flat().slice(0, limit);
 }

@@ -152,7 +152,7 @@ export function MonthNav({ nav, heading = false }: { nav: MonthNavData; heading?
           href={nav.backToCurrent}
           className={`inline-flex min-h-11 items-center rounded-lg px-2 text-sm font-medium text-brand hover:bg-brand/10 pointer-fine:min-h-8 ${heading ? "sm:ml-auto" : ""}`}
         >
-          Volver a este mes
+          Volver al mes actual
         </Link>
       )}
     </div>
