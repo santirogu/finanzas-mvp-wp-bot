@@ -73,6 +73,26 @@ export const transaction = pgTable(
   ],
 );
 
+// Los gastos fijos marcados a mano en Reportes (src/modules/reports/fixed-choices.ts): "include" suma uno
+// que el detector todavía no ve (lleva pocos meses) y "exclude" quita uno que detectó por error. La clave
+// es la descripción como la agrupa el detector: sin mayúsculas, tildes ni espacios de más (searchKey).
+// Se borra con la cuenta (cascada).
+export const fixedExpenseChoiceKind = pgEnum("fixed_expense_choice_kind", ["include", "exclude"]);
+
+export const fixedExpenseChoice = pgTable(
+  "fixed_expense_choice",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    descriptionKey: text("description_key").notNull(),
+    choice: fixedExpenseChoiceKind("choice").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("fixed_expense_choice_user_key_uq").on(t.userId, t.descriptionKey)],
+);
+
 export type Category = typeof category.$inferSelect;
 export type Transaction = typeof transaction.$inferSelect;
 export type TransactionType = (typeof transactionType.enumValues)[number];

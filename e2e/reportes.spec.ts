@@ -123,6 +123,41 @@ test("Reportes: las cifras del período, el gráfico, las categorías y los gast
     await expect(section(page, "Los gastos más grandes")).toBeVisible();
   });
 
+  await test.step("los gastos fijos a mano: quitar, volver a poner, agregar y sacar", async () => {
+    const fixed = section(page, "Gastos fijos");
+    const biggest = section(page, "Los gastos más grandes");
+    // Quitar el arriendo (detectado): pasa a "Quitados" y ahora está entre los más grandes.
+    await fixed.getByRole("button", { name: "Quitar arriendo de los gastos fijos" }).click();
+    await expect(toast(page, "Se quitó «arriendo» de los gastos fijos")).toHaveAttribute("data-tone", "removal");
+    await expect(fixed).toContainText("Todavía no hay egresos que se repitan cada mes.");
+    await expect(biggest).toContainText("arriendo");
+    await fixed.getByText("Quitados (1)").click();
+    await fixed.getByRole("button", { name: "Volver a poner arriendo en los gastos fijos" }).click();
+    await expect(toast(page, "Volvió «arriendo» a los gastos fijos")).toHaveAttribute("data-tone", "success");
+    await expect(fixed.getByRole("listitem")).toHaveCount(1);
+    await closeToasts(page);
+
+    // Agregar el restaurante (lleva un solo mes): queda "Agregado por ti" y sale de los más grandes.
+    await fixed.getByRole("button", { name: "Agregar un gasto fijo" }).click();
+    const select = fixed.getByLabel("Egreso", { exact: true });
+    await expect(select).toBeFocused();
+    expect(await seriousViolations(page)).toEqual([]);
+    await select.selectOption({ label: "🍽️ Restaurante con amigos" });
+    await fixed.getByRole("button", { name: "Agregar", exact: true }).click();
+    await expect(toast(page, "Se agregó «Restaurante con amigos» a los gastos fijos")).toHaveAttribute("data-tone", "success");
+    await expect(fixed.getByRole("listitem").filter({ hasText: "Restaurante con amigos" })).toContainText("Agregado por ti");
+    await expect(biggest).toContainText("Todos los egresos del período son gastos fijos.");
+    await closeToasts(page);
+
+    // Sacarlo: vuelve a ser un gasto más (sin pasar por "Quitados").
+    await fixed.getByRole("button", { name: "Quitar Restaurante con amigos de los gastos fijos" }).click();
+    await expect(toast(page, "Se quitó «Restaurante con amigos» de los gastos fijos")).toBeVisible();
+    await expect(fixed.getByRole("listitem")).toHaveCount(1);
+    await expect(fixed.getByText(/^Quitados/)).toHaveCount(0);
+    await expect(biggest).toContainText("Restaurante con amigos");
+    await closeToasts(page);
+  });
+
   await test.step("la tabla mes a mes y, al tocar un mes del gráfico, su Resumen", async () => {
     const byMonth = section(page, "Ingresos y egresos por mes");
     await byMonth.getByText("Ver mes a mes").click();

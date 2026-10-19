@@ -7,6 +7,7 @@ import { listActiveMonths } from "@/modules/transactions/queries";
 import { BIGGEST_CANDIDATES, biggestExpenses, type ExpenseRow } from "./biggest";
 import { AVERAGE_MONTHS, type CategoryMonthTotal, categoryReport } from "./categories";
 import type { CsvMovement } from "./csv";
+import { getFixedChoices } from "./fixed-choices";
 import type { ReportPeriod } from "./period";
 import { type DescriptionMonthTotal, recurringExpenses, recurringFrom } from "./recurring";
 import { monthSeries, type MonthTotals, periodSummary } from "./summary";
@@ -127,14 +128,16 @@ export async function getReport(userId: string, period: ReportPeriod, current: M
   // Las categorías se comparan con los meses anteriores (pueden quedar fuera del período) y los gastos
   // fijos se buscan en los últimos meses (en un año que recién empieza, también los del anterior).
   const categoriesFrom = shiftMonth(last, -(AVERAGE_MONTHS + 1));
-  const [activeMonths, monthly, categories, descriptions, largest] = await Promise.all([
+  const [activeMonths, monthly, categories, descriptions, largest, choices] = await Promise.all([
     listActiveMonths(userId),
     getMonthlyTotals(userId, first, last),
     getCategoryMonthlyTotals(userId, compareMonths(categoriesFrom, first) < 0 ? categoriesFrom : first, last),
     getExpenseDescriptionsByMonth(userId, recurringFrom(period.months), last),
     getLargestExpenses(userId, first, last),
+    getFixedChoices(userId),
   ]);
-  const recurring = recurringExpenses(descriptions, period.months);
+  // Los gastos fijos, con lo que la persona agregó o quitó a mano.
+  const recurring = recurringExpenses(descriptions, period.months, choices);
   const series = monthSeries(period.months, monthly);
   // listActiveMonths va del más reciente al más antiguo.
   const firstActive = activeMonths.length > 0 ? monthOf(`${activeMonths[activeMonths.length - 1]}-01`) : null;

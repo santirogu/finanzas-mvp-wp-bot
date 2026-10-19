@@ -216,6 +216,18 @@ export const VISTAS: Vista[] = [
   { id: "egresos-extremo", titulo: "Egresos: 25 movimientos y textos máximos", persona: "admin", ruta: fija("/egresos") },
   { id: "reportes-extremo", titulo: "Reportes con textos y montos máximos", persona: "admin", ruta: fija("/reportes") },
   {
+    id: "reportes-fijos-agregar",
+    titulo: "Reportes: agregar un gasto fijo (el selector de egresos abierto)",
+    persona: "datos",
+    ruta: fija("/reportes"),
+    preparar: async (page) => {
+      const fijos = visible(page.getByRole("region", { name: "Gastos fijos" }));
+      await fijos.getByRole("button", { name: "Agregar un gasto fijo" }).click();
+      await expect(fijos.getByLabel("Egreso", { exact: true })).toBeFocused();
+      await fijos.scrollIntoViewIfNeeded();
+    },
+  },
+  {
     id: "reportes-descargas",
     titulo: "Reportes: la lista de descargas abierta (CSV, y PDF con Pronto)",
     persona: "datos",

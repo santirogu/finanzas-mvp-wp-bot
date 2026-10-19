@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { type DescriptionMonthTotal, recurringExpenses, recurringFrom } from "./recurring";
+import { type DescriptionMonthTotal, type FixedChoices, recurringExpenses, recurringFrom } from "./recurring";
 
 const m = (month: number, year = 2026) => ({ year, month });
 const months = (from: number, to: number, year = 2026) => Array.from({ length: to - from + 1 }, (_, i) => m(from + i, year));
@@ -58,7 +58,7 @@ describe("recurringExpenses", () => {
       ],
       twelve,
     );
-    expect(report.items).toEqual([{ description: "Claro hogar", emoji: "🏠", amount: 125749.5, months: 10 }]);
+    expect(report.items).toEqual([{ key: "claro hogar", description: "Claro hogar", emoji: "🏠", amount: 125749.5, months: 10, origin: "auto" }]);
   });
 
   it("aunque la base devuelva los meses en otro orden, el monto es el del último", () => {
@@ -75,7 +75,9 @@ describe("recurringExpenses", () => {
       ],
       twelve,
     );
-    expect(report.items).toEqual([{ description: "ADMINISTRACIÓN  CÍVICA ", emoji: "💡", amount: 315600, months: 3 }]);
+    expect(report.items).toEqual([
+      { key: "administracion civica", description: "ADMINISTRACIÓN  CÍVICA ", emoji: "💡", amount: 315600, months: 3, origin: "auto" },
+    ]);
   });
 
   it("dos escrituras en un mismo mes se juntan (se suman), con la del último movimiento", () => {
@@ -88,7 +90,7 @@ describe("recurringExpenses", () => {
       ],
       twelve,
     );
-    expect(report.items).toEqual([{ description: "Suscripción", emoji: "🎵", amount: 44900, months: 3 }]);
+    expect(report.items).toEqual([{ key: "suscripcion", description: "Suscripción", emoji: "🎵", amount: 44900, months: 3, origin: "auto" }]);
   });
 
   it("las escrituras que se juntan suman sus veces: 2 y 1 en un mes son 3, y ya no es fijo", () => {
@@ -150,15 +152,89 @@ describe("recurringExpenses", () => {
       [row("2025-11", "Arriendo", 1800000), row("2025-12", "Arriendo", 1800000), row("2026-01", "Arriendo", 1800000)],
       months(1, 2),
     );
-    expect(report.items).toEqual([{ description: "Arriendo", emoji: "🏠", amount: 1800000, months: 1 }]);
+    expect(report.items).toEqual([{ key: "arriendo", description: "Arriendo", emoji: "🏠", amount: 1800000, months: 1, origin: "auto" }]);
   });
 
   it("sin egresos, nada (y el total en cero)", () => {
-    expect(recurringExpenses([], twelve)).toEqual({ items: [], total: 0 });
+    expect(recurringExpenses([], twelve)).toEqual({ items: [], total: 0, removed: [], candidates: [] });
   });
 
   it("el total suma en centavos exactos", () => {
     const report = recurringExpenses([...every("A", 0.1, 8, 9, 10), ...every("B", 0.2, 8, 9, 10)], twelve);
     expect(report.total).toBe(0.3);
+  });
+});
+
+describe("recurringExpenses · lo que marca la persona", () => {
+  const choices = (include: string[] = [], exclude: string[] = []): FixedChoices => ({ include: new Set(include), exclude: new Set(exclude) });
+  const rows = [
+    ...every("Arriendo", 1800000, 7, 8, 9, 10),
+    ...every("Netflix", 44900, 8, 9, 10),
+    row("2026-03", "Seguro del carro", 950000, { emoji: "🛡️" }),
+    row("2026-10", "Seguro del carro", 960000, { emoji: "🛡️" }),
+    row("2026-10", "Almuerzo", 45000, { count: 3, emoji: "🍽️" }),
+    row("2026-09", "Mercado", 600000, { emoji: "🛒" }),
+  ];
+
+  it("sin marcas, los detectados son automáticos y los demás egresos del período se pueden agregar", () => {
+    const report = recurringExpenses(rows, twelve);
+    expect(report.items.map((i) => [i.key, i.origin])).toEqual([
+      ["arriendo", "auto"],
+      ["netflix", "auto"],
+    ]);
+    expect(report.candidates).toEqual([
+      { key: "almuerzo", description: "Almuerzo", emoji: "🍽️" },
+      { key: "mercado", description: "Mercado", emoji: "🛒" },
+      { key: "seguro del carro", description: "Seguro del carro", emoji: "🛡️" },
+    ]);
+    expect(report.removed).toEqual([]);
+  });
+
+  it("uno detectado que quitó pasa a quitados (y no suma en el total)", () => {
+    const report = recurringExpenses(rows, twelve, choices([], ["netflix"]));
+    expect(report.items.map((i) => i.key)).toEqual(["arriendo"]);
+    expect(report.removed).toEqual([{ key: "netflix", description: "Netflix", emoji: "🏠" }]);
+    expect(report.total).toBe(1800000);
+    expect(report.candidates.map((c) => c.key)).not.toContain("netflix");
+  });
+
+  it("uno que agregó aparece aunque no se detecte, con el último monto del período y sus meses", () => {
+    const report = recurringExpenses(rows, twelve, choices(["seguro del carro"]));
+    expect(report.items).toContainEqual({
+      key: "seguro del carro",
+      description: "Seguro del carro",
+      emoji: "🛡️",
+      amount: 960000,
+      months: 2,
+      origin: "manual",
+    });
+    expect(report.items.map((i) => i.key)).toEqual(["arriendo", "seguro del carro", "netflix"]);
+    expect(report.total).toBe(2804900);
+    expect(report.candidates.map((c) => c.key)).toEqual(["almuerzo", "mercado"]);
+  });
+
+  it("agregar uno que ya se detecta no cambia nada: sigue automático", () => {
+    expect(recurringExpenses(rows, twelve, choices(["arriendo"])).items[0]).toMatchObject({ key: "arriendo", origin: "auto" });
+  });
+
+  it("quitado y sin detectarse en este período, se puede agregar", () => {
+    const year2026 = months(1, 10);
+    const report = recurringExpenses([row("2026-02", "Netflix", 44900)], year2026, choices([], ["netflix"]));
+    expect(report.removed).toEqual([]);
+    expect(report.candidates.map((c) => c.key)).toEqual(["netflix"]);
+  });
+
+  it("uno agregado sin egresos en el período no aparece (ni para agregar)", () => {
+    const short = months(1, 2);
+    const report = recurringExpenses([row("2025-11", "Seguro", 1), row("2025-12", "Otro", 1)], short, choices(["seguro"]));
+    expect(report.items).toEqual([]);
+    expect(report.candidates).toEqual([]);
+  });
+
+  it("los quitados, en orden alfabético (aunque lleguen en otro)", () => {
+    const unordered = [...every("Netflix", 44900, 8, 9, 10), ...every("Arriendo", 1800000, 7, 8, 9, 10)];
+    const report = recurringExpenses(unordered, twelve, choices([], ["netflix", "arriendo"]));
+    expect(report.removed.map((r) => r.description)).toEqual(["Arriendo", "Netflix"]);
+    expect(report.items).toEqual([]);
   });
 });
