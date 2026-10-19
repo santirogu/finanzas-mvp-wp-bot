@@ -91,11 +91,12 @@ test("Reportes: las cifras del período, el gráfico, las categorías y los gast
     await expect(fixed).toContainText("Son el 98% de tu gasto promedio por mes.");
   });
 
-  await test.step("descargar los movimientos del período en CSV, para Excel", async () => {
-    const [download] = await Promise.all([
-      page.waitForEvent("download"),
-      visible(page.getByRole("link", { name: "Descargar movimientos (CSV)" })).click(),
-    ]);
+  await test.step("descargar los movimientos del período en CSV (el PDF dice Pronto), para Excel", async () => {
+    await visible(page.getByRole("button", { name: "Descargar" })).click();
+    const options = visible(page.getByRole("group", { name: "Opciones de descarga" }));
+    await expect(options.getByText("Reporte (PDF)").locator("..")).toHaveAttribute("aria-disabled", "true");
+    const [download] = await Promise.all([page.waitForEvent("download"), options.getByRole("link", { name: /Movimientos \(CSV\)/ }).click()]);
+    await expect(options).toBeHidden();
     expect(download.suggestedFilename()).toBe(`movimientos-${monthParam(shiftMonth(current, -11))}-a-${monthParam(current)}.csv`);
     const content = readFileSync(await download.path(), "utf8");
     // Con el BOM (Excel lee bien las tildes), ";" y la coma de los centavos.
@@ -181,7 +182,7 @@ test("Reportes sin movimientos lo explica", async ({ page }) => {
   await openTab(page, "Reportes");
   await expect(visible(page.getByText("Aún no tienes movimientos."))).toBeVisible();
   // Sin movimientos no hay nada que descargar.
-  await expect(visible(page.getByRole("link", { name: "Descargar movimientos (CSV)" }))).toHaveCount(0);
+  await expect(visible(page.getByRole("button", { name: "Descargar" }))).toHaveCount(0);
   await expect(visible(page.getByRole("navigation", { name: "Período" }).getByRole("link"))).toHaveCount(1);
   await expect(visible(page.getByRole("region", { name: "Gastos fijos" }))).toHaveCount(0);
 });
@@ -208,6 +209,10 @@ for (const colorScheme of ["light", "dark"] as const) {
     await visible(page.getByText("Ver mes a mes")).click();
     // Con el mouse en un mes: el detalle de abajo, en sus colores.
     await visible(page.getByRole("link", { name: new RegExp(`^${formatMonthLabel(m1)}:`) })).hover();
+    expect(await seriousViolations(page)).toEqual([]);
+    // Y con la lista de descargas abierta (el "Pronto" del PDF, apagado, también se lee).
+    await visible(page.getByRole("button", { name: "Descargar" })).click();
+    await expect(visible(page.getByRole("group", { name: "Opciones de descarga" }))).toBeVisible();
     expect(await seriousViolations(page)).toEqual([]);
   });
 }
