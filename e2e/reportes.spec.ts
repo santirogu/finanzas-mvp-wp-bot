@@ -1,6 +1,8 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page } from "@playwright/test";
-import { formatMonthLabel, formatMonthName, type Month, monthOf, monthParam, shiftMonth, todayInTimezone } from "../src/lib/dates";
+import postgres from "postgres";
+import { formatMonthLabel, formatMonthName, formatShortDate, type Month, monthOf, monthParam, shiftMonth, todayInTimezone } from "../src/lib/dates";
+import { e2eDatabaseUrl } from "./database-url";
 import { addTransaction, closeToasts, openTab, register, test, toast, visible } from "./helpers";
 
 // Reportes de punta a punta: con los movimientos de cuatro meses, las cifras del período, el gráfico
@@ -88,6 +90,20 @@ test("Reportes: las cifras del período, el gráfico, las categorías y los gast
     await expect(fixed).toContainText("Son el 98% de tu gasto promedio por mes.");
   });
 
+  await test.step("los gastos más grandes, sin el arriendo (es fijo); tocar uno lleva a editarlo", async () => {
+    const biggest = section(page, "Los gastos más grandes");
+    const items = biggest.getByRole("listitem");
+    await expect(items).toHaveCount(1);
+    const date = formatShortDate(dayOf(m1, 10), { withYear: m1.year !== current.year });
+    await expect(items.first()).toContainText(`Restaurante con amigos${date} · Alimentación−$100.000,00`);
+    await items.first().getByRole("link", { name: /^Editar .*Restaurante con amigos/ }).click();
+    await expect(visible(page.getByRole("heading", { name: "Editar movimiento" }))).toBeVisible();
+    await expect(visible(page.getByLabel("Descripción"))).toHaveValue("Restaurante con amigos");
+    await page.goBack();
+    await expect(page).toHaveURL(/\/reportes$/);
+    await expect(section(page, "Los gastos más grandes")).toBeVisible();
+  });
+
   await test.step("la tabla mes a mes y, al tocar un mes del gráfico, su Resumen", async () => {
     const byMonth = section(page, "Ingresos y egresos por mes");
     await byMonth.getByText("Ver mes a mes").click();
@@ -118,6 +134,28 @@ test("Reportes: las cifras del período, el gráfico, las categorías y los gast
     const range = current.month === 1 ? formatMonthLabel(current) : `De enero a ${formatMonthName(current, { withYear: true })}`;
     await expect(visible(page.getByText(range, { exact: true }))).toBeVisible();
   });
+});
+
+test("con más de 10 gastos, los demás se abren con «Ver los N siguientes»", async ({ page }) => {
+  const { email } = await register(page);
+  // 13 egresos distintos de hoy, cargados en la base de las E2E (por la app serían 13 registros).
+  const sql = postgres(e2eDatabaseUrl(), { max: 1, onnotice: () => {} });
+  const [{ id }] = await sql<{ id: string }[]>`select id from "user" where email = ${email}`;
+  for (let i = 1; i <= 13; i++) {
+    await sql`insert into transaction (user_id, type, amount, description, occurred_on)
+              values (${id}, 'expense', ${i * 1000}, ${`Gasto número ${i}`}, ${todayInTimezone("America/Bogota")})`;
+  }
+  await sql.end();
+
+  await openTab(page, "Reportes");
+  const biggest = section(page, "Los gastos más grandes");
+  const links = biggest.getByRole("link", { name: /^Editar / });
+  await expect(visible(links)).toHaveCount(10);
+  await expect(visible(links).first()).toContainText("Gasto número 13");
+  await biggest.getByText("Ver los 3 siguientes").click();
+  await expect(visible(links)).toHaveCount(13);
+  await expect(visible(links).last()).toContainText("Gasto número 1");
+  await expect(visible(links).last()).toContainText("Sin categoría");
 });
 
 test("Reportes sin movimientos lo explica", async ({ page }) => {

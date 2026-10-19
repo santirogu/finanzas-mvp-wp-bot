@@ -103,10 +103,13 @@ export function compareMonths(a: Month, b: Month): number {
  */
 const SHORT_MONTHS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sept", "oct", "nov", "dic"];
 
-/** "2026-10-13" → "13 de oct" (igual en el servidor y en cualquier navegador). */
-export function formatShortDate(isoDate: string): string {
-  const [, m, d] = isoDate.split("-").map(Number);
-  return `${d} de ${SHORT_MONTHS[m - 1]}`;
+/**
+ * "2026-10-13" → "13 de oct" (igual en el servidor y en cualquier navegador). Con el año, "13 de oct de
+ * 2026": para una lista de varios meses (los gastos más grandes de Reportes).
+ */
+export function formatShortDate(isoDate: string, { withYear = false } = {}): string {
+  const [y, m, d] = isoDate.split("-").map(Number);
+  return `${d} de ${SHORT_MONTHS[m - 1]}${withYear ? ` de ${y}` : ""}`;
 }
 
 /** Septiembre → "sept" (igual en el servidor y en cualquier navegador): debajo de cada barra de Reportes. */

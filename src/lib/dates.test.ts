@@ -131,6 +131,11 @@ describe("formatShortDate", () => {
     ]);
     expect(formatShortDate("2026-12-31")).toBe("31 de dic");
   });
+
+  it("con el año, si se pide", () => {
+    expect(formatShortDate("2025-12-28", { withYear: true })).toBe("28 de dic de 2025");
+    expect(formatShortDate("2025-12-28", { withYear: false })).toBe("28 de dic");
+  });
 });
 
 describe("formatShortMonth", () => {

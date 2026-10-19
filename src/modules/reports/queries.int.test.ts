@@ -4,7 +4,7 @@ import { transaction } from "@/db/schema";
 import { listCategories } from "@/modules/transactions/queries";
 import { createUser } from "../../../test/integration/factories";
 import { reportPeriod } from "./period";
-import { getCategoryMonthlyTotals, getExpenseDescriptionsByMonth, getMonthlyTotals, getReport } from "./queries";
+import { getCategoryMonthlyTotals, getExpenseDescriptionsByMonth, getLargestExpenses, getMonthlyTotals, getReport } from "./queries";
 
 const m = (month: number, year = 2026) => ({ year, month });
 const october = m(10);
@@ -86,6 +86,31 @@ describe("getExpenseDescriptionsByMonth", () => {
   });
 });
 
+describe("getLargestExpenses", () => {
+  it("los egresos del período, del más alto al más bajo (si empatan, el más reciente), con su categoría", async () => {
+    const user = await createUser();
+    const other = await createUser();
+    const mercado = await globalCategory("Mercado");
+    await addTx({ userId: user.id, description: "Mercado", categoryId: mercado.id, amount: 300, occurredOn: "2026-09-10" });
+    await addTx({ userId: user.id, description: "Cine", amount: 900, occurredOn: "2026-10-01" });
+    await addTx({ userId: user.id, description: "Taxi", amount: 300, occurredOn: "2026-10-12" });
+    // Fuera del período, ingresos, eliminados y de otra cuenta: no.
+    await addTx({ userId: user.id, description: "Viejo", amount: 5000, occurredOn: "2026-08-31" });
+    await addTx({ userId: user.id, description: "Salario", type: "income", amount: 9000, occurredOn: "2026-10-02" });
+    await addTx({ userId: user.id, description: "Borrado", amount: 8000, occurredOn: "2026-10-03", deletedAt: new Date() });
+    await addTx({ userId: other.id, description: "Ajeno", amount: 7000, occurredOn: "2026-10-04" });
+
+    const rows = await getLargestExpenses(user.id, m(9), october);
+    expect(rows.map((r) => [r.description, r.amount, r.occurredOn])).toEqual([
+      ["Cine", 900, "2026-10-01"],
+      ["Taxi", 300, "2026-10-12"],
+      ["Mercado", 300, "2026-09-10"],
+    ]);
+    expect(rows[2]).toMatchObject({ categoryName: "Mercado", categoryEmoji: mercado.emoji });
+    expect(rows[0]).toMatchObject({ categoryName: null, categoryEmoji: null });
+  });
+});
+
 describe("getReport", () => {
   it("arma todo el período: los meses, las cifras, las categorías y los gastos fijos", async () => {
     const user = await createUser();
@@ -120,6 +145,8 @@ describe("getReport", () => {
       items: [{ description: "Arriendo", emoji: vivienda.emoji, amount: 1800000, months: 4 }],
       total: 1800000,
     });
+    // El arriendo es fijo: no está entre los más grandes.
+    expect(report.biggest.map((r) => [r.description, r.amount])).toEqual([["Mercado del mes", 600000]]);
   });
 
   it("solo con los movimientos propios: los de otra cuenta no aparecen en nada", async () => {
@@ -135,6 +162,7 @@ describe("getReport", () => {
     expect(report.summary).toMatchObject({ income: 0, expense: 1000 });
     expect(report.categories.rows.map((r) => r.total)).toEqual([1000]);
     expect(report.recurring.items).toEqual([]);
+    expect(report.biggest.map((r) => r.description)).toEqual(["Mercado"]);
   });
 
   it("sin movimientos, todo en cero", async () => {
@@ -145,6 +173,7 @@ describe("getReport", () => {
     expect(report.summary).toMatchObject({ income: 0, expense: 0, balance: 0, saved: null, averageExpense: null, topMonth: null });
     expect(report.categories.rows).toEqual([]);
     expect(report.recurring).toEqual({ items: [], total: 0 });
+    expect(report.biggest).toEqual([]);
   });
 
   it("las categorías se comparan con meses de antes del período (un año que recién empieza)", async () => {
