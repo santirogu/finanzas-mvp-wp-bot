@@ -14,13 +14,14 @@ export type BotCommand =
   | { kind: "command"; command: "undo" | "help" }
   | { kind: "link"; code: string };
 
+// En minúscula, sin tildes ni signos de pregunta o exclamación y sin espacios en los extremos (al final:
+// "reporte !" queda "reporte").
 const strip = (text: string) =>
   text
-    .trim()
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[¿?¡!.]+/g, "")
+    .replace(/[¿?¡!.]/g, "")
     .trim();
 
 // "balance", "mi saldo", "resumen del mes" (las preguntas, como "¿cuánto llevo?", van en ASK_CURRENT).

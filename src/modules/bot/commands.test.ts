@@ -182,6 +182,7 @@ describe("parseCommand · reporte", () => {
     ["reporte de los últimos 12 meses", {}],
     ["reporte ultimos 12 meses", {}],
     ["¿Reporte?", {}],
+    ["  reporte !", {}],
     ["reporte 2025", { period: { year: 2025 } }],
     ["informe del 2025", { period: { year: 2025 } }],
     ["reporte de 2024", { period: { year: 2024 } }],
@@ -196,7 +197,19 @@ describe("parseCommand · reporte", () => {
     expect(parseCommand(text)).toEqual({ kind: "command", command: "report", ...expected });
   });
 
-  it.each(["reportes", "reporte de gastos", "reporte 20255", "reporte septiembre", "informe: gasté 20 mil", "reporte del mes", "mi reporte anual 2025"])(
+  it.each([
+    "reportes",
+    "reporte de gastos",
+    "reporte 20255",
+    "reporte septiembre",
+    "informe: gasté 20 mil",
+    "reporte del mes",
+    "mi reporte anual 2025",
+    // Tiene que ser el mensaje entero: con algo antes, es una frase para Claude.
+    "quiero el reporte",
+    "mándame el reporte 2025",
+    "hazme un reporte anual",
+  ])(
     "%s no es el comando (va a Claude)",
     (text) => {
       expect(parseCommand(text)).toBeNull();
