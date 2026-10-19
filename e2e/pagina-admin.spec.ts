@@ -3,7 +3,7 @@ import { expect, type Page } from "@playwright/test";
 import postgres from "postgres";
 import { adminTab, heading, newAdmin, seriousViolations, setUpTwoFactor } from "./admin";
 import { e2eDatabaseUrl } from "./database-url";
-import { newPerson, register, test, uniqueEmail, visible } from "./helpers";
+import { goToWhatsApp, newPerson, register, test, uniqueEmail, visible } from "./helpers";
 import { newPhone, nthReply, sendWhatsApp } from "./whatsapp";
 
 // La página de administración: el historial de registro y vinculación de todas las cuentas, como
@@ -47,6 +47,7 @@ test("el admin ve el historial de otras cuentas como línea de tiempo y lo filtr
   const betoPhone = newPhone();
   const strangerPhone = newPhone();
   await register(beto, "Beto Historial", betoEmail);
+  await goToWhatsApp(beto);
   await beto.getByRole("button", { name: "Conectar WhatsApp" }).click();
   const code = (await visible(beto.getByText(/^VINCULAR \d{6}$/)).textContent())!.replace("VINCULAR ", "");
   await sendWhatsApp(request, betoPhone, `VINCULAR ${code}`);

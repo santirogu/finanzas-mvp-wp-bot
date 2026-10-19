@@ -170,7 +170,7 @@ describe("mensajes de vinculación y ayuda", () => {
   });
 
   it("indica dónde vincular el número", () => {
-    expect(notLinkedReply("https://finanzas.test")).toContain("https://finanzas.test/dashboard");
+    expect(notLinkedReply("https://finanzas.test")).toContain("https://finanzas.test/cuenta (Mi cuenta)");
   });
 
   it("a una cuenta suspendida le dice que no registra nada y cómo escribirnos, sin el motivo", () => {
@@ -216,7 +216,7 @@ describe("textos fijos del bot", () => {
 
   it("errores y vinculación", () => {
     expect(linkInvalidReply).toBe(
-      "Ese código no es válido o ya venció. Genera uno nuevo en el dashboard.",
+      "Ese código no es válido o ya venció. Genera uno nuevo en Mi cuenta.",
     );
     expect(linkRateLimitedReply).toBe(
       "Demasiados intentos fallidos. Espera una hora antes de volver a intentar.",

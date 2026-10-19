@@ -112,8 +112,8 @@ async function conDatos(browser: Browser, baseURL: string, datos: Datos) {
   await registrar(page, "/egresos", EGRESOS);
   await registrarAnteriores(page, ANTERIORES);
 
-  // WhatsApp vinculado y dos movimientos registrados por el bot (con el Claude falso de las E2E).
-  await page.goto("/dashboard");
+  // WhatsApp vinculado (desde Mi cuenta) y dos movimientos registrados por el bot (con el Claude falso de las E2E).
+  await page.goto("/cuenta");
   await visible(page.getByRole("button", { name: "Conectar WhatsApp" })).click();
   const code = (await visible(page.getByText(/^VINCULAR \d{6}$/)).textContent())!;
   const phone = newPhone();

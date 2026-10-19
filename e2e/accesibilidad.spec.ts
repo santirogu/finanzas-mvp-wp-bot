@@ -2,7 +2,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, type Locator, type Page } from "@playwright/test";
 import { totp } from "../test/totp";
 import { newAdmin, setUpTwoFactor, wrongCode } from "./admin";
-import { addTransaction, goToAccount, logIn, logOut, openTab, PASSWORD, register, test, toast, visible } from "./helpers";
+import { addTransaction, goToAccount, goToWhatsApp, logIn, logOut, openTab, PASSWORD, register, test, toast, visible } from "./helpers";
 import { newPhone, nthReply, sendWhatsApp } from "./whatsapp";
 
 // Accesibilidad con axe-core (reglas WCAG 2.1 A y AA): falla ante problemas graves o críticos,
@@ -171,6 +171,7 @@ for (const [colorScheme, scheme] of Object.entries(SCHEMES) as [keyof typeof SCH
 
     test("conectar WhatsApp: el botón, el código y el número ya vinculado @principal", async ({ page, request }) => {
       await register(page);
+      await goToWhatsApp(page);
       const connect = visible(page.getByRole("button", { name: "Conectar WhatsApp" }));
       expect(await hoveredViolations(page, connect)).toEqual([]);
       await connect.click();
