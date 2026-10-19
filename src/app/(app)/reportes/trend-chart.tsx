@@ -39,9 +39,10 @@ export function TrendChart({ points, currency }: { points: TrendPoint[]; currenc
 
   return (
     <div className="mt-4">
-      {/* Sin espacio entre meses (lo da el relleno de cada uno): en 320 px, cada mes mide 24 px de ancho,
-          lo mínimo para tocarlo (WCAG 2.5.8). */}
-      <div className="flex h-40 items-end border-b border-border" onMouseLeave={() => setActive(null)}>
+      {/* Sin espacio entre meses (lo da el relleno de cada uno) y, en las pantallas más angostas, también
+          sobre el margen de la tarjeta y su borde (16 + 1 px): así, en 320 px, cada mes mide 24 px de
+          ancho, lo mínimo para tocarlo (WCAG 2.5.8). */}
+      <div className="-mx-[1.0625rem] flex h-40 items-end border-b border-border min-[24rem]:mx-0" onMouseLeave={() => setActive(null)}>
         {points.map((p, i) => (
           <Link
             key={p.key}
@@ -57,11 +58,17 @@ export function TrendChart({ points, currency }: { points: TrendPoint[]; currenc
           </Link>
         ))}
       </div>
-      <div aria-hidden className="flex">
+      {/* En 320 px, "sept" cabe con 10 px de letra y el año, solo corto ("’25"). Desde 640 px, el año completo. */}
+      <div aria-hidden className="-mx-[1.0625rem] flex min-[24rem]:mx-0">
         {points.map((p) => (
-          <span key={p.key} className="min-w-0 flex-1 pt-1 text-center text-[0.6875rem] leading-tight text-muted">
+          <span key={p.key} className="min-w-0 flex-1 pt-1 text-center text-[0.625rem] leading-tight text-muted min-[24rem]:text-[0.6875rem]">
             {p.short}
-            {p.year && <span className="block">{p.year}</span>}
+            {p.year && (
+              <>
+                <span className="block sm:hidden">’{p.year.slice(2)}</span>
+                <span className="hidden sm:block">{p.year}</span>
+              </>
+            )}
           </span>
         ))}
       </div>

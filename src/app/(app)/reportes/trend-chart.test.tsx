@@ -46,10 +46,12 @@ describe("TrendChart", () => {
     expect(bars(screen.getByRole("link"))).toEqual(["0%", "0%"]);
   });
 
-  it("debajo de cada barra, el mes corto y el año en el primero y en cada enero", () => {
+  it("debajo de cada barra, el mes corto y el año en el primero y en cada enero (corto en pantallas angostas)", () => {
     render(<TrendChart points={POINTS} currency="COP" />);
-    expect(screen.getByText("dic")).toHaveTextContent("dic2025");
-    expect(screen.getByText("ene")).toHaveTextContent("ene2026");
+    expect(screen.getByText("’25")).toHaveClass("sm:hidden");
+    expect(screen.getByText("2025")).toHaveClass("hidden", "sm:block");
+    expect(screen.getByText("dic")).toContainElement(screen.getByText("2025"));
+    expect(screen.getByText("ene")).toContainElement(screen.getByText("’26"));
     expect(screen.getByText("feb")).toHaveTextContent(/^feb$/);
   });
 
