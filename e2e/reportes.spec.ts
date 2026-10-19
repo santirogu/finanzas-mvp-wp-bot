@@ -91,7 +91,8 @@ test("Reportes: las cifras del período, el gráfico, las categorías y los gast
   await test.step("la tabla mes a mes y, al tocar un mes del gráfico, su Resumen", async () => {
     const byMonth = section(page, "Ingresos y egresos por mes");
     await byMonth.getByText("Ver mes a mes").click();
-    const row = byMonth.getByRole("row", { name: new RegExp(`^${formatMonthLabel(m1)}`) });
+    // Una fila de la tabla (desde 640 px) o, en el celular, el mes con sus montos debajo.
+    const row = visible(byMonth.locator("tr, li").filter({ hasText: formatMonthLabel(m1) }));
     await expect(row).toContainText("$4.000.000,00");
     await expect(row).toContainText("$1.900.000,00");
     await expect(row).toContainText("$2.100.000,00");

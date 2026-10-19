@@ -147,12 +147,47 @@ function Summary({ summary, current, money }: { summary: PeriodSummary; current:
   );
 }
 
-/** Los mismos números del gráfico, mes a mes y con el balance (cerrado: se abre si se quiere). */
+/**
+ * Los mismos números del gráfico, mes a mes y con el balance (cerrado: se abre si se quiere). En una
+ * tabla desde 640 px; en un celular, cuatro columnas de montos no caben (la de Balance quedaba
+ * escondida a la derecha): cada mes va con sus tres montos debajo.
+ */
 function MonthTable({ report, current, money }: { report: Report; current: Month; money: Money }) {
+  const months = [...report.series].reverse().map((point) => ({
+    ...point,
+    key: monthParam(point.month),
+    href: monthHref("/dashboard", point.month, current),
+    label: formatMonthLabel(point.month),
+    inProgress: compareMonths(point.month, current) === 0,
+  }));
+  const balanceTone = (balance: number) => (balance < 0 ? "text-expense" : "text-foreground");
   return (
     <details className="mt-1 text-sm">
       <summary className="inline-flex min-h-11 cursor-pointer items-center font-medium text-brand pointer-fine:min-h-8">Ver mes a mes</summary>
-      <div className="mt-2 overflow-x-auto">
+      <ul className="mt-2 divide-y divide-border sm:hidden">
+        {months.map((m) => (
+          <li key={m.key} className="py-2">
+            <p>
+              <Link href={m.href} className="underline-offset-2 hover:underline">
+                {m.label}
+              </Link>
+              {m.inProgress && <span className="ml-1 text-xs text-muted">(en curso)</span>}
+            </p>
+            <p className="mt-0.5 flex flex-wrap gap-x-3 text-xs tabular-nums text-muted">
+              <span>
+                Ingresos <span className="whitespace-nowrap text-income">{money(m.income)}</span>
+              </span>
+              <span>
+                Egresos <span className="whitespace-nowrap text-expense">{money(m.expense)}</span>
+              </span>
+              <span>
+                Balance <span className={`whitespace-nowrap ${balanceTone(m.balance)}`}>{money(m.balance)}</span>
+              </span>
+            </p>
+          </li>
+        ))}
+      </ul>
+      <div className="mt-2 hidden overflow-x-auto sm:block">
         <table className="w-full tabular-nums">
           <thead className="text-left text-xs text-muted">
             <tr className="border-b border-border">
@@ -163,17 +198,17 @@ function MonthTable({ report, current, money }: { report: Report; current: Month
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {[...report.series].reverse().map((point) => (
-              <tr key={monthParam(point.month)}>
+            {months.map((m) => (
+              <tr key={m.key}>
                 <th scope="row" className="py-2 pr-3 text-left font-normal">
-                  <Link href={monthHref("/dashboard", point.month, current)} className="whitespace-nowrap underline-offset-2 hover:underline">
-                    {formatMonthLabel(point.month)}
+                  <Link href={m.href} className="whitespace-nowrap underline-offset-2 hover:underline">
+                    {m.label}
                   </Link>
-                  {compareMonths(point.month, current) === 0 && <span className="ml-1 text-xs text-muted">(en curso)</span>}
+                  {m.inProgress && <span className="ml-1 text-xs text-muted">(en curso)</span>}
                 </th>
-                <td className="whitespace-nowrap px-3 py-2 text-right text-income">{money(point.income)}</td>
-                <td className="whitespace-nowrap px-3 py-2 text-right text-expense">{money(point.expense)}</td>
-                <td className={`whitespace-nowrap py-2 pl-3 text-right ${point.balance < 0 ? "text-expense" : ""}`}>{money(point.balance)}</td>
+                <td className="whitespace-nowrap px-3 py-2 text-right text-income">{money(m.income)}</td>
+                <td className="whitespace-nowrap px-3 py-2 text-right text-expense">{money(m.expense)}</td>
+                <td className={`whitespace-nowrap py-2 pl-3 text-right ${balanceTone(m.balance)}`}>{money(m.balance)}</td>
               </tr>
             ))}
           </tbody>

@@ -189,9 +189,14 @@ export const VISTAS: Vista[] = [
     ruta: fija("/reportes"),
     preparar: async (page) => {
       await visible(page.getByText("Ver mes a mes")).click();
-      await expect(visible(page.getByRole("table"))).toBeVisible();
-      // Con Tab hasta el último mes del gráfico (el actual): su detalle aparece debajo.
-      await visible(page.getByRole("region", { name: "Ingresos y egresos por mes" }).getByRole("link")).last().focus();
+      // La tabla (desde 640 px) o, en el celular, la lista de los meses.
+      await expect(visible(page.locator("details[open] table, details[open] ul"))).toBeVisible();
+      // Con el mouse en el último mes del gráfico (el actual): su detalle aparece debajo. Con el foco no
+      // sirve: el recorrido con Tab del computador lo mueve antes de la captura.
+      // Los meses del gráfico (no los de la tabla): su nombre trae los tres montos.
+      const meses = visible(page.getByRole("region", { name: "Ingresos y egresos por mes" }).getByRole("link", { name: /: ingresos \$/ }));
+      await meses.last().hover();
+      await expect(visible(page.getByText(/ · Ingresos \$/)).first()).toBeVisible();
     },
   },
   {

@@ -196,7 +196,8 @@ test("en pantallas táctiles las páginas caben y los campos no hacen zoom @tact
     // Reportes con la tabla mes a mes abierta (los montos máximos, en sus cuatro columnas).
     await open(page, "/reportes");
     await visible(page.getByText("Ver mes a mes")).click();
-    await expect(visible(page.getByRole("table"))).toBeVisible();
+    // La tabla (desde 640 px) o, en el celular, la lista de los meses.
+    await expect(visible(page.locator("details[open] table, details[open] ul"))).toBeVisible();
     await expectFitsOnScreens(page, "Reportes con la tabla mes a mes");
     await open(page, "/egresos");
     await visible(page.getByRole("link", { name: `Editar ${description}` })).click();
