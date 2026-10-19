@@ -1,9 +1,12 @@
 // Pedidos HTTP a Better Auth como los haría un navegador (o alguien con curl), para las pruebas de
 // integración de roles y verificación en dos pasos.
 import { isAPIError } from "better-auth/api";
+import { eq } from "drizzle-orm";
 import { expect } from "vitest";
+import { db } from "@/db";
+import { user } from "@/db/schema";
 import { auth } from "@/lib/auth";
-import { findAccountRole, setRole } from "@/modules/account/terminal";
+import { findAccountRole } from "@/modules/account/terminal";
 import { secretFromUri, totp } from "../totp";
 
 export const PASSWORD = "clave-segura-123";
@@ -79,9 +82,14 @@ export async function register(email: string, name = "Ana") {
   return jar;
 }
 
+/**
+ * Le da el rol de admin directo en la base, sin cerrar sus sesiones: estas pruebas siguen con la misma
+ * sesión. (pnpm admin:grant y el super admin sí las cierran: se prueba en terminal.int.test.ts y en
+ * account-actions.int.test.ts.)
+ */
 export async function makeAdmin(email: string) {
   const account = await findAccountRole(email);
-  await setRole(account!.id, "admin");
+  await db.update(user).set({ role: "admin" }).where(eq(user.id, account!.id));
   return account!;
 }
 

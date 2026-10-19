@@ -71,6 +71,10 @@ const SERVER_ACTIONS = {
   deleteCategoryAction: "requireAdmin + código de Google Authenticator; sus movimientos pasan a \"Otros\", que no se elimina",
   deleteAccountByAdminAction:
     "requireAdmin + código de Google Authenticator + escribir el correo; nunca la cuenta propia ni la de otro admin",
+  grantAdminAction:
+    "requireSuperAdmin + código de Google Authenticator; nunca la cuenta propia, la de un admin ni una suspendida; cierra sus sesiones",
+  revokeAdminAction:
+    "requireSuperAdmin + código de Google Authenticator; solo a otro admin, nunca al super admin; borra su verificación y cierra sus sesiones",
   pauseClaudeAction: "requireAdmin + código de Google Authenticator; solo la configuración global del bot",
   resumeClaudeAction: "requireAdmin + código de Google Authenticator; solo la configuración global del bot",
   changeAiLimitsAction: "requireAdmin + código de Google Authenticator; topes dentro de AI_LIMIT_BOUNDS",
@@ -88,7 +92,9 @@ const PAGES_WITHOUT_SESSION_CHECK: Record<string, string> = {
 };
 
 // Administración: páginas cuya regla empieza con ADMIN_RULE y acciones cuya regla empieza con
-// "requireAdmin". Deben validar el rol en el servidor con requireAdmin() (src/lib/session.ts).
+// "requireAdmin". Deben validar el rol en el servidor con requireAdmin() (src/lib/session.ts). Las de
+// dar y quitar el rol de admin empiezan con "requireSuperAdmin": requireSuperAdmin() (que incluye
+// requireAdmin), y solo se usa en SUPER_ADMIN_FILES.
 const ADMIN_RULE = "requiere sesión de admin";
 // La capa de datos de administración: los archivos de src/modules/admin/ que consultan la base.
 const ADMIN_MODULES_DIR = join(ROOT, "src/modules/admin");
@@ -98,6 +104,12 @@ const TERMINAL_MODULE = /from\s+["'](@\/modules\/account\/terminal|[./]+(modules
 // y el marco de la sección (que solo dibuja el título y la subnavegación). Todo lo demás de
 // administración usa requireAdmin.
 const ADMIN_ROLE_ONLY_FILES = ["src/app/(app)/admin/layout.tsx", "src/app/(app)/admin/seguridad/page.tsx"];
+// Donde se usa requireSuperAdmin (además de session.ts, donde se define): la capa de datos de las
+// acciones sobre una cuenta y sus Server Actions.
+const SUPER_ADMIN_FILES = [
+  "src/app/(app)/admin/usuarios/[id]/actions.ts",
+  "src/modules/admin/users/account-actions.ts",
+];
 // Los únicos archivos que comparan roles; el resto usa requireAdmin() o hasRole().
 const ROLE_CHECK_FILES = ["src/lib/roles.ts", "src/lib/session.ts"];
 
@@ -240,6 +252,9 @@ describe("administración", () => {
   const adminActions = Object.entries(SERVER_ACTIONS)
     .filter(([, rule]) => (rule as string).startsWith("requireAdmin"))
     .map(([name]) => name);
+  const superAdminActions = Object.entries(SERVER_ACTIONS)
+    .filter(([, rule]) => (rule as string).startsWith("requireSuperAdmin"))
+    .map(([name]) => name);
 
   it("toda página bajo /admin está clasificada como de admin", () => {
     for (const file of pageFiles.filter((f) => /^\/admin(\/|$)/.test(routeOf(f)))) {
@@ -268,6 +283,32 @@ describe("administración", () => {
   it("el marco de la sección valida el rol antes de dibujarse (a quien no es admin no le llega nada)", () => {
     const layout = read(join(APP, "(app)/admin/layout.tsx"));
     expect(layout).toMatch(callsTo("requireAdminRole"));
+  });
+
+  it("las de dar y quitar el rol de admin llaman a requireSuperAdmin() antes de hacer cualquier cosa", () => {
+    expect(superAdminActions).toEqual(["grantAdminAction", "revokeAdminAction"]);
+    for (const action of serverActions().filter((a) => superAdminActions.includes(a.name))) {
+      const check = action.body.search(/await\s+requireSuperAdmin\(\)/);
+      expect(check, `${action.name} no llama a requireSuperAdmin()`).toBeGreaterThan(-1);
+      const firstDataAccess = action.body.search(/\bdb\.|readInput\(|grantAdmin\(|revokeAdmin\(/);
+      expect(firstDataAccess === -1 || check < firstDataAccess, `${action.name} usa datos antes de validar el rol`).toBe(true);
+    }
+  });
+
+  it("requireSuperAdmin solo se usa en las acciones de dar y quitar el rol de admin", () => {
+    const users = sourceFiles
+      .filter((f) => relative(ROOT, f) !== "src/lib/session.ts")
+      .filter((f) => /\brequireSuperAdmin\b/.test(read(f)))
+      .map((f) => relative(ROOT, f))
+      .sort();
+    expect(users).toEqual([...SUPER_ADMIN_FILES].sort());
+    // En la capa de datos, solo las dos funciones de los roles.
+    const source = read(join(ROOT, "src/modules/admin/users/account-actions.ts"));
+    const withSuper = source
+      .split(/(?=^export\s+async\s+function\s)/m)
+      .filter((part) => /await\s+requireSuperAdmin\(\)/.test(part))
+      .map((part) => part.match(/^export\s+async\s+function\s+(\w+)/)?.[1]);
+    expect(withSuper).toEqual(["grantAdmin", "revokeAdmin"]);
   });
 
   it("las Server Actions de admin llaman a requireAdmin() antes de hacer cualquier cosa", () => {
@@ -308,7 +349,8 @@ describe("administración", () => {
       expect(parts.length, relative(ROOT, file)).toBeGreaterThan(0);
       for (const body of parts) {
         const name = body.match(/^export\s+async\s+function\s+(\w+)/)?.[1];
-        const check = body.search(/await\s+requireAdmin\(\)/);
+        // requireSuperAdmin incluye requireAdmin (solo dar y quitar el rol de admin).
+        const check = body.search(/await\s+require(Super)?Admin\(\)/);
         expect(check, `${name} (${relative(ROOT, file)}) no llama a requireAdmin()`).toBeGreaterThan(-1);
         const firstDataAccess = body.search(/\bdb\.|\bwhere\(/);
         expect(firstDataAccess === -1 || check < firstDataAccess, `${name} toca la base antes de validar el rol`).toBe(true);
@@ -334,9 +376,9 @@ describe("administración", () => {
     expect(offenders).toEqual([]);
   });
 
-  it("requireAdmin y requireAdminRole solo se definen en src/lib/session.ts", () => {
+  it("requireAdmin, requireAdminRole y requireSuperAdmin solo se definen en src/lib/session.ts", () => {
     const definitions = sourceFiles
-      .filter((f) => /function\s+requireAdmin(Role)?\b|requireAdmin(Role)?\s*=/.test(read(f)))
+      .filter((f) => /function\s+require(Super)?Admin(Role)?\b|require(Super)?Admin(Role)?\s*=/.test(read(f)))
       .map((f) => relative(ROOT, f));
     expect(definitions).toEqual(["src/lib/session.ts"]);
   });
@@ -346,7 +388,7 @@ describe("Server Actions", () => {
   it("validan la sesión con requireUser() (o requireAdmin()) antes de hacer cualquier cosa", () => {
     for (const action of serverActions().filter((a) => !ACTIONS_WITHOUT_SESSION.includes(a.name))) {
       const body = action.body;
-      const check = body.search(/await\s+require(User|Admin)\(\)/);
+      const check = body.search(/await\s+require(User|Admin|SuperAdmin)\(\)/);
       expect(check, `${action.name} no llama a requireUser()`).toBeGreaterThan(-1);
       // Nada toca la base ni el bot antes de validar la sesión.
       const firstDataAccess = body.search(/\bdb\.|createLinkCode\(|unlinkUser\(|handleIncomingMessage\(|isCategoryAvailable\(|readForm\(|verifyPassword\(|deleteAccountData\(/);

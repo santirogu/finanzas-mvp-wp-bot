@@ -20,6 +20,8 @@ export type UserRow = {
   name: string;
   email: string;
   role: Role;
+  /** La marca de super admin (vale con el rol de admin: isSuperAdmin, src/lib/roles.ts). */
+  superAdmin: boolean;
   createdAt: Date;
   /** El número de WhatsApp vinculado, o null. */
   phone: string | null;
@@ -72,6 +74,7 @@ const columns = {
   name: user.name,
   email: user.email,
   role: user.role,
+  superAdmin: user.superAdmin,
   createdAt: user.createdAt,
   phone: whatsappLink.phone,
   lockedUntil: loginFailure.lockedUntil,

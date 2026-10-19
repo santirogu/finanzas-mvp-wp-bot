@@ -96,7 +96,7 @@ function UserItem({ account }: { account: UserRow }) {
         <div className="min-w-0 flex-1 space-y-0.5">
           <p className="flex flex-wrap items-center gap-x-2 gap-y-1 font-medium">
             <span className="min-w-0 break-words">{account.name}</span>
-            <AccountBadges role={account.role} lockedUntil={account.lockedUntil} suspended={account.suspendedAt !== null} />
+            <AccountBadges role={account.role} superAdmin={account.superAdmin} lockedUntil={account.lockedUntil} suspended={account.suspendedAt !== null} />
           </p>
           <p className="break-all text-sm text-muted">{account.email}</p>
           <p className="text-xs text-muted">

@@ -128,10 +128,13 @@ de Vercel ni muevas las migraciones fuera del job `deploy`.
   `src/authorization-matrix.test.ts` (páginas: "requiere sesión de admin…"; acciones:
   "requireAdmin…"). `requireAdminRole()` (sin la verificación) es solo para `/admin/seguridad` y
   el marco `src/app/(app)/admin/layout.tsx`.
-  El rol solo cambia con `pnpm admin:grant` / `admin:revoke`: nunca lo vuelvas editable
-  (`input: false` en Better Auth) ni crees usuarios o contraseñas de admin por defecto. Solo
-  `roles.ts` y `session.ts` comparan roles. No reactives los endpoints de `TWO_FACTOR_DISABLED_PATHS`
-  ni ofrezcas "recordar este dispositivo".
+  El rol de admin lo dan y lo quitan solo el super admin desde Usuarios (`requireSuperAdmin()`, con su
+  código y registrado en `account_event`) o la terminal (`pnpm admin:grant` / `admin:revoke`), las dos
+  con `src/modules/account/admin-role.ts`. La marca de super admin (una sola cuenta) solo la pone la
+  terminal (`pnpm admin:super`): nunca desde la app, y nadie le quita el rol al super admin desde la
+  app. Nunca vuelvas editables el rol ni la marca (`input: false` en Better Auth) ni crees usuarios o
+  contraseñas de admin por defecto. Solo `roles.ts` y `session.ts` comparan roles. No reactives los
+  endpoints de `TWO_FACTOR_DISABLED_PATHS` ni ofrezcas "recordar este dispositivo".
 - **Rutas de Better Auth** (`src/modules/auth/http-routes.ts`): `/api/auth/*` solo atiende
   `AUTH_HTTP_ROUTES`; el resto responde 404.
   - Si el navegador necesita una ruta nueva de Better Auth, agrégala a `AUTH_HTTP_ROUTES` con quién la

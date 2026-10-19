@@ -69,6 +69,18 @@ describe("AuthForm · login", () => {
   });
 
   it.each([
+    [{ role: "admin", twoFactorEnabled: false }, "/admin/seguridad"],
+    [{ role: "admin", twoFactorEnabled: true }, "/dashboard"],
+    [{ role: "user", twoFactorEnabled: false }, "/dashboard"],
+  ])("según quién entra (%j) va a %s: un admin sin la verificación, a configurarla", async (user, path) => {
+    mocks.signIn.mockResolvedValue({ data: { user }, error: null });
+    render(<AuthForm mode="login" />);
+    await fillLogin();
+    await userEvent.click(screen.getByRole("button", { name: "Entrar" }));
+    expect(mocks.replace).toHaveBeenCalledWith(path);
+  });
+
+  it.each([
     [{ code: "INVALID_EMAIL_OR_PASSWORD", message: "Invalid email or password" }, "Correo o contraseña incorrectos."],
     [{ status: 429, message: "Too many requests. Please try again later." }, TOO_MANY_ATTEMPTS],
     [

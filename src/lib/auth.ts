@@ -64,8 +64,10 @@ export const auth = betterAuth({
       timezone: { type: "string", required: false, defaultValue: "America/Bogota", input: false },
       currency: { type: "string", required: false, defaultValue: "COP", input: false },
       // input: false → el registro ignora el rol que mande el cliente (queda "user") y
-      // "actualizar perfil" lo rechaza. Solo se cambia desde la terminal (pnpm admin:grant).
+      // "actualizar perfil" lo rechaza. Lo cambian el super admin (/admin/usuarios) y la terminal.
       role: { type: [...ROLES], required: false, defaultValue: "user", input: false },
+      // La marca de super admin: input: false, igual que el rol. Solo la pone la terminal (pnpm admin:super).
+      superAdmin: { type: "boolean", required: false, defaultValue: false, input: false },
       // Suspendida por el admin: input: false → nadie la cambia con "actualizar perfil".
       suspendedAt: { type: "date", required: false, input: false },
     },

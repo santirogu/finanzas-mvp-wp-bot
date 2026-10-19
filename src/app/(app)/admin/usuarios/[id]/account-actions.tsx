@@ -9,7 +9,9 @@ import { Buttons, CODE_FIELD_MESSAGES, CodeField, Dialog, FormError } from "../.
 import { NOTE_MAX_LENGTH } from "@/modules/admin/shared/filters";
 import {
   deleteAccountByAdminAction,
+  grantAdminAction,
   reactivateAccountAction,
+  revokeAdminAction,
   revokeSessionsAction,
   suspendAccountAction,
   unlinkWhatsAppByAdminAction,
@@ -18,11 +20,13 @@ import {
 } from "./actions";
 
 // Las acciones del admin sobre una cuenta: la sección "Acciones" (solo las que aplican; reactivar, si
-// está suspendida) y la "Zona de peligro" (suspender y eliminar). Cada botón abre una ventana que
-// explica qué va a pasar y pide el código de Google Authenticator; eliminar pide además escribir el
-// correo. El servidor vuelve a validar todo.
+// está suspendida) y la "Zona de peligro" (suspender, eliminar y, solo para el super admin, darle el
+// rol de admin). En la cuenta de otro admin, el super admin solo puede quitarle el rol
+// (RevokeAdminActions). Cada botón abre una ventana que explica qué va a pasar y pide el código de
+// Google Authenticator; eliminar pide además escribir el correo. El servidor vuelve a validar todo
+// (también quién es el super admin).
 
-type Kind = "unlock" | "sessions" | "whatsapp" | "suspend" | "reactivate" | "delete";
+type Kind = "unlock" | "sessions" | "whatsapp" | "suspend" | "reactivate" | "delete" | "grant-admin";
 type ServerAction = (prev: AccountActionState, formData: FormData) => Promise<AccountActionState>;
 
 export type ActionTarget = {
@@ -49,7 +53,14 @@ const DELETE_MESSAGES: Record<string, FieldMessages> = {
   code: TOTP_CODE_MESSAGES,
 };
 
-export function AccountActions({ target }: { target: ActionTarget }) {
+export function AccountActions({
+  target,
+  canMakeAdmin = false,
+}: {
+  target: ActionTarget;
+  /** Solo para el super admin, y si la cuenta no está suspendida (lo decide el servidor). */
+  canMakeAdmin?: boolean;
+}) {
   const [open, setOpen] = useState<Kind | null>(null);
   const toast = useToast();
   const close = () => setOpen(null);
@@ -127,6 +138,15 @@ export function AccountActions({ target }: { target: ActionTarget }) {
             danger
             onClick={() => start("delete")}
           />
+          {canMakeAdmin && (
+            <ActionRow
+              title="Darle el rol de admin"
+              description="Verá la sección de administración, con datos de todas las cuentas."
+              button="Hacer admin"
+              danger
+              onClick={() => start("grant-admin")}
+            />
+          )}
         </ul>
       </section>
 
@@ -201,6 +221,68 @@ export function AccountActions({ target }: { target: ActionTarget }) {
         </ConfirmDialog>
       )}
       {open === "delete" && <DeleteDialog target={target} onClose={close} />}
+      {open === "grant-admin" && (
+        <ConfirmDialog
+          title={`¿Hacer admin a ${target.name}?`}
+          action={grantAdminAction}
+          submit="Hacer admin"
+          pending="Dando el rol…"
+          danger
+          userId={target.id}
+          onClose={close}
+          onDone={finish("success")}
+        >
+          Verá la sección de administración, con los datos de todas las cuentas. Se cierran sus sesiones y, al volver a
+          entrar, tendrá que configurar la verificación en dos pasos. Solo tú puedes quitarle el rol.
+        </ConfirmDialog>
+      )}
+    </>
+  );
+}
+
+/**
+ * En la cuenta de otro admin, lo único que hay: el super admin le puede quitar el rol (nunca al super
+ * admin, que es él mismo). El servidor decide si se muestra.
+ */
+export function RevokeAdminActions({ target }: { target: { id: string; name: string } }) {
+  const [open, setOpen] = useState(false);
+  const toast = useToast();
+
+  return (
+    <>
+      <section className="card space-y-1 border-danger/40 p-4" aria-labelledby="peligro">
+        <h2 id="peligro" className="font-semibold text-danger">
+          Zona de peligro
+        </h2>
+        <ul className="divide-y divide-border">
+          <ActionRow
+            title="Quitarle el rol de admin"
+            description="Vuelve a ser usuario: se borra su verificación en dos pasos y se cierran sus sesiones."
+            button="Quitar admin"
+            danger
+            onClick={() => setOpen(true)}
+          />
+        </ul>
+      </section>
+      {open && (
+        <ConfirmDialog
+          title={`¿Quitarle el rol de admin a ${target.name}?`}
+          action={revokeAdminAction}
+          submit="Quitar admin"
+          pending="Quitando el rol…"
+          danger
+          userId={target.id}
+          onClose={() => setOpen(false)}
+          // El botón que la abrió ya no estará (la cuenta deja de ser admin): el foco va al aviso.
+          onDone={(message) => {
+            setOpen(false);
+            toast({ tone: "removal", message, focus: true });
+          }}
+        >
+          Vuelve a ser usuario. Se borran su verificación en dos pasos y sus códigos de respaldo, y se cierran sus
+          sesiones. Sus finanzas no se tocan.
+        </ConfirmDialog>
+      )}
     </>
   );
 }

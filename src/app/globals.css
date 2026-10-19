@@ -49,6 +49,10 @@
   --admin: #3c3489;
   --admin-surface: #eeedfe;
   --admin-border: #afa9ec;
+  /* Etiqueta "Super admin" y su escudo: dorado, distinto del violeta de los admins. */
+  --superadmin: #7a5300;
+  --superadmin-surface: #fdf3d6;
+  --superadmin-border: #d9a93c;
   /* La flecha del <select> (sin la apariencia del sistema, la dibuja la app), en el color de --muted. */
   --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%235f6672'%3E%3Cpath fill-rule='evenodd' d='M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z' clip-rule='evenodd'/%3E%3C/svg%3E");
 }
@@ -86,6 +90,9 @@
     --admin: #cecbf6;
     --admin-surface: #3c3489;
     --admin-border: #7f77dd;
+    --superadmin: #f6d98b;
+    --superadmin-surface: #5a4108;
+    --superadmin-border: #b8902f;
     --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%2398a1ad'%3E%3Cpath fill-rule='evenodd' d='M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z' clip-rule='evenodd'/%3E%3C/svg%3E");
   }
 }
@@ -124,6 +131,9 @@
   --admin: #cecbf6;
   --admin-surface: #3c3489;
   --admin-border: #7f77dd;
+  --superadmin: #f6d98b;
+  --superadmin-surface: #5a4108;
+  --superadmin-border: #b8902f;
   --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%2398a1ad'%3E%3Cpath fill-rule='evenodd' d='M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z' clip-rule='evenodd'/%3E%3C/svg%3E");
 }
 
@@ -157,6 +167,9 @@
   --color-admin: var(--admin);
   --color-admin-surface: var(--admin-surface);
   --color-admin-border: var(--admin-border);
+  --color-superadmin: var(--superadmin);
+  --color-superadmin-surface: var(--superadmin-surface);
+  --color-superadmin-border: var(--superadmin-border);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }

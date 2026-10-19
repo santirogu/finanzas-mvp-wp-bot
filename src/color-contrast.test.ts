@@ -75,6 +75,17 @@ describe("contraste (WCAG)", () => {
     });
   }
 
+  // Las etiquetas de admin (violeta) y de super admin (dorado): el texto sobre su fondo, 4,5:1.
+  for (const [mode, colors] of Object.entries(MODES)) {
+    it.each([
+      ["admin", "admin-surface"],
+      ["superadmin", "superadmin-surface"],
+    ])(`modo ${mode}: --%s sobre --%s, al menos 4,5:1`, (text, surface) => {
+      expect(colors[text], `--${text}`).toBeDefined();
+      expect(contrast(colors[text], colors[surface])).toBeGreaterThanOrEqual(4.5);
+    });
+  }
+
   // La dona de "Gastos por categoría": cada tajada se distingue de la tarjeta (3:1, WCAG 1.4.11).
   for (const [mode, colors] of Object.entries(MODES)) {
     it.each(["chart-1", "chart-2", "chart-3", "chart-4", "chart-5", "chart-6", "chart-7", "chart-rest"])(

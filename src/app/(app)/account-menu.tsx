@@ -16,15 +16,16 @@ import { initialsOf } from "@/lib/text";
 export function AccountMenu({
   name,
   email,
-  admin = false,
+  roleName,
   badge,
   shield,
   signOut,
 }: {
   name: string;
   email: string;
-  admin?: boolean;
-  /** La etiqueta "Admin" (src/components/admin-badge.tsx), o nada. */
+  /** "admin" o "super admin", para el nombre del botón; nada para una cuenta normal. */
+  roleName?: string;
+  /** La etiqueta "Admin" o "Super admin" (src/components/admin-badge.tsx), o nada. */
   badge?: React.ReactNode;
   /** El escudo sobre el círculo, o nada. */
   shield?: React.ReactNode;
@@ -71,7 +72,7 @@ export function AccountMenu({
         type="button"
         aria-expanded={open}
         aria-controls={cardId}
-        aria-label={`Tu cuenta: ${name || email}${admin ? ", admin" : ""}`}
+        aria-label={`Tu cuenta: ${name || email}${roleName ? `, ${roleName}` : ""}`}
         onClick={() => setOpen(!open)}
         className={`inline-flex min-h-11 items-center gap-1 rounded-full border py-1 pl-1 pr-2 transition hover:bg-background pointer-fine:min-h-0 ${open ? "border-brand" : "border-border"}`}
       >

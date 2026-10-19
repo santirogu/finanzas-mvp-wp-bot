@@ -13,10 +13,12 @@ const actions = vi.hoisted(() => ({
   suspendAccountAction: vi.fn(),
   reactivateAccountAction: vi.fn(),
   deleteAccountByAdminAction: vi.fn(),
+  grantAdminAction: vi.fn(),
+  revokeAdminAction: vi.fn(),
 }));
 vi.mock("./actions", () => actions);
 
-const { AccountActions } = await import("./account-actions");
+const { AccountActions, RevokeAdminActions } = await import("./account-actions");
 
 // jsdom no tiene showModal ni close: lo mínimo para abrir y cerrar la ventana.
 beforeAll(() => {
@@ -327,3 +329,76 @@ describe("AccountActions · errores del código en español", () => {
   });
 });
 
+describe("dar y quitar el rol de admin (solo el super admin)", () => {
+  const danger = () => within(screen.getByRole("region", { name: "Zona de peligro" }));
+  const rowTitles = () => danger().getAllByRole("listitem").map((row) => row.querySelector("p")?.textContent);
+
+  it("sin el permiso (un admin común) no aparece", () => {
+    render(<AccountActions target={target()} />);
+    expect(rowTitles()).toEqual(["Suspender la cuenta", "Eliminar la cuenta"]);
+    expect(screen.queryByRole("button", { name: "Hacer admin" })).toBeNull();
+  });
+
+  it("para el super admin va al final de la zona de peligro, en rojo, con lo que implica", () => {
+    render(<AccountActions target={target()} canMakeAdmin />);
+    expect(rowTitles()).toEqual(["Suspender la cuenta", "Eliminar la cuenta", "Darle el rol de admin"]);
+    expect(danger().getAllByRole("listitem")[2]).toHaveTextContent("Verá la sección de administración, con datos de todas las cuentas.");
+    expect(danger().getByRole("button", { name: "Hacer admin" })).toHaveClass("text-danger");
+  });
+
+  it("la ventana explica qué pasa, pide el código y, con éxito, avisa en verde", async () => {
+    actions.grantAdminAction.mockResolvedValue({ message: "Beto Ruiz ahora es admin." });
+    render(<AccountActions target={target()} canMakeAdmin />);
+    await userEvent.click(danger().getByRole("button", { name: "Hacer admin" }));
+    expect(dialog()).toHaveAccessibleName("¿Hacer admin a Beto Ruiz?");
+    expect(dialog()).toHaveAccessibleDescription(
+      "Verá la sección de administración, con los datos de todas las cuentas. Se cierran sus sesiones y, al volver a entrar, tendrá que configurar la verificación en dos pasos. Solo tú puedes quitarle el rol.",
+    );
+    await userEvent.type(codeField(), "123456");
+    await userEvent.click(within(dialog()).getByRole("button", { name: "Hacer admin" }));
+    expect(Object.fromEntries(actions.grantAdminAction.mock.calls[0][1] as FormData)).toEqual({ userId: "cuenta-1", code: "123456" });
+    const toast = await findToast();
+    expect(toast).toHaveTextContent("Beto Ruiz ahora es admin.");
+    expect(toast).toHaveAttribute("data-tone", "success");
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("si el servidor dice que no (p. ej. ya es admin), lo muestra y la ventana sigue abierta", async () => {
+    actions.grantAdminAction.mockResolvedValue({ error: "La cuenta ya es admin." });
+    render(<AccountActions target={target()} canMakeAdmin />);
+    await userEvent.click(danger().getByRole("button", { name: "Hacer admin" }));
+    await userEvent.type(codeField(), "123456");
+    await userEvent.click(within(dialog()).getByRole("button", { name: "Hacer admin" }));
+    expect(await within(dialog()).findByText("La cuenta ya es admin.")).toBeVisible();
+  });
+
+  it("en la cuenta de otro admin, solo quitarle el rol: explica qué pasa y avisa en rojo", async () => {
+    actions.revokeAdminAction.mockResolvedValue({ message: "Carla ya no es admin." });
+    render(<RevokeAdminActions target={{ id: "admin-2", name: "Carla" }} />);
+    expect(rowTitles()).toEqual(["Quitarle el rol de admin"]);
+    expect(danger().getAllByRole("listitem")[0]).toHaveTextContent(
+      "Vuelve a ser usuario: se borra su verificación en dos pasos y se cierran sus sesiones.",
+    );
+    await userEvent.click(danger().getByRole("button", { name: "Quitar admin" }));
+    expect(dialog()).toHaveAccessibleName("¿Quitarle el rol de admin a Carla?");
+    expect(dialog()).toHaveAccessibleDescription(
+      "Vuelve a ser usuario. Se borran su verificación en dos pasos y sus códigos de respaldo, y se cierran sus sesiones. Sus finanzas no se tocan.",
+    );
+    await userEvent.type(codeField(), "654321");
+    await userEvent.click(within(dialog()).getByRole("button", { name: "Quitar admin" }));
+    expect(Object.fromEntries(actions.revokeAdminAction.mock.calls[0][1] as FormData)).toEqual({ userId: "admin-2", code: "654321" });
+    const toast = await findToast();
+    expect(toast).toHaveTextContent("Carla ya no es admin.");
+    expect(toast).toHaveAttribute("data-tone", "removal");
+    expect(toast).toHaveFocus();
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("cancelar no envía nada", async () => {
+    render(<RevokeAdminActions target={{ id: "admin-2", name: "Carla" }} />);
+    await userEvent.click(danger().getByRole("button", { name: "Quitar admin" }));
+    await userEvent.click(within(dialog()).getByRole("button", { name: "Cancelar" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(actions.revokeAdminAction).not.toHaveBeenCalled();
+  });
+});

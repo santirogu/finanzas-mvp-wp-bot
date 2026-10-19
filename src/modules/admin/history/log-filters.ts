@@ -56,13 +56,15 @@ export const EVENT_TYPES = [
 ] as const;
 export type EventType = (typeof EVENT_TYPES)[number];
 
-/** Los tipos que solo registra una acción del admin (/admin/usuarios y /admin/bot). */
+/** Los tipos que solo registra una acción del admin (/admin/usuarios, también del super admin, y /admin/bot). */
 export const ADMIN_EVENT_TYPES = [
   "login_unlocked",
   "sessions_revoked",
   "account_suspended",
   "account_reactivated",
   "account_deleted",
+  "admin_granted",
+  "admin_revoked",
   "bot_claude_paused",
   "bot_claude_resumed",
   "bot_limits_changed",

@@ -203,6 +203,24 @@ export const VISTAS: Vista[] = [
       await expect(dialogo(page)).toBeVisible();
     },
   },
+  // El admin del recorrido es el super admin: puede dar el rol de admin (con su código) y quitárselo a otro.
+  {
+    id: "admin-usuario-hacer-admin",
+    titulo: "Administración: ventana para hacer admin a una cuenta (super admin)",
+    persona: "admin",
+    necesita: ["datos"],
+    ruta: (d) => d.cuentaDatos,
+    preparar: async (page) => {
+      await visible(page.getByRole("region", { name: "Zona de peligro" })).getByRole("button", { name: "Hacer admin" }).click();
+      await expect(dialogo(page)).toBeVisible();
+    },
+  },
+  {
+    id: "admin-usuario-admin",
+    titulo: "Administración: la cuenta de otro admin (el super admin puede quitarle el rol)",
+    persona: "admin",
+    ruta: (d) => d.cuentaOtroAdmin,
+  },
   // Con la persona de datos, para que haya mensajes del bot (vinculación, movimientos y Claude).
   { id: "admin-bot", titulo: "Administración: bot de WhatsApp", persona: "admin", necesita: ["datos"], ruta: fija("/admin/bot") },
   // Con una barra tocada (un resultado) y Por cuenta ordenado por mensajes.

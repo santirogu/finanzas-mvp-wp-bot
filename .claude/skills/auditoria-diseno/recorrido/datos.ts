@@ -1,7 +1,7 @@
 import { randomInt } from "node:crypto";
 import { expect, type Browser, type BrowserContext, type Page } from "@playwright/test";
 import { newAdmin, setUpTwoFactor } from "../../../../e2e/admin";
-import { addTransaction, fakeIp, register, toast, uniqueEmail, visible } from "../../../../e2e/helpers";
+import { addTransaction, adminCommand, fakeIp, register, toast, uniqueEmail, visible } from "../../../../e2e/helpers";
 import { newPhone, nthReply, sendWhatsApp } from "../../../../e2e/whatsapp";
 import { monthOf, monthParam, shiftMonth, todayInTimezone } from "../../../../src/lib/dates";
 
@@ -19,6 +19,8 @@ export type Datos = {
   editar: Partial<Record<"datos" | "admin", string>>;
   /** Ruta del detalle de la cuenta "datos" en la administración. */
   cuentaDatos?: string;
+  /** Ruta del detalle de otro admin (el admin del recorrido es el super admin: puede quitarle el rol). */
+  cuentaOtroAdmin?: string;
   /** La categoría de 40 caracteres que crea el admin. */
   categoriaLarga?: string;
   /** Egresos con el aviso emergente "Se borró… · Deshacer" de un movimiento de la cuenta "datos" (la URL lo pide durante 10 minutos). */
@@ -143,6 +145,9 @@ async function admin(browser: Browser, baseURL: string, datos: Datos) {
   const page = await nuevaPagina(browser, baseURL);
   datos.correos.admin = await newAdmin(page);
   await setUpTwoFactor(page);
+  // El super admin (en dorado, y con "Hacer admin" y "Quitar admin" en Usuarios).
+  adminCommand("super", datos.correos.admin);
+  await page.reload();
 
   // Lo más largo que se puede escribir: categorías de 40 caracteres y descripciones de 140.
   const id = String(randomInt(100_000, 999_999));
@@ -171,6 +176,15 @@ async function admin(browser: Browser, baseURL: string, datos: Datos) {
     const href = await visible(page.getByRole("list", { name: "Cuentas" })).getByRole("link").first().getAttribute("href");
     datos.cuentaDatos = href ?? undefined;
   }
+  // Otro admin, para ver su ficha desde el super admin.
+  const otro = await nuevaPagina(browser, baseURL);
+  const otroCorreo = uniqueEmail();
+  await register(otro, "Carla Admin", otroCorreo);
+  adminCommand("grant", otroCorreo);
+  await otro.context().close();
+  await page.goto(`/admin/usuarios?q=${encodeURIComponent(otroCorreo)}`);
+  datos.cuentaOtroAdmin =
+    (await visible(page.getByRole("list", { name: "Cuentas" })).getByRole("link").first().getAttribute("href")) ?? undefined;
   datos.sesiones.admin = await page.context().storageState();
   await page.context().close();
 }

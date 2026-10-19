@@ -1,7 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page } from "@playwright/test";
 import { totp } from "../test/totp";
-import { PASSWORD, adminCommand, register, uniqueEmail, visible } from "./helpers";
+import { PASSWORD, adminCommand, logIn, register, uniqueEmail, visible } from "./helpers";
 
 // Un admin de punta a punta: cuenta registrada, rol dado con el comando real de terminal y la
 // verificación en dos pasos configurada desde la página (códigos como Google Authenticator).
@@ -28,13 +28,17 @@ export async function seriousViolations(page: Page) {
 /** Un código de 6 dígitos que no es el de ahora (ni el de los 30 s vecinos). */
 export const wrongCode = (secret: string) => String((Number(totp(secret)) + 500_000) % 1_000_000).padStart(6, "0");
 
-/** Registra una cuenta, le da el rol desde la terminal y la deja en la página de configuración. */
+/**
+ * Registra una cuenta, le da el rol desde la terminal y la deja en la página de configuración. Dar el
+ * rol cierra sus sesiones: vuelve a entrar y, como todavía no tiene la verificación en dos pasos, va
+ * directo a configurarla.
+ */
 export async function newAdmin(page: Page) {
   const email = uniqueEmail();
   await register(page, "Ana Admin", email);
   adminCommand("grant", email);
-  await page.reload();
-  await adminTab(page).click();
+  await page.context().clearCookies();
+  await logIn(page, email);
   await expect(page).toHaveURL(/\/admin\/seguridad$/);
   return email;
 }

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { ROLE_LABELS } from "@/lib/roles";
+import { roleLabel } from "@/lib/roles";
 import { requireUser } from "@/lib/session";
 import { PageSkeleton } from "../page-skeleton";
 import { DeleteAccountForm } from "./delete-account-form";
@@ -32,7 +32,7 @@ async function Account() {
           <span className="text-muted">Correo:</span> {user.email}
         </p>
         <p>
-          <span className="text-muted">Tipo de cuenta:</span> {ROLE_LABELS[user.role]}
+          <span className="text-muted">Tipo de cuenta:</span> {roleLabel(user.role, user.superAdmin)}
         </p>
       </section>
 

@@ -1,9 +1,11 @@
+import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { db } from "@/db";
-import { accountEvent, category, transaction, user, whatsappLink, whatsappMessage } from "@/db/schema";
+import { accountEvent, category, session, transaction, twoFactor, user, whatsappLink, whatsappMessage } from "@/db/schema";
 import { createUser } from "../../../test/integration/factories";
-import { countOrphanData, deleteOrphanData, findAccountByEmail } from "./terminal";
+import { createAdminWithTwoFactor } from "../../../test/integration/two-factor";
+import { countOrphanData, deleteOrphanData, findAccountByEmail, findAccountRole, listAdmins, setRole, setSuperAdmin } from "./terminal";
 import { deleteAccountData } from "./delete-account";
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -132,5 +134,64 @@ describe("datos sin dueño", () => {
     expect(await db.select().from(user).where(eq(user.id, ana.id))).toHaveLength(1);
     expect(await db.select().from(transaction).where(eq(transaction.userId, ana.id))).toHaveLength(1);
     expect(await db.select().from(accountEvent).where(eq(accountEvent.userId, ana.id))).toHaveLength(1);
+  });
+});
+
+describe("roles desde la terminal", () => {
+  const addSessions = (userId: string) =>
+    db.insert(session).values([
+      { id: randomUUID(), token: randomUUID(), userId, expiresAt: new Date(Date.now() + DAY) },
+      { id: randomUUID(), token: randomUUID(), userId, expiresAt: daysAgo(1) },
+    ]);
+  const stateOf = async (userId: string) =>
+    (await db.select({ role: user.role, superAdmin: user.superAdmin, twoFactorEnabled: user.twoFactorEnabled }).from(user).where(eq(user.id, userId)))[0];
+
+  it("dar el rol cierra sus sesiones (cuenta solo las abiertas), como desde la app", async () => {
+    const ana = await createUser();
+    await addSessions(ana.id);
+    expect(await setRole(ana.id, "admin")).toEqual({ sessionsClosed: 1 });
+    expect(await stateOf(ana.id)).toEqual({ role: "admin", superAdmin: false, twoFactorEnabled: false });
+    expect(await db.select().from(session).where(eq(session.userId, ana.id))).toEqual([]);
+  });
+
+  it("quitarlo borra su verificación, sus sesiones y la marca de super admin; sus finanzas quedan", async () => {
+    const { admin } = await createAdminWithTwoFactor({ superAdmin: true });
+    await addSessions(admin.id);
+    await db.insert(transaction).values({ userId: admin.id, type: "income", amount: 1000, description: "Pago", occurredOn: "2026-10-01" });
+    expect(await setRole(admin.id, "user")).toEqual({ sessionsClosed: 1 });
+    expect(await stateOf(admin.id)).toEqual({ role: "user", superAdmin: false, twoFactorEnabled: false });
+    expect(await db.select().from(twoFactor).where(eq(twoFactor.userId, admin.id))).toEqual([]);
+    expect(await db.select().from(transaction).where(eq(transaction.userId, admin.id))).toHaveLength(1);
+  });
+
+  it("con una cuenta que no existe devuelve null", async () => {
+    expect(await setRole("no-existe", "admin")).toBeNull();
+    expect(await setRole("no-existe", "user")).toBeNull();
+  });
+
+  it("la marca de super admin pasa de una cuenta a otra (hay una sola)", async () => {
+    const ana = await createUser({ role: "admin", superAdmin: true });
+    const beto = await createUser({ role: "admin" });
+    expect(await setSuperAdmin(beto.id)).toBe(true);
+    expect(await stateOf(beto.id)).toMatchObject({ superAdmin: true });
+    expect(await stateOf(ana.id)).toMatchObject({ role: "admin", superAdmin: false });
+    // Marcar otra vez a la misma no cambia nada.
+    expect(await setSuperAdmin(beto.id)).toBe(true);
+    expect((await listAdmins()).filter((a) => a.superAdmin).map((a) => a.id)).toEqual([beto.id]);
+    expect(await findAccountRole(beto.email)).toMatchObject({ superAdmin: true });
+  });
+
+  it("solo a un admin: a un usuario (o a una cuenta que no existe) no, y no le quita la marca a nadie", async () => {
+    const ana = await createUser({ role: "admin", superAdmin: true });
+    const beto = await createUser();
+    expect(await setSuperAdmin(beto.id)).toBe(false);
+    expect(await setSuperAdmin("no-existe")).toBe(false);
+    expect(await stateOf(ana.id)).toMatchObject({ superAdmin: true });
+    expect(await stateOf(beto.id)).toMatchObject({ superAdmin: false });
+  });
+
+  it("la base no admite dos super admins", async () => {
+    await createUser({ role: "admin", superAdmin: true });
+    await expect(createUser({ role: "admin", superAdmin: true })).rejects.toThrow();
   });
 });

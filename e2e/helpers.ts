@@ -146,7 +146,7 @@ export const formAlert = (page: Page) => page.locator("form").getByRole("alert")
  * Corre un comando de terminal de administración (pnpm admin:grant, admin:revoke, admin:reset-2fa)
  * contra la base de las E2E y confirma escribiendo el correo, como lo hace el dueño en producción.
  */
-export function adminCommand(command: "grant" | "revoke" | "reset-2fa", email: string) {
+export function adminCommand(command: "grant" | "revoke" | "super" | "reset-2fa", email: string) {
   return execFileSync("pnpm", ["-s", `admin:${command}`, email], {
     input: `${email}\n`,
     encoding: "utf8",

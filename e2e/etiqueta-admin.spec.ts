@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page } from "@playwright/test";
-import { adminCommand, goToAccount, openAccountMenu, register, test, uniqueEmail, visible } from "./helpers";
+import { adminCommand, goToAccount, logIn, openAccountMenu, register, test, uniqueEmail, visible } from "./helpers";
 
 // Lo de admin del encabezado, con el comando real de terminal (pnpm admin:grant / revoke) contra la
 // base de las E2E: el mismo camino que usa el dueño en producción. El escudo va sobre el círculo de la
@@ -11,7 +11,7 @@ const accountButton = (page: Page) => page.getByRole("banner").getByRole("button
 // La etiqueta (un <span> en la tarjeta), no la pestaña "Admin", que también está en el encabezado.
 const badge = (page: Page) => page.getByRole("group", { name: "Tu cuenta" }).locator("span").filter({ hasText: /^Admin$/ });
 
-test("la etiqueta Admin aparece al dar el rol y desaparece al quitarlo, sin volver a iniciar sesión", async ({ page }) => {
+test("la etiqueta Admin aparece al dar el rol y desaparece al quitarlo (cada cambio pide volver a entrar)", async ({ page }) => {
   const email = uniqueEmail();
   await register(page, "Ana Pérez", email);
   await expect(accountButton(page)).toHaveAccessibleName("Tu cuenta: Ana Pérez");
@@ -21,7 +21,11 @@ test("la etiqueta Admin aparece al dar el rol y desaparece al quitarlo, sin volv
   expect(await page.content()).not.toContain("bg-admin-surface");
 
   expect(adminCommand("grant", email)).toContain("ahora tiene el rol admin");
+  // Dar el rol cierra sus sesiones: al volver a entrar va a configurar la verificación en dos pasos.
   await page.reload();
+  await expect(page).toHaveURL(/\/login/);
+  await logIn(page, email);
+  await expect(page).toHaveURL(/\/admin\/seguridad$/);
   await expect(accountButton(page)).toHaveAccessibleName("Tu cuenta: Ana Pérez, admin");
   await expect(visible(shield(page))).toBeVisible();
   await openAccountMenu(page);
@@ -30,15 +34,19 @@ test("la etiqueta Admin aparece al dar el rol y desaparece al quitarlo, sin volv
 
   // En Mi cuenta, el tipo de cuenta.
   await goToAccount(page);
-  await expect(visible(page.getByText("Tipo de cuenta:"))).toBeVisible();
-  await expect(page.getByText("Administrador")).toBeVisible();
+  await expect(visible(page.getByText("Tipo de cuenta:")).locator("..")).toContainText("Administrador");
 
   // En celular, con el menú cerrado, el escudo sigue a la vista.
   await page.setViewportSize({ width: 375, height: 800 });
   await expect(shield(page)).toBeVisible();
 
   expect(adminCommand("revoke", email)).toContain("ahora tiene el rol usuario");
+  // Quitarlo también cierra sus sesiones; sin la verificación, vuelve a entrar solo con la contraseña.
   await page.reload();
+  await expect(page).toHaveURL(/\/login/);
+  await logIn(page, email);
+  await expect(page).toHaveURL(/\/dashboard$/);
+  await goToAccount(page);
   await expect(shield(page)).toHaveCount(0);
   await expect(badge(page)).toHaveCount(0);
   await expect(page.getByText("Tipo de cuenta:").locator("..")).toContainText("Usuario");
@@ -61,8 +69,11 @@ for (const colorScheme of ["light", "dark"] as const) {
     await page.emulateMedia({ colorScheme });
     const email = uniqueEmail();
     await register(page, "Ana Pérez", email);
+    // Dar el rol cierra sus sesiones: vuelve a entrar (y va a configurar la verificación).
     adminCommand("grant", email);
-    await page.reload();
+    await page.context().clearCookies();
+    await logIn(page, email);
+    await expect(page).toHaveURL(/\/admin\/seguridad$/);
     await expect(visible(shield(page))).toBeVisible();
     // Con la tarjeta abierta: el escudo y la etiqueta a la vez.
     await openAccountMenu(page);
