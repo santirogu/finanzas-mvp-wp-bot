@@ -134,6 +134,29 @@ pnpm dev                        # http://localhost:3000 (antes, copia la base lo
   - **El informe**, con las capturas y la galería, queda en `reports/diseno/` (ignorado por git). Los
     arreglos van en ramas `fix/…`, con una prueba de regresión cuando se puede medir.
   - **WebKit** se instala una vez: `pnpm exec playwright install webkit`.
+- **Auditoría de pruebas** (`/auditoria-pruebas`, un skill de Claude Code en
+  `.claude/skills/auditoria-pruebas/`): revisa si las pruebas detectarían de verdad un error, no solo
+  cuánto código recorren.
+  - **Qué revisa:**
+    - el código que la cobertura no mide o que ninguna prueba importa;
+    - los sobrevivientes de Stryker y la lógica fuera de su lista;
+    - las pruebas frágiles: saltadas, con esperas fijas, con aserciones débiles o que dependen de
+      otra;
+    - las intermitentes del CI;
+    - las reglas de CLAUDE.md sin la prueba que las sostiene;
+    - por riesgo, que el dinero, el acceso a los datos, el bot, el borrado de datos y las fechas
+      tengan pruebas del nivel correcto y con sus casos borde.
+  - **Cómo trabaja:**
+    - un inventario automático (`inventario.mjs`, solo lee archivos) junta lo mecánico;
+    - la cobertura, el último reporte de Stryker y el historial del CI completan las medidas;
+    - Claude y sus subagentes revisan las pruebas con un checklist;
+    - cada hallazgo se demuestra metiendo el error (con Stryker o en un worktree aparte, sin tocar
+      la copia de trabajo) y viendo que ninguna prueba falla.
+  - **Modos:**
+    - `completa`: una vez al mes;
+    - `cambios`: antes de un PR que agregue o cambie lógica;
+    - un área, por ejemplo `/auditoria-pruebas e2e` o `/auditoria-pruebas mutacion`.
+  - **El informe** queda en `reports/pruebas/` (ignorado por git). Los arreglos van en ramas `test/…`.
 - **Errores de los formularios**: en español, debajo de cada campo y nunca el globo del navegador
   (que sale en su idioma, "Please fill out this field."). Los traduce `src/lib/field-errors.ts` y
   los muestra `useFieldErrors`; `src/forms.test.ts` exige que todo formulario con campos validados lo

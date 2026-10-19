@@ -189,6 +189,11 @@ de Vercel ni muevas las migraciones fuera del job `deploy`.
   - Antes de abrir un PR que cambie páginas, componentes, `globals.css` o el layout, corre
     `/auditoria-diseno cambios`.
   - Su informe y sus capturas van a `reports/diseno/` y no se suben.
+- **Auditoría de pruebas:** usa el skill `/auditoria-pruebas` (README → Pruebas y CI).
+  - Antes de abrir un PR que agregue o cambie lógica (módulos, Server Actions, rutas, componentes de
+    cliente), corre `/auditoria-pruebas cambios`.
+  - Una vez al mes, `/auditoria-pruebas completa`.
+  - Su informe va a `reports/pruebas/` y no se sube.
 - **Avisos emergentes** (README → Decisiones importantes): la confirmación de algo que ya pasó va con
   `useToast()` (`src/components/toaster.tsx`): `tone: "success"` (verde) si se guardó o se activó,
   `"removal"` (rojo) si se borró o se desactivó; con `focus: true` si lo que se tocó ya no está (una
