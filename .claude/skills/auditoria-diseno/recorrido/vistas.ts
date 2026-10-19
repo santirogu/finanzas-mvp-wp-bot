@@ -215,6 +215,18 @@ export const VISTAS: Vista[] = [
   { id: "ingresos-extremo", titulo: "Ingresos con textos y montos máximos", persona: "admin", ruta: fija("/ingresos") },
   { id: "egresos-extremo", titulo: "Egresos: 25 movimientos y textos máximos", persona: "admin", ruta: fija("/egresos") },
   { id: "reportes-extremo", titulo: "Reportes con textos y montos máximos", persona: "admin", ruta: fija("/reportes") },
+  {
+    id: "reportes-gastos-grandes",
+    titulo: "Reportes: los gastos más grandes con los siguientes abiertos (textos y montos máximos)",
+    persona: "admin",
+    ruta: fija("/reportes"),
+    preparar: async (page) => {
+      const seccion = visible(page.getByRole("region", { name: "Los gastos más grandes" }));
+      await seccion.getByText(/^Ver (el|los \d+) siguientes?$/).click();
+      await expect(seccion.locator("details[open]")).toBeVisible();
+      await seccion.scrollIntoViewIfNeeded();
+    },
+  },
   { id: "editar-extremo", titulo: "Editar un movimiento con textos máximos", persona: "admin", ruta: (d) => d.editar.admin },
 
   // Administración

@@ -203,7 +203,7 @@ src/
     (app)/dashboard                 Resumen: balance del mes (y frente al anterior), últimos movimientos, gastos por categoría (dona)
     (app)/cuenta                    Mi cuenta: tus datos, seguridad (cambiar la contraseña), WhatsApp, apariencia y eliminar la cuenta
     (app)/ingresos, (app)/egresos   Formulario + listado del mes (vista compartida)
-    (app)/reportes                  Reportes: 12 meses (o un año), barras por mes, categorías frente a su promedio y gastos fijos
+    (app)/reportes                  Reportes: 12 meses (o un año), barras por mes, categorías frente a su promedio, gastos fijos y los más grandes
     (app)/month-nav.tsx             Navegador de meses (flechas y tarjeta del año) del Resumen, Ingresos y Egresos
     (app)/account-menu.tsx          Menú de la cuenta del encabezado (iniciales, escudo de admin, Mi cuenta y Salir)
     api/auth/[...all]               Endpoints de Better Auth
@@ -328,6 +328,11 @@ scripts/seed.ts                     Categorías por defecto
     "Almuerzo" o "Taxi" se repiten todos los meses, pero muchas veces, y no son fijos. Cada uno con lo
     que sumó el último de esos meses en que apareció, el total al mes y qué parte del gasto promedio
     es. Se detectan solos; todavía no se pueden marcar o quitar a mano.
+  - **Los gastos más grandes** (`biggest.ts`): los 10 egresos más altos del período (con "Ver los N
+    siguientes", hasta 25), **sin los gastos fijos**: si no, el arriendo llenaría la lista todos los
+    meses y taparía lo que sorprende. Cada uno con su fecha (con el año si no es el actual), su
+    categoría y su monto; tocarlo lleva a editarlo y, al guardar, se vuelve a Egresos, al mes del
+    movimiento (como desde cualquier lista).
   - **Privacidad:** solo los movimientos propios y no eliminados (prueba de integración con dos
     usuarios). No guarda nada nuevo: todo se calcula al abrir la página.
 - **Todas las consultas filtran por `userId`** obtenido de la sesión en el servidor; cada Server
