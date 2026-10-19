@@ -63,7 +63,7 @@ async function hasExpense(userId: string, description: string) {
   return Boolean(row);
 }
 
-/** Marca o desmarca un gasto fijo de la persona. Solo se agrega uno que esté entre sus egresos. */
+/** Marca o desmarca un gasto fijo de la persona. Solo se marca uno que esté entre sus egresos. */
 export async function chooseFixedExpense(userId: string, raw: { description: unknown; action: unknown }): Promise<FixedChoiceResult> {
   const parsed = input.safeParse(raw);
   if (!parsed.success) return { ok: false, error: "Elige un egreso." };
@@ -71,7 +71,9 @@ export async function chooseFixedExpense(userId: string, raw: { description: unk
   const key = searchKey(description);
 
   if (action === "include" || action === "exclude") {
-    if (action === "include" && !(await hasExpense(userId, description))) {
+    // Solo se marca lo que está entre sus egresos: así no se guardan textos inventados (las marcas no
+    // crecen sin límite) y lo marcado siempre es algo que la persona registró.
+    if (!(await hasExpense(userId, description))) {
       return { ok: false, error: "Ese egreso no está entre tus movimientos." };
     }
     await db

@@ -65,20 +65,23 @@ describe("chooseFixedExpense", () => {
     expect(await choicesOf(user.id)).toEqual([{ key: "seguro del carro civico", choice: "include" }]);
   });
 
-  it("solo agrega lo que está entre sus egresos: no uno inventado, borrado, ingreso ni de otra cuenta", async () => {
-    const user = await createUser();
-    const other = await createUser();
-    await addExpense(other.id, "Arriendo de Beto");
-    await addExpense(user.id, "Borrado", new Date());
-    await db.insert(transaction).values({ userId: user.id, type: "income", amount: 1, description: "Salario", occurredOn: "2026-10-05" });
-    for (const description of ["Inventado", "Arriendo de Beto", "Borrado", "Salario"]) {
-      expect(await chooseFixedExpense(user.id, { description, action: "include" })).toEqual({
-        ok: false,
-        error: "Ese egreso no está entre tus movimientos.",
-      });
-    }
-    expect(await choicesOf(user.id)).toEqual([]);
-  });
+  it.each(["include", "exclude"])(
+    "solo marca (%s) lo que está entre sus egresos: no uno inventado, borrado, ingreso ni de otra cuenta",
+    async (action) => {
+      const user = await createUser();
+      const other = await createUser();
+      await addExpense(other.id, "Arriendo de Beto");
+      await addExpense(user.id, "Borrado", new Date());
+      await db.insert(transaction).values({ userId: user.id, type: "income", amount: 1, description: "Salario", occurredOn: "2026-10-05" });
+      for (const description of ["Inventado", "Arriendo de Beto", "Borrado", "Salario"]) {
+        expect(await chooseFixedExpense(user.id, { description, action })).toEqual({
+          ok: false,
+          error: "Ese egreso no está entre tus movimientos.",
+        });
+      }
+      expect(await choicesOf(user.id)).toEqual([]);
+    },
+  );
 
   it("encuentra el egreso aunque esté escrito con otras mayúsculas o espacios", async () => {
     const user = await createUser();

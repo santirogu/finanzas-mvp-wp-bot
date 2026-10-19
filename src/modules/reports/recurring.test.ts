@@ -231,8 +231,9 @@ describe("recurringExpenses · lo que marca la persona", () => {
     expect(report.candidates).toEqual([]);
   });
 
-  it("los quitados, en orden alfabético", () => {
-    const report = recurringExpenses(rows, twelve, choices([], ["netflix", "arriendo"]));
+  it("los quitados, en orden alfabético (aunque lleguen en otro)", () => {
+    const unordered = [...every("Netflix", 44900, 8, 9, 10), ...every("Arriendo", 1800000, 7, 8, 9, 10)];
+    const report = recurringExpenses(unordered, twelve, choices([], ["netflix", "arriendo"]));
     expect(report.removed.map((r) => r.description)).toEqual(["Arriendo", "Netflix"]);
     expect(report.items).toEqual([]);
   });

@@ -81,7 +81,8 @@ export function FixedExpenses({
               </li>
             ))}
           </ul>
-          <div className="flex items-baseline justify-between gap-3 border-t border-border pt-3 text-sm font-semibold">
+          {/* El total, alineado con los montos de arriba (deja el lugar del ✕: 44 px, o 32 con mouse, más el espacio). */}
+          <div className="flex items-baseline justify-between gap-3 border-t border-border pt-3 pr-[3.25rem] text-sm font-semibold pointer-fine:pr-10">
             <span>Total al mes</span>
             <span className="whitespace-nowrap tabular-nums">−{money(total)}</span>
           </div>
