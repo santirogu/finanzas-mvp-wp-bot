@@ -3,7 +3,7 @@ import postgres from "postgres";
 import { totp } from "../test/totp";
 import { heading, newAdmin, seriousViolations, setUpTwoFactor, wrongCode } from "./admin";
 import { e2eDatabaseUrl } from "./database-url";
-import { fakeIp, logIn, logOut, register, test, toast, toasts, uniqueEmail, visible } from "./helpers";
+import { fakeIp, goToWhatsApp, logIn, logOut, register, test, toast, toasts, uniqueEmail, visible } from "./helpers";
 import { newPhone, nthReply, sendWhatsApp } from "./whatsapp";
 
 // Las acciones del admin sobre una cuenta (/admin/usuarios/[id]), de punta a punta: cada una pide el
@@ -27,6 +27,7 @@ async function personWithWhatsApp(browser: Browser, name: string, request: Param
   const email = uniqueEmail();
   const phone = newPhone();
   await register(page, name, email);
+  await goToWhatsApp(page);
   await page.getByRole("button", { name: "Conectar WhatsApp" }).click();
   const code = (await visible(page.getByText(/^VINCULAR \d{6}$/)).textContent())!.replace("VINCULAR ", "");
   await sendWhatsApp(request, phone, `VINCULAR ${code}`);
@@ -145,8 +146,8 @@ test("el admin desvincula el WhatsApp y elimina una cuenta; de ella solo queda '
     await confirmWith(page, codeFor(secret), "Desvincular");
     await expect(status(page)).toHaveText("Se desvinculó el WhatsApp de Carla Acciones.");
     await expect(adminActions(page).first()).toContainText("Ana Admin desvinculó el WhatsApp");
-    // Carla lo ve en su Resumen: puede vincularlo otra vez.
-    await carla.page.reload();
+    // Carla lo ve en Mi cuenta: puede vincularlo otra vez.
+    await carla.page.goto("/cuenta");
     await expect(visible(carla.page.getByRole("button", { name: "Conectar WhatsApp" }))).toBeVisible();
     // Y el bot ya no registra lo que escriba desde ese número.
     await sendWhatsApp(request, carla.phone, "gasté 20 mil en almuerzo");

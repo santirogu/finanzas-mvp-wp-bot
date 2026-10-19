@@ -10,11 +10,14 @@ import { newPhone, nthReply, sendWhatsApp, sentTo } from "./whatsapp";
 // (e2e/fake-services.mjs), que guarda lo que "envió". La interpretación de texto libre la hace un
 // Claude falso con respuestas fijas. Nada sale a internet ni gasta créditos.
 
-test("vincular el número desde el dashboard y llevar las cuentas por WhatsApp", async ({ page, request }) => {
+test("vincular el número desde Mi cuenta y llevar las cuentas por WhatsApp", async ({ page, request }) => {
   const phone = newPhone();
   await register(page, "Ana Pérez");
+  const hint = () => visible(page.getByRole("link", { name: /^Registra tus gastos por WhatsApp/ }));
 
-  const code = await test.step("generar el código en el dashboard", async () => {
+  const code = await test.step("el aviso del Resumen lleva a Mi cuenta, donde se genera el código", async () => {
+    await hint().click();
+    await expect(page).toHaveURL(/\/cuenta#whatsapp$/);
     await page.getByRole("button", { name: "Conectar WhatsApp" }).click();
     const message = visible(page.getByText(/^VINCULAR \d{6}$/));
     await expect(message).toBeVisible();
@@ -32,6 +35,10 @@ test("vincular el número desde el dashboard y llevar las cuentas por WhatsApp",
     await expect(visible(page.getByText("Conectado"))).toBeVisible({ timeout: 15_000 });
     // El número se muestra enmascarado.
     await expect(visible(page.getByText(`+57 300 ••• ${phone.slice(-4)}`))).toBeVisible();
+    // Ya vinculado, el Resumen no muestra el aviso.
+    await page.goto("/dashboard");
+    await expect(visible(page.getByText("Balance del mes"))).toBeVisible();
+    await expect(page.getByRole("link", { name: /^Registra tus gastos por WhatsApp/ })).toHaveCount(0);
   });
 
   await test.step("un gasto escrito como a una persona queda registrado en la web", async () => {
@@ -99,7 +106,7 @@ test("un número sin vincular recibe instrucciones y no puede usar el bot", asyn
 
   await sendWhatsApp(request, phone, "me compré unos zapatos de $500.000");
   expect(await nthReply(request, phone, 1)).toContain("Este número aún no está vinculado a una cuenta.");
-  expect(await nthReply(request, phone, 1)).toContain("http://localhost:3100/dashboard");
+  expect(await nthReply(request, phone, 1)).toContain("http://localhost:3100/cuenta");
 
   await sendWhatsApp(request, phone, "balance");
   expect(await nthReply(request, phone, 2)).toContain("aún no está vinculado");
@@ -113,7 +120,7 @@ test("un código inválido no vincula nada", async ({ request }) => {
   const phone = newPhone();
   await sendWhatsApp(request, phone, "VINCULAR 000000");
   expect(await nthReply(request, phone, 1)).toBe(
-    "Ese código no es válido o ya venció. Genera uno nuevo en el dashboard.",
+    "Ese código no es válido o ya venció. Genera uno nuevo en Mi cuenta.",
   );
 });
 

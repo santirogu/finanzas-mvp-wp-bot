@@ -4,7 +4,7 @@ import postgres from "postgres";
 import { heading, newAdmin, seriousViolations, setUpTwoFactor } from "./admin";
 import { e2eDatabaseUrl } from "./database-url";
 import { FAKE_SERVICES_URL } from "./fake-config";
-import { newPerson, register, test, visible } from "./helpers";
+import { goToWhatsApp, newPerson, register, test, visible } from "./helpers";
 import { newPhone, nthReply, sendWhatsApp } from "./whatsapp";
 
 // El Bot de WhatsApp en la administración: qué pasó con los mensajes, el consumo de Claude y los
@@ -34,6 +34,7 @@ test("el admin ve qué pasó con los mensajes de una cuenta y su consumo de Clau
   const beto = await newPerson(browser);
   const phone = newPhone();
   await register(beto, "Beto Bot");
+  await goToWhatsApp(beto);
   await beto.getByRole("button", { name: "Conectar WhatsApp" }).click();
   const code = (await visible(beto.getByText(/^VINCULAR \d{6}$/)).textContent())!.replace("VINCULAR ", "");
   const messages = [`VINCULAR ${code}`, "almuerzo 25.900,50", "balance", "hola, ¿cómo vas?", null];

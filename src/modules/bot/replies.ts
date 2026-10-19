@@ -87,7 +87,7 @@ export const helpReply = (name?: string) =>
   ].join("\n");
 
 export const notLinkedReply = (appUrl: string) =>
-  `Hola 👋 Este número aún no está vinculado a una cuenta. Entra a ${appUrl}/dashboard, toca *Conectar WhatsApp* y envíame el código que te aparece.`;
+  `Hola 👋 Este número aún no está vinculado a una cuenta. Entra a ${appUrl}/cuenta (Mi cuenta), toca *Conectar WhatsApp* y envíame el código que te aparece.`;
 
 export const linkedReply = (name: string) =>
   `✅ ¡Listo${name ? `, ${name.split(" ")[0]}` : ""}! Tu WhatsApp quedó vinculado.\n\nPrueba escribiéndome: _gasté 20 mil en almuerzo_`;
@@ -96,7 +96,7 @@ export const linkedReply = (name: string) =>
 export const suspendedReply = `Tu cuenta está suspendida, así que no puedo registrar movimientos. Si crees que es un error, escríbenos a ${CONTACT_EMAIL}.`;
 
 export const linkInvalidReply =
-  "Ese código no es válido o ya venció. Genera uno nuevo en el dashboard.";
+  "Ese código no es válido o ya venció. Genera uno nuevo en Mi cuenta.";
 export const linkRateLimitedReply =
   "Demasiados intentos fallidos. Espera una hora antes de volver a intentar.";
 export const unsupportedTypeReply = "Por ahora solo entiendo mensajes de texto ✍️";

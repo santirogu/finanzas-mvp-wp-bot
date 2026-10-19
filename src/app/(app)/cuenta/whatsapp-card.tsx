@@ -5,14 +5,20 @@ import { UnlinkWhatsApp } from "./unlink-whatsapp";
 import { WhatsAppConnect } from "./whatsapp-connect";
 import { envVar } from "@/lib/env";
 
+/**
+ * El WhatsApp de la cuenta, en Mi cuenta: conectarlo (el código para enviarle al bot) o, ya vinculado,
+ * el número y "Desvincular número". El Resumen lleva aquí (#whatsapp) mientras no esté vinculado.
+ */
 export async function WhatsAppCard() {
   const user = await requireUser();
   const link = await getLinkForUser(user.id);
 
   return (
-    <section className="card p-4">
+    <section id="whatsapp" className="card scroll-mt-4 p-4" aria-labelledby="whatsapp-titulo">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="font-semibold">WhatsApp</h2>
+        <h2 id="whatsapp-titulo" className="font-semibold">
+          WhatsApp
+        </h2>
         {link && (
           <span className="rounded-full bg-income/10 px-2 py-0.5 text-xs font-medium text-income">
             Conectado

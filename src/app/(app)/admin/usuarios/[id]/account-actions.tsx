@@ -188,7 +188,7 @@ export function AccountActions({
           onDone={finish("removal")}
         >
           El bot dejará de registrar lo que escriba desde <span className="whitespace-nowrap">{target.phone}</span>. Podrá
-          vincularlo otra vez desde su Resumen.
+          vincularlo otra vez desde Mi cuenta.
         </ConfirmDialog>
       )}
       {open === "suspend" && (
