@@ -1,19 +1,26 @@
 name: Mutation testing
 
 # Stryker introduce cambios pequeños en el código y verifica que las pruebas unitarias los
-# detecten. Tarda ~40 minutos en GitHub, así que corre solo a pedido (no es check obligatorio):
-#   · en un PR, al ponerle la etiqueta "mutation-testing" (y en cada push mientras la tenga);
-#   · a mano: Actions → Mutation testing → Run workflow;
-#   · cada lunes sobre main, para detectar si el puntaje fue bajando.
+# detecten. Cada mutante corre la suite unitaria completa: la lista entera de stryker.config.mjs
+# (~5000 mutantes) tarda ~8 horas en un runner, más de lo que dura un job. Por eso
+# (scripts/mutation-targets.mjs):
+#   · en un PR con la etiqueta "mutation-testing" (y en cada push mientras la tenga) se mutan solo
+#     los archivos de esa lista que el PR cambió: unos minutos;
+#   · cada lunes sobre main y a mano (Actions → Mutation testing → Run workflow), la lista completa,
+#     repartida en partes de ~45 minutos que corren a la vez.
+# No es check obligatorio.
 on:
   pull_request:
-    types: [labeled, synchronize, reopened]
+    # closed: al cerrar o fusionar el PR, la corrida que quede se cancela (ver la concurrencia).
+    types: [labeled, synchronize, reopened, closed]
   workflow_dispatch:
   schedule:
     - cron: "0 11 * * 1" # lunes 6:00 a. m. en Bogotá (11:00 UTC)
 
 concurrency:
-  group: mutation-${{ github.ref }}
+  # Una corrida por PR: un push nuevo o el cierre del PR cancelan la anterior. Ponerle otra etiqueta
+  # no la corta: esa corrida (que no hace nada) va en un grupo propio.
+  group: mutation-${{ github.event.pull_request.number || github.ref }}${{ github.event.action == 'labeled' && github.event.label.name != 'mutation-testing' && format('-{0}', github.run_id) || '' }}
   cancel-in-progress: true
 
 # Menor privilegio: el token del CI solo puede leer el código (los jobs que necesitan más
@@ -22,14 +29,58 @@ permissions:
   contents: read
 
 jobs:
-  mutation:
-    name: Mutation testing
-    # En PRs, solo si tienen la etiqueta. Al agregar otra etiqueta no se vuelve a correr.
+  targets:
+    name: Qué mutar
+    # En PRs, solo si tienen la etiqueta (y no al cerrarlos). Al agregar otra etiqueta no se vuelve a correr.
     if: >-
       github.event_name != 'pull_request' ||
       (github.event.action == 'labeled' && github.event.label.name == 'mutation-testing') ||
-      (github.event.action != 'labeled' &&
+      (github.event.action != 'labeled' && github.event.action != 'closed' &&
         contains(github.event.pull_request.labels.*.name, 'mutation-testing'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      count: ${{ steps.decide.outputs.count }}
+      matrix: ${{ steps.decide.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Sin el token de GitHub en .git/config mientras corre código de terceros.
+          persist-credentials: false
+          fetch-depth: 0
+
+      # El script solo usa Node (lee stryker.config.mjs): no hace falta instalar dependencias.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+
+      - name: Decidir qué archivos mutar
+        id: decide
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          # Si el script falla, el paso también (y no corre una matriz vacía).
+          set -o pipefail
+          if [ "$GITHUB_EVENT_NAME" != "pull_request" ]; then
+            node scripts/mutation-targets.mjs todos | tee decision.txt
+          # GITHUB_SHA es el PR fusionado con la base: el diff son los cambios del PR.
+          elif git diff --name-only "$BASE" "$GITHUB_SHA" > changed.txt; then
+            node scripts/mutation-targets.mjs cambios < changed.txt | tee decision.txt
+          else
+            echo "No se pudo comparar con la base: se muta la lista completa." | tee decision.txt
+            node scripts/mutation-targets.mjs todos | tee -a decision.txt
+          fi
+          { echo "### ¿Qué muta Stryker?"; echo; echo '```'; cat decision.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
+  mutation:
+    name: Mutation testing (${{ matrix.parte }})
+    needs: targets
+    if: needs.targets.outputs.count != '0'
+    strategy:
+      # Si una parte falla, las otras terminan igual: así se ve el puntaje de todas.
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.targets.outputs.matrix) }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
@@ -47,18 +98,42 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      # Falla si el puntaje queda por debajo de "break" en stryker.config.mjs.
+      # Los archivos de esta parte, por una variable (no escritos en el comando): son nombres que
+      # vienen del PR. Falla si el puntaje queda por debajo de "break" en stryker.config.mjs.
       - name: Ejecutar Stryker
-        run: pnpm test:mutation
+        env:
+          FILES: ${{ matrix.files }}
+        run: pnpm exec stryker run --mutate "$FILES"
 
-      - name: Resumen del puntaje
-        if: always()
-        run: node scripts/mutation-summary.mjs
-
-      - name: Guardar reporte HTML
+      - name: Guardar reporte
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: mutation-report
+          name: mutation-report-${{ strategy.job-index }}
           path: reports/mutation/
           retention-days: 14
+
+  resumen:
+    name: Resumen del puntaje
+    needs: [targets, mutation]
+    # También si una parte falló (el resumen dice dónde); no si no hubo nada que mutar.
+    if: always() && needs.targets.result == 'success' && needs.targets.outputs.count != '0'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Sin el token de GitHub en .git/config mientras corre código de terceros.
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: mutation-report-*
+          path: partes
+
+      # Los reportes de todas las partes, juntos en una tabla (el puntaje total y por archivo).
+      - run: node scripts/mutation-summary.mjs partes/*/mutation.json

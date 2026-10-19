@@ -55,8 +55,9 @@ Responde y escribe en **español** (commits, PRs, comentarios del código y text
    prueba de componentes (`*.test.tsx`). Si cambiaste páginas o componentes, corre también
    `pnpm test:e2e` (el check "E2E y accesibilidad" es obligatorio). Si agregas código, agrégale pruebas. Si agregaste o cambiaste lógica en archivos
    que muta Stryker (`stryker.config.mjs`), ponle al PR la etiqueta `mutation-testing` (o corre
-   `pnpm test:mutation` en local), cubre con pruebas los mutantes sobrevivientes relevantes y
-   comunica el puntaje antes de que el dueño fusione. No es un check obligatorio: tarda ~40 minutos en GitHub. Si cambiaste el prompt o el esquema del bot, propón correr `pnpm bot:eval` (cuesta
+   `pnpm test:mutation:cambios` en local), cubre con pruebas los mutantes sobrevivientes relevantes y
+   comunica el puntaje antes de que el dueño fusione. No es un check obligatorio: en un PR muta solo
+   los archivos de la lista que cambió (minutos); la lista completa (~8 horas) corre los lunes, en partes. Si cambiaste el prompt o el esquema del bot, propón correr `pnpm bot:eval` (cuesta
    créditos de la API: pide confirmación).
 5. **Abre un Pull Request hacia `main`.** El título sigue el punto 3 (descripción en español) y
    la descripción sigue `.github/pull_request_template.md`: encabezados en inglés, contenido en

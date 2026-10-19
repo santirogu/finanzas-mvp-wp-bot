@@ -26,7 +26,7 @@ const config = {
     "src/app/api/{whatsapp/webhook,health}/route.ts",
     "src/app/*/simulador/actions.ts",
     "src/proxy.ts",
-    "scripts/{conventional-commit,deploy-needed,e2e-needed,pr-description,check-schema-drift,mutation-summary,smoke,release}.mjs",
+    "scripts/{conventional-commit,deploy-needed,e2e-needed,pr-description,check-schema-drift,mutation-summary,mutation-targets,smoke,release}.mjs",
     "scripts/{delete-data,admin,db-cli,db-backup}.ts",
   ],
   reporters: ["clear-text", "progress-append-only", "html", "json"],

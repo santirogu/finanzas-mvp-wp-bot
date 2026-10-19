@@ -34,6 +34,7 @@
     "test:coverage": "vitest run --coverage",
     "prepare": "git config core.hooksPath .githooks || true",
     "test:mutation": "stryker run",
+    "test:mutation:cambios": "node scripts/mutation-targets.mjs local",
     "test:e2e": "playwright test"
   },
   "dependencies": {
