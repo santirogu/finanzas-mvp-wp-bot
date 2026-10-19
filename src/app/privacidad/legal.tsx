@@ -12,7 +12,7 @@ export function DataDeletionSteps() {
   return (
     <ul>
       <li>
-        <strong>Desconectar WhatsApp:</strong> en el dashboard, tarjeta WhatsApp → “Desvincular
+        <strong>Desconectar WhatsApp:</strong> en <strong>Mi cuenta</strong>, tarjeta WhatsApp → “Desvincular
         número”. El bot deja de asociar tus mensajes a tu cuenta.
       </li>
       <li>

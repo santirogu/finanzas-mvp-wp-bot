@@ -17,7 +17,7 @@ import {
 import { MonthNav } from "../month-nav";
 import { PageSkeleton } from "../page-skeleton";
 import { CategoryChart } from "./category-chart";
-import { WhatsAppCard } from "./whatsapp-card";
+import { WhatsAppHint } from "./whatsapp-hint";
 
 export const metadata: Metadata = { title: "Resumen" };
 
@@ -111,7 +111,8 @@ async function Dashboard({ month }: { month: string | string[] | undefined }) {
         </section>
 
         <div className="space-y-6 lg:col-span-2">
-          <WhatsAppCard />
+          {/* El WhatsApp se conecta en Mi cuenta: aquí, solo el aviso mientras no esté vinculado. */}
+          <WhatsAppHint />
           <section className="card p-4">
             <h2 className="font-semibold">Gastos por categoría</h2>
             {byCategory.length === 0 ? (

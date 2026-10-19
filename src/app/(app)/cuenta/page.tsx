@@ -5,6 +5,7 @@ import { requireUser } from "@/lib/session";
 import { PageSkeleton } from "../page-skeleton";
 import { DeleteAccountForm } from "./delete-account-form";
 import { ThemePicker } from "./theme-picker";
+import { WhatsAppCard } from "./whatsapp-card";
 
 export const metadata: Metadata = { title: "Mi cuenta" };
 
@@ -35,6 +36,8 @@ async function Account() {
           <span className="text-muted">Tipo de cuenta:</span> {roleLabel(user.role, user.superAdmin)}
         </p>
       </section>
+
+      <WhatsAppCard />
 
       <section className="card space-y-3 p-4 text-sm" aria-labelledby="apariencia">
         <div className="space-y-1">

@@ -176,6 +176,12 @@ export async function goToAccount(page: Page) {
   await expect(visible(page.getByRole("heading", { name: "Mi cuenta", exact: true }))).toBeVisible();
 }
 
+/** Va a la tarjeta de WhatsApp de Mi cuenta (ahí se conecta y se desvincula), como lo haría una persona. */
+export async function goToWhatsApp(page: Page) {
+  await goToAccount(page);
+  await expect(visible(page.getByRole("region", { name: "WhatsApp" }))).toBeVisible();
+}
+
 /** Cierra sesión con Salir, en el menú de la cuenta. */
 export async function logOut(page: Page) {
   await (await openAccountMenu(page)).getByRole("button", { name: "Salir" }).click();

@@ -5,7 +5,7 @@ import { totp } from "../test/totp";
 import { heading, newAdmin, seriousViolations, setUpTwoFactor, wrongCode } from "./admin";
 import { e2eDatabaseUrl } from "./database-url";
 import { FAKE_SERVICES_URL } from "./fake-config";
-import { fakeIp, register, test, toast, visible } from "./helpers";
+import { fakeIp, goToWhatsApp, register, test, toast, visible } from "./helpers";
 import { newPhone, nthReply, sendWhatsApp } from "./whatsapp";
 
 // La configuración del bot en /admin/bot, de punta a punta: pausar y reanudar Claude, y cambiar los
@@ -25,6 +25,7 @@ async function betoWithWhatsApp(browser: Browser, request: Parameters<typeof sen
   const page = await (await browser.newContext({ extraHTTPHeaders: { "x-forwarded-for": fakeIp() } })).newPage();
   const phone = newPhone();
   await register(page, "Beto Bot");
+  await goToWhatsApp(page);
   await page.getByRole("button", { name: "Conectar WhatsApp" }).click();
   const code = (await visible(page.getByText(/^VINCULAR \d{6}$/)).textContent())!.replace("VINCULAR ", "");
   await sendWhatsApp(request, phone, `VINCULAR ${code}`);

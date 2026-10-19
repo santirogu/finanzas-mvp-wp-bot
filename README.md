@@ -4,7 +4,8 @@ App web para registrar ingresos y egresos y ver el balance del mes actual. Cada 
 su propia sesión y su dashboard con tres pestañas: **Resumen**, **Ingresos** y **Egresos**, donde
 cada movimiento se puede editar o eliminar. También se registran escribiéndole a un bot de
 WhatsApp ("me compré unos zapatos de $500.000"), que entiende el mensaje con Claude. En **Mi
-cuenta**, cada persona puede eliminar su cuenta y todos sus datos (confirmando con su contraseña).
+cuenta**, cada persona conecta o desvincula su WhatsApp, elige la apariencia y puede eliminar su cuenta
+y todos sus datos (confirmando con su contraseña).
 
 ## Stack
 
@@ -190,6 +191,7 @@ src/
   app/
     (auth)/login, (auth)/registro   Páginas públicas de acceso
     (app)/dashboard                 Resumen: balance del mes (y frente al anterior), últimos movimientos, gastos por categoría (dona)
+    (app)/cuenta                    Mi cuenta: tus datos, WhatsApp (conectar y desvincular), apariencia y eliminar la cuenta
     (app)/ingresos, (app)/egresos   Formulario + listado del mes (vista compartida)
     (app)/month-nav.tsx             Navegador de meses (flechas y tarjeta del año) del Resumen, Ingresos y Egresos
     (app)/account-menu.tsx          Menú de la cuenta del encabezado (iniciales, escudo de admin, Mi cuenta y Salir)
@@ -300,9 +302,11 @@ scripts/seed.ts                     Categorías por defecto
 
 ## Bot de WhatsApp
 
-1. En el dashboard, la tarjeta **WhatsApp → Conectar WhatsApp** genera un código de 6 dígitos
+1. En **Mi cuenta**, la tarjeta **WhatsApp → Conectar WhatsApp** genera un código de 6 dígitos
    (vence en 10 minutos). El usuario lo envía al bot como `VINCULAR 123456` y su número queda
-   asociado a su cuenta.
+   asociado a su cuenta. Mientras no lo tenga vinculado, el Resumen muestra un aviso corto que lleva
+   ahí (`/cuenta#whatsapp`, `src/app/(app)/dashboard/whatsapp-hint.tsx`); ya vinculado, el Resumen no
+   muestra nada de WhatsApp. A un número sin vincular, el bot le responde con ese mismo enlace.
 2. Cada mensaje llega a `POST /api/whatsapp/webhook`. Se verifica la firma `X-Hub-Signature-256`,
    se responde 200 de inmediato y el mensaje se procesa después (`after()`).
 3. Se deduplica por el ID del mensaje, se resuelven los comandos fijos (`balance`, `deshacer`,
@@ -596,7 +600,7 @@ la de otro admin, el super admin solo puede quitarle el rol):
 |---|---|---|
 | Desbloquear el inicio de sesión | Borra el bloqueo por contraseñas equivocadas (`login_failure`) | `login_unlocked` |
 | Cerrar todas sus sesiones | Borra sus sesiones: tiene que volver a entrar. Su WhatsApp sigue | `sessions_revoked` (cuántas) |
-| Desvincular su WhatsApp | Lo mismo que hace la persona desde su Resumen | `whatsapp_unlinked` con `by_admin` |
+| Desvincular su WhatsApp | Lo mismo que hace la persona desde Mi cuenta | `whatsapp_unlinked` con `by_admin` |
 | Suspender la cuenta | Hasta que la reactive un admin: cierra sus sesiones, no puede entrar ni usar el bot. Sus datos se conservan. Motivo opcional e interno | `account_suspended` (con el motivo) |
 | Reactivar la cuenta | Puede volver a entrar y a usar el bot | `account_reactivated` |
 | Eliminar la cuenta | Lo mismo que `pnpm account:delete`; además pide escribir su correo | Solo `account_deleted`, sin datos de la cuenta |

@@ -3,7 +3,7 @@
 import { useToast } from "@/components/toaster";
 import { unlinkWhatsAppAction } from "@/modules/whatsapp/actions";
 
-/** "Desvincular número" en la tarjeta de WhatsApp del Resumen: al terminar, el aviso emergente (rojo). */
+/** "Desvincular número" en la tarjeta de WhatsApp de Mi cuenta: al terminar, el aviso emergente (rojo). */
 export function UnlinkWhatsApp() {
   const toast = useToast();
   return (

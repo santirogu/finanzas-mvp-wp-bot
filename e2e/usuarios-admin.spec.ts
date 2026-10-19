@@ -3,7 +3,7 @@ import { expect, type Page } from "@playwright/test";
 import postgres from "postgres";
 import { heading, newAdmin, seriousViolations, setUpTwoFactor } from "./admin";
 import { e2eDatabaseUrl } from "./database-url";
-import { fakeIp, register, test, uniqueEmail, visible } from "./helpers";
+import { fakeIp, goToWhatsApp, register, test, uniqueEmail, visible } from "./helpers";
 import { newPhone, nthReply, sendWhatsApp } from "./whatsapp";
 
 // Usuarios en la administración: la lista de cuentas con búsqueda y filtros en chips, y el detalle
@@ -65,6 +65,7 @@ test("el admin encuentra una cuenta y ve su detalle: WhatsApp, sesión con naveg
   const betoEmail = uniqueEmail();
   const betoPhone = newPhone();
   await register(beto, "Beto Usuarios", betoEmail);
+  await goToWhatsApp(beto);
   await beto.getByRole("button", { name: "Conectar WhatsApp" }).click();
   const code = (await visible(beto.getByText(/^VINCULAR \d{6}$/)).textContent())!.replace("VINCULAR ", "");
   await sendWhatsApp(request, betoPhone, `VINCULAR ${code}`);
