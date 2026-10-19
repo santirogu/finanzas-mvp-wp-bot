@@ -56,7 +56,7 @@ describe("BotSettings", () => {
 
   it("en pausa lo resalta, ofrece reanudar y muestra quién la cambió", () => {
     render(<BotSettings {...props({ claudePaused: true, limits: { perHour: 5, perDay: 1500 }, lastChange: "Ana Admin · 16 de oct" })} />);
-    expect(section().getByText("En pausa: el bot solo responde balance, deshacer y ayuda.")).toHaveClass("text-danger");
+    expect(section().getByText("En pausa: el bot solo responde balance, reporte, deshacer y ayuda.")).toHaveClass("text-danger");
     expect(section().getByRole("button", { name: "Reanudar Claude" })).toBeInTheDocument();
     expect(section().getAllByRole("listitem")[1]).toHaveTextContent("5 por hora y 1.500 por día");
     expect(section().getByText("Último cambio: Ana Admin · 16 de oct")).toBeInTheDocument();
@@ -186,13 +186,13 @@ describe("BotSettings · tope mensual de tokens", () => {
     render(<BotSettings {...props({ monthlyTokenLimit: 30_000, month: { used: 37_579, reached: true, resetsOn: "1 de noviembre" } })} />);
     expect(section().getByText("Alcanzado: 37.579 de 30.000. Claude vuelve el 1 de noviembre.")).toHaveClass("text-danger");
     expect(
-      section().getByText("En pausa por el tope mensual hasta el 1 de noviembre: el bot solo responde balance, deshacer y ayuda."),
+      section().getByText("En pausa por el tope mensual hasta el 1 de noviembre: el bot solo responde balance, reporte, deshacer y ayuda."),
     ).toHaveClass("text-danger");
   });
 
   it("la pausa a mano se muestra aunque también se haya alcanzado el tope", () => {
     render(<BotSettings {...props({ claudePaused: true, monthlyTokenLimit: 30_000, month: { used: 40_000, reached: true, resetsOn: "1 de noviembre" } })} />);
-    expect(section().getByText("En pausa: el bot solo responde balance, deshacer y ayuda.")).toBeInTheDocument();
+    expect(section().getByText("En pausa: el bot solo responde balance, reporte, deshacer y ayuda.")).toBeInTheDocument();
   });
 
   it("la ventana estima para cuántos mensajes alcanza lo que se escribe, y lo envía con el código", async () => {

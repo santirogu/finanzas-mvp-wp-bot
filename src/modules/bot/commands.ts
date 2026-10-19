@@ -5,8 +5,12 @@ import { compareMonths, FIRST_MONTH, type Month, shiftMonth } from "@/lib/dates"
 /** El mes que pide "balance septiembre" (con o sin año) o "balance mes pasado". */
 export type BalancePeriod = { month: number; year?: number } | "previous";
 
+/** El período que pide "reporte": un año ("reporte 2025") o el actual ("reporte del año"); sin decir, los últimos 12 meses. */
+export type ReportAsk = { year: number } | "this-year";
+
 export type BotCommand =
   | { kind: "command"; command: "balance"; period?: BalancePeriod }
+  | { kind: "command"; command: "report"; period?: ReportAsk }
   | { kind: "command"; command: "undo" | "help" }
   | { kind: "link"; code: string };
 
@@ -96,6 +100,33 @@ export function balanceMonth(
   if (compareMonths(month, FIRST_MONTH) < 0) return { tooOld: true };
   return compareMonths(month, current) > 0 ? { future: month } : { month };
 }
+// "reporte", "informe", "mi reporte", "reporte de los últimos 12 meses" (lo de Reportes en la web).
+// Con año: "reporte 2025", "informe del 2025", "reporte del año 2025"; el actual: "reporte del año",
+// "reporte de este año", "reporte anual". `strip` ya quitó las tildes: "año" llega como "ano".
+const REPORT = /^(?:mi |el )?(?:reporte|informe)(?: (?:de los )?ultimos 12 meses)?$/;
+const REPORT_YEAR = /^(?:mi |el )?(?:reporte|informe)(?: del| de)?(?: ano)? (\d{1,4})$/;
+const REPORT_THIS_YEAR = /^(?:mi |el )?(?:reporte|informe) (?:(?:del|de este|este) ano|anual)$/;
+
+/** "reporte 2025" → { year: 2025 }; "reporte del año" → "this-year"; "reporte" → undefined; null si no es un reporte. */
+function reportAsk(text: string): { period?: ReportAsk } | null {
+  if (REPORT.test(text)) return {};
+  if (REPORT_THIS_YEAR.test(text)) return { period: "this-year" };
+  const match = REPORT_YEAR.exec(text);
+  return match ? { period: { year: Number(match[1]) } } : null;
+}
+
+/**
+ * El período de Reportes que se pidió (el `?periodo=` de la web), visto desde el mes actual. `future`
+ * si pidió un año que todavía no llega; `tooOld` si es de antes de FIRST_MONTH.
+ */
+export function reportYear(period: ReportAsk | undefined, current: Month): { id?: string } | { future: number } | { tooOld: true } {
+  if (!period) return {};
+  const year = period === "this-year" ? current.year : period.year;
+  if (year < FIRST_MONTH.year) return { tooOld: true };
+  if (year > current.year) return { future: year };
+  return { id: String(year) };
+}
+
 const UNDO = /^(deshacer|anular|borrar|eliminar)( (el )?ultimo)?$/;
 const HELP = /^(ayuda|help|menu|hola|holi|buenas|buenos dias|buenas tardes|buenas noches|comandos)$/;
 const LINK = /^vincular\s+(\d{6})$/;
@@ -107,6 +138,8 @@ export function parseCommand(text: string): BotCommand | null {
   if (BALANCE.test(normalized) || ASK_CURRENT.test(normalized)) return { kind: "command", command: "balance" };
   const period = balancePeriod(normalized);
   if (period) return { kind: "command", command: "balance", period };
+  const report = reportAsk(normalized);
+  if (report) return { kind: "command", command: "report", ...report };
   if (UNDO.test(normalized)) return { kind: "command", command: "undo" };
   if (HELP.test(normalized)) return { kind: "command", command: "help" };
   return null;

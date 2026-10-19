@@ -480,6 +480,69 @@ describe("handleIncomingMessage · balance de otro mes", () => {
   });
 });
 
+describe("handleIncomingMessage · reporte", () => {
+  const current = monthOf(todayInTimezone("America/Bogota"));
+  const previous = shiftMonth(current, -1);
+  const add = (userId: string, type: "income" | "expense", amount: number, month: { year: number; month: number }) =>
+    db.insert(transaction).values({ userId, type, amount, description: "Movimiento", occurredOn: `${monthParam(month)}-10` });
+  const send = async (text: string, phone = PHONE) => {
+    const { deps: d, sender, extractor } = deps();
+    const msg = incoming(text, phone);
+    await handleIncomingMessage(msg, d);
+    return { reply: sender.sent[0].body.replace(/\u00a0/g, " "), extractor, msg };
+  };
+
+  it("\"reporte\" resume los últimos 12 meses, solo del usuario, sin llamar a Claude, con el enlace a Reportes", async () => {
+    const user = await linkedUser();
+    const other = await linkedUser("573007777777", "Otro");
+    await add(user.id, "income", 2000000, previous);
+    await add(user.id, "expense", 500000, previous);
+    await add(user.id, "expense", 300000, current);
+    await add(other.id, "income", 7777777, previous);
+
+    const { reply, extractor, msg } = await send("reporte");
+    const from = formatMonthName(shiftMonth(current, -11), { withYear: true });
+    expect(reply.split("\n")).toEqual([
+      `📊 *Reporte de ${from} a ${formatMonthName(current, { withYear: true })}*`,
+      "Ingresos: $2.000.000,00",
+      "Egresos: $800.000,00",
+      "Balance: *$1.200.000,00* (ahorraste el 60%)",
+      "Gasto promedio por mes: $500.000,00",
+      `Mes de más gasto: ${formatMonthName(previous, { withYear: true })} ($500.000,00)`,
+      "En qué se te fue: • Sin categoría 100%",
+      "",
+      `Más detalle: ${APP_URL}/reportes`,
+    ]);
+    expect(reply).not.toContain("7.777.777");
+    expect(extractor.calls).toBe(0);
+    expect(await loggedMessage(msg.id)).toMatchObject({ status: "processed", intent: { kind: "command", command: "report" } });
+  });
+
+  it("\"reporte <año>\" es ese año, con su enlace", async () => {
+    const user = await linkedUser();
+    const lastYear = { year: current.year - 1, month: 6 };
+    await add(user.id, "expense", 120000, lastYear);
+    const { reply } = await send(`informe del ${lastYear.year}`);
+    expect(reply).toMatch(new RegExp(`^📊 \\*Reporte de enero a diciembre de ${lastYear.year}\\*`));
+    expect(reply).toContain("Egresos: $120.000,00");
+    expect(reply).toContain(`Más detalle: ${APP_URL}/reportes?periodo=${lastYear.year}`);
+  });
+
+  it("un año que todavía no llega, o de antes del 2000, responde sin consultar nada; sin movimientos, lo dice", async () => {
+    await linkedUser();
+    expect((await send(`reporte ${current.year + 1}`)).reply).toBe(replies.futureYearReply(current.year + 1));
+    expect((await send("reporte 1999")).reply).toBe(replies.tooOldYearReply);
+    expect((await send("reporte")).reply).toMatch(/^No tienes movimientos de /);
+  });
+
+  it("un número sin vincular no ve el reporte de nadie", async () => {
+    const user = await linkedUser();
+    await add(user.id, "income", 2000000, previous);
+    const { reply } = await send("reporte", "573005550000");
+    expect(reply).toBe(replies.notLinkedReply(APP_URL));
+  });
+});
+
 describe("handleIncomingMessage · comandos", () => {
   it("balance resume solo el mes actual del usuario, sin movimientos borrados ni ajenos", async () => {
     const user = await linkedUser();
@@ -597,7 +660,7 @@ describe("handleIncomingMessage · categorías", () => {
 });
 
 describe("handleIncomingMessage · cuenta suspendida", () => {
-  it("no registra nada, no llama a la IA ni deja ver el balance o deshacer: responde que está suspendida", async () => {
+  it("no registra nada, no llama a la IA ni deja ver el balance, el reporte o deshacer: responde que está suspendida", async () => {
     const ana = await linkedUser();
     const add = fakeExtractor([{ type: "expense", amount: 30000, description: "Almuerzo", category: "Comida" }]);
     await handleIncomingMessage(incoming("almuerzo 30 mil"), deps(add).deps);
@@ -605,7 +668,7 @@ describe("handleIncomingMessage · cuenta suspendida", () => {
 
     const extractor = fakeExtractor([{ type: "expense", amount: 1, description: "Otro", category: "Comida" }]);
     const { deps: d, sender } = deps(extractor);
-    const messages = [incoming("gasté 20 mil"), incoming("balance"), incoming("deshacer"), incoming("ayuda")];
+    const messages = [incoming("gasté 20 mil"), incoming("balance"), incoming("reporte"), incoming("deshacer"), incoming("ayuda")];
     for (const msg of messages) await handleIncomingMessage(msg, d);
 
     expect(extractor.calls).toBe(0);

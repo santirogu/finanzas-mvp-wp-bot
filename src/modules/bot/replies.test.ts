@@ -8,6 +8,10 @@ import {
   balanceReply,
   errorReply,
   futureMonthReply,
+  futureYearReply,
+  REPORT_CATEGORIES,
+  reportReply,
+  tooOldYearReply,
   tooOldMonthReply,
   helpReply,
   linkedReply,
@@ -21,6 +25,10 @@ import {
   unsupportedTypeReply,
 } from "./replies";
 import { CONTACT_EMAIL } from "@/lib/contact";
+import type { CategoryReport } from "@/modules/reports/categories";
+import { reportPeriod } from "@/modules/reports/period";
+import type { RecurringReport } from "@/modules/reports/recurring";
+import type { PeriodSummary } from "@/modules/reports/summary";
 
 const range = monthRange(2026, 10);
 const nbsp = (s: string) => s.replace(/\u00a0/g, " ");
@@ -209,6 +217,7 @@ describe("textos fijos del bot", () => {
         "También entiendo:",
         "• *balance* — cómo vas este mes",
         "• *balance septiembre* o *balance mes pasado* — otro mes",
+        "• *reporte* — tus últimos 12 meses (o *reporte 2025*, un año)",
         "• *deshacer* — borra el último registro",
       ].join("\n"),
     );
@@ -226,28 +235,119 @@ describe("textos fijos del bot", () => {
       "Tuve un problema procesando tu mensaje 😕 Intenta de nuevo en un momento.",
     );
     expect(aiUnavailableReply).toBe(
-      "Por ahora solo entiendo *balance*, *deshacer* y *ayuda*. Muy pronto podrás registrar gastos escribiendo normal ✍️",
+      "Por ahora solo entiendo *balance*, *reporte*, *deshacer* y *ayuda*. Muy pronto podrás registrar gastos escribiendo normal ✍️",
     );
   });
 
   it("con Claude en pausa (/admin/bot): la web y los comandos que siguen", () => {
     expect(aiPausedReply("https://finanzas.app")).toBe(
-      "Por ahora no puedo entender mensajes escritos libremente 🛠️ Registra tus movimientos en la web: https://finanzas.app/dashboard. *balance*, *deshacer* y *ayuda* siguen funcionando.",
+      "Por ahora no puedo entender mensajes escritos libremente 🛠️ Registra tus movimientos en la web: https://finanzas.app/dashboard. *balance*, *reporte*, *deshacer* y *ayuda* siguen funcionando.",
     );
   });
 
   it("con el tope mensual de tokens alcanzado: lo mismo que en pausa", () => {
     expect(aiMonthlyLimitReply("https://finanzas.app")).toBe(
-      "Este mes ya usé todo mi cupo para entender mensajes escritos libremente 🛠️ Registra tus movimientos en la web: https://finanzas.app/dashboard. *balance*, *deshacer* y *ayuda* siguen funcionando.",
+      "Este mes ya usé todo mi cupo para entender mensajes escritos libremente 🛠️ Registra tus movimientos en la web: https://finanzas.app/dashboard. *balance*, *reporte*, *deshacer* y *ayuda* siguen funcionando.",
     );
   });
 
   it("límites del bot", () => {
     expect(aiRateLimitedReply).toBe(
-      "Recibí muchos mensajes en poco tiempo. Para cuidar el servicio, espera un rato antes de registrar más. Mientras tanto puedes escribir *balance* o *deshacer*, o usar la web.",
+      "Recibí muchos mensajes en poco tiempo. Para cuidar el servicio, espera un rato antes de registrar más. Mientras tanto puedes escribir *balance*, *reporte* o *deshacer*, o usar la web.",
     );
     expect(tooManyTransactionsReply(20)).toBe(
       "Son muchos movimientos en un solo mensaje. Envíame máximo 20 por mensaje y los registro.",
     );
+  });
+});
+
+describe("reportReply", () => {
+  const october = { year: 2026, month: 10 };
+  const ctx = { currency: "COP", appUrl: "https://finanzas.app" };
+  const summary: PeriodSummary = {
+    income: 33350000,
+    expense: 10977000,
+    balance: 22373000,
+    saved: "67",
+    averageExpense: { amount: 3748000, months: 3, withoutCurrent: true },
+    topMonth: { month: october, expense: 7229000 },
+  };
+  const row = (emoji: string, name: string, total: number) => ({ emoji, name, total, share: 0, color: 0, change: null });
+  const categories: CategoryReport = {
+    total: 10977000,
+    compared: null,
+    averaged: [],
+    rows: [row("🏠", "Vivienda", 7000000), row("💳", "Deudas", 1500000), row("📚", "Educación", 1200000), row("🍽️", "Alimentación", 1277000)],
+  };
+  const recurring: RecurringReport = { items: [{ description: "Arriendo", emoji: "🏠", amount: 1800000, months: 4 }], total: 1800000.5 };
+
+  it("las cifras del período, las categorías que más sumaron, los gastos fijos y el enlace", () => {
+    expect(reportReply({ summary, categories, recurring }, reportPeriod(undefined, october), ctx)).toBe(
+      [
+        "📊 *Reporte de noviembre de 2025 a octubre de 2026*",
+        "Ingresos: $33.350.000,00",
+        "Egresos: $10.977.000,00",
+        "Balance: *$22.373.000,00* (ahorraste el 67%)",
+        "Gasto promedio por mes: $3.748.000,00",
+        "Mes de más gasto: octubre de 2026 ($7.229.000,00)",
+        "En qué se te fue: 🏠 Vivienda 64% · 💳 Deudas 14% · 📚 Educación 11%",
+        "Gastos fijos: $1.800.000,50 al mes",
+        "",
+        "Más detalle: https://finanzas.app/reportes",
+      ].join("\n"),
+    );
+  });
+
+  it(`nombra hasta ${REPORT_CATEGORIES} categorías, las que llegan`, () => {
+    const two = { ...categories, rows: categories.rows.slice(0, 1) };
+    expect(reportReply({ summary, categories: two, recurring }, reportPeriod(undefined, october), ctx)).toContain(
+      "En qué se te fue: 🏠 Vivienda 64%\n",
+    );
+  });
+
+  it("de un año, con su enlace; si gastó más de lo que ganó, lo dice", () => {
+    const overspent = { ...summary, balance: -500, saved: "overspent" as const };
+    const reply = reportReply({ summary: overspent, categories, recurring }, reportPeriod("2025", october), ctx);
+    expect(reply).toMatch(/^📊 \*Reporte de enero a diciembre de 2025\*\n/);
+    expect(reply).toContain("Balance: *−$500,00* (gastaste más de lo que ganaste)");
+    expect(reply).toMatch(/Más detalle: https:\/\/finanzas\.app\/reportes\?periodo=2025$/);
+  });
+
+  it("de un solo mes (el año en curso en enero), con su artículo", () => {
+    const reply = reportReply({ summary, categories, recurring }, reportPeriod("2026", { year: 2026, month: 1 }), ctx);
+    expect(reply).toMatch(/^📊 \*Reporte de enero de 2026\*\n/);
+  });
+
+  it("sin promedio, sin mes de más gasto, sin categorías ni fijos, y con el balance en cero: solo lo que hay", () => {
+    const bare = { ...summary, expense: 0, balance: 33350000, saved: null, averageExpense: null, topMonth: null };
+    expect(
+      reportReply({ summary: bare, categories: { ...categories, rows: [] }, recurring: { items: [], total: 0 } }, reportPeriod(undefined, october), ctx),
+    ).toBe(
+      [
+        "📊 *Reporte de noviembre de 2025 a octubre de 2026*",
+        "Ingresos: $33.350.000,00",
+        "Egresos: $0,00",
+        "Balance: *$33.350.000,00*",
+        "",
+        "Más detalle: https://finanzas.app/reportes",
+      ].join("\n"),
+    );
+  });
+
+  it("sin movimientos en el período, lo dice (con su artículo si es un solo mes)", () => {
+    const empty = { ...summary, income: 0, expense: 0, balance: 0, saved: null, averageExpense: null, topMonth: null };
+    const none = { summary: empty, categories: { ...categories, rows: [], total: 0 }, recurring: { items: [], total: 0 } };
+    expect(reportReply(none, reportPeriod(undefined, october), ctx)).toBe(
+      "No tienes movimientos de noviembre de 2025 a octubre de 2026. Escríbeme algo como “gasté 20 mil en almuerzo” y aquí verás cómo te va.",
+    );
+    expect(reportReply(none, reportPeriod("2026", { year: 2026, month: 1 }), ctx)).toMatch(/^No tienes movimientos en enero de 2026\./);
+    // Con solo ingresos (o solo egresos) ya hay reporte.
+    expect(reportReply({ ...none, summary: { ...empty, income: 1 } }, reportPeriod(undefined, october), ctx)).toMatch(/^📊/);
+    expect(reportReply({ ...none, summary: { ...empty, expense: 1 } }, reportPeriod(undefined, october), ctx)).toMatch(/^📊/);
+  });
+
+  it("un año futuro o de antes del 2000", () => {
+    expect(futureYearReply(2027)).toBe("2027 todavía no llega 🙂 Prueba con *reporte* (los últimos 12 meses) o *reporte* y un año que ya pasó.");
+    expect(tooOldYearReply).toBe("Solo puedo darte reportes desde el 2000. Prueba con *reporte* (los últimos 12 meses) o *reporte 2025*.");
   });
 });

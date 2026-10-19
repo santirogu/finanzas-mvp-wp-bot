@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { balanceMonth, parseCommand } from "./commands";
+import { balanceMonth, parseCommand, reportYear } from "./commands";
 
 const balanceOf = (text: string) => {
   const command = parseCommand(text);
@@ -169,5 +169,62 @@ describe("balanceMonth", () => {
     expect(balanceMonth({ month: 10, year: 2026 }, october)).toEqual({ month: { year: 2026, month: 10 } });
     expect(balanceMonth({ month: 12, year: 2026 }, october)).toEqual({ future: { year: 2026, month: 12 } });
     expect(balanceMonth({ month: 1, year: 2027 }, october)).toEqual({ future: { year: 2027, month: 1 } });
+  });
+});
+
+describe("parseCommand · reporte", () => {
+  it.each([
+    ["reporte", {}],
+    ["Reporte", {}],
+    ["informe", {}],
+    ["mi reporte", {}],
+    ["el informe", {}],
+    ["reporte de los últimos 12 meses", {}],
+    ["reporte ultimos 12 meses", {}],
+    ["¿Reporte?", {}],
+    ["reporte 2025", { period: { year: 2025 } }],
+    ["informe del 2025", { period: { year: 2025 } }],
+    ["reporte de 2024", { period: { year: 2024 } }],
+    ["reporte año 2025", { period: { year: 2025 } }],
+    ["reporte del año 2025", { period: { year: 2025 } }],
+    ["reporte 99", { period: { year: 99 } }],
+    ["reporte del año", { period: "this-year" }],
+    ["Reporte de este año", { period: "this-year" }],
+    ["reporte este año", { period: "this-year" }],
+    ["informe anual", { period: "this-year" }],
+  ])("%s", (text, expected) => {
+    expect(parseCommand(text)).toEqual({ kind: "command", command: "report", ...expected });
+  });
+
+  it.each(["reportes", "reporte de gastos", "reporte 20255", "reporte septiembre", "informe: gasté 20 mil", "reporte del mes", "mi reporte anual 2025"])(
+    "%s no es el comando (va a Claude)",
+    (text) => {
+      expect(parseCommand(text)).toBeNull();
+    },
+  );
+
+  it("no se confunde con el balance", () => {
+    expect(parseCommand("resumen")).toEqual({ kind: "command", command: "balance" });
+  });
+});
+
+describe("reportYear", () => {
+  const october = { year: 2026, month: 10 };
+
+  it("sin año, los últimos 12 meses (sin ?periodo=)", () => {
+    expect(reportYear(undefined, october)).toEqual({});
+  });
+
+  it("el año pedido, o el actual", () => {
+    expect(reportYear({ year: 2025 }, october)).toEqual({ id: "2025" });
+    expect(reportYear({ year: 2026 }, october)).toEqual({ id: "2026" });
+    expect(reportYear("this-year", october)).toEqual({ id: "2026" });
+    expect(reportYear({ year: 2000 }, october)).toEqual({ id: "2000" });
+  });
+
+  it("un año que todavía no llega, o de antes del 2000", () => {
+    expect(reportYear({ year: 2027 }, october)).toEqual({ future: 2027 });
+    expect(reportYear({ year: 1999 }, october)).toEqual({ tooOld: true });
+    expect(reportYear({ year: 99 }, october)).toEqual({ tooOld: true });
   });
 });

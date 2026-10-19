@@ -1,7 +1,11 @@
 // Textos que el bot envía por WhatsApp. WhatsApp usa *negrita* y _cursiva_.
 import { CONTACT_EMAIL } from "@/lib/contact";
 import { formatMonthLabel, formatMonthName, formatShortDate, type Month, type MonthRange } from "@/lib/dates";
-import { formatMoney } from "@/lib/money";
+import { formatMoney, formatShare } from "@/lib/money";
+import type { CategoryReport } from "@/modules/reports/categories";
+import { periodHref, type ReportPeriod } from "@/modules/reports/period";
+import type { RecurringReport } from "@/modules/reports/recurring";
+import type { PeriodSummary } from "@/modules/reports/summary";
 import { balanceChange } from "@/modules/transactions/month-comparison";
 import type { ParsedTransaction } from "./normalize";
 
@@ -63,6 +67,55 @@ export const tooOldMonthReply =
 export const futureMonthReply = (month: Month) =>
   `${formatMonthLabel(month)} todavía no llega 🙂 Prueba con *balance* (este mes) o *balance mes pasado*.`;
 
+/** Cuántas categorías nombra el reporte ("En qué se te fue"). */
+export const REPORT_CATEGORIES = 3;
+
+/**
+ * "reporte" (o "reporte 2025"): lo de Reportes en la web, en un mensaje. Las cifras del período, las
+ * categorías que más sumaron, los gastos fijos y el enlace a Reportes para ver el resto.
+ */
+export function reportReply(
+  report: { summary: PeriodSummary; categories: CategoryReport; recurring: RecurringReport },
+  period: ReportPeriod,
+  ctx: { currency: string; appUrl: string },
+): string {
+  const money = (n: number) => formatMoney(n, ctx.currency);
+  const link = `${ctx.appUrl}${periodHref(period.id)}`;
+  const { summary, categories, recurring } = report;
+  // "De noviembre de 2025 a octubre de 2026" o, si es un solo mes, "Enero de 2026": dentro de una frase.
+  const range = period.range.charAt(0).toLowerCase() + period.range.slice(1);
+  const single = period.months.length === 1;
+  if (summary.income === 0 && summary.expense === 0) {
+    return `No tienes movimientos ${single ? `en ${range}` : range}. Escríbeme algo como “gasté 20 mil en almuerzo” y aquí verás cómo te va.`;
+  }
+  const saved =
+    summary.saved === "overspent" ? " (gastaste más de lo que ganaste)" : summary.saved ? ` (ahorraste el ${summary.saved}%)` : "";
+  const top = categories.rows
+    .slice(0, REPORT_CATEGORIES)
+    .map((row) => `${row.emoji} ${row.name} ${formatShare(row.total, categories.total)}%`);
+  return [
+    `📊 *Reporte ${single ? `de ${range}` : range}*`,
+    `Ingresos: ${money(summary.income)}`,
+    `Egresos: ${money(summary.expense)}`,
+    `Balance: *${money(summary.balance)}*${saved}`,
+    ...(summary.averageExpense ? [`Gasto promedio por mes: ${money(summary.averageExpense.amount)}`] : []),
+    ...(summary.topMonth
+      ? [`Mes de más gasto: ${formatMonthName(summary.topMonth.month, { withYear: true })} (${money(summary.topMonth.expense)})`]
+      : []),
+    ...(top.length > 0 ? [`En qué se te fue: ${top.join(" · ")}`] : []),
+    ...(recurring.items.length > 0 ? [`Gastos fijos: ${money(recurring.total)} al mes`] : []),
+    "",
+    `Más detalle: ${link}`,
+  ].join("\n");
+}
+
+/** "reporte 2027" cuando todavía es 2026. */
+export const futureYearReply = (year: number) =>
+  `${year} todavía no llega 🙂 Prueba con *reporte* (los últimos 12 meses) o *reporte* y un año que ya pasó.`;
+
+/** "reporte 1999": antes del primer año que se puede ver (el mismo límite de la web). */
+export const tooOldYearReply = "Solo puedo darte reportes desde el 2000. Prueba con *reporte* (los últimos 12 meses) o *reporte 2025*.";
+
 export function undoReply(
   removed: { description: string; amount: number; type: string }[],
   currency: string,
@@ -83,6 +136,7 @@ export const helpReply = (name?: string) =>
     "También entiendo:",
     "• *balance* — cómo vas este mes",
     "• *balance septiembre* o *balance mes pasado* — otro mes",
+    "• *reporte* — tus últimos 12 meses (o *reporte 2025*, un año)",
     "• *deshacer* — borra el último registro",
   ].join("\n");
 
@@ -103,14 +157,14 @@ export const unsupportedTypeReply = "Por ahora solo entiendo mensajes de texto �
 export const errorReply =
   "Tuve un problema procesando tu mensaje 😕 Intenta de nuevo en un momento.";
 export const aiRateLimitedReply =
-  "Recibí muchos mensajes en poco tiempo. Para cuidar el servicio, espera un rato antes de registrar más. Mientras tanto puedes escribir *balance* o *deshacer*, o usar la web.";
+  "Recibí muchos mensajes en poco tiempo. Para cuidar el servicio, espera un rato antes de registrar más. Mientras tanto puedes escribir *balance*, *reporte* o *deshacer*, o usar la web.";
 export const tooManyTransactionsReply = (max: number) =>
   `Son muchos movimientos en un solo mensaje. Envíame máximo ${max} por mensaje y los registro.`;
 /** Cuando el admin pausó Claude en /admin/bot: los comandos siguen, el texto libre se registra en la web. */
 export const aiPausedReply = (appUrl: string) =>
-  `Por ahora no puedo entender mensajes escritos libremente 🛠️ Registra tus movimientos en la web: ${appUrl}/dashboard. *balance*, *deshacer* y *ayuda* siguen funcionando.`;
+  `Por ahora no puedo entender mensajes escritos libremente 🛠️ Registra tus movimientos en la web: ${appUrl}/dashboard. *balance*, *reporte*, *deshacer* y *ayuda* siguen funcionando.`;
 /** Cuando se usó el tope mensual de tokens de /admin/bot: hasta el mes siguiente, como en pausa. */
 export const aiMonthlyLimitReply = (appUrl: string) =>
-  `Este mes ya usé todo mi cupo para entender mensajes escritos libremente 🛠️ Registra tus movimientos en la web: ${appUrl}/dashboard. *balance*, *deshacer* y *ayuda* siguen funcionando.`;
+  `Este mes ya usé todo mi cupo para entender mensajes escritos libremente 🛠️ Registra tus movimientos en la web: ${appUrl}/dashboard. *balance*, *reporte*, *deshacer* y *ayuda* siguen funcionando.`;
 export const aiUnavailableReply =
-  "Por ahora solo entiendo *balance*, *deshacer* y *ayuda*. Muy pronto podrás registrar gastos escribiendo normal ✍️";
+  "Por ahora solo entiendo *balance*, *reporte*, *deshacer* y *ayuda*. Muy pronto podrás registrar gastos escribiendo normal ✍️";

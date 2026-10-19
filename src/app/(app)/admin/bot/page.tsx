@@ -166,7 +166,7 @@ async function Bot({ params }: { params: Record<string, string | string[] | unde
             Consumo de Claude
           </h2>
           <p className="text-sm text-muted">
-            Cada mensaje en texto libre usa una llamada; los comandos (balance, deshacer, ayuda) no. El costo es un estimado
+            Cada mensaje en texto libre usa una llamada; los comandos (balance, reporte, deshacer, ayuda) no. El costo es un estimado
             en dólares con los precios públicos de Anthropic del {formatPriceDate(PRICES_CHECKED_ON)}; el cobro real lo ves en
             la consola de Anthropic.
           </p>
