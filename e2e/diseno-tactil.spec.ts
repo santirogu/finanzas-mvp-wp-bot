@@ -210,6 +210,11 @@ test("en pantallas táctiles las páginas caben y los campos no hacen zoom @tact
     expect(options.x, "la lista de descargas en 320 px").toBeGreaterThanOrEqual(0);
     expect(options.x + options.width, "la lista de descargas en 320 px").toBeLessThanOrEqual(320);
     await page.keyboard.press("Escape");
+    // "Agregar un gasto fijo" abierto: el selector, con la descripción más larga, cabe y no hace zoom.
+    const fixed = visible(page.getByRole("region", { name: "Gastos fijos" }));
+    await fixed.getByRole("button", { name: "Agregar un gasto fijo" }).click();
+    await expect(fixed.getByLabel("Egreso", { exact: true })).toBeFocused();
+    await expectFitsOnScreens(page, "Reportes con el formulario de gastos fijos abierto");
     await open(page, "/egresos");
     await visible(page.getByRole("link", { name: `Editar ${description}` })).click();
     await expect(heading(page, "Editar movimiento")).toBeVisible();

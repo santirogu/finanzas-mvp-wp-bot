@@ -279,7 +279,12 @@ describe("reportReply", () => {
     averaged: [],
     rows: [row("🏠", "Vivienda", 7000000), row("💳", "Deudas", 1500000), row("📚", "Educación", 1200000), row("🍽️", "Alimentación", 1277000)],
   };
-  const recurring: RecurringReport = { items: [{ description: "Arriendo", emoji: "🏠", amount: 1800000, months: 4 }], total: 1800000.5 };
+  const recurring: RecurringReport = {
+    items: [{ key: "arriendo", description: "Arriendo", emoji: "🏠", amount: 1800000, months: 4, origin: "auto" }],
+    total: 1800000.5,
+    removed: [],
+    candidates: [],
+  };
 
   it("las cifras del período, las categorías que más sumaron, los gastos fijos y el enlace", () => {
     expect(reportReply({ summary, categories, recurring }, reportPeriod(undefined, october), ctx)).toBe(

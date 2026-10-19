@@ -38,6 +38,11 @@ export default function PrivacyPage() {
               categorías y fechas de tus ingresos y egresos.
             </li>
             <li>
+              <strong>Tus gastos fijos marcados a mano:</strong> si en Reportes agregas o quitas un
+              gasto fijo, guardamos su descripción (sin mayúsculas ni tildes) y si lo agregaste o lo
+              quitaste, hasta que lo deshagas o elimines tu cuenta.
+            </li>
+            <li>
               <strong>Datos de WhatsApp, si conectas tu número:</strong> tu número de teléfono y el
               contenido de los mensajes que envías al bot, junto con las respuestas del bot.
             </li>

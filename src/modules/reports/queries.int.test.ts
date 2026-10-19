@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { db } from "@/db";
-import { transaction } from "@/db/schema";
+import { fixedExpenseChoice, transaction } from "@/db/schema";
 import { listCategories } from "@/modules/transactions/queries";
 import { createUser } from "../../../test/integration/factories";
 import { reportPeriod } from "./period";
@@ -178,8 +178,10 @@ describe("getReport", () => {
       ["Mercado", 600000, "Nueva en septiembre"],
     ]);
     expect(report.recurring).toEqual({
-      items: [{ description: "Arriendo", emoji: vivienda.emoji, amount: 1800000, months: 4 }],
+      items: [{ key: "arriendo", description: "Arriendo", emoji: vivienda.emoji, amount: 1800000, months: 4, origin: "auto" }],
       total: 1800000,
+      removed: [],
+      candidates: [{ key: "mercado del mes", description: "Mercado del mes", emoji: mercado.emoji }],
     });
     // El arriendo es fijo: no está entre los más grandes.
     expect(report.biggest.map((r) => [r.description, r.amount])).toEqual([["Mercado del mes", 600000]]);
@@ -201,6 +203,34 @@ describe("getReport", () => {
     expect(report.biggest.map((r) => r.description)).toEqual(["Mercado"]);
   });
 
+  it("los gastos fijos toman lo que marcó la persona (y no lo que marcó otra)", async () => {
+    const ana = await createUser();
+    const beto = await createUser();
+    for (const month of ["07", "08", "09", "10"]) {
+      await addTx({ userId: ana.id, description: "Arriendo", amount: 1800000, occurredOn: `2026-${month}-05` });
+      await addTx({ userId: ana.id, description: "Netflix", amount: 44900, occurredOn: `2026-${month}-06` });
+    }
+    await addTx({ userId: ana.id, description: "Seguro del carro", amount: 950000, occurredOn: "2026-10-07" });
+    await addTx({ userId: ana.id, description: "Mercado", amount: 600000, occurredOn: "2026-10-08" });
+    await db.insert(fixedExpenseChoice).values([
+      { userId: ana.id, descriptionKey: "netflix", choice: "exclude" },
+      { userId: ana.id, descriptionKey: "seguro del carro", choice: "include" },
+      // Beto quitó el arriendo: a Ana no le cambia nada.
+      { userId: beto.id, descriptionKey: "arriendo", choice: "exclude" },
+    ]);
+
+    const { recurring, biggest } = await getReport(ana.id, reportPeriod(undefined, october), october);
+    expect(recurring.items.map((i) => [i.description, i.origin, i.amount])).toEqual([
+      ["Arriendo", "auto", 1800000],
+      ["Seguro del carro", "manual", 950000],
+    ]);
+    expect(recurring.removed.map((r) => r.description)).toEqual(["Netflix"]);
+    expect(recurring.candidates.map((c) => c.description)).toEqual(["Mercado"]);
+    expect(recurring.total).toBe(2750000);
+    // Lo que es fijo (también lo agregado a mano) no está entre los gastos más grandes; lo quitado, sí.
+    expect(biggest.map((b) => b.description)).toEqual(["Mercado", "Netflix", "Netflix", "Netflix", "Netflix"]);
+  });
+
   it("sin movimientos, todo en cero", async () => {
     const user = await createUser();
     const report = await getReport(user.id, reportPeriod("2025", october), october);
@@ -208,7 +238,7 @@ describe("getReport", () => {
     expect(report.series.every((p) => p.income === 0 && p.expense === 0)).toBe(true);
     expect(report.summary).toMatchObject({ income: 0, expense: 0, balance: 0, saved: null, averageExpense: null, topMonth: null });
     expect(report.categories.rows).toEqual([]);
-    expect(report.recurring).toEqual({ items: [], total: 0 });
+    expect(report.recurring).toEqual({ items: [], total: 0, removed: [], candidates: [] });
     expect(report.biggest).toEqual([]);
   });
 

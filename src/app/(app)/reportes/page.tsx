@@ -17,13 +17,13 @@ import { monthHref } from "@/lib/month-nav";
 import { requireUser } from "@/lib/session";
 import { BIGGEST_SHOWN, type ExpenseRow } from "@/modules/reports/biggest";
 import { averagedPhrase, type CategoryReport } from "@/modules/reports/categories";
-import { periodHref, periodOptions, reportPeriod, type ReportPeriod } from "@/modules/reports/period";
+import { periodHref, periodOptions, reportPeriod } from "@/modules/reports/period";
 import { getReport, type Report } from "@/modules/reports/queries";
-import { RECURRING_MIN_MONTHS, RECURRING_WINDOW, type RecurringReport } from "@/modules/reports/recurring";
 import type { PeriodSummary } from "@/modules/reports/summary";
 import { NO_CATEGORY } from "@/modules/transactions/search";
 import { PageSkeleton } from "../page-skeleton";
 import { DownloadMenu } from "./download-menu";
+import { FixedExpenses } from "./fixed-expenses";
 import { type TrendPoint, TrendChart } from "./trend-chart";
 
 export const metadata: Metadata = { title: "Reportes" };
@@ -94,7 +94,15 @@ async function Reports({ period: param }: { period: string | string[] | undefine
           <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
             <Categories categories={report.categories} money={money} />
             <div className="space-y-6">
-              <Recurring recurring={report.recurring} period={period} summary={report.summary} money={money} />
+              <FixedExpenses
+                items={report.recurring.items}
+                removed={report.recurring.removed}
+                candidates={report.recurring.candidates}
+                total={report.recurring.total}
+                periodMonths={period.months.length}
+                averageExpense={report.summary.averageExpense?.amount ?? 0}
+                currency={user.currency}
+              />
               <Biggest biggest={report.biggest} hadExpenses={report.summary.expense > 0} current={current} money={money} />
             </div>
           </div>
@@ -288,47 +296,6 @@ function Categories({ categories, money }: { categories: CategoryReport; money: 
   );
 }
 
-function Recurring({ recurring, period, summary, money }: { recurring: RecurringReport; period: ReportPeriod; summary: PeriodSummary; money: Money }) {
-  const average = summary.averageExpense?.amount ?? 0;
-  return (
-    <section className="card p-4" aria-label="Gastos fijos">
-      <h2 className="font-semibold">
-        Gastos fijos
-      </h2>
-      <p className="mt-1 text-sm text-muted">
-        Los egresos con la misma descripción en al menos {RECURRING_MIN_MONTHS} de los últimos {RECURRING_WINDOW} meses.
-      </p>
-      {recurring.items.length === 0 ? (
-        <p className="py-8 text-center text-sm text-muted">Todavía no hay egresos que se repitan cada mes.</p>
-      ) : (
-        <>
-          <ul className="mt-2 divide-y divide-border">
-            {recurring.items.map((item) => (
-              <li key={item.description} className="flex items-center justify-between gap-3 py-3 text-sm">
-                <div className="min-w-0">
-                  <p className="truncate">
-                    {item.emoji} {item.description}
-                  </p>
-                  <p className="text-xs text-muted">
-                    En {item.months} de {period.months.length} {period.months.length === 1 ? "mes" : "meses"}
-                  </p>
-                </div>
-                <span className="shrink-0 whitespace-nowrap font-semibold tabular-nums text-expense">−{money(item.amount)}</span>
-              </li>
-            ))}
-          </ul>
-          <div className="flex items-baseline justify-between gap-3 border-t border-border pt-3 text-sm font-semibold">
-            <span>Total al mes</span>
-            <span className="whitespace-nowrap tabular-nums">−{money(recurring.total)}</span>
-          </div>
-          {average > 0 && (
-            <p className="mt-1 text-xs text-muted">Son el {formatShare(recurring.total, average)}% de tu gasto promedio por mes.</p>
-          )}
-        </>
-      )}
-    </section>
-  );
-}
 
 function Biggest({ biggest, hadExpenses, current, money }: { biggest: ExpenseRow[]; hadExpenses: boolean; current: Month; money: Money }) {
   const first = biggest.slice(0, BIGGEST_SHOWN);

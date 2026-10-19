@@ -5,6 +5,7 @@ import {
   account,
   accountEvent,
   category,
+  fixedExpenseChoice,
   loginFailure,
   session,
   transaction,
@@ -45,6 +46,8 @@ async function fullAccount(email: string, phone: string) {
     { id: `wamid.${phone}.despues`, phone, body: "gasté 2 mil", status: "processed", userId: id, receivedAt: new Date() },
   ]);
   await db.insert(loginFailure).values({ email, failures: 2, firstFailureAt: new Date() });
+  // Un gasto fijo marcado a mano en Reportes.
+  await db.insert(fixedExpenseChoice).values({ userId: id, descriptionKey: "web", choice: "include" });
   return id;
 }
 
@@ -60,6 +63,7 @@ async function countsFor(userId: string, email: string, phone: string) {
     whatsappLinkCode: await count(db.select().from(whatsappLinkCode).where(eq(whatsappLinkCode.userId, userId))),
     whatsappMessage: await count(db.select().from(whatsappMessage).where(eq(whatsappMessage.phone, phone))),
     loginFailure: await count(db.select().from(loginFailure).where(eq(loginFailure.email, email))),
+    fixedExpenseChoice: await count(db.select().from(fixedExpenseChoice).where(eq(fixedExpenseChoice.userId, userId))),
   };
 }
 
@@ -77,6 +81,7 @@ describe("deleteAccountData", () => {
       whatsappLinkCode: 1,
       whatsappMessage: 2,
       loginFailure: 1,
+      fixedExpenseChoice: 1,
     });
 
     await deleteAccountData(id);
@@ -91,6 +96,7 @@ describe("deleteAccountData", () => {
       whatsappLinkCode: 0,
       whatsappMessage: 0,
       loginFailure: 0,
+      fixedExpenseChoice: 0,
     });
   });
 

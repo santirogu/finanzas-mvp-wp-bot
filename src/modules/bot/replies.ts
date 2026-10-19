@@ -75,7 +75,8 @@ export const REPORT_CATEGORIES = 3;
  * categorías que más sumaron, los gastos fijos y el enlace a Reportes para ver el resto.
  */
 export function reportReply(
-  report: { summary: PeriodSummary; categories: CategoryReport; recurring: RecurringReport },
+  // De los gastos fijos solo hacen falta cuántos son y lo que suman.
+  report: { summary: PeriodSummary; categories: CategoryReport; recurring: Pick<RecurringReport, "total"> & { items: readonly unknown[] } },
   period: ReportPeriod,
   ctx: { currency: string; appUrl: string },
 ): string {

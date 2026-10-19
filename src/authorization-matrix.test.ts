@@ -85,6 +85,8 @@ const SERVER_ACTIONS = {
   testConnectionsAction: "requireAdmin; solo lee (consultas gratis a WhatsApp y Claude): nunca muestra el token ni la API key",
   changeMonthlyLimitAction: "requireAdmin + código de Google Authenticator; tope dentro de MONTHLY_TOKEN_BOUNDS o sin tope",
   resendRepliesAction: "requireAdmin + código de Google Authenticator; solo las respuestas que no salieron en 24 h, sin mostrarlas",
+  chooseFixedExpenseAction:
+    "requireUser; solo los gastos fijos propios (el dueño sale de la sesión); agregar exige un egreso propio con esa descripción",
 } as const;
 
 // Acciones que no necesitan validar la sesión, con el porqué.
