@@ -260,7 +260,8 @@ describe("botAccounts", () => {
     const { ana, beto } = await seed();
     const { rows, hasMore } = await accounts({ fecha: "hoy" });
     expect(hasMore).toBe(false);
-    expect(rows.map(({ last, cost, ...row }) => row)).toEqual([
+    // Cada fila con sus cifras (la fecha del último mensaje y el costo, abajo).
+    expect(rows).toMatchObject([
       { id: ana.id, name: "Ana Bot", email: "ana-bot@correo.com", phones: 2, messages: 8, registered: 1, tokens: 2560, errors: 2 },
       { id: beto.id, name: "Beto Bot", email: "beto-bot@correo.com", phones: 1, messages: 3, registered: 0, tokens: 0, errors: 0 },
       { id: null, name: null, email: null, phones: 1, messages: 3, registered: 0, tokens: 0, errors: 0 },
