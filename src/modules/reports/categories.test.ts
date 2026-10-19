@@ -98,6 +98,7 @@ describe("categoryReport", () => {
     it("si el período solo tiene el mes en curso, no hay mes que comparar", () => {
       const report = categoryReport(data, [m(1)], m(1), allActive);
       expect(report.compared).toBeNull();
+      expect(report.averaged).toEqual([]);
       expect(report.rows).toEqual([]);
       const january = categoryReport([row("2026-01", "Mercado", 50)], [m(1)], m(1), allActive);
       expect(january.compared).toBeNull();

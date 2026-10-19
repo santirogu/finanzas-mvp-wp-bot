@@ -97,7 +97,7 @@ export function categoryReport(rows: CategoryMonthTotal[], period: Month[], curr
 /** Los meses del promedio, en una frase: "agosto", "julio y agosto" o "junio a agosto". */
 export function averagedPhrase(averaged: Month[]): string {
   const names = averaged.map((month) => formatMonthName(month));
-  if (names.length <= 1) return names.join("");
+  if (names.length <= 1) return names[0] ?? "";
   if (names.length === 2) return `${names[0]} y ${names[1]}`;
   return `${names[0]} a ${names[names.length - 1]}`;
 }
@@ -113,5 +113,7 @@ export function categoryChange(month: number, average: number, monthName: string
   const diff = roundToCents(month - average);
   const pct = Math.round((Math.abs(diff) / average) * 100);
   if (pct === 0) return { direction: "same", text: `En ${monthName}, igual que su promedio` };
-  return { direction: diff > 0 ? "up" : "down", text: `En ${monthName}, ${percent.format(pct)}% ${diff > 0 ? "más" : "menos"} que su promedio` };
+  // Stryker disable next-line EqualityOperator: aquí diff nunca es cero (con cero, el 0 % ya devolvió "igual")
+  const more = diff > 0;
+  return { direction: more ? "up" : "down", text: `En ${monthName}, ${percent.format(pct)}% ${more ? "más" : "menos"} que su promedio` };
 }

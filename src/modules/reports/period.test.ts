@@ -43,7 +43,7 @@ describe("reportPeriod", () => {
     expect(reportPeriod("1999", october).id).toBe(LAST_12_MONTHS);
   });
 
-  it.each([["2027"], ["2026-09"], ["abc"], [" 2025"], ["20255"], [""], [["2025"]], [2025]])(
+  it.each([["2027"], ["2026-09"], ["abc"], [" 2025"], ["2025 "], ["2025.0"], ["20255"], [""], [["2025"]], [2025]])(
     "con %j (futuro o mal escrito), los últimos 12 meses",
     (param) => {
       expect(reportPeriod(param, october).id).toBe(LAST_12_MONTHS);
@@ -62,6 +62,7 @@ describe("rangePhrase", () => {
 describe("periodHref", () => {
   it("los últimos 12 meses van sin ?periodo= (es la dirección de siempre)", () => {
     expect(periodHref(LAST_12_MONTHS)).toBe("/reportes");
+    expect(periodHref("12-meses")).toBe("/reportes");
     expect(periodHref("2025")).toBe("/reportes?periodo=2025");
   });
 });

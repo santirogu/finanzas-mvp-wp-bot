@@ -48,6 +48,7 @@ export type RecurringReport = {
 /** El primer mes que hay que consultar para el período: el suyo o, si es más corto, el de la ventana. */
 export function recurringFrom(period: Month[]): Month {
   const windowStart = shiftMonth(period[period.length - 1], -(RECURRING_WINDOW - 1));
+  // Stryker disable next-line EqualityOperator: si son el mismo mes, cualquiera de los dos da lo mismo
   return compareMonths(windowStart, period[0]) < 0 ? windowStart : period[0];
 }
 
@@ -85,6 +86,7 @@ export function recurringExpenses(rows: DescriptionMonthTotal[], period: Month[]
     const inWindow = [...months.values()].filter((row) => window.has(row.month));
     if (inWindow.length < RECURRING_MIN_MONTHS || inWindow.some((row) => row.count > RECURRING_MAX_PER_MONTH)) continue;
     // "YYYY-MM" se ordena como texto.
+    // Stryker disable next-line EqualityOperator: los meses de una descripción no se repiten (nunca son iguales)
     const last = inWindow.reduce((a, b) => (b.month > a.month ? b : a));
     items.push({
       description: last.description,

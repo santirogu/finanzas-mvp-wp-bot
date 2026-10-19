@@ -91,6 +91,26 @@ describe("recurringExpenses", () => {
     expect(report.items).toEqual([{ description: "Suscripción", emoji: "🎵", amount: 44900, months: 3 }]);
   });
 
+  it("las escrituras que se juntan suman sus veces: 2 y 1 en un mes son 3, y ya no es fijo", () => {
+    const report = recurringExpenses(
+      [...every("Almuerzo", 15000, 8, 9), row("2026-10", "Almuerzo", 30000, { count: 2 }), row("2026-10", "almuerzo", 15000, { count: 1 })],
+      twelve,
+    );
+    expect(report.items).toEqual([]);
+  });
+
+  it("si las dos son del mismo día, se queda con la primera que llegó", () => {
+    const report = recurringExpenses(
+      [
+        ...every("Gimnasio", 90000, 8, 9),
+        row("2026-10", "Gimnasio", 45000, { latest: "2026-10-03", emoji: "🏋️" }),
+        row("2026-10", "gimnasio", 45000, { latest: "2026-10-03", emoji: "💪" }),
+      ],
+      twelve,
+    );
+    expect(report.items[0]).toMatchObject({ description: "Gimnasio", emoji: "🏋️", amount: 90000 });
+  });
+
   it("si en un mes la más reciente es la que ya estaba, se queda con esa", () => {
     const report = recurringExpenses(
       [
