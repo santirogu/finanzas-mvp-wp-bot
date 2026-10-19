@@ -12,40 +12,65 @@ import {
   type Month,
   monthOf,
   monthParam,
+  todayInTimezone,
 } from "@/lib/dates";
 import { formatMoney, formatShare } from "@/lib/money";
 import { monthHref } from "@/lib/month-nav";
 import { requireUser } from "@/lib/session";
-import { BIGGEST_SHOWN, type ExpenseRow } from "@/modules/reports/biggest";
+import { BIGGEST_SHOWN, type ExpenseRow, withoutFixed } from "@/modules/reports/biggest";
 import { averagedPhrase, type CategoryReport } from "@/modules/reports/categories";
+import {
+  averagedRange,
+  calendarDays,
+  calendarHref,
+  calendarMonth,
+  type DayDescriptionTotal,
+  dayTotals,
+  halves,
+  heatLevels,
+  insightPhrase,
+  weekdayAverages,
+  weekdayInsight,
+  weekdayName,
+  weekdayOf,
+} from "@/modules/reports/daily";
 import { changeDirection, lastChange, pctLabel } from "@/modules/reports/history";
-import { periodHref, periodOptions, reportPeriod } from "@/modules/reports/period";
-import { getReport, type Report } from "@/modules/reports/queries";
+import { periodHref, periodOptions, type ReportPeriod, reportPeriod } from "@/modules/reports/period";
+import { getExpensesByDay, getMonthExpenses, getReport, type Report } from "@/modules/reports/queries";
 import type { PeriodSummary } from "@/modules/reports/summary";
 import { NO_CATEGORY } from "@/modules/transactions/search";
 import { PageSkeleton } from "../page-skeleton";
+import { DailySpending, type DailySpendingProps } from "./daily-spending";
 import { DownloadMenu } from "./download-menu";
 import { type FixedHistory, FixedExpenses } from "./fixed-expenses";
 import { type TrendPoint, TrendChart } from "./trend-chart";
 
 export const metadata: Metadata = { title: "Reportes" };
 
-// El período viene en la URL (?periodo=2025): se lee en cada request, dentro de Suspense (Cache Components).
+// El período (?periodo=2025) y el mes del calendario (?calendario=2026-09) vienen en la URL: se leen en
+// cada request, dentro de Suspense (Cache Components).
 export default function ReportesPage({ searchParams }: PageProps<"/reportes">) {
   return (
     <Suspense fallback={<PageSkeleton />}>
       {searchParams.then((params) => (
-        <Reports period={params.periodo} />
+        <Reports period={params.periodo} calendar={params.calendario} />
       ))}
     </Suspense>
   );
 }
 
-async function Reports({ period: param }: { period: string | string[] | undefined }) {
+type Param = string | string[] | undefined;
+
+async function Reports({ period: param, calendar: calendarParam }: { period: Param; calendar: Param }) {
   const user = await requireUser();
   const current = currentMonthRange(user.timezone);
   const period = reportPeriod(param, current);
-  const report = await getReport(user.id, period, current);
+  const calendar = calendarMonth(calendarParam, period);
+  const [report, byDay, monthExpenses] = await Promise.all([
+    getReport(user.id, period, current),
+    getExpensesByDay(user.id, period.months[0], period.months[period.months.length - 1]),
+    getMonthExpenses(user.id, calendar),
+  ]);
   const money = (n: number) => formatMoney(n, user.currency);
 
   return (
@@ -109,6 +134,13 @@ async function Reports({ period: param }: { period: string | string[] | undefine
               <Biggest biggest={report.biggest} hadExpenses={report.summary.expense > 0} current={current} money={money} />
             </div>
           </div>
+
+          {/* Una por mes: al cambiar de mes, el día elegido vuelve a ser el de más gasto. */}
+          <DailySpending
+            key={monthParam(calendar)}
+            {...dailyView({ report, period, month: calendar, byDay, monthExpenses, today: todayInTimezone(user.timezone) })}
+            currency={user.currency}
+          />
         </>
       )}
     </div>
@@ -116,6 +148,53 @@ async function Reports({ period: param }: { period: string | string[] | undefine
 }
 
 type Money = (n: number) => string;
+
+/**
+ * "¿Qué días gastas más?": los cálculos de src/modules/reports/daily.ts con sus textos ya armados (los
+ * nombres de los meses salen de Intl, en el servidor).
+ */
+function dailyView({
+  report,
+  period,
+  month,
+  byDay,
+  monthExpenses,
+  today,
+}: {
+  report: Report;
+  period: ReportPeriod;
+  month: Month;
+  byDay: DayDescriptionTotal[];
+  monthExpenses: ExpenseRow[];
+  today: string;
+}): Omit<DailySpendingProps, "currency"> {
+  const fixed = report.recurring.items;
+  const days = dayTotals(byDay, fixed);
+  const levelOf = heatLevels([...days.values()].map((day) => day.total));
+  const index = period.months.findIndex((m) => compareMonths(m, month) === 0);
+  const link = (m: Month | undefined) => (m ? { href: calendarHref(period, m), name: formatMonthName(m, { withYear: true }) } : null);
+  const monthName = formatMonthName(month);
+  // activeMonths va del más reciente al más antiguo.
+  const { from, to } = averagedRange(period.months, report.activeMonths.at(-1) ?? null, today);
+  const averages = weekdayAverages(days, from, to);
+  return {
+    monthLabel: formatMonthLabel(month),
+    prev: link(period.months[index - 1]),
+    next: link(period.months[index + 1]),
+    offset: weekdayOf(`${monthParam(month)}-01`),
+    days: calendarDays(month, days, levelOf, withoutFixed(monthExpenses, fixed), today).map((day) => ({
+      ...day,
+      name: `${weekdayName(weekdayOf(day.date))} ${day.day} de ${monthName}`,
+    })),
+    weekdays: averages.map((average, weekday) => {
+      const name = weekdayName(weekday);
+      return { label: `${name.charAt(0).toUpperCase()}${name.slice(1)}`, average };
+    }),
+    insight: insightPhrase(weekdayInsight(averages)),
+    halves: halves(days),
+    empty: days.size > 0 ? null : report.summary.expense > 0 ? "Todos los egresos del período son gastos fijos." : "Sin egresos en el período.",
+  };
+}
 
 /**
  * El historial de cada gasto fijo, con su último cambio en una línea ("11% desde marzo"; con el año si no

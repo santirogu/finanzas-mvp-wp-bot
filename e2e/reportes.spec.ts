@@ -223,8 +223,10 @@ test("el historial de un gasto fijo: cada cambio de valor, con su nota", async (
     await fixed.getByRole("button", { name: "Guardar nota" }).click();
     await expect(toast(page, "Se guardó la nota")).toHaveAttribute("data-tone", "success");
     await expect(fixed.getByText("“Subió la tarifa del plan”")).toBeVisible();
-    expect(await seriousViolations(page)).toEqual([]);
+    // Sin el aviso: mientras aparece (con su animación), axe lo mide a medio camino. Su contraste lo
+    // revisa src/color-contrast.test.ts.
     await closeToasts(page);
+    expect(await seriousViolations(page)).toEqual([]);
   });
 
   await test.step("se queda al volver; editarla y borrarla", async () => {
@@ -245,6 +247,62 @@ test("el historial de un gasto fijo: cada cambio de valor, con su nota", async (
     await expect(toast(page, "Se borró la nota")).toHaveAttribute("data-tone", "removal");
     await expect(fixed.getByText(/^“/)).toHaveCount(0);
     await expect(fixed.getByRole("button", { name: `Agregar nota del cambio del ${date}` })).toBeVisible();
+  });
+});
+
+test("¿Qué días gastas más?: el calendario de un mes (sin los fijos), el detalle de un día y los promedios", async ({ page }) => {
+  const WEEKDAYS = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
+  const weekdayOn = (date: string) => WEEKDAYS[new Date(`${date}T12:00:00Z`).getUTCDay()];
+  const capitalized = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
+  await register(page);
+  await openTab(page, "Egresos");
+  // El arriendo es fijo (tres de los últimos cuatro meses): no cuenta en el calendario.
+  for (const month of [m3, m2, m1]) {
+    await add(page, "Egreso", { amount: "1800000", description: "Arriendo", category: "Vivienda", date: dayOf(month, 5) }, month);
+  }
+  await add(page, "Egreso", { amount: "100000", description: "Restaurante con amigos", category: "Alimentación", date: dayOf(m1, 10) }, m1);
+  await add(page, "Egreso", { amount: "20000", description: "Taxi", category: "Transporte", date: dayOf(m1, 10) }, m1);
+  await add(page, "Egreso", { amount: "30000", description: "Cine", category: "Entretenimiento", date: dayOf(m1, 20) }, m1);
+  await openTab(page, "Reportes");
+  const daily = section(page, "¿Qué días gastas más?");
+  const dayButton = (date: string) =>
+    daily.getByRole("button", { name: new RegExp(`^${weekdayOn(date)} ${Number(date.slice(8))} de ${name(m1)}:`) });
+
+  await test.step("empieza en el mes actual; la flecha lleva al anterior, en la dirección", async () => {
+    await expect(daily.getByRole("heading", { level: 3, name: formatMonthLabel(current) })).toBeVisible();
+    await expect(daily.getByRole("link", { name: "Mes siguiente" })).toHaveAttribute("aria-disabled", "true");
+    await daily.getByRole("link", { name: `Mes anterior: ${formatMonthName(m1, { withYear: true })}` }).click();
+    await expect(page).toHaveURL(new RegExp(`/reportes\\?calendario=${monthParam(m1)}$`));
+    await expect(daily.getByRole("heading", { level: 3, name: formatMonthLabel(m1) })).toBeVisible();
+  });
+
+  await test.step("se abre en el día de más gasto, con sus egresos; el del arriendo, sin egresos", async () => {
+    const tenth = dayOf(m1, 10);
+    await expect(dayButton(tenth)).toHaveAttribute("aria-pressed", "true");
+    await expect(dayButton(tenth)).toHaveAccessibleName(`${weekdayOn(tenth)} 10 de ${name(m1)}: $120.000,00 en 2 egresos`);
+    const detail = daily.getByRole("heading", { level: 4 });
+    await expect(detail).toHaveText(`${capitalized(weekdayOn(tenth))} ${formatShortDate(tenth)}`);
+    await expect(daily).toContainText("−$120.000,00");
+    await expect(daily.getByRole("link", { name: /^Editar / })).toHaveCount(2);
+    await expect(dayButton(dayOf(m1, 5))).toHaveAccessibleName(`${weekdayOn(dayOf(m1, 5))} 5 de ${name(m1)}: sin egresos`);
+    expect(await seriousViolations(page)).toEqual([]);
+  });
+
+  await test.step("al tocar otro día, su detalle; tocar un egreso lleva a editarlo y atrás vuelve al mismo mes", async () => {
+    await dayButton(dayOf(m1, 20)).click();
+    await expect(dayButton(dayOf(m1, 20))).toHaveAttribute("aria-pressed", "true");
+    await daily.getByRole("link", { name: /^Editar .*Cine/ }).click();
+    await expect(visible(page.getByRole("heading", { name: "Editar movimiento" }))).toBeVisible();
+    await expect(visible(page.getByLabel("Descripción"))).toHaveValue("Cine");
+    await page.goBack();
+    await expect(page).toHaveURL(new RegExp(`calendario=${monthParam(m1)}$`));
+    await expect(section(page, "¿Qué días gastas más?").getByRole("heading", { level: 3, name: formatMonthLabel(m1) })).toBeVisible();
+  });
+
+  await test.step("el día de la semana de más gasto y las quincenas, sin el arriendo", async () => {
+    await expect(daily).toContainText(`Gastas más los ${weekdayOn(dayOf(m1, 10))}`);
+    await expect(daily.getByText("Del 1 al 15: 80%")).toBeVisible();
+    await expect(daily.getByText("Del 16 al fin de mes: 20%")).toBeVisible();
   });
 });
 
@@ -297,8 +355,11 @@ for (const colorScheme of ["light", "dark"] as const) {
       await add(page, "Egreso", { amount: "250000", description: "Plan del celular", category: "Servicios", date: dayOf(month, 8) }, month);
     }
     await add(page, "Egreso", { amount: "250000", description: "Plan del celular", category: "Servicios" });
+    // Uno que no es fijo: el calendario de "¿Qué días gastas más?" tiene un día con gastos, elegido.
+    await add(page, "Egreso", { amount: "45000", description: "Cine", category: "Entretenimiento" });
     await openTab(page, "Reportes");
     await expect(visible(page.getByRole("region", { name: "Gastos fijos" }).getByRole("listitem"))).toHaveCount(1);
+    await expect(visible(page.getByRole("region", { name: "¿Qué días gastas más?" }).getByRole("button", { pressed: true }))).toBeVisible();
     // Con el historial del gasto fijo abierto.
     await visible(page.getByRole("button", { name: /^Historial de Plan del celular/ })).click();
     await visible(page.getByText("Ver mes a mes")).click();

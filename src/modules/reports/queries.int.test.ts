@@ -7,7 +7,9 @@ import { reportPeriod } from "./period";
 import {
   getCategoryMonthlyTotals,
   getExpenseDescriptionsByMonth,
+  getExpensesByDay,
   getLargestExpenses,
+  getMonthExpenses,
   getMonthlyTotals,
   getReport,
   listPeriodMovements,
@@ -90,6 +92,57 @@ describe("getExpenseDescriptionsByMonth", () => {
       { month: "2026-10", description: "Arriendo", emoji: vivienda.emoji, count: 2, total: 1800, latest: "2026-10-16" },
       { month: "2026-10", description: "Netflix", emoji: "•", count: 1, total: 44900, latest: "2026-10-03" },
     ]);
+  });
+});
+
+describe("getExpensesByDay", () => {
+  it("los egresos de cada día del período por descripción (sin importar mayúsculas ni espacios), solo los propios", async () => {
+    const user = await createUser();
+    const other = await createUser();
+    await addTx({ userId: user.id, description: "Almuerzo", amount: 20000.5, occurredOn: "2026-10-05" });
+    await addTx({ userId: user.id, description: " almuerzo", amount: 10000.25, occurredOn: "2026-10-05" });
+    await addTx({ userId: user.id, description: "Cine", amount: 30000, occurredOn: "2026-10-05" });
+    await addTx({ userId: user.id, description: "Almuerzo", amount: 15000, occurredOn: "2026-09-30" });
+    // No cuentan: un ingreso, uno borrado, uno fuera del período y los de otra cuenta.
+    await addTx({ userId: user.id, type: "income", description: "Salario", amount: 1, occurredOn: "2026-10-05" });
+    await addTx({ userId: user.id, description: "Borrado", amount: 7, occurredOn: "2026-10-05", deletedAt: new Date() });
+    await addTx({ userId: user.id, description: "Viejo", amount: 7, occurredOn: "2026-08-31" });
+    await addTx({ userId: other.id, description: "Ajeno", amount: 7, occurredOn: "2026-10-05" });
+
+    const rows = await getExpensesByDay(user.id, m(9), october);
+    expect(rows.sort((a, b) => `${a.day}${a.description}`.localeCompare(`${b.day}${b.description}`))).toEqual([
+      { day: "2026-09-30", description: "Almuerzo", total: 15000, count: 1 },
+      { day: "2026-10-05", description: "Almuerzo", total: 30000.75, count: 2 },
+      { day: "2026-10-05", description: "Cine", total: 30000, count: 1 },
+    ]);
+  });
+});
+
+describe("getMonthExpenses", () => {
+  it("los egresos propios del mes, por día y, el mismo día, del más alto al más bajo, con su categoría", async () => {
+    const user = await createUser();
+    const other = await createUser();
+    const mercado = await globalCategory("Mercado");
+    const cine = await addTx({ userId: user.id, description: "Cine", amount: 30000, occurredOn: "2026-10-05" });
+    const market = await addTx({ userId: user.id, description: "Mercado", amount: 90000, occurredOn: "2026-10-05", categoryId: mercado.id });
+    const first = await addTx({ userId: user.id, description: "Café", amount: 5000, occurredOn: "2026-10-01" });
+    await addTx({ userId: user.id, description: "Septiembre", occurredOn: "2026-09-30" });
+    await addTx({ userId: user.id, description: "Noviembre", occurredOn: "2026-11-01" });
+    await addTx({ userId: user.id, type: "income", description: "Salario", occurredOn: "2026-10-05" });
+    await addTx({ userId: user.id, description: "Borrado", occurredOn: "2026-10-05", deletedAt: new Date() });
+    await addTx({ userId: other.id, description: "Ajeno", occurredOn: "2026-10-05" });
+
+    const rows = await getMonthExpenses(user.id, october);
+    expect(rows.map((r) => r.id)).toEqual([first.id, market.id, cine.id]);
+    expect(rows[1]).toEqual({
+      id: market.id,
+      description: "Mercado",
+      amount: 90000,
+      occurredOn: "2026-10-05",
+      categoryName: "Mercado",
+      categoryEmoji: mercado.emoji,
+    });
+    expect(rows[2]).toMatchObject({ categoryName: null, categoryEmoji: null });
   });
 });
 

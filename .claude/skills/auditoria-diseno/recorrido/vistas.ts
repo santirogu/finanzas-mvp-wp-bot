@@ -241,6 +241,17 @@ export const VISTAS: Vista[] = [
     },
   },
   {
+    id: "reportes-calendario-mes-anterior",
+    titulo: "Reportes: ¿Qué días gastas más?, en el mes anterior (solo con gastos fijos: ningún día con tono)",
+    persona: "datos",
+    ruta: fija(`/reportes?calendario=${MES_ANTERIOR}`),
+    preparar: async (page) => {
+      const calendario = visible(page.getByRole("region", { name: "¿Qué días gastas más?" }));
+      await expect(calendario.getByRole("link", { name: /^Mes siguiente: / })).toBeVisible();
+      await calendario.scrollIntoViewIfNeeded();
+    },
+  },
+  {
     id: "reportes-descargas",
     titulo: "Reportes: la lista de descargas abierta (CSV, y PDF con Pronto)",
     persona: "datos",

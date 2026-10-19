@@ -203,7 +203,7 @@ src/
     (app)/dashboard                 Resumen: balance del mes (y frente al anterior), últimos movimientos, gastos por categoría (dona)
     (app)/cuenta                    Mi cuenta: tus datos, seguridad (cambiar la contraseña), WhatsApp, apariencia y eliminar la cuenta
     (app)/ingresos, (app)/egresos   Formulario + listado del mes (vista compartida)
-    (app)/reportes                  Reportes: 12 meses (o un año), barras por mes, categorías frente a su promedio, gastos fijos y los más grandes
+    (app)/reportes                  Reportes: 12 meses (o un año), barras por mes, categorías frente a su promedio, gastos fijos, los más grandes y qué días gastas más
     (app)/month-nav.tsx             Navegador de meses (flechas y tarjeta del año) del Resumen, Ingresos y Egresos
     (app)/account-menu.tsx          Menú de la cuenta del encabezado (iniciales, escudo de admin, Mi cuenta y Salir)
     api/auth/[...all]               Endpoints de Better Auth
@@ -213,7 +213,7 @@ src/
     money.ts, dates.ts              Formato/parsing de COP y "mes actual" según zona horaria
     month-nav.ts                    El mes que pide la URL (?mes=) y los enlaces del navegador de meses
   modules/transactions/             Consultas, Server Actions y validación de movimientos
-  modules/reports/                  Reportes: el período (?periodo=), sus consultas por mes, los cálculos (promedios, gastos fijos) y el CSV
+  modules/reports/                  Reportes: el período (?periodo=), sus consultas por mes, los cálculos (promedios, gastos fijos, gasto por día) y el CSV
   modules/bot/                      Intérprete de mensajes (comandos fijos + Claude + validación) y flujo completo
   modules/whatsapp/                 Webhook: firma, payload, envío de mensajes y vinculación de números
   app/api/whatsapp/webhook          Endpoint que recibe los mensajes de Meta
@@ -343,6 +343,16 @@ scripts/seed.ts                     Categorías por defecto
     meses y taparía lo que sorprende. Cada uno con su fecha (con el año si no es el actual), su
     categoría y su monto; tocarlo lleva a editarlo y, al guardar, se vuelve a Egresos, al mes del
     movimiento (como desde cualquier lista).
+  - **¿Qué días gastas más?** (`daily.ts`, `daily-spending.tsx`): lo que se gastó cada día del período,
+    **sin los gastos fijos** (si no, el día del arriendo opaca todo lo demás).
+    - **El calendario de un mes** (`?calendario=2026-09`, uno del período; sin el parámetro, el último): cada
+      día con un tono del naranja de los egresos según su puesto entre los días con gastos del período
+      (el cuarto más alto, el más oscuro; así una compra enorme no deja todo lo demás en el más claro).
+      Se abre en el día de más gasto; tocar otro muestra su total y sus egresos, que se tocan para
+      editarlos. El lector de pantalla lee el día de la semana y el total de cada día.
+    - **Por día de la semana:** el promedio de cada uno, contando los días sin gastos (desde el comienzo
+      del período o el primer mes con movimientos hasta hoy), con el de más gasto en una frase.
+    - **Por quincena:** qué parte cae del 1 al 15 y del 16 al fin de mes.
   - **Descargar movimientos (CSV)** (`src/app/(app)/reportes/exportar/route.ts`, `csv.ts`): los
     movimientos del período (el mismo `?periodo=`), en orden de fecha, para abrir con doble clic en el
     Excel en español (y en Google Sheets).

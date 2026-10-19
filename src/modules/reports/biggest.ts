@@ -24,10 +24,15 @@ export type ExpenseRow = {
 };
 
 /**
- * Los egresos más altos (`rows`, ya en orden), sin los que tienen la descripción de un gasto fijo
+ * Los egresos (`rows`, en el orden en que vienen) sin los que tienen la descripción de un gasto fijo
  * (`fixed`, sin importar mayúsculas, tildes ni espacios, como los detecta recurringExpenses).
  */
-export function biggestExpenses(rows: ExpenseRow[], fixed: { description: string }[]): ExpenseRow[] {
+export function withoutFixed(rows: ExpenseRow[], fixed: { description: string }[]): ExpenseRow[] {
   const fixedKeys = new Set(fixed.map((item) => searchKey(item.description)));
-  return rows.filter((row) => !fixedKeys.has(searchKey(row.description))).slice(0, BIGGEST_MAX);
+  return rows.filter((row) => !fixedKeys.has(searchKey(row.description)));
+}
+
+/** Los egresos más altos (`rows`, ya en orden), sin los gastos fijos. */
+export function biggestExpenses(rows: ExpenseRow[], fixed: { description: string }[]): ExpenseRow[] {
+  return withoutFixed(rows, fixed).slice(0, BIGGEST_MAX);
 }
