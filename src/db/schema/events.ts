@@ -1,8 +1,8 @@
 import { index, jsonb, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { user } from "./auth";
 
-// Historial de cada cuenta: registro y vinculación de WhatsApp, y lo que el admin hizo con ella
-// (src/modules/account/events.ts). Lo ve el admin en /admin. Se borra con la cuenta (cascada) y, los
+// Historial de cada cuenta: registro, vinculación de WhatsApp, cambios de contraseña y lo que el admin
+// hizo con ella (src/modules/account/events.ts). Lo ve el admin en /admin. Se borra con la cuenta (cascada) y, los
 // intentos de números sin cuenta, con pnpm messages:cleanup. De una cuenta que eliminó el admin
 // queda solo "account_deleted", sin datos de ella.
 export const accountEventType = pgEnum("account_event_type", [
@@ -11,6 +11,8 @@ export const accountEventType = pgEnum("account_event_type", [
   "whatsapp_linked",
   "whatsapp_unlinked",
   "whatsapp_link_failed",
+  // La persona cambió su contraseña en Mi cuenta (sin la contraseña, claro).
+  "password_changed",
   // Acciones del admin (/admin/usuarios), con admin_id.
   "login_unlocked",
   "sessions_revoked",

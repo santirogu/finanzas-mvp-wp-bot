@@ -90,6 +90,16 @@ export const VISTAS: Vista[] = [
     },
   },
   { id: "cuenta", titulo: "Mi cuenta (sin WhatsApp: para conectarlo)", persona: "vacia", ruta: fija("/cuenta") },
+  {
+    id: "cuenta-contrasena",
+    titulo: "Mi cuenta: cambiar la contraseña (el formulario abierto)",
+    persona: "vacia",
+    ruta: fija("/cuenta"),
+    preparar: async (page) => {
+      await visible(page.getByRole("button", { name: "Cambiar contraseña" })).click();
+      await expect(visible(page.getByLabel("Contraseña actual"))).toBeFocused();
+    },
+  },
   { id: "cuenta-whatsapp", titulo: "Mi cuenta con el WhatsApp vinculado", persona: "datos", ruta: fija("/cuenta") },
   // Con sesión: sin ella, el proxy lleva al login cualquier dirección que no conoce (a propósito).
   { id: "no-encontrada", titulo: "Página que no existe (404)", persona: "vacia", ruta: fija("/esta-pagina-no-existe") },

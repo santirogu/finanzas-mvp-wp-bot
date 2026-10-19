@@ -34,6 +34,7 @@ function renderItem(props: Parameters<typeof EventItem>[0]) {
 describe("EventItem", () => {
   it.each([
     [{ type: "registered" }, "Ana Pérez se registró", "ana@correo.com · 9:41 p. m."],
+    [{ type: "password_changed" }, "Ana Pérez cambió su contraseña", "ana@correo.com · 9:41 p. m."],
     [{ type: "whatsapp_code_created" }, "Ana Pérez pidió un código para vincular su WhatsApp", "ana@correo.com · 9:41 p. m."],
     [{ type: "whatsapp_linked", phone: "573001112233" }, "Ana Pérez vinculó su WhatsApp +57 300 111 2233", "ana@correo.com · 9:41 p. m."],
     [
