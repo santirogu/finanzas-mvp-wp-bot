@@ -34,7 +34,7 @@ test("la etiqueta Admin aparece al dar el rol y desaparece al quitarlo (cada cam
 
   // En Mi cuenta, el tipo de cuenta.
   await goToAccount(page);
-  await expect(visible(page.getByText("Tipo de cuenta:")).locator("..")).toContainText("Administrador");
+  await expect(visible(page.getByText("Tipo de cuenta", { exact: true })).locator("..")).toContainText("Administrador");
 
   // En celular, con el menú cerrado, el escudo sigue a la vista.
   await page.setViewportSize({ width: 375, height: 800 });
@@ -49,7 +49,7 @@ test("la etiqueta Admin aparece al dar el rol y desaparece al quitarlo (cada cam
   await goToAccount(page);
   await expect(shield(page)).toHaveCount(0);
   await expect(badge(page)).toHaveCount(0);
-  await expect(page.getByText("Tipo de cuenta:").locator("..")).toContainText("Usuario");
+  await expect(page.getByText("Tipo de cuenta", { exact: true }).locator("..")).toContainText("Usuario");
 });
 
 test("un usuario normal nunca ve la etiqueta ni el texto Administrador", async ({ page }) => {
@@ -61,7 +61,7 @@ test("un usuario normal nunca ve la etiqueta ni el texto Administrador", async (
     expect(await page.content(), path).not.toContain("bg-admin-surface");
   }
   await expect(page.getByText("Administrador")).toHaveCount(0);
-  await expect(page.getByText("Tipo de cuenta:").locator("..")).toContainText("Usuario");
+  await expect(page.getByText("Tipo de cuenta", { exact: true }).locator("..")).toContainText("Usuario");
 });
 
 for (const colorScheme of ["light", "dark"] as const) {

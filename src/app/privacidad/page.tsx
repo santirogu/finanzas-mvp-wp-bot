@@ -42,9 +42,9 @@ export default function PrivacyPage() {
               contenido de los mensajes que envías al bot, junto con las respuestas del bot.
             </li>
             <li>
-              <strong>Historial de tu cuenta:</strong> la fecha en que te registraste y la de cada
+              <strong>Historial de tu cuenta:</strong> la fecha en que te registraste, la de cada
               vinculación, desvinculación o intento de vinculación de WhatsApp, con el número
-              usado.
+              usado, y la de cada cambio de tu contraseña (nunca la contraseña).
             </li>
             <li>
               <strong>Datos técnicos de la sesión:</strong> dirección IP (si es IPv6, solo la parte
@@ -84,8 +84,8 @@ export default function PrivacyPage() {
               Dar soporte y proteger las cuentas: el administrador de la app puede ver los datos de
               cada cuenta (nombre, correo, rol, fecha de registro, número de WhatsApp y si el inicio
               de sesión está bloqueado por intentos fallidos), sus sesiones abiertas (navegador,
-              sistema operativo, dirección IP y fechas) y su historial de registro y vinculación de
-              WhatsApp, con un acceso protegido con verificación en dos pasos. No ve tus ingresos,
+              sistema operativo, dirección IP y fechas) y su historial de registro, vinculación de
+              WhatsApp y cambios de contraseña, con un acceso protegido con verificación en dos pasos. No ve tus ingresos,
               egresos ni mensajes. Si hace falta (por ejemplo, a tu pedido o para proteger tu cuenta),
               puede desbloquear tu inicio de sesión, cerrar tus sesiones, desvincular tu WhatsApp,
               suspender tu cuenta (mientras esté suspendida no podrás entrar ni usar el bot, y tus datos

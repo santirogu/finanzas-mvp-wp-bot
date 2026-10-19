@@ -22,6 +22,7 @@ import { getAppUrl, getVercelOrigins } from "./app-url";
 import { envVar } from "./env";
 import { ROLES, hasRole, parseRole } from "./roles";
 import { describeError, logAuthSafely } from "./safe-log";
+import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from "@/modules/account/password-change";
 
 // Better Auth exige un secreto al inicializarse. El build de producción trae el real (el job de
 // despliegue hace `vercel pull`); si un build corre sin él (por ejemplo, el de las E2E en el CI), se
@@ -54,9 +55,10 @@ export const auth = betterAuth({
   }),
   emailAndPassword: {
     enabled: true,
-    minPasswordLength: 8,
-    // El de Better Auth por defecto, explícito: el formulario usa el mismo (maxLength).
-    maxPasswordLength: 128,
+    // Los mismos del formulario de registro y de "Cambiar contraseña" (src/modules/account/password-change.ts).
+    minPasswordLength: PASSWORD_MIN_LENGTH,
+    // El de Better Auth por defecto, explícito: los formularios usan el mismo (maxLength).
+    maxPasswordLength: PASSWORD_MAX_LENGTH,
     autoSignIn: true,
   },
   user: {

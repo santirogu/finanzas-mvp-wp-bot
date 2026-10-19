@@ -4,7 +4,7 @@ App web para registrar ingresos y egresos y ver el balance del mes actual. Cada 
 su propia sesión y su dashboard con tres pestañas: **Resumen**, **Ingresos** y **Egresos**, donde
 cada movimiento se puede editar o eliminar. También se registran escribiéndole a un bot de
 WhatsApp ("me compré unos zapatos de $500.000"), que entiende el mensaje con Claude. En **Mi
-cuenta**, cada persona conecta o desvincula su WhatsApp, elige la apariencia y puede eliminar su cuenta
+cuenta**, cada persona cambia su contraseña, conecta o desvincula su WhatsApp, elige la apariencia y puede eliminar su cuenta
 y todos sus datos (confirmando con su contraseña).
 
 ## Stack
@@ -191,7 +191,7 @@ src/
   app/
     (auth)/login, (auth)/registro   Páginas públicas de acceso
     (app)/dashboard                 Resumen: balance del mes (y frente al anterior), últimos movimientos, gastos por categoría (dona)
-    (app)/cuenta                    Mi cuenta: tus datos, WhatsApp (conectar y desvincular), apariencia y eliminar la cuenta
+    (app)/cuenta                    Mi cuenta: tus datos, seguridad (cambiar la contraseña), WhatsApp, apariencia y eliminar la cuenta
     (app)/ingresos, (app)/egresos   Formulario + listado del mes (vista compartida)
     (app)/month-nav.tsx             Navegador de meses (flechas y tarjeta del año) del Resumen, Ingresos y Egresos
     (app)/account-menu.tsx          Menú de la cuenta del encabezado (iniciales, escudo de admin, Mi cuenta y Salir)
@@ -212,6 +212,20 @@ scripts/seed.ts                     Categorías por defecto
 
 ### Decisiones importantes
 
+- **Cambiar la contraseña** (Mi cuenta → Seguridad, `changePasswordAction` en `src/modules/account/actions.ts`).
+  - **Qué pide:** la actual, la nueva (de 8 a 128 caracteres, como en el registro, y distinta de la actual) y
+    repetirla. Un admin con la verificación en dos pasos, además, su código de Google Authenticator
+    (`confirmAdminCode`: límite de intentos y un solo uso por código).
+  - **Contra quien tiene una sesión robada:** las contraseñas equivocadas cuentan para el mismo bloqueo del
+    login (5 seguidas, 15 minutos).
+  - **Cómo se hace:** una Server Action con `auth.api.changePassword` (la ruta HTTP de Better Auth sigue
+    apagada) y después `auth.api.revokeOtherSessions`, que cierra las demás sesiones y deja la de este
+    dispositivo. Con `revokeOtherSessions: true` de `changePassword`, Better Auth abre una sesión nueva
+    cuya cookie no llega desde la Server Action, y se cerraba también esta.
+  - **Historial:** queda como `password_changed`, sin la contraseña.
+  - **Lo que viene:** cambiar el correo se ve en "Tus datos", apagado con "Pronto". Llega cuando la app
+    pueda enviar correos para confirmar el nuevo: sin eso, un correo mal escrito dejaría a la persona sin
+    poder entrar. La moneda se muestra ("Peso colombiano (COP)") con "Pronto: USD y EUR".
 - **Apariencia: Sistema, Claro u Oscuro** (Mi cuenta, `src/lib/theme.ts`).
   - **Dónde se guarda:** en el navegador (`localStorage`), no en la cuenta, así que cada dispositivo tiene la suya.
   - **Cómo se aplica:** un script en línea del `<head>` la aplica antes de pintar, sin parpadeo, también en las páginas sin sesión, que se sirven prearmadas.

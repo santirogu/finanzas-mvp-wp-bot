@@ -1,0 +1,1 @@
+ALTER TYPE "public"."account_event_type" ADD VALUE 'password_changed' BEFORE 'login_unlocked';

@@ -32,6 +32,8 @@ const ICON_PATHS: Record<LogEntry["type"], ReactNode> = {
   whatsapp_linked: <path d="M8 12l4-4M7 9.5 5.5 11a2.5 2.5 0 0 0 3.5 3.5L10.5 13M13 10.5 14.5 9A2.5 2.5 0 0 0 11 5.5L9.5 7" />,
   whatsapp_unlinked: <path d="M7 9.5 5.5 11a2.5 2.5 0 0 0 3.5 3.5L10.5 13M13 10.5 14.5 9A2.5 2.5 0 0 0 11 5.5L9.5 7M4 4l12 12" />,
   whatsapp_link_failed: <path d="M10 3.5 2.5 16.5h15L10 3.5zM10 8.5v3.5M10 14.25v.01" />,
+  // Un candado cerrado: cambió su contraseña.
+  password_changed: <path d="M5.5 9.5h9v7h-9zM7.5 9.5V7a2.5 2.5 0 0 1 5 0v2.5M10 12.25v1.5" />,
   login_unlocked: <path d="M5.5 9.5h9v7h-9zM7.5 9.5V7a2.5 2.5 0 0 1 4.9-.7M10 12.5v1.5" />,
   sessions_revoked: <path d="M8 4H5v12h3M12.5 13.5 16 10l-3.5-3.5M16 10H8.5" />,
   account_deleted: <path d="M4.5 6h11M8 6V4.5h4V6M6 6l.7 10h6.6L14 6M8.5 9v4.5M11.5 9v4.5" />,
@@ -55,6 +57,7 @@ const ICON_COLORS: Record<LogEntry["type"], string> = {
   whatsapp_linked: "bg-income/10 text-income",
   whatsapp_unlinked: "bg-expense/10 text-expense",
   whatsapp_link_failed: "bg-danger/10 text-danger",
+  password_changed: "bg-brand/10 text-brand",
   // Lo que hizo el admin va en su color (como la etiqueta Admin).
   login_unlocked: ADMIN_COLOR,
   sessions_revoked: ADMIN_COLOR,
@@ -144,6 +147,8 @@ function sentence(entry: LogEntry, who: ReactNode, phone: ReactNode): ReactNode 
       return <>Se desvinculó el WhatsApp {phone} de {who}</>;
     case "whatsapp_link_failed":
       return <>Intento fallido de vinculación desde {phone}</>;
+    case "password_changed":
+      return <>{who} cambió su contraseña</>;
     case "login_unlocked":
       return <>{admin} desbloqueó el inicio de sesión de {who}</>;
     case "sessions_revoked":
