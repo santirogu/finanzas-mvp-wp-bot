@@ -4,7 +4,14 @@ import { transaction } from "@/db/schema";
 import { listCategories } from "@/modules/transactions/queries";
 import { createUser } from "../../../test/integration/factories";
 import { reportPeriod } from "./period";
-import { getCategoryMonthlyTotals, getExpenseDescriptionsByMonth, getLargestExpenses, getMonthlyTotals, getReport } from "./queries";
+import {
+  getCategoryMonthlyTotals,
+  getExpenseDescriptionsByMonth,
+  getLargestExpenses,
+  getMonthlyTotals,
+  getReport,
+  listPeriodMovements,
+} from "./queries";
 
 const m = (month: number, year = 2026) => ({ year, month });
 const october = m(10);
@@ -108,6 +115,35 @@ describe("getLargestExpenses", () => {
     ]);
     expect(rows[2]).toMatchObject({ categoryName: "Mercado", categoryEmoji: mercado.emoji });
     expect(rows[0]).toMatchObject({ categoryName: null, categoryEmoji: null });
+  });
+});
+
+describe("listPeriodMovements", () => {
+  it("los movimientos del período (ingresos y egresos), del más antiguo al más reciente, con su categoría y origen", async () => {
+    const user = await createUser();
+    const other = await createUser();
+    const mercado = await globalCategory("Mercado");
+    await addTx({ userId: user.id, description: "Segundo del día", occurredOn: "2026-10-05", amount: 2 });
+    await addTx({ userId: user.id, description: "Mercado", categoryId: mercado.id, occurredOn: "2026-09-01", amount: 45900.5 });
+    await addTx({ userId: user.id, description: "Salario", type: "income", occurredOn: "2026-10-31", amount: 4000000, source: "whatsapp" });
+    // Fuera del período, eliminados y de otra cuenta: no.
+    await addTx({ userId: user.id, description: "Viejo", occurredOn: "2026-08-31" });
+    await addTx({ userId: user.id, description: "Borrado", deletedAt: new Date() });
+    await addTx({ userId: other.id, description: "Ajeno" });
+
+    const rows = await listPeriodMovements(user.id, m(9), october);
+    expect(rows).toEqual([
+      { occurredOn: "2026-09-01", type: "expense", description: "Mercado", categoryName: "Mercado", amount: 45900.5, source: "web" },
+      { occurredOn: "2026-10-05", type: "expense", description: "Segundo del día", categoryName: null, amount: 2, source: "web" },
+      { occurredOn: "2026-10-31", type: "income", description: "Salario", categoryName: null, amount: 4000000, source: "whatsapp" },
+    ]);
+  });
+
+  it("el mismo día, en el orden en que se registraron", async () => {
+    const user = await createUser();
+    await addTx({ userId: user.id, description: "Primero", createdAt: new Date("2026-10-05T10:00:00Z") });
+    await addTx({ userId: user.id, description: "Segundo", createdAt: new Date("2026-10-05T11:00:00Z") });
+    expect((await listPeriodMovements(user.id, october, october)).map((r) => r.description)).toEqual(["Primero", "Segundo"]);
   });
 });
 

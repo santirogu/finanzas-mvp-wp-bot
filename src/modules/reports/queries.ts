@@ -1,11 +1,12 @@
 import "server-only";
-import { and, desc, eq, gte, isNull, lt, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, isNull, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { category, transaction } from "@/db/schema";
 import { compareMonths, type Month, monthOf, monthRange, shiftMonth } from "@/lib/dates";
 import { listActiveMonths } from "@/modules/transactions/queries";
 import { BIGGEST_CANDIDATES, biggestExpenses, type ExpenseRow } from "./biggest";
 import { AVERAGE_MONTHS, type CategoryMonthTotal, categoryReport } from "./categories";
+import type { CsvMovement } from "./csv";
 import type { ReportPeriod } from "./period";
 import { type DescriptionMonthTotal, recurringExpenses, recurringFrom } from "./recurring";
 import { monthSeries, type MonthTotals, periodSummary } from "./summary";
@@ -100,6 +101,23 @@ export async function getLargestExpenses(userId: string, first: Month, last: Mon
     .where(and(activeBetween(userId, first, last), eq(transaction.type, "expense")))
     .orderBy(desc(transaction.amount), desc(transaction.occurredOn), desc(transaction.createdAt))
     .limit(BIGGEST_CANDIDATES);
+}
+
+/** Los movimientos de `first` a `last`, del más antiguo al más reciente: los del CSV de Reportes. */
+export async function listPeriodMovements(userId: string, first: Month, last: Month): Promise<CsvMovement[]> {
+  return db
+    .select({
+      occurredOn: transaction.occurredOn,
+      type: transaction.type,
+      description: transaction.description,
+      categoryName: category.name,
+      amount: transaction.amount,
+      source: transaction.source,
+    })
+    .from(transaction)
+    .leftJoin(category, eq(category.id, transaction.categoryId))
+    .where(activeBetween(userId, first, last))
+    .orderBy(asc(transaction.occurredOn), asc(transaction.createdAt));
 }
 
 /** Todo lo que muestra Reportes en un período (`current` es el mes en curso, en la zona de la persona). */

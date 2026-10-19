@@ -51,9 +51,12 @@ export function reportPeriod(param: unknown, current: Month): ReportPeriod {
   return { id: String(year), label: String(year), range: rangePhrase(months), months };
 }
 
-/** La dirección de Reportes en un período: sin `?periodo=` para los últimos 12 meses. */
-export function periodHref(id: string): string {
-  return id === LAST_12_MONTHS ? "/reportes" : `/reportes?periodo=${id}`;
+/**
+ * La dirección de Reportes en un período (o, con `path`, la de su descarga): sin `?periodo=` para los
+ * últimos 12 meses.
+ */
+export function periodHref(id: string, path = "/reportes"): string {
+  return id === LAST_12_MONTHS ? path : `${path}?periodo=${id}`;
 }
 
 export type PeriodOption = { id: string; label: string; href: string; selected: boolean };

@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page } from "@playwright/test";
 import postgres from "postgres";
@@ -90,6 +91,23 @@ test("Reportes: las cifras del período, el gráfico, las categorías y los gast
     await expect(fixed).toContainText("Son el 98% de tu gasto promedio por mes.");
   });
 
+  await test.step("descargar los movimientos del período en CSV, para Excel", async () => {
+    const [download] = await Promise.all([
+      page.waitForEvent("download"),
+      visible(page.getByRole("link", { name: "Descargar movimientos (CSV)" })).click(),
+    ]);
+    expect(download.suggestedFilename()).toBe(`movimientos-${monthParam(shiftMonth(current, -11))}-a-${monthParam(current)}.csv`);
+    const content = readFileSync(await download.path(), "utf8");
+    // Con el BOM (Excel lee bien las tildes), ";" y la coma de los centavos.
+    expect(content.charCodeAt(0)).toBe(0xfeff);
+    const lines = content.slice(1).split("\r\n");
+    expect(lines[0]).toBe("Fecha;Tipo;Descripción;Categoría;Monto;Origen");
+    expect(lines).toContain(`${dayOf(m1, 10)};Egreso;Restaurante con amigos;Alimentación;-100000,00;Web`);
+    expect(lines).toContain(`${dayOf(m1, 15)};Ingreso;Salario;Salario;4000000,00;Web`);
+    // Los 7 movimientos (2 ingresos y 5 egresos), el encabezado y la línea vacía del final.
+    expect(lines).toHaveLength(9);
+  });
+
   await test.step("los gastos más grandes, sin el arriendo (es fijo); tocar uno lleva a editarlo", async () => {
     const biggest = section(page, "Los gastos más grandes");
     const items = biggest.getByRole("listitem");
@@ -162,6 +180,8 @@ test("Reportes sin movimientos lo explica", async ({ page }) => {
   await register(page);
   await openTab(page, "Reportes");
   await expect(visible(page.getByText("Aún no tienes movimientos."))).toBeVisible();
+  // Sin movimientos no hay nada que descargar.
+  await expect(visible(page.getByRole("link", { name: "Descargar movimientos (CSV)" }))).toHaveCount(0);
   await expect(visible(page.getByRole("navigation", { name: "Período" }).getByRole("link"))).toHaveCount(1);
   await expect(visible(page.getByRole("region", { name: "Gastos fijos" }))).toHaveCount(0);
 });
