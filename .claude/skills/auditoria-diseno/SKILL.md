@@ -68,7 +68,9 @@ Combina dos cosas:
    ```
 
    Filtros: `AUDITORIA_VISTAS=egresos,resumen` · `AUDITORIA_GRUPOS=celular,tableta` ·
-   `--project chromium` o `--project webkit`.
+   `--project chromium` o `--project webkit`. Para revisar lo del super admin (el dorado), agrega
+   `--workers=1`: cada grupo crea su propio admin y la marca de super admin es una sola, así que en
+   paralelo se la quitan entre ellos y algunas capturas salen en violeta.
 4. Deja en la carpeta de salida:
    - `capturas/<motor>/<vista>/<dispositivo>-<claro|oscuro>.jpg`;
    - `medidas.json` (todo) y `resumen.txt` (los problemas agrupados entre vistas, dispositivos y

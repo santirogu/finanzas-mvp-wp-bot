@@ -1,5 +1,5 @@
 import { expect, type Page } from "@playwright/test";
-import { PASSWORD, uniqueEmail, visible } from "../../../../e2e/helpers";
+import { PASSWORD, adminCommand, uniqueEmail, visible } from "../../../../e2e/helpers";
 import { MES_ANTERIOR, type Datos, type Persona } from "./datos";
 
 // Las páginas y los estados que recorre la auditoría. Para el modo "cambios", el skill elige las
@@ -107,10 +107,15 @@ export const VISTAS: Vista[] = [
   },
   {
     id: "menu-cuenta-admin",
-    titulo: "Menú de la cuenta abierto, de un admin (escudo y etiqueta)",
+    titulo: "Menú de la cuenta abierto, del super admin (escudo y etiqueta dorados)",
     persona: "admin",
     ruta: fija("/dashboard"),
-    preparar: async (page) => {
+    preparar: async (page, datos) => {
+      // Cada grupo del recorrido crea su propio admin y la marca de super admin (una sola) queda en el
+      // último: se le vuelve a poner a este justo antes de la captura. Con grupos en paralelo, otro se la
+      // puede quitar en el medio; para ver el dorado en todas las capturas, correr con --workers=1.
+      adminCommand("super", datos.correos.admin!);
+      await page.reload();
       await visible(page.getByRole("button", { name: /^Tu cuenta: / })).click();
       await expect(visible(page.getByRole("group", { name: "Tu cuenta" }))).toBeVisible();
     },

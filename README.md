@@ -478,8 +478,9 @@ Hay dos roles (`src/lib/roles.ts`), guardados en la columna `user.role`, y un ad
 - **El super admin** (`isSuperAdmin` en `src/lib/roles.ts`, `requireSuperAdmin()` en
   `src/lib/session.ts`): la marca sola no alcanza, también tiene que ser admin. La base admite uno solo
   (índice único `user_one_super_admin_idx`) y la app no la puede poner ni quitar (`input: false`, como el
-  rol): `pnpm admin:super <correo>` se la pasa a otro admin, y `pnpm admin:revoke` se la quita junto con el
-  rol. Desde la app nadie le quita el rol: la acción no aparece en su ficha y el servidor lo rechaza.
+  rol): `pnpm admin:super <correo>` se la pasa a otro admin (dos a la vez quedan en fila, con un candado de
+  Postgres), y `pnpm admin:revoke` se la quita junto con el rol. Desde la app nadie le quita el rol: la
+  acción no aparece en su ficha y el servidor lo rechaza.
 - **Dar el rol** (en la app o con `admin:grant`) cierra sus sesiones: al volver a entrar, después de la
   contraseña va directo a configurar la verificación en dos pasos (`afterLoginPath`). **Quitarlo** (en la
   app o con `admin:revoke`) borra su verificación y sus códigos de respaldo y cierra sus sesiones: vuelve

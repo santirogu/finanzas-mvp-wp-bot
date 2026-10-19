@@ -190,6 +190,15 @@ describe("roles desde la terminal", () => {
     expect(await stateOf(beto.id)).toMatchObject({ superAdmin: false });
   });
 
+  it("marcar a dos a la vez no choca: quedan en fila y la marca queda en una sola", async () => {
+    const ana = await createUser({ role: "admin" });
+    const beto = await createUser({ role: "admin" });
+    const carla = await createUser({ role: "admin" });
+    expect(await Promise.all([setSuperAdmin(ana.id), setSuperAdmin(beto.id), setSuperAdmin(carla.id)])).toEqual([true, true, true]);
+    const marked = (await listAdmins()).filter((a) => a.superAdmin);
+    expect(marked).toHaveLength(1);
+  });
+
   it("la base no admite dos super admins", async () => {
     await createUser({ role: "admin", superAdmin: true });
     await expect(createUser({ role: "admin", superAdmin: true })).rejects.toThrow();
