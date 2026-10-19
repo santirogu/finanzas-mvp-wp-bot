@@ -21,11 +21,18 @@ import { createAdminWithTwoFactor } from "../../../../test/integration/two-facto
 // Las acciones del admin sobre una cuenta, con la base de verdad: qué cambian, qué registran en el
 // historial (con el admin) y qué no tocan. Siempre con dos cuentas (Ana y Beto) para comprobar que
 // solo cambia la elegida. La sesión se simula: la del admin de cada prueba.
-const auth = vi.hoisted(() => ({ requireAdmin: vi.fn() }));
-vi.mock("@/lib/session", () => ({ requireAdmin: auth.requireAdmin }));
-const { deleteAccount, reactivateAccount, revokeSessions, suspendAccount, unlinkWhatsApp, unlockLogin } = await import(
-  "./account-actions"
-);
+const auth = vi.hoisted(() => ({ requireAdmin: vi.fn(), requireSuperAdmin: vi.fn() }));
+vi.mock("@/lib/session", () => ({ requireAdmin: auth.requireAdmin, requireSuperAdmin: auth.requireSuperAdmin }));
+const {
+  deleteAccount,
+  grantAdmin,
+  reactivateAccount,
+  revokeAdmin,
+  revokeSessions,
+  suspendAccount,
+  unlinkWhatsApp,
+  unlockLogin,
+} = await import("./account-actions");
 
 const NOW = new Date("2026-10-12T21:00:10Z");
 const DAY = 24 * 60 * 60 * 1000;
@@ -70,6 +77,7 @@ const codeUses = () => db.$count(adminCodeUse);
 
 beforeEach(() => {
   auth.requireAdmin.mockReset();
+  auth.requireSuperAdmin.mockReset();
 });
 
 describe("unlockLogin", () => {
@@ -349,7 +357,7 @@ describe("las cuentas que no se tocan", () => {
     await db.insert(session).values({ id: randomUUID(), token: randomUUID(), userId: other.id, expiresAt: new Date(NOW.getTime() + DAY) });
     expect(await run(other.id, codeAt(NOW))).toEqual({
       ok: false,
-      error: "Las cuentas de admin no se cambian desde aquí: los roles se manejan desde la terminal.",
+      error: "Las cuentas de admin no se cambian desde aquí.",
     });
     expect(await sessionsOf(other.id)).toHaveLength(1);
     expect((await db.select({ suspendedAt: user.suspendedAt }).from(user).where(eq(user.id, other.id)))[0].suspendedAt).toBeNull();
@@ -401,5 +409,156 @@ describe("un código por acción", () => {
     expect(await linkOf(ana.id)).toHaveLength(1);
     const next = new Date(NOW.getTime() + 30_000);
     expect(await unlinkWhatsApp({ userId: ana.id, code: codeAt(next) }, next)).toMatchObject({ ok: true });
+  });
+});
+
+// ── Dar y quitar el rol de admin (solo el super admin) ──────────────────────────────────────────
+
+/** Lo de seed(), con el admin de la prueba como super admin (en la base y en la sesión simulada). */
+async function seedSuper() {
+  const seeded = await seed();
+  await db.update(user).set({ superAdmin: true }).where(eq(user.id, seeded.admin.id));
+  auth.requireSuperAdmin.mockResolvedValue({ id: seeded.admin.id, role: "admin", superAdmin: true, twoFactorEnabled: true });
+  return seeded;
+}
+const roleOf = async (userId: string) =>
+  (await db.select({ role: user.role, superAdmin: user.superAdmin, twoFactorEnabled: user.twoFactorEnabled }).from(user).where(eq(user.id, userId)))[0];
+const factorsOf = (userId: string) => db.select().from(twoFactor).where(eq(twoFactor.userId, userId));
+
+/** Otro admin con la verificación activa (con su clave), sus sesiones y un movimiento propio. */
+async function otherAdmin() {
+  const { admin: carla } = await createAdminWithTwoFactor({ name: "Carla Admin" });
+  await db.insert(session).values([
+    { id: randomUUID(), token: randomUUID(), userId: carla.id, expiresAt: new Date(NOW.getTime() + DAY) },
+    { id: randomUUID(), token: randomUUID(), userId: carla.id, expiresAt: new Date(NOW.getTime() - DAY) },
+  ]);
+  await db.insert(transaction).values({ userId: carla.id, type: "expense", amount: 50_000, description: "Mercado", occurredOn: "2026-10-12" });
+  return carla;
+}
+
+describe("grantAdmin", () => {
+  it("le da el rol, cierra sus sesiones (para que configure la verificación al volver) y lo registra", async () => {
+    const { admin, codeAt, ana, beto } = await seedSuper();
+    expect(await grantAdmin({ userId: ana.id, code: codeAt(NOW) }, NOW)).toEqual({ ok: true, message: "Ana Pérez ahora es admin." });
+    expect(await roleOf(ana.id)).toEqual({ role: "admin", superAdmin: false, twoFactorEnabled: false });
+    expect(await sessionsOf(ana.id)).toEqual([]);
+    expect(await eventsOf(ana.id)).toEqual([{ type: "admin_granted", phone: null, details: { sessions: 2 }, adminId: admin.id }]);
+    // Nada más cambia: ni Beto ni el propio super admin.
+    expect(await roleOf(beto.id)).toMatchObject({ role: "user" });
+    expect(await sessionsOf(beto.id)).toHaveLength(1);
+    expect(await sessionsOf(admin.id)).toHaveLength(1);
+    expect(await linkOf(ana.id)).toHaveLength(1);
+  });
+
+  it("sin sesiones abiertas no anota sesiones", async () => {
+    const { codeAt } = await seedSuper();
+    const carla = await createUser({ name: "Carla" });
+    await grantAdmin({ userId: carla.id, code: codeAt(NOW) }, NOW);
+    expect(await eventsOf(carla.id)).toEqual([expect.objectContaining({ type: "admin_granted", details: {} })]);
+  });
+
+  it("a una cuenta suspendida no: primero hay que reactivarla (sin gastar el código)", async () => {
+    const { codeAt, ana } = await seedSuper();
+    await db.update(user).set({ suspendedAt: NOW }).where(eq(user.id, ana.id));
+    expect(await grantAdmin({ userId: ana.id, code: codeAt(NOW) }, NOW)).toEqual({
+      ok: false,
+      error: "La cuenta está suspendida: primero reactívala.",
+    });
+    expect(await roleOf(ana.id)).toMatchObject({ role: "user" });
+    expect(await codeUses()).toBe(0);
+  });
+
+  it("a quien ya es admin, no", async () => {
+    const { codeAt } = await seedSuper();
+    const carla = await otherAdmin();
+    expect(await grantAdmin({ userId: carla.id, code: codeAt(NOW) }, NOW)).toEqual({ ok: false, error: "La cuenta ya es admin." });
+    expect(await sessionsOf(carla.id)).toHaveLength(2);
+    expect(await codeUses()).toBe(0);
+  });
+
+  it("ni a la cuenta propia, ni a una que no existe", async () => {
+    const { admin, codeAt } = await seedSuper();
+    expect(await grantAdmin({ userId: admin.id, code: codeAt(NOW) }, NOW)).toEqual({
+      ok: false,
+      error: "Para tu propia cuenta usa Mi cuenta o Seguridad.",
+    });
+    expect(await grantAdmin({ userId: "no-existe", code: codeAt(NOW) }, NOW)).toEqual({ ok: false, error: "Esta cuenta ya no existe." });
+  });
+
+  it("con un código equivocado no cambia nada", async () => {
+    const { ana } = await seedSuper();
+    expect(await grantAdmin({ userId: ana.id, code: "000000" }, NOW)).toMatchObject({ ok: false, field: "code" });
+    expect(await roleOf(ana.id)).toMatchObject({ role: "user" });
+    expect(await sessionsOf(ana.id)).toHaveLength(3);
+    expect(await eventsOf(ana.id)).toEqual([]);
+  });
+
+  it("un admin que no es el super admin no puede (falla antes de tocar nada)", async () => {
+    const { codeAt, ana } = await seed();
+    auth.requireSuperAdmin.mockRejectedValue(new Error("NEXT_NOT_FOUND"));
+    await expect(grantAdmin({ userId: ana.id, code: codeAt(NOW) }, NOW)).rejects.toThrow("NEXT_NOT_FOUND");
+    expect(await roleOf(ana.id)).toMatchObject({ role: "user" });
+    expect(await sessionsOf(ana.id)).toHaveLength(3);
+    expect(await eventsOf(ana.id)).toEqual([]);
+    expect(await codeUses()).toBe(0);
+  });
+});
+
+describe("revokeAdmin", () => {
+  it("vuelve a ser usuario: se borran su verificación y sus sesiones, y sus finanzas quedan", async () => {
+    const { admin, codeAt } = await seedSuper();
+    const carla = await otherAdmin();
+    expect(await revokeAdmin({ userId: carla.id, code: codeAt(NOW) }, NOW)).toEqual({ ok: true, message: "Carla Admin ya no es admin." });
+    expect(await roleOf(carla.id)).toEqual({ role: "user", superAdmin: false, twoFactorEnabled: false });
+    expect(await factorsOf(carla.id)).toEqual([]);
+    expect(await sessionsOf(carla.id)).toEqual([]);
+    expect(await db.select().from(transaction).where(eq(transaction.userId, carla.id))).toHaveLength(1);
+    // Solo cuenta la sesión que seguía abierta.
+    expect(await eventsOf(carla.id)).toEqual([{ type: "admin_revoked", phone: null, details: { sessions: 1 }, adminId: admin.id }]);
+    // El super admin sigue igual.
+    expect(await roleOf(admin.id)).toEqual({ role: "admin", superAdmin: true, twoFactorEnabled: true });
+    expect(await factorsOf(admin.id)).toHaveLength(1);
+  });
+
+  it("al super admin nunca (la regla no depende de que la base admita uno solo)", async () => {
+    const { admin, codeAt } = await seed();
+    const carla = await otherAdmin();
+    // Carla tiene la marca en la base; la sesión simulada dice que el super admin es el de la prueba.
+    await db.update(user).set({ superAdmin: true }).where(eq(user.id, carla.id));
+    auth.requireSuperAdmin.mockResolvedValue({ id: admin.id, role: "admin", superAdmin: true, twoFactorEnabled: true });
+    expect(await revokeAdmin({ userId: carla.id, code: codeAt(NOW) }, NOW)).toEqual({
+      ok: false,
+      error: "Al super admin no se le quita el rol desde la app.",
+    });
+    expect(await roleOf(carla.id)).toEqual({ role: "admin", superAdmin: true, twoFactorEnabled: true });
+    expect(await codeUses()).toBe(0);
+  });
+
+  it("ni la propia, ni a quien no es admin", async () => {
+    const { admin, codeAt, ana } = await seedSuper();
+    expect(await revokeAdmin({ userId: admin.id, code: codeAt(NOW) }, NOW)).toEqual({
+      ok: false,
+      error: "Para tu propia cuenta usa Mi cuenta o Seguridad.",
+    });
+    expect(await revokeAdmin({ userId: ana.id, code: codeAt(NOW) }, NOW)).toEqual({ ok: false, error: "La cuenta no es admin." });
+    expect(await codeUses()).toBe(0);
+  });
+
+  it("con un código equivocado no cambia nada", async () => {
+    await seedSuper();
+    const carla = await otherAdmin();
+    expect(await revokeAdmin({ userId: carla.id, code: "000000" }, NOW)).toMatchObject({ ok: false, field: "code" });
+    expect(await roleOf(carla.id)).toMatchObject({ role: "admin", twoFactorEnabled: true });
+    expect(await factorsOf(carla.id)).toHaveLength(1);
+    expect(await sessionsOf(carla.id)).toHaveLength(2);
+  });
+
+  it("un admin que no es el super admin no puede", async () => {
+    const { codeAt } = await seed();
+    const carla = await otherAdmin();
+    auth.requireSuperAdmin.mockRejectedValue(new Error("NEXT_NOT_FOUND"));
+    await expect(revokeAdmin({ userId: carla.id, code: codeAt(NOW) }, NOW)).rejects.toThrow("NEXT_NOT_FOUND");
+    expect(await roleOf(carla.id)).toMatchObject({ role: "admin" });
+    expect(await factorsOf(carla.id)).toHaveLength(1);
   });
 });

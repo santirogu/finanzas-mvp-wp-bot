@@ -68,11 +68,16 @@ describe("AccountMenu", () => {
   });
 
   it("para un admin: el botón lo dice, y se ven el escudo y la etiqueta que manda el servidor", async () => {
-    renderMenu({ admin: true, shield: <span data-testid="escudo" />, badge: <span>Admin</span> });
+    renderMenu({ roleName: "admin", shield: <span data-testid="escudo" />, badge: <span>Admin</span> });
     expect(toggle()).toHaveAccessibleName("Tu cuenta: Santiago Rodriguez Gutierrez, admin");
     expect(screen.getByTestId("escudo")).toBeInTheDocument();
     await userEvent.click(toggle());
     expect(card()).toHaveTextContent("Admin");
+  });
+
+  it("para el super admin, el botón dice \"super admin\"", () => {
+    renderMenu({ roleName: "super admin", shield: <span data-testid="escudo" />, badge: <span>Super admin</span> });
+    expect(toggle()).toHaveAccessibleName("Tu cuenta: Santiago Rodriguez Gutierrez, super admin");
   });
 
   it("se cierra al tocar el botón otra vez, con Escape (el foco vuelve al botón) y al tocar fuera", async () => {

@@ -1,35 +1,45 @@
 // Tablas requeridas por Better Auth (user, session, account, verification, rateLimit) y su plugin
 // de verificación en dos pasos (twoFactor).
 // Si cambias la configuración de Better Auth, revisa que estos campos sigan coincidiendo.
-import { bigint, boolean, index, integer, pgEnum, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import { bigint, boolean, index, integer, pgEnum, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 import { ROLES } from "../../lib/roles";
 
 // Rol de cada cuenta (src/lib/roles.ts). La base solo acepta estos valores.
 export const userRole = pgEnum("user_role", ROLES);
 
-export const user = pgTable("user", {
-  id: text("id").primaryKey(),
-  name: text("name").notNull(),
-  email: text("email").notNull().unique(),
-  emailVerified: boolean("email_verified").notNull().default(false),
-  image: text("image"),
-  timezone: text("timezone").notNull().default("America/Bogota"),
-  currency: text("currency").notNull().default("COP"),
-  // Toda cuenta nace como "user"; "admin" solo se da desde la terminal (pnpm admin:grant).
-  role: userRole("role").notNull().default("user"),
-  // Verificación en dos pasos (plugin twoFactor): se activa al confirmar el primer código de
-  // Google Authenticator. Obligatoria para entrar a la sección de administración.
-  twoFactorEnabled: boolean("two_factor_enabled").notNull().default(false),
-  // Suspendida por el admin (/admin/usuarios): no puede entrar a la web ni usar el bot hasta que la
-  // reactive (src/modules/account/suspension.ts). El motivo es interno: solo lo ve el admin.
-  suspendedAt: timestamp("suspended_at", { withTimezone: true }),
-  suspensionReason: text("suspension_reason"),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow()
-    .$onUpdate(() => new Date()),
-});
+export const user = pgTable(
+  "user",
+  {
+    id: text("id").primaryKey(),
+    name: text("name").notNull(),
+    email: text("email").notNull().unique(),
+    emailVerified: boolean("email_verified").notNull().default(false),
+    image: text("image"),
+    timezone: text("timezone").notNull().default("America/Bogota"),
+    currency: text("currency").notNull().default("COP"),
+    // Toda cuenta nace como "user". "admin" lo da el super admin desde /admin/usuarios (con su código)
+    // o la terminal (pnpm admin:grant).
+    role: userRole("role").notNull().default("user"),
+    // El super admin: un admin que además puede dar y quitar el rol de admin desde la app. Uno solo
+    // (índice único abajo) y solo desde la terminal (pnpm admin:super): nunca desde la app.
+    superAdmin: boolean("super_admin").notNull().default(false),
+    // Verificación en dos pasos (plugin twoFactor): se activa al confirmar el primer código de
+    // Google Authenticator. Obligatoria para entrar a la sección de administración.
+    twoFactorEnabled: boolean("two_factor_enabled").notNull().default(false),
+    // Suspendida por el admin (/admin/usuarios): no puede entrar a la web ni usar el bot hasta que la
+    // reactive (src/modules/account/suspension.ts). El motivo es interno: solo lo ve el admin.
+    suspendedAt: timestamp("suspended_at", { withTimezone: true }),
+    suspensionReason: text("suspension_reason"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  // A lo sumo un super admin: la base rechaza marcar un segundo.
+  (t) => [uniqueIndex("user_one_super_admin_idx").on(t.superAdmin).where(sql`${t.superAdmin}`)],
+);
 
 export const session = pgTable(
   "session",

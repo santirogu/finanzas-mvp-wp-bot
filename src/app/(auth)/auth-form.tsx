@@ -9,6 +9,7 @@ import { authClient } from "@/lib/auth-client";
 import { authErrorMessage } from "@/lib/auth-errors";
 import { suggestEmailCorrection } from "@/lib/email-typo";
 import type { FieldMessages } from "@/lib/field-errors";
+import { afterLoginPath } from "@/lib/roles";
 import { MAX_NAME_LENGTH } from "@/modules/auth/account-name";
 import { TwoFactorLogin } from "./two-factor-login";
 
@@ -70,7 +71,8 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
         setNeedsCode(true);
         return;
       }
-      router.replace("/dashboard");
+      // Un admin sin la verificación en dos pasos (uno nuevo) va directo a configurarla.
+      router.replace(afterLoginPath(data && "user" in data ? data.user : null));
       router.refresh();
     });
   }

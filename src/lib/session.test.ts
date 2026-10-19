@@ -12,9 +12,8 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("./auth", () => ({ auth: { api: { getSession: mocks.getSession } } }));
 
-const { TWO_FACTOR_SETUP_PATH, getCurrentUser, requireAdmin, requireAdminRole, requireUser } = await import(
-  "./session"
-);
+const { TWO_FACTOR_SETUP_PATH, getCurrentUser, requireAdmin, requireAdminRole, requireSuperAdmin, requireUser } =
+  await import("./session");
 
 const sessionUser = {
   id: "u1",
@@ -49,6 +48,7 @@ describe("getCurrentUser", () => {
       timezone: "America/Bogota",
       currency: "COP",
       role: "user",
+      superAdmin: false,
       twoFactorEnabled: false,
     });
     const { headers } = mocks.getSession.mock.calls[0][0];
@@ -144,6 +144,7 @@ describe("requireAdmin", () => {
       timezone: "America/Bogota",
       currency: "COP",
       role: "admin",
+      superAdmin: false,
       twoFactorEnabled: true,
     });
   });
@@ -162,5 +163,36 @@ describe("requireAdminRole (solo para configurar la verificación)", () => {
     expect(await requireAdminRole()).toMatchObject({ role: "admin", twoFactorEnabled: false });
     mocks.getSession.mockResolvedValue(admin(true));
     expect(await requireAdminRole()).toMatchObject({ role: "admin", twoFactorEnabled: true });
+  });
+});
+
+describe("requireSuperAdmin (dar y quitar el rol de admin)", () => {
+  it("expone la marca en la sesión (solo true cuenta)", async () => {
+    mocks.getSession.mockResolvedValue({ user: { ...sessionUser, role: "admin", superAdmin: true } });
+    expect(await getCurrentUser()).toMatchObject({ superAdmin: true });
+    mocks.getSession.mockResolvedValue({ user: { ...sessionUser, role: "admin", superAdmin: "true" } });
+    expect(await getCurrentUser()).toMatchObject({ superAdmin: false });
+  });
+
+  it("al super admin con la verificación activa lo deja pasar", async () => {
+    mocks.getSession.mockResolvedValue({ user: { ...admin(true).user, superAdmin: true } });
+    expect(await requireSuperAdmin()).toMatchObject({ id: "u1", role: "admin", superAdmin: true, twoFactorEnabled: true });
+  });
+
+  it("a cualquier otro admin le responde 404, como a quien no es admin", async () => {
+    mocks.getSession.mockResolvedValue(admin(true));
+    await expect(requireSuperAdmin()).rejects.toThrow("NEXT_NOT_FOUND");
+  });
+
+  it("la marca sin el rol de admin no sirve (404)", async () => {
+    mocks.getSession.mockResolvedValue({ user: { ...sessionUser, superAdmin: true, twoFactorEnabled: true } });
+    await expect(requireSuperAdmin()).rejects.toThrow("NEXT_NOT_FOUND");
+  });
+
+  it("también exige la verificación en dos pasos, y la sesión", async () => {
+    mocks.getSession.mockResolvedValue({ user: { ...admin(false).user, superAdmin: true } });
+    await expect(requireSuperAdmin()).rejects.toThrow("NEXT_REDIRECT:/admin/seguridad");
+    mocks.getSession.mockResolvedValue(null);
+    await expect(requireSuperAdmin()).rejects.toThrow("NEXT_REDIRECT:/login?sesion=vencida");
   });
 });

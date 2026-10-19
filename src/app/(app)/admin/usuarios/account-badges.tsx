@@ -1,20 +1,23 @@
 import { AdminBadge } from "@/components/admin-badge";
-import { hasRole, type Role } from "@/lib/roles";
+import { hasRole, isSuperAdmin, type Role } from "@/lib/roles";
 import { formatHour } from "@/modules/admin/shared/filters";
 
-/** Junto al nombre de una cuenta en Usuarios: si es admin, si está suspendida y si tiene el inicio de sesión bloqueado. */
+/** Junto al nombre de una cuenta en Usuarios: si es admin (o el super admin), si está suspendida y si tiene el inicio de sesión bloqueado. */
 export function AccountBadges({
   role,
+  superAdmin = false,
   lockedUntil,
   suspended,
 }: {
   role: Role;
+  /** La marca de super admin: su etiqueta va en dorado. */
+  superAdmin?: boolean;
   lockedUntil: Date | null;
   suspended: boolean;
 }) {
   return (
     <>
-      {hasRole(role, "admin") && <AdminBadge />}
+      {hasRole(role, "admin") && <AdminBadge superAdmin={isSuperAdmin(role, superAdmin)} />}
       {suspended && (
         <span className="rounded-full border border-foreground/30 bg-foreground/10 px-2 py-0.5 text-xs font-medium text-foreground">
           Suspendida

@@ -33,6 +33,7 @@ async function signIn() {
     timezone: user.timezone,
     currency: user.currency,
     role: user.role,
+    superAdmin: user.superAdmin,
     twoFactorEnabled: user.twoFactorEnabled,
   };
   return user;

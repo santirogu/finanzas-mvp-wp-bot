@@ -23,6 +23,7 @@
     "messages:cleanup": "tsx --conditions=react-server scripts/delete-data.ts huerfanos",
     "admin:grant": "tsx --conditions=react-server scripts/admin.ts grant",
     "admin:revoke": "tsx --conditions=react-server scripts/admin.ts revoke",
+    "admin:super": "tsx --conditions=react-server scripts/admin.ts super",
     "admin:list": "tsx --conditions=react-server scripts/admin.ts list",
     "admin:reset-2fa": "tsx --conditions=react-server scripts/admin.ts reset-2fa",
     "bot:try": "tsx scripts/bot-try.ts",

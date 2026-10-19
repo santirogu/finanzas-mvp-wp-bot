@@ -4,7 +4,7 @@ import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "./auth";
 import { EXPIRED_SESSION_LOGIN } from "./expired-session";
-import { hasRole, parseRole, type Role } from "./roles";
+import { hasRole, isSuperAdmin, parseRole, type Role, TWO_FACTOR_SETUP_PATH } from "./roles";
 
 export type CurrentUser = {
   id: string;
@@ -13,12 +13,13 @@ export type CurrentUser = {
   timezone: string;
   currency: string;
   role: Role;
+  /** La marca de super admin (vale solo con el rol de admin: ver isSuperAdmin en src/lib/roles.ts). */
+  superAdmin: boolean;
   /** Verificación en dos pasos activa (Google Authenticator). Obligatoria para administrar. */
   twoFactorEnabled: boolean;
 };
 
-/** Donde un admin configura la verificación en dos pasos. */
-export const TWO_FACTOR_SETUP_PATH = "/admin/seguridad";
+export { TWO_FACTOR_SETUP_PATH };
 
 // Data Access Layer: único punto donde se lee la sesión. Todo acceso a datos
 // del usuario debe pasar por aquí para no confiar en lo que envía el cliente.
@@ -27,7 +28,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   if (!session) return null;
   // Al suspenderla se cierran sus sesiones; si quedara alguna (dos pedidos a la vez), no sirve.
   if (session.user.suspendedAt) return null;
-  const { id, name, email, timezone, currency, role, twoFactorEnabled } = session.user;
+  const { id, name, email, timezone, currency, role, superAdmin, twoFactorEnabled } = session.user;
   return {
     id,
     name,
@@ -37,6 +38,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
     // Sale de la base en cada request (no hay caché de sesión en la cookie): quitar el rol a
     // alguien surte efecto en su siguiente clic.
     role: parseRole(role),
+    superAdmin: superAdmin === true,
     twoFactorEnabled: twoFactorEnabled === true,
   };
 });
@@ -57,6 +59,16 @@ export async function requireUser(): Promise<CurrentUser> {
 export async function requireAdmin(): Promise<CurrentUser> {
   const user = await requireAdminRole();
   if (!user.twoFactorEnabled) redirect(TWO_FACTOR_SETUP_PATH);
+  return user;
+}
+
+/**
+ * Para dar y quitar el rol de admin (/admin/usuarios): lo de requireAdmin y, además, ser el super
+ * admin. A cualquier otro admin le responde 404, como a quien no es admin.
+ */
+export async function requireSuperAdmin(): Promise<CurrentUser> {
+  const user = await requireAdmin();
+  if (!isSuperAdmin(user.role, user.superAdmin)) notFound();
   return user;
 }
 

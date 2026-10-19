@@ -2,8 +2,11 @@
 // de terminal.
 //
 //   user  → toda cuenta al registrarse: Resumen, Ingresos, Egresos y Mi cuenta.
-//   admin → todo lo de "user" y además la sección de administración. Solo se da desde la
-//           terminal (pnpm admin:grant), nunca desde la app.
+//   admin → todo lo de "user" y además la sección de administración. Lo da el super admin desde
+//           /admin/usuarios (con su código de Google Authenticator) o la terminal (pnpm admin:grant).
+//
+// El super admin no es otro rol: es un admin con la marca super_admin (una sola cuenta, puesta solo
+// desde la terminal con pnpm admin:super). Además de lo de admin, da y quita el rol de admin.
 
 export const ROLES = ["user", "admin"] as const;
 export type Role = (typeof ROLES)[number];
@@ -28,4 +31,31 @@ export function parseRole(value: unknown): Role {
 /** ¿Quien tiene `role` puede hacer lo que exige `required`? */
 export function hasRole(role: Role, required: Role): boolean {
   return INCLUDES[role].includes(required);
+}
+
+/**
+ * ¿Es el super admin? La marca sola no alcanza: también tiene que ser admin (si se le quitó el rol
+ * desde la terminal, la marca no le deja nada).
+ */
+export function isSuperAdmin(role: Role, superAdmin: boolean): boolean {
+  return superAdmin && hasRole(role, "admin");
+}
+
+/** El rol para mostrar: "Superadministrador" para el super admin. */
+export function roleLabel(role: Role, superAdmin: boolean): string {
+  return isSuperAdmin(role, superAdmin) ? "Superadministrador" : ROLE_LABELS[role];
+}
+
+/** Donde un admin configura la verificación en dos pasos (/admin/seguridad). */
+export const TWO_FACTOR_SETUP_PATH = "/admin/seguridad";
+
+/**
+ * Adónde va alguien al terminar de iniciar sesión: un admin sin la verificación en dos pasos, a
+ * configurarla (es lo primero que ve un admin nuevo); los demás, a su Resumen. La sesión llega del
+ * navegador (la respuesta del login), así que el rol se vuelve a leer con parseRole: ante la duda,
+ * "user". Solo decide adónde ir; lo que protege la administración es requireAdmin().
+ */
+export function afterLoginPath(user: { role?: unknown; twoFactorEnabled?: unknown } | null | undefined): string {
+  if (!user) return "/dashboard";
+  return hasRole(parseRole(user.role), "admin") && user.twoFactorEnabled !== true ? TWO_FACTOR_SETUP_PATH : "/dashboard";
 }

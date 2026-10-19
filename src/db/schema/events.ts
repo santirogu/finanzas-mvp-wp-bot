@@ -17,6 +17,9 @@ export const accountEventType = pgEnum("account_event_type", [
   "account_deleted",
   "account_suspended",
   "account_reactivated",
+  // El super admin le dio o le quitó el rol de admin a una cuenta, con admin_id.
+  "admin_granted",
+  "admin_revoked",
   // Configuración del bot (/admin/bot), con admin_id y sin cuenta ni número.
   "bot_claude_paused",
   "bot_claude_resumed",
@@ -28,7 +31,7 @@ export const accountEventType = pgEnum("account_event_type", [
 /** Detalle de un evento: el motivo de una desvinculación o de un intento fallido. */
 export type AccountEventDetails = {
   reason?: "by_user" | "by_admin" | "number_moved" | "number_changed" | "invalid_code" | "rate_limited";
-  /** Cuántas sesiones cerró el admin (sessions_revoked, account_suspended). */
+  /** Cuántas sesiones cerró el admin (sessions_revoked, account_suspended, admin_granted, admin_revoked). */
   sessions?: number;
   /** El motivo que escribió el admin al suspender (interno: solo lo ve el admin). */
   note?: string;

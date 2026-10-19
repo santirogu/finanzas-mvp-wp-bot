@@ -2,8 +2,9 @@ import "server-only";
 import { and, count, eq, gt, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { loginFailure, session, user, whatsappLink, whatsappLinkCode } from "@/db/schema";
-import { hasRole, type Role } from "@/lib/roles";
-import { requireAdmin } from "@/lib/session";
+import { hasRole, isSuperAdmin, type Role } from "@/lib/roles";
+import { requireAdmin, requireSuperAdmin } from "@/lib/session";
+import { grantAdminRole, revokeAdminRole } from "@/modules/account/admin-role";
 import { deleteAccountData } from "@/modules/account/delete-account";
 import { recordEvent } from "@/modules/account/events";
 import { normalizeEmail } from "@/modules/auth/lockout";
@@ -13,10 +14,12 @@ import { cleanNote } from "../shared/filters";
 import { isValidUserId } from "./user-filters";
 
 // Las acciones del admin sobre una cuenta (/admin/usuarios/[id]): desbloquear, cerrar sesiones,
-// desvincular WhatsApp, suspender, reactivar y eliminar. Cada una:
-//  1. valida el rol (requireAdmin), como toda la capa de datos de administración;
-//  2. revisa la cuenta: que exista, que no sea la del admin ni la de otro admin (los roles solo se
-//     manejan desde la terminal) y que la acción aplique (si no hay nada que hacer, no gasta el código);
+// desvincular WhatsApp, suspender, reactivar y eliminar; y, solo el super admin, dar y quitar el rol
+// de admin. Cada una:
+//  1. valida el rol (requireAdmin; requireSuperAdmin para los roles), como toda la capa de datos de
+//     administración;
+//  2. revisa la cuenta: que exista, que no sea la propia ni (salvo para quitarle el rol) la de otro
+//     admin, y que la acción aplique (si no hay nada que hacer, no gasta el código);
 //  3. confirma el código de Google Authenticator (confirmAdminCode: límite de intentos, un solo uso);
 //  4. hace el cambio y lo registra en el historial con el admin, en la misma transacción.
 
@@ -31,13 +34,20 @@ type Target = {
   name: string;
   email: string;
   role: Role;
+  superAdmin: boolean;
   phone: string | null;
   locked: boolean;
   suspended: boolean;
   openSessions: number;
 };
 
-async function loadTarget(userId: string, adminId: string, now: Date): Promise<Target | { error: string }> {
+/** Las cuentas de admin solo admiten que el super admin les quite el rol (`admins: true`). */
+async function loadTarget(
+  userId: string,
+  adminId: string,
+  now: Date,
+  { admins = false }: { admins?: boolean } = {},
+): Promise<Target | { error: string }> {
   if (!isValidUserId(userId)) return { error: "Esta cuenta ya no existe." };
   const [row] = await db
     .select({
@@ -45,6 +55,7 @@ async function loadTarget(userId: string, adminId: string, now: Date): Promise<T
       name: user.name,
       email: user.email,
       role: user.role,
+      superAdmin: user.superAdmin,
       phone: whatsappLink.phone,
       lockedUntil: loginFailure.lockedUntil,
       suspendedAt: user.suspendedAt,
@@ -55,7 +66,7 @@ async function loadTarget(userId: string, adminId: string, now: Date): Promise<T
     .where(eq(user.id, userId));
   if (!row) return { error: "Esta cuenta ya no existe." };
   if (row.id === adminId) return { error: "Para tu propia cuenta usa Mi cuenta o Seguridad." };
-  if (hasRole(row.role, "admin")) return { error: "Las cuentas de admin no se cambian desde aquí: los roles se manejan desde la terminal." };
+  if (!admins && hasRole(row.role, "admin")) return { error: "Las cuentas de admin no se cambian desde aquí." };
   const [{ openSessions }] = await db
     .select({ openSessions: count() })
     .from(session)
@@ -180,4 +191,53 @@ export async function deleteAccount(
 
   await deleteAccountData(target.id, { deletedBy: admin.id });
   return { ok: true, message: "Se eliminó la cuenta." };
+}
+
+/**
+ * Le da el rol de admin (solo el super admin). No a una cuenta suspendida: primero hay que
+ * reactivarla. Cierra sus sesiones: al volver a entrar va directo a configurar la verificación en dos
+ * pasos, obligatoria para administrar.
+ */
+export async function grantAdmin({ userId, code }: AdminActionInput, now = new Date()): Promise<AdminActionResult> {
+  const admin = await requireSuperAdmin();
+  const target = await loadTarget(userId, admin.id, now, { admins: true });
+  if ("error" in target) return fail(target.error);
+  if (hasRole(target.role, "admin")) return fail("La cuenta ya es admin.");
+  if (target.suspended) return fail("La cuenta está suspendida: primero reactívala.");
+  const check = await confirmAdminCode(code, now);
+  if (!check.ok) return fail(check.error, "code");
+
+  const granted = await db.transaction(async (tx) => {
+    const result = await grantAdminRole(target.id, { now, tx });
+    if (!result) return false;
+    const sessions = result.sessionsClosed;
+    await recordEvent({ type: "admin_granted", userId: target.id, adminId: admin.id, details: { ...(sessions && { sessions }) } }, tx);
+    return true;
+  });
+  if (!granted) return fail("Esta cuenta ya no existe.");
+  return { ok: true, message: `${target.name} ahora es admin.` };
+}
+
+/**
+ * Le quita el rol de admin (solo el super admin, y nunca al super admin): vuelve a ser usuario, se
+ * borra su verificación en dos pasos y se cierran sus sesiones.
+ */
+export async function revokeAdmin({ userId, code }: AdminActionInput, now = new Date()): Promise<AdminActionResult> {
+  const admin = await requireSuperAdmin();
+  const target = await loadTarget(userId, admin.id, now, { admins: true });
+  if ("error" in target) return fail(target.error);
+  if (!hasRole(target.role, "admin")) return fail("La cuenta no es admin.");
+  if (isSuperAdmin(target.role, target.superAdmin)) return fail("Al super admin no se le quita el rol desde la app.");
+  const check = await confirmAdminCode(code, now);
+  if (!check.ok) return fail(check.error, "code");
+
+  const revoked = await db.transaction(async (tx) => {
+    const result = await revokeAdminRole(target.id, { now, tx });
+    if (!result) return false;
+    const sessions = result.sessionsClosed;
+    await recordEvent({ type: "admin_revoked", userId: target.id, adminId: admin.id, details: { ...(sessions && { sessions }) } }, tx);
+    return true;
+  });
+  if (!revoked) return fail("Esta cuenta ya no existe.");
+  return { ok: true, message: `${target.name} ya no es admin.` };
 }

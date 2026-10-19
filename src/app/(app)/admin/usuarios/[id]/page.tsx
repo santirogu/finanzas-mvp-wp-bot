@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense, type ReactNode } from "react";
-import { ROLE_LABELS, hasRole } from "@/lib/roles";
+import { hasRole, isSuperAdmin, roleLabel } from "@/lib/roles";
 import { requireAdmin } from "@/lib/session";
 import { NO_FILTERS, logHref } from "@/modules/admin/history/log-filters";
 import { formatDate, formatDateTime, formatHour, formatPhone } from "@/modules/admin/shared/filters";
@@ -12,7 +12,7 @@ import { getUserDetail, type UserDetail } from "@/modules/admin/users/users";
 import { PageSkeleton } from "../../../page-skeleton";
 import { EventItem } from "../../historial/event-item";
 import { AccountBadges, Initial } from "../account-badges";
-import { AccountActions } from "./account-actions";
+import { AccountActions, RevokeAdminActions } from "./account-actions";
 
 // Sin el nombre de la cuenta en el título: quedaría en el historial del navegador.
 export const metadata: Metadata = { title: "Cuenta · Administración" };
@@ -34,9 +34,16 @@ async function Account({ id }: { id: string }) {
   // Un id inválido o una cuenta que no existe (o se eliminó): el mismo 404.
   const account = await getUserDetail(decodeURIComponent(id));
   if (!account) notFound();
-  // Ni la cuenta propia ni la de otro admin: los roles solo se manejan desde la terminal (el servidor
-  // también lo valida en cada acción).
-  const canAct = account.id !== admin.id && !hasRole(account.role, "admin");
+  // Las acciones de siempre: ni en la cuenta propia ni en la de otro admin (el servidor también lo
+  // valida en cada acción).
+  const own = account.id === admin.id;
+  const targetIsAdmin = hasRole(account.role, "admin");
+  const canAct = !own && !targetIsAdmin;
+  // Dar y quitar el rol de admin: solo el super admin. Darlo, a una cuenta activa (no suspendida);
+  // quitarlo, a otro admin, nunca al super admin (que es él mismo).
+  const superAdmin = isSuperAdmin(admin.role, admin.superAdmin);
+  const canMakeAdmin = superAdmin && canAct && !account.suspendedAt;
+  const canRevokeAdmin = superAdmin && !own && targetIsAdmin && !isSuperAdmin(account.role, account.superAdmin);
 
   return (
     <div className="space-y-4">
@@ -48,6 +55,7 @@ async function Account({ id }: { id: string }) {
       {canAct && (
         <>
           <AccountActions
+            canMakeAdmin={canMakeAdmin}
             target={{
               id: account.id,
               name: account.name,
@@ -59,6 +67,12 @@ async function Account({ id }: { id: string }) {
               suspensionReason: account.suspensionReason,
             }}
           />
+          <AdminActions account={account} />
+        </>
+      )}
+      {canRevokeAdmin && (
+        <>
+          <RevokeAdminActions target={{ id: account.id, name: account.name }} />
           <AdminActions account={account} />
         </>
       )}
@@ -103,13 +117,13 @@ function Summary({ account }: { account: UserDetail }) {
         <div className="min-w-0 space-y-0.5">
           <h2 id="cuenta" className="flex flex-wrap items-center gap-x-2 gap-y-1 font-semibold">
             <span className="min-w-0 break-words">{account.name}</span>
-            <AccountBadges role={account.role} lockedUntil={account.lockedUntil} suspended={account.suspendedAt !== null} />
+            <AccountBadges role={account.role} superAdmin={account.superAdmin} lockedUntil={account.lockedUntil} suspended={account.suspendedAt !== null} />
           </h2>
           <p className="break-all text-sm text-muted">{account.email}</p>
         </div>
       </div>
       <dl className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
-        <Field label="Rol">{ROLE_LABELS[account.role]}</Field>
+        <Field label="Rol">{roleLabel(account.role, account.superAdmin)}</Field>
         <Field label="Estado">
           {account.suspendedAt ? (
             <>

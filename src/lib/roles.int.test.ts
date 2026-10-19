@@ -8,8 +8,8 @@ import { updateUserFromServer } from "../../test/integration/auth-http";
 import { auth } from "./auth";
 
 // Roles con Better Auth y la base de verdad. Cada prueba intenta un camino para que alguien se dé
-// el rol de admin a sí mismo; ninguno debe funcionar. El único camino válido es setRole, que solo
-// usa el comando de terminal pnpm admin:grant.
+// el rol de admin a sí mismo; ninguno debe funcionar. Los caminos válidos son setRole (el comando de
+// terminal pnpm admin:grant) y el super admin desde Usuarios (account-actions.int.test.ts).
 
 const PASSWORD = "clave-segura-123";
 const ORIGIN = new URL(auth.options.baseURL!).origin;
@@ -32,14 +32,26 @@ function post(path: string, body: unknown, cookie?: string) {
   );
 }
 
+const sessionCookie = (response: Response) => response.headers.getSetCookie().map((c) => c.split(";")[0]).join("; ");
+
 /** Registra una cuenta por HTTP y devuelve la cookie de sesión. */
 async function register(email: string, extra: Record<string, unknown> = {}) {
   const response = await post("/sign-up/email", { name: "Ana", email, password: PASSWORD, ...extra });
   expect(response.status).toBe(200);
-  const cookie = response.headers.getSetCookie().map((c) => c.split(";")[0]).join("; ");
+  const cookie = sessionCookie(response);
   expect(cookie).toContain("session_token");
   return cookie;
 }
+
+/** Inicia sesión por HTTP (sin la verificación en dos pasos) y devuelve la cookie de sesión. */
+async function signIn(email: string) {
+  const response = await post("/sign-in/email", { email, password: PASSWORD });
+  expect(response.status).toBe(200);
+  return sessionCookie(response);
+}
+
+/** El rol de admin directo en la base, sin cerrar sesiones (setRole las cierra). */
+const makeAdminInDb = (email: string) => db.update(user).set({ role: "admin" }).where(eq(user.email, email));
 
 const roleInDb = async (email: string) =>
   (await db.select({ role: user.role }).from(user).where(eq(user.email, email)))[0]?.role;
@@ -106,8 +118,7 @@ describe("nadie puede cambiarse el rol desde la app", () => {
 
   it("un admin tampoco puede cambiarse el rol (ni bajárselo)", async () => {
     const cookie = await register("ana@test.local");
-    const account = await findAccountRole("ana@test.local");
-    await setRole(account!.id, "admin");
+    await makeAdminInDb("ana@test.local");
 
     expect((await post("/update-user", { role: "user" }, cookie)).status).toBe(404);
     expect((await updateUserFromServer({ role: "user" }, cookie)).status).toBe(400);
@@ -132,6 +143,29 @@ describe("nadie puede cambiarse el rol desde la app", () => {
   );
 });
 
+describe("nadie puede ponerse la marca de super admin desde la app", () => {
+  const superInDb = async (email: string) =>
+    (await db.select({ superAdmin: user.superAdmin }).from(user).where(eq(user.email, email)))[0]?.superAdmin;
+
+  it.each([
+    ["superAdmin: true", { superAdmin: true }],
+    ["con el rol de admin", { role: "admin", superAdmin: true }],
+    ["como texto", { superAdmin: "true" }],
+  ])("el registro ignora la marca que mande el cliente (%s)", async (_, extra) => {
+    const cookie = await register("ana@test.local", extra);
+    expect(await superInDb("ana@test.local")).toBe(false);
+    expect((await auth.api.getSession({ headers: new Headers({ cookie }) }))?.user).toMatchObject({ role: "user", superAdmin: false });
+  });
+
+  it("'actualizar perfil' tampoco la pone: ni por HTTP (404) ni desde el servidor (input: false)", async () => {
+    const cookie = await register("ana@test.local");
+    await makeAdminInDb("ana@test.local");
+    expect((await post("/update-user", { superAdmin: true }, cookie)).status).toBe(404);
+    expect((await updateUserFromServer({ superAdmin: true }, cookie)).status).toBe(400);
+    expect(await superInDb("ana@test.local")).toBe(false);
+  });
+});
+
 describe("la base solo acepta roles válidos", () => {
   it.each(["superadmin", "ADMIN", "", "root"])("rechaza el rol %j", async (role) => {
     await register("ana@test.local");
@@ -148,15 +182,18 @@ describe("la base solo acepta roles válidos", () => {
 });
 
 describe("dar y quitar el rol (lo que usa pnpm admin:grant / admin:revoke)", () => {
-  it("el cambio se ve en la sesión de inmediato, sin volver a iniciar sesión", async () => {
+  it("cada cambio cierra sus sesiones: al volver a entrar, ya con el rol nuevo", async () => {
     const cookie = await register("ana@test.local");
     const account = await findAccountRole("ana@test.local");
 
-    expect(await setRole(account!.id, "admin")).toBe(true);
-    expect(await roleInSession(cookie)).toBe("admin");
+    expect(await setRole(account!.id, "admin")).toEqual({ sessionsClosed: 1 });
+    expect(await roleInSession(cookie)).toBeUndefined();
+    const asAdmin = await signIn("ana@test.local");
+    expect(await roleInSession(asAdmin)).toBe("admin");
 
-    expect(await setRole(account!.id, "user")).toBe(true);
-    expect(await roleInSession(cookie)).toBe("user");
+    expect(await setRole(account!.id, "user")).toEqual({ sessionsClosed: 1 });
+    expect(await roleInSession(asAdmin)).toBeUndefined();
+    expect(await roleInSession(await signIn("ana@test.local"))).toBe("user");
   });
 
   it("solo cambia la cuenta indicada", async () => {
@@ -183,8 +220,8 @@ describe("dar y quitar el rol (lo que usa pnpm admin:grant / admin:revoke)", () 
     expect(await findAccountRole("nadie@test.local")).toBeNull();
   });
 
-  it("setRole devuelve false si la cuenta no existe", async () => {
-    expect(await setRole("no-existe", "admin")).toBe(false);
+  it("setRole devuelve null si la cuenta no existe", async () => {
+    expect(await setRole("no-existe", "admin")).toBeNull();
   });
 
   it("listAdmins muestra solo los admins, del más antiguo al más nuevo", async () => {

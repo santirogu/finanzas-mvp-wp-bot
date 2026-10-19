@@ -1,5 +1,5 @@
 import "server-only";
-import { asc, count, eq } from "drizzle-orm";
+import { and, asc, count, eq, ne } from "drizzle-orm";
 import { db } from "@/db";
 import {
   accountEvent,
@@ -11,8 +11,9 @@ import {
   whatsappLink,
   whatsappMessage,
 } from "@/db/schema";
-import type { Role } from "@/lib/roles";
+import { hasRole, type Role } from "@/lib/roles";
 import { normalizeEmail } from "@/modules/auth/lockout";
+import { grantAdminRole, revokeAdminRole } from "./admin-role";
 import { accountEvents, accountMessages, accountPhones } from "./delete-account";
 
 // Consultas de los comandos de terminal (scripts/delete-data.ts y scripts/admin.ts): las usa el
@@ -75,7 +76,7 @@ export async function findAccountByEmail(email: string): Promise<AccountSummary 
 // La limpieza de datos sin dueño vive en ./retention.ts (también la usa la limpieza diaria de la web).
 export { countOrphanData, deleteOrphanData, type OrphanCounts } from "./retention";
 
-// ── Roles (pnpm admin:grant / admin:revoke / admin:list / admin:reset-2fa) ──────────────────────
+// ── Roles (pnpm admin:grant / admin:revoke / admin:super / admin:list / admin:reset-2fa) ─────────
 
 export type AccountRole = {
   id: string;
@@ -83,6 +84,8 @@ export type AccountRole = {
   email: string;
   timezone: string;
   role: Role;
+  /** La marca de super admin (una sola cuenta la tiene). */
+  superAdmin: boolean;
   twoFactorEnabled: boolean;
   createdAt: Date;
 };
@@ -93,6 +96,7 @@ const accountRoleColumns = {
   email: user.email,
   timezone: user.timezone,
   role: user.role,
+  superAdmin: user.superAdmin,
   twoFactorEnabled: user.twoFactorEnabled,
   createdAt: user.createdAt,
 };
@@ -103,10 +107,32 @@ export async function findAccountRole(email: string): Promise<AccountRole | null
   return account ?? null;
 }
 
-/** Cambia el rol de una cuenta; devuelve false si la cuenta ya no existe. */
-export async function setRole(userId: string, role: Role): Promise<boolean> {
-  const updated = await db.update(user).set({ role }).where(eq(user.id, userId)).returning({ id: user.id });
-  return updated.length === 1;
+/**
+ * Cambia el rol de una cuenta, igual que el super admin desde la app (src/modules/account/admin-role.ts):
+ * darlo cierra sus sesiones; quitarlo, además, borra su verificación en dos pasos y la marca de super
+ * admin. Devuelve cuántas sesiones abiertas cerró, o null si la cuenta ya no existe.
+ */
+export async function setRole(userId: string, role: Role): Promise<{ sessionsClosed: number } | null> {
+  return db.transaction((tx) => (hasRole(role, "admin") ? grantAdminRole(userId, { tx }) : revokeAdminRole(userId, { tx })));
+}
+
+/**
+ * La marca de super admin pasa a esta cuenta (y se le quita a quien la tuviera: hay una sola). Solo a
+ * un admin: devuelve false, sin cambiar nada, si la cuenta ya no existe o ya no es admin.
+ */
+export async function setSuperAdmin(userId: string): Promise<boolean> {
+  return db.transaction(async (tx) => {
+    // Bloqueada hasta terminar: que nadie le quite el rol mientras tanto.
+    const [target] = await tx
+      .select({ id: user.id })
+      .from(user)
+      .where(and(eq(user.id, userId), eq(user.role, "admin")))
+      .for("update");
+    if (!target) return false;
+    await tx.update(user).set({ superAdmin: false }).where(and(eq(user.superAdmin, true), ne(user.id, userId)));
+    await tx.update(user).set({ superAdmin: true }).where(eq(user.id, userId));
+    return true;
+  });
 }
 
 /** Las cuentas con rol de admin, de la más antigua a la más nueva. */

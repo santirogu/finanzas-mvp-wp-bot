@@ -99,6 +99,13 @@
       "when": 1792198245481,
       "tag": "0013_tope-mensual-y-reenvio",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1792368962976,
+      "tag": "0014_super-admin",
+      "breakpoints": true
     }
   ]
 }

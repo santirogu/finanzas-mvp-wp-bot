@@ -19,6 +19,7 @@ const ANA: CurrentUser = {
   timezone: "America/Bogota",
   currency: "COP",
   role: "user",
+  superAdmin: false,
   twoFactorEnabled: false,
 };
 
@@ -48,5 +49,21 @@ describe("UserMenu", () => {
     expect(shield!.closest("button")?.className).not.toMatch(/\bhidden\b/);
     await userEvent.click(screen.getByRole("button", { name: /^Tu cuenta/ }));
     expect(screen.getByText("Admin")).toBeVisible();
+  });
+
+  it("al super admin: la etiqueta y el escudo en dorado, y el botón dice \"super admin\"", async () => {
+    session.user = { ...ANA, role: "admin", superAdmin: true };
+    const { container } = render(await UserMenu());
+    expect(screen.getByRole("button", { name: "Tu cuenta: Ana Pérez, super admin" })).toBeVisible();
+    expect(container.querySelector("[data-admin-shield]")).toHaveClass("text-superadmin");
+    await userEvent.click(screen.getByRole("button", { name: /^Tu cuenta/ }));
+    expect(screen.getByText("Super admin")).toHaveClass("text-superadmin");
+  });
+
+  it("la marca de super admin sin el rol de admin no da nada", async () => {
+    session.user = { ...ANA, role: "user", superAdmin: true };
+    const { container } = render(await UserMenu());
+    expect(screen.getByRole("button", { name: "Tu cuenta: Ana Pérez" })).toBeVisible();
+    expect(container.innerHTML).not.toMatch(/admin/i);
   });
 });

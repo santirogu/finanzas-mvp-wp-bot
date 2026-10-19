@@ -2,11 +2,13 @@
 
 import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireAdmin } from "@/lib/session";
+import { requireAdmin, requireSuperAdmin } from "@/lib/session";
 import { TOAST_PARAM } from "@/lib/toasts";
 import {
   deleteAccount,
+  grantAdmin,
   reactivateAccount,
+  revokeAdmin,
   revokeSessions,
   suspendAccount,
   unlinkWhatsApp,
@@ -16,9 +18,9 @@ import {
 } from "@/modules/admin/users/account-actions";
 import { USERS_PATH } from "@/modules/admin/users/user-filters";
 
-// Las acciones del admin sobre una cuenta. Cada una valida el rol antes que nada; la cuenta, el
-// código de Google Authenticator y el registro en el historial se resuelven en
-// src/modules/admin/users/account-actions.ts.
+// Las acciones del admin sobre una cuenta. Cada una valida el rol antes que nada (las de dar y quitar
+// el rol de admin, que es el super admin); la cuenta, el código de Google Authenticator y el registro
+// en el historial se resuelven en src/modules/admin/users/account-actions.ts.
 
 export type AccountActionState = { error?: string; field?: "code" | "email"; message?: string };
 
@@ -60,6 +62,16 @@ export async function suspendAccountAction(_prev: AccountActionState, formData: 
 export async function reactivateAccountAction(_prev: AccountActionState, formData: FormData): Promise<AccountActionState> {
   await requireAdmin();
   return settle(await reactivateAccount(readInput(formData)));
+}
+
+export async function grantAdminAction(_prev: AccountActionState, formData: FormData): Promise<AccountActionState> {
+  await requireSuperAdmin();
+  return settle(await grantAdmin(readInput(formData)));
+}
+
+export async function revokeAdminAction(_prev: AccountActionState, formData: FormData): Promise<AccountActionState> {
+  await requireSuperAdmin();
+  return settle(await revokeAdmin(readInput(formData)));
 }
 
 export async function deleteAccountByAdminAction(

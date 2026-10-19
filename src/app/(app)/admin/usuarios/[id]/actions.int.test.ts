@@ -11,18 +11,21 @@ import { createAdminWithTwoFactor } from "../../../../../../test/integration/two
 // el formulario y qué devuelven o hacen en cada caso.
 const mocks = vi.hoisted(() => ({
   requireAdmin: vi.fn(),
+  requireSuperAdmin: vi.fn(),
   refresh: vi.fn(),
   redirect: vi.fn((url: string) => {
     throw new Error(`NEXT_REDIRECT ${url}`);
   }),
 }));
-vi.mock("@/lib/session", () => ({ requireAdmin: mocks.requireAdmin }));
+vi.mock("@/lib/session", () => ({ requireAdmin: mocks.requireAdmin, requireSuperAdmin: mocks.requireSuperAdmin }));
 vi.mock("next/cache", () => ({ refresh: mocks.refresh }));
 vi.mock("next/navigation", () => ({ redirect: mocks.redirect }));
 
 const {
   deleteAccountByAdminAction,
+  grantAdminAction,
   reactivateAccountAction,
+  revokeAdminAction,
   revokeSessionsAction,
   suspendAccountAction,
   unlinkWhatsAppByAdminAction,
@@ -52,6 +55,7 @@ const form = (fields: Record<string, string>) => {
 
 beforeEach(() => {
   mocks.requireAdmin.mockReset();
+  mocks.requireSuperAdmin.mockReset();
   mocks.refresh.mockReset();
   mocks.redirect.mockClear();
 });
@@ -152,6 +156,55 @@ describe("sin admin", () => {
     expect(await db.select().from(loginFailure).where(eq(loginFailure.email, ana.email))).toHaveLength(1);
     expect(await db.select().from(session).where(eq(session.userId, ana.id))).toHaveLength(1);
     expect(await db.select().from(whatsappLink).where(eq(whatsappLink.userId, ana.id))).toHaveLength(1);
+    expect(await db.select().from(accountEvent)).toEqual([]);
+    expect(mocks.refresh).not.toHaveBeenCalled();
+  });
+});
+
+describe("dar y quitar el rol de admin (super admin)", () => {
+  async function seedSuper() {
+    const seeded = await seed();
+    const [admin] = await db.select().from(user).where(eq(user.role, "admin"));
+    await db.update(user).set({ superAdmin: true }).where(eq(user.id, admin.id));
+    mocks.requireSuperAdmin.mockResolvedValue({ id: admin.id, role: "admin", superAdmin: true, twoFactorEnabled: true });
+    return seeded;
+  }
+
+  it("grantAdminAction da el rol, avisa y vuelve a dibujar la página", async () => {
+    const { ana, code } = await seedSuper();
+    expect(await grantAdminAction({}, form({ userId: ana.id, code: code() }))).toEqual({ message: "Ana Pérez ahora es admin." });
+    expect(mocks.refresh).toHaveBeenCalledTimes(1);
+    expect((await db.select({ role: user.role }).from(user).where(eq(user.id, ana.id)))[0].role).toBe("admin");
+  });
+
+  it("revokeAdminAction se lo quita, avisa y vuelve a dibujar la página", async () => {
+    const { ana, code } = await seedSuper();
+    await db.update(user).set({ role: "admin" }).where(eq(user.id, ana.id));
+    expect(await revokeAdminAction({}, form({ userId: ana.id, code: code() }))).toEqual({ message: "Ana Pérez ya no es admin." });
+    expect(mocks.refresh).toHaveBeenCalledTimes(1);
+    expect((await db.select({ role: user.role }).from(user).where(eq(user.id, ana.id)))[0].role).toBe("user");
+  });
+
+  it("con un error lo devuelve junto a su campo, sin redibujar", async () => {
+    const { ana } = await seedSuper();
+    expect(await grantAdminAction({}, form({ userId: ana.id, code: "12345" }))).toEqual({
+      error: "Escribe los 6 dígitos del código de Google Authenticator.",
+      field: "code",
+    });
+    expect(mocks.refresh).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["grantAdminAction", grantAdminAction],
+    ["revokeAdminAction", revokeAdminAction],
+  ] as const)("%s: un admin que no es el super admin falla antes de tocar nada", async (_, action) => {
+    const { ana, code } = await seed();
+    mocks.requireSuperAdmin.mockRejectedValue(new Error("NEXT_NOT_FOUND"));
+    await expect(action({}, form({ userId: ana.id, code: code() }))).rejects.toThrow("NEXT_NOT_FOUND");
+    // La valida la acción misma, antes de llamar a la capa de datos.
+    expect(mocks.requireSuperAdmin).toHaveBeenCalledTimes(1);
+    expect((await db.select({ role: user.role }).from(user).where(eq(user.id, ana.id)))[0].role).toBe("user");
+    expect(await db.select().from(session).where(eq(session.userId, ana.id))).toHaveLength(1);
     expect(await db.select().from(accountEvent)).toEqual([]);
     expect(mocks.refresh).not.toHaveBeenCalled();
   });

@@ -64,7 +64,8 @@ test("al activarla se cierran las demás sesiones de la cuenta", async ({ page, 
   // Otra sesión de la misma cuenta, abierta antes (otro dispositivo, o alguien con la contraseña).
   const otherDevice = await newPerson(browser);
   await logIn(otherDevice, email);
-  await expect(otherDevice).toHaveURL(/\/dashboard$/);
+  // Un admin sin la verificación entra directo a configurarla (afterLoginPath).
+  await expect(otherDevice).toHaveURL(/\/admin\/seguridad$/);
 
   await setUpTwoFactor(page);
 
@@ -90,13 +91,14 @@ test("pnpm admin:reset-2fa cierra la sesión y obliga a configurarla de nuevo", 
   await page.goto("/dashboard");
   await expect(page).toHaveURL(/\/login\?sesion=vencida$/);
   await expect(page.getByRole("status").filter({ hasText: "Tu sesión se cerró" })).toBeVisible();
-  // Ahora la contraseña sola basta para entrar como usuario…
+  // Ahora la contraseña sola basta para entrar, y va directo a configurarla de nuevo…
   await logIn(page, email);
-  await expect(page).toHaveURL(/\/dashboard$/);
-  // …pero para administrar hay que volver a configurarla.
-  await adminTab(page).click();
   await expect(page).toHaveURL(/\/admin\/seguridad$/);
   await expect(page.getByLabel("Tu contraseña")).toBeVisible();
+  // …sin la cual no administra: la pestaña Admin vuelve a llevar ahí.
+  await page.goto("/dashboard");
+  await adminTab(page).click();
+  await expect(page).toHaveURL(/\/admin\/seguridad$/);
 });
 
 test("un admin sin la verificación no puede ver la página de administración", async ({ page }) => {

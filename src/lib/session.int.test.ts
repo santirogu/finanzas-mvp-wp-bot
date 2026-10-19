@@ -61,7 +61,7 @@ describe("requireAdmin con sesiones reales", () => {
     expect(await requireUser()).toMatchObject({ role: "admin" });
   });
 
-  it("al quitarle el rol deja de entrar en el siguiente pedido, aunque tenga la verificación", async () => {
+  it("al quitarle el rol se cierran sus sesiones: el siguiente pedido ya no entra, aunque tenía la verificación", async () => {
     const jar = await register("ana@test.local");
     const ana = await makeAdmin("ana@test.local");
     await enableTwoFactor(jar);
@@ -70,7 +70,7 @@ describe("requireAdmin con sesiones reales", () => {
 
     await setRole(ana.id, "user");
 
-    await expect(requireAdmin()).rejects.toThrow("NEXT_NOT_FOUND");
+    await expect(requireAdmin()).rejects.toThrow("NEXT_REDIRECT:/login?sesion=vencida");
   });
 
   it("después de un login con los dos pasos, entra", async () => {

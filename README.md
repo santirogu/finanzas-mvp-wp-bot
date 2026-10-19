@@ -51,7 +51,7 @@ pnpm dev                        # http://localhost:3000 (antes, copia la base lo
 | `pnpm db:backup` · `db:restore [archivo]` | Copia la base local en `backups/` / la reemplaza con una copia (ver abajo) |
 | `pnpm account:delete <correo>` | Borra una cuenta y todos sus datos, para quien lo pide por correo (ver Seguridad → Borrar datos a pedido) |
 | `pnpm messages:cleanup` | Borra los mensajes de WhatsApp y los intentos fallidos de vinculación de números sin cuenta, de más de 30 días (`--dias N`, mínimo 7) |
-| `pnpm admin:grant <correo>` · `admin:revoke` · `admin:list` | Da o quita el rol de admin, o lista los admins (ver Seguridad → Roles) |
+| `pnpm admin:grant <correo>` · `admin:revoke` · `admin:super` · `admin:list` | Da o quita el rol de admin, marca al super admin o lista los admins (ver Seguridad → Roles) |
 | `pnpm admin:reset-2fa <correo>` | Reinicia la verificación en dos pasos de un admin que perdió el celular y los códigos de respaldo |
 | `pnpm bot:try 'texto'` | Muestra cómo interpreta el bot un mensaje (usa la API de Claude). Usa comillas simples si el texto tiene `$` |
 | `pnpm bot:eval` | Corre el set de ~55 frases de prueba del bot y reporta aciertos, latencia y costo |
@@ -393,6 +393,7 @@ justifica.
 | **El bloqueo por cuenta dura poco** (15 minutos) | Alguien podría bloquear a propósito la cuenta de otra persona; por eso se levanta solo | Hubiera bloqueos repetidos de una misma cuenta en el historial |
 | **El registro dice si un correo ya tiene cuenta** ("Ya existe una cuenta con ese correo") | El registro no verifica el correo y crea la sesión de una vez: sin ese aviso, quien se equivocó de botón no entendería qué pasa. El inicio de sesión y el bloqueo no lo revelan, y el registro tiene su límite por IP (3 cada 10 s), así que recorrer una lista de correos es lento y deja rastro | Se agregue la verificación del correo: entonces el registro puede responder siempre igual ("te enviamos un correo") |
 | **HSTS con `preload`** (`max-age` de 2 años, `includeSubDomains`) | En `*.vercel.app` no tiene efecto: solo el dueño de un dominio registrable puede pedir que entre a la lista de precarga (hstspreload.org), y nadie lo ha pedido. La cabecera sí obliga HTTPS a cada navegador que ya visitó la app | Se agregue un dominio propio: antes de pedir la precarga, confirmar que **todos** sus subdominios funcionan con HTTPS (salir de la lista tarda meses). Si no se va a pedir, se puede quitar `preload` |
+| **El rol de admin se da y se quita desde la app** (solo el super admin, en Usuarios) | Antes solo desde la terminal; el dueño lo pidió para no depender de la `DATABASE_URL`. Lo hace una sola cuenta (el super admin, marcado solo desde la terminal), con su código de Google Authenticator, y queda en el historial. Dar el rol cierra las sesiones de la persona y le exige la verificación en dos pasos para administrar; nadie le quita el rol al super admin desde la app | Hubiera más de una persona de confianza que necesite dar roles, o se agreguen roles con más permisos |
 | **Categorías: crear, renombrar y restaurar no piden el código** de Google Authenticator; archivar y eliminar sí (#50) | Son cambios que se ven de inmediato y se deshacen con otro cambio. Cada uno queda en `category_change` con el admin, y la sesión de admin ya exige los dos pasos al entrar | Las categorías empezaran a afectar algo más que el nombre y el emoji (por ejemplo, reglas del bot) |
 | **Eliminar una cuenta reinicia el contador de intentos de vinculación de su número** | Conservar esos intentos contradiría "al eliminar la cuenta se borra su historial". Aprovecharlo exige registrarse y vincular el número cada 5 intentos, contra un millón de códigos que viven 10 minutos | Se agregue un contador sin datos personales (por ejemplo, el número con hash, por una hora) |
 | **El filtro de enlaces de las respuestas del bot usa una lista de terminaciones** (`.com`, `.co`, `.net`…) | Una terminación rara pasaría, pero la respuesta solo le llega a quien escribió, y además tiene largo máximo | Hubiera respuestas reales con enlaces de otra terminación |
@@ -461,32 +462,47 @@ podría bloquear a propósito la cuenta de otra persona; por eso el bloqueo es c
 
 ### Roles
 
-Hay dos roles (`src/lib/roles.ts`), guardados en la columna `user.role`:
+Hay dos roles (`src/lib/roles.ts`), guardados en la columna `user.role`, y un admin especial, el
+**super admin**:
 
 | Rol | Quién | Qué ve |
 |---|---|---|
 | `user` | Toda cuenta al registrarse | Resumen, Ingresos, Egresos y Mi cuenta |
-| `admin` | Solo quien lo recibe desde la terminal | Todo lo de `user` y la sección de administración (pestaña **Admin**), con verificación en dos pasos obligatoria |
+| `admin` | Quien recibe el rol del super admin (en Usuarios) o desde la terminal | Todo lo de `user` y la sección de administración (pestaña **Admin**), con verificación en dos pasos obligatoria. Su etiqueta va en violeta |
+| super admin | Un admin con la marca `user.super_admin`: uno solo, puesto solo desde la terminal (`pnpm admin:super`) | Todo lo de `admin` y, además, dar y quitar el rol de admin en Usuarios. Su etiqueta ("Super admin") y su escudo van en dorado |
 
 - **No hay usuario ni contraseña de admin por defecto.** El rol se le da a una cuenta que ya
-  existe, desde la terminal, y solo puede hacerlo quien tiene la `DATABASE_URL`. Así no queda
-  nada en el código (el repositorio es público) ni en Vercel.
-- **Nadie puede darse el rol desde la app:** en Better Auth el campo tiene `input: false`, así que
+  existe: desde la terminal, solo puede hacerlo quien tiene la `DATABASE_URL`; desde la app, solo
+  el super admin, con su código de Google Authenticator. Así no queda nada en el código (el
+  repositorio es público) ni en Vercel.
+- **El super admin** (`isSuperAdmin` en `src/lib/roles.ts`, `requireSuperAdmin()` en
+  `src/lib/session.ts`): la marca sola no alcanza, también tiene que ser admin. La base admite uno solo
+  (índice único `user_one_super_admin_idx`) y la app no la puede poner ni quitar (`input: false`, como el
+  rol): `pnpm admin:super <correo>` se la pasa a otro admin, y `pnpm admin:revoke` se la quita junto con el
+  rol. Desde la app nadie le quita el rol: la acción no aparece en su ficha y el servidor lo rechaza.
+- **Dar el rol** (en la app o con `admin:grant`) cierra sus sesiones: al volver a entrar, después de la
+  contraseña va directo a configurar la verificación en dos pasos (`afterLoginPath`). **Quitarlo** (en la
+  app o con `admin:revoke`) borra su verificación y sus códigos de respaldo y cierra sus sesiones: vuelve
+  a entrar solo con su contraseña. Sus finanzas no se tocan. Las dos cosas hacen lo mismo en los dos
+  lados (`src/modules/account/admin-role.ts`); desde la app, además, quedan en el historial.
+- **Nadie puede darse el rol a sí mismo:** en Better Auth el campo tiene `input: false`, así que
   el registro ignora el rol que mande el cliente. "Actualizar perfil" está apagado por HTTP y, si se
   usara desde el servidor, también lo rechaza (`FIELD_NOT_ALLOWED`). La base solo acepta `user` o
   `admin` (tipo `user_role`). No se usa el plugin `admin` de Better Auth: agregaría endpoints
   (suplantar usuarios, cambiar contraseñas ajenas) que no hacen falta.
 - **En el servidor:** las páginas y acciones de administración llaman a `requireAdmin()`
   (`src/lib/session.ts`): sin sesión llevan al login, sin el rol responden 404 (para no revelar que
-  la sección existe) y sin la verificación en dos pasos llevan a configurarla. El rol se lee de la
-  base en cada pedido: quitarlo surte efecto en el siguiente clic. Solo la página donde se configura
+  la sección existe) y sin la verificación en dos pasos llevan a configurarla. Dar y quitar el rol de
+  admin usa `requireSuperAdmin()` (lo mismo y, además, ser el super admin; a otro admin le responde
+  404). El rol se lee de la base en cada pedido. Solo la página donde se configura
   la verificación usa `requireAdminRole()` (el rol sin la verificación). La matriz de autorización
   falla si una página o acción de admin no los usa así.
 
 **Verificación en dos pasos (solo admins).** Plugin `twoFactor` de Better Auth con Google
 Authenticator (o cualquier app TOTP); reglas propias en `src/modules/auth/two-factor-rules.ts`:
 
-- **Configuración, una vez** (`/admin/seguridad`, adonde lleva la pestaña Admin si falta):
+- **Configuración, una vez** (`/admin/seguridad`, adonde lleva el login a un admin que todavía no la
+  tiene, y la pestaña Admin si falta):
   contraseña → QR (dibujado en la app, sin servicios externos; también se muestra la clave para
   escribirla a mano) → primer código → 10 códigos de respaldo de un solo uso. Al activarla se
   cierran las demás sesiones de la cuenta. La clave y los códigos se guardan cifrados.
@@ -512,9 +528,13 @@ la app):
 2. Corre `pnpm admin:grant --env .env.produccion tu-correo@...` y escribe el correo para confirmar.
 3. Borra el archivo: `rm .env.produccion`.
 
-`pnpm admin:list --env .env.produccion` muestra quiénes son admin (y si tienen la verificación en
-dos pasos activa) y `pnpm admin:revoke` quita el rol. Sin `--env`, usan la base local de `.env`.
-Después de hacerte admin, la pestaña **Admin** te lleva a configurar la verificación en dos pasos.
+`pnpm admin:list --env .env.produccion` muestra quiénes son admin (si tienen la verificación en dos
+pasos activa y quién es el super admin) y `pnpm admin:revoke` quita el rol. Sin `--env`, usan la base
+local de `.env`. Al volver a entrar después de hacerte admin, la app te lleva a configurar la
+verificación en dos pasos.
+
+**Hacerse super admin** (una vez, ya como admin): `pnpm admin:super --env .env.produccion tu-correo@...`
+y escribe el correo para confirmar. Si otra cuenta era el super admin, deja de serlo.
 
 ### Sección de administración
 
@@ -568,8 +588,8 @@ Cada cuenta abre su detalle (`/admin/usuarios/<id>`): rol, registro, último ini
 enlace a su historial completo. Better Auth guarda las IPv6 recortadas a la red (/64), así que se
 muestran así: `2800:e2:4a:1234::/64`.
 
-**Acciones** (en el detalle; solo las que aplican, y nunca en la cuenta propia ni en la de otro admin:
-los roles siguen solo en la terminal):
+**Acciones** (en el detalle; solo las que aplican, y nunca en la cuenta propia ni en la de otro admin; en
+la de otro admin, el super admin solo puede quitarle el rol):
 
 | Acción | Qué hace | Queda en el historial |
 |---|---|---|
@@ -579,6 +599,8 @@ los roles siguen solo en la terminal):
 | Suspender la cuenta | Hasta que la reactive un admin: cierra sus sesiones, no puede entrar ni usar el bot. Sus datos se conservan. Motivo opcional e interno | `account_suspended` (con el motivo) |
 | Reactivar la cuenta | Puede volver a entrar y a usar el bot | `account_reactivated` |
 | Eliminar la cuenta | Lo mismo que `pnpm account:delete`; además pide escribir su correo | Solo `account_deleted`, sin datos de la cuenta |
+| Darle el rol de admin (solo el super admin; no a una cuenta suspendida) | Cierra sus sesiones: al volver a entrar configura la verificación en dos pasos | `admin_granted` (cuántas sesiones) |
+| Quitarle el rol de admin (solo el super admin, a otro admin) | Vuelve a ser usuario: se borran su verificación y sus códigos de respaldo, y se cierran sus sesiones | `admin_revoked` (cuántas sesiones) |
 
 **Suspensión** (`user.suspended_at`, `src/modules/account/suspension.ts`): Better Auth no le abre
 sesiones a una cuenta suspendida (`databaseHooks.session.create.before`, después de la contraseña

@@ -8,6 +8,7 @@ const ANA: AccountRole = {
   email: "ana@correo.com",
   timezone: "America/Bogota",
   role: "user",
+  superAdmin: false,
   twoFactorEnabled: false,
   // En Colombia todavía es el 1 de septiembre (en UTC ya es el 2).
   createdAt: new Date("2026-09-02T03:00:00Z"),
@@ -17,6 +18,7 @@ const USAGE = [
   "Uso:",
   "  pnpm admin:grant [--env <archivo>] <correo>",
   "  pnpm admin:revoke [--env <archivo>] <correo>",
+  "  pnpm admin:super [--env <archivo>] <correo>",
   "  pnpm admin:list [--env <archivo>]",
   "  pnpm admin:reset-2fa [--env <archivo>] <correo>",
 ].join("\n");
@@ -25,7 +27,8 @@ function setup({
   account = ANA as AccountRole | null,
   admins = [] as AccountRole[],
   answer = "",
-  updated = true,
+  updated = { sessionsClosed: 2 } as { sessionsClosed: number } | null,
+  marked = true,
   reset = { sessionsClosed: 2 } as { sessionsClosed: number } | null,
   env = { DATABASE_URL: "postgres://usuario:clave-secreta@db.neon.tech:5432/finanzas" } as Record<string, string>,
 } = {}) {
@@ -34,6 +37,7 @@ function setup({
   const data = {
     findAccountRole: vi.fn(async () => account),
     setRole: vi.fn(async () => updated),
+    setSuperAdmin: vi.fn(async () => marked),
     listAdmins: vi.fn(async () => admins),
     resetTwoFactor: vi.fn(async () => reset),
     close: vi.fn(async () => {}),
@@ -62,6 +66,8 @@ describe("argumentos", () => {
     [["grant", "--env"]],
     [["reset-2fa"]],
     [["reset-2fa", "a@b.co", "otro@b.co"]],
+    [["super"]],
+    [["super", "a@b.co", "otro@b.co"]],
   ])("con %j explica el uso y no abre la base", async (argv) => {
     const { run, deps, errors } = setup();
     expect(await run(...argv)).toBe(2);
@@ -107,7 +113,8 @@ describe("admin:grant", () => {
       "Cuenta: Ana Pérez <ana@correo.com>, creada el 2026-09-01",
       "Rol: usuario → admin",
       "Un admin ve la sección de administración, con datos de todas las cuentas.",
-      "✓ ana@correo.com ahora tiene el rol admin. Aplica desde su siguiente clic, sin cerrar sesión.",
+      "Se cierran sus sesiones: al volver a entrar tendrá que configurar la verificación en dos pasos.",
+      "✓ ana@correo.com ahora tiene el rol admin. Sesiones cerradas: 2.",
     ]);
     expect([...logs, ...errors].join("\n")).not.toContain("clave-secreta");
   });
@@ -143,7 +150,7 @@ describe("admin:grant", () => {
   });
 
   it("si la cuenta se borra mientras se confirmaba, lo dice", async () => {
-    const { run, errors, logs } = setup({ answer: "ana@correo.com", updated: false });
+    const { run, errors, logs } = setup({ answer: "ana@correo.com", updated: null });
     expect(await run("grant", "ana@correo.com")).toBe(1);
     expect(errors).toEqual(["La cuenta ya no existe (¿se borró mientras tanto?). No se cambió nada."]);
     expect(logs.join("\n")).not.toContain("✓");
@@ -174,8 +181,21 @@ describe("admin:revoke", () => {
       "Base de datos: db.neon.tech:5432/finanzas",
       "Cuenta: Ana Pérez <ana@correo.com>, creada el 2026-09-01",
       "Rol: admin → usuario",
-      "✓ ana@correo.com ahora tiene el rol usuario. Aplica desde su siguiente clic, sin cerrar sesión.",
+      "Se borran su verificación en dos pasos y sus códigos de respaldo, y se cierran sus sesiones.",
+      "✓ ana@correo.com ahora tiene el rol usuario. Sesiones cerradas: 2.",
     ]);
+  });
+
+  it("al super admin también le quita la marca, y avisa que ya no hay super admin", async () => {
+    const { run, data, logs } = setup({
+      account: { ...ADMIN_ANA, superAdmin: true },
+      answer: "ana@correo.com",
+      admins: [{ ...ANA, id: "user-beto", email: "beto@correo.com", role: "admin" }],
+    });
+    expect(await run("revoke", "ana@correo.com")).toBe(0);
+    expect(data.setRole).toHaveBeenCalledWith("user-ana", "user");
+    expect(logs).toContain("Es el super admin: también pierde esa marca.");
+    expect(logs.at(-1)).toBe("Ya no hay super admin. Para poner uno: pnpm admin:super <correo>.");
   });
 
   it("avisa si ya no queda ningún admin", async () => {
@@ -199,11 +219,86 @@ describe("admin:revoke", () => {
   });
 });
 
+describe("admin:super", () => {
+  const ADMIN_ANA = { ...ANA, role: "admin" as const };
+  const BETO = { ...ANA, id: "user-beto", name: "Beto", email: "beto@correo.com", role: "admin" as const };
+
+  it("muestra quién lo era y quién lo será, y marca la cuenta tras confirmar", async () => {
+    const { run, data, deps, logs, errors } = setup({
+      account: ADMIN_ANA,
+      answer: " ANA@correo.com",
+      admins: [ADMIN_ANA, { ...BETO, superAdmin: true }],
+    });
+    expect(await run("super", "Ana@Correo.com")).toBe(0);
+    expect(deps.ask).toHaveBeenCalledWith("Para confirmar, escribe el correo de la cuenta: ");
+    expect(data.setSuperAdmin).toHaveBeenCalledWith("user-ana");
+    expect(data.setRole).not.toHaveBeenCalled();
+    expect(data.close).toHaveBeenCalledOnce();
+    expect(errors).toEqual([]);
+    expect(logs).toEqual([
+      "Base de datos: db.neon.tech:5432/finanzas",
+      "Cuenta: Ana Pérez <ana@correo.com>, creada el 2026-09-01",
+      "Super admin: beto@correo.com → ana@correo.com",
+      "El super admin da y quita el rol de admin desde la app, con su código de Google Authenticator. Hay uno solo.",
+      "✓ ana@correo.com ahora es el super admin.",
+    ]);
+  });
+
+  it("si no había ninguno, lo dice", async () => {
+    const { run, logs } = setup({ account: ADMIN_ANA, answer: "ana@correo.com", admins: [ADMIN_ANA] });
+    expect(await run("super", "ana@correo.com")).toBe(0);
+    expect(logs).toContain("Super admin: ninguno → ana@correo.com");
+  });
+
+  it("si no es admin, explica que primero hay que darle el rol y no pregunta nada", async () => {
+    const { run, data, deps, errors } = setup();
+    expect(await run("super", "ana@correo.com")).toBe(1);
+    expect(errors).toEqual(["ana@correo.com no es admin: primero dale el rol con pnpm admin:grant. No se cambió nada."]);
+    expect(deps.ask).not.toHaveBeenCalled();
+    expect(data.setSuperAdmin).not.toHaveBeenCalled();
+  });
+
+  it("si ya lo es, lo dice y no pregunta nada", async () => {
+    const { run, data, deps, logs } = setup({ account: { ...ADMIN_ANA, superAdmin: true } });
+    expect(await run("super", "ana@correo.com")).toBe(0);
+    expect(logs.at(-1)).toBe("ana@correo.com ya es el super admin. No se cambió nada.");
+    expect(deps.ask).not.toHaveBeenCalled();
+    expect(data.setSuperAdmin).not.toHaveBeenCalled();
+  });
+
+  it("si la cuenta no existe, lo dice", async () => {
+    const { run, data, errors } = setup({ account: null });
+    expect(await run("super", "nadie@correo.com")).toBe(1);
+    expect(errors).toEqual(["No hay ninguna cuenta con el correo nadie@correo.com. No se cambió nada."]);
+    expect(data.setSuperAdmin).not.toHaveBeenCalled();
+  });
+
+  it("sin confirmar no marca nada", async () => {
+    const { run, data, logs } = setup({ account: ADMIN_ANA, answer: "beto@correo.com" });
+    expect(await run("super", "ana@correo.com")).toBe(1);
+    expect(data.setSuperAdmin).not.toHaveBeenCalled();
+    expect(logs.at(-1)).toBe("El correo no coincide: no se cambió nada.");
+  });
+
+  it("si mientras tanto dejó de ser admin (o se borró), no cambia nada y lo dice", async () => {
+    const { run, errors, logs } = setup({ account: ADMIN_ANA, answer: "ana@correo.com", marked: false });
+    expect(await run("super", "ana@correo.com")).toBe(1);
+    expect(errors).toEqual(["La cuenta ya no existe o ya no es admin (¿cambió mientras tanto?). No se cambió nada."]);
+    expect(logs.join("\n")).not.toContain("✓");
+  });
+
+  it("acepta --env", async () => {
+    const { run, deps } = setup({ account: ADMIN_ANA, answer: "ana@correo.com" });
+    expect(await run("super", "--env", ".env.produccion", "ana@correo.com")).toBe(0);
+    expect(deps.loadEnv).toHaveBeenCalledWith(".env.produccion");
+  });
+});
+
 describe("admin:list", () => {
   it("muestra los admins con su fecha de creación y si tienen la verificación en dos pasos", async () => {
     const { run, deps, data, logs } = setup({
       admins: [
-        { ...ANA, role: "admin", twoFactorEnabled: true },
+        { ...ANA, role: "admin", twoFactorEnabled: true, superAdmin: true },
         { ...ANA, id: "b", name: "Beto", email: "beto@correo.com", role: "admin", createdAt: new Date("2026-10-01T15:00:00Z") },
       ],
     });
@@ -211,7 +306,7 @@ describe("admin:list", () => {
     expect(logs).toEqual([
       "Base de datos: db.neon.tech:5432/finanzas",
       "Admins (2):",
-      "  - Ana Pérez <ana@correo.com>, creada el 2026-09-01 · verificación en dos pasos activa",
+      "  - Ana Pérez <ana@correo.com>, creada el 2026-09-01 · verificación en dos pasos activa · super admin",
       "  - Beto <beto@correo.com>, creada el 2026-10-01 · verificación en dos pasos pendiente",
     ]);
     expect(deps.ask).not.toHaveBeenCalled();

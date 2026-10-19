@@ -89,7 +89,9 @@ export default function PrivacyPage() {
               egresos ni mensajes. Si hace falta (por ejemplo, a tu pedido o para proteger tu cuenta),
               puede desbloquear tu inicio de sesión, cerrar tus sesiones, desvincular tu WhatsApp,
               suspender tu cuenta (mientras esté suspendida no podrás entrar ni usar el bot, y tus datos
-              se conservan) o eliminarla con todos sus datos; cada acción queda registrada.
+              se conservan) o eliminarla con todos sus datos; cada acción queda registrada. Solo el
+              administrador principal puede darle a otra cuenta el rol de administrador o quitárselo, y
+              eso también queda registrado.
             </li>
             <li>
               Mantener las categorías de ingresos y egresos: el administrador puede crearlas, cambiarlas,

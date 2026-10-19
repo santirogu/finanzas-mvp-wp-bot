@@ -37,6 +37,9 @@ const ICON_PATHS: Record<LogEntry["type"], ReactNode> = {
   account_deleted: <path d="M4.5 6h11M8 6V4.5h4V6M6 6l.7 10h6.6L14 6M8.5 9v4.5M11.5 9v4.5" />,
   account_suspended: <path d="M10 3a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM8.25 7.5v5M11.75 7.5v5" />,
   account_reactivated: <path d="M10 3a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM8.5 7.25v5.5L13 10z" />,
+  // Un escudo con + (se dio el rol de admin) o con − (se quitó).
+  admin_granted: <path d="M10 2.75 16 5v4.25c0 3.6-2.5 6.6-6 7.75-3.5-1.15-6-4.15-6-7.75V5zM10 7.5v4.5M7.75 9.75h4.5" />,
+  admin_revoked: <path d="M10 2.75 16 5v4.25c0 3.6-2.5 6.6-6 7.75-3.5-1.15-6-4.15-6-7.75V5zM7.75 9.75h4.5" />,
   bot_claude_paused: <path d="M4 5.5h12v8H9l-3.5 2.5v-2.5H4zM8.75 8v3M11.25 8v3" />,
   bot_claude_resumed: <path d="M4 5.5h12v8H9l-3.5 2.5v-2.5H4zM8.75 7.75v3.5L12 9.5z" />,
   bot_limits_changed: <path d="M4 6h12M4 10h12M4 14h12M7 4.5v3M13 8.5v3M9.5 12.5v3" />,
@@ -58,6 +61,8 @@ const ICON_COLORS: Record<LogEntry["type"], string> = {
   account_deleted: ADMIN_COLOR,
   account_suspended: ADMIN_COLOR,
   account_reactivated: ADMIN_COLOR,
+  admin_granted: ADMIN_COLOR,
+  admin_revoked: ADMIN_COLOR,
   bot_claude_paused: ADMIN_COLOR,
   bot_claude_resumed: ADMIN_COLOR,
   bot_limits_changed: ADMIN_COLOR,
@@ -149,6 +154,10 @@ function sentence(entry: LogEntry, who: ReactNode, phone: ReactNode): ReactNode 
       return <>{admin} reactivó la cuenta de {who}</>;
     case "account_deleted":
       return <>{admin} eliminó una cuenta</>;
+    case "admin_granted":
+      return <>{admin} le dio el rol de admin a {who}</>;
+    case "admin_revoked":
+      return <>{admin} le quitó el rol de admin a {who}</>;
     case "bot_claude_paused":
       return <>{admin} pausó Claude en el bot</>;
     case "bot_claude_resumed":
