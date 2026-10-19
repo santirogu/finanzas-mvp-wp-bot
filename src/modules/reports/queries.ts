@@ -1,9 +1,10 @@
 import "server-only";
-import { and, eq, gte, isNull, lt, sql } from "drizzle-orm";
+import { and, desc, eq, gte, isNull, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { category, transaction } from "@/db/schema";
 import { compareMonths, type Month, monthOf, monthRange, shiftMonth } from "@/lib/dates";
 import { listActiveMonths } from "@/modules/transactions/queries";
+import { BIGGEST_CANDIDATES, biggestExpenses, type ExpenseRow } from "./biggest";
 import { AVERAGE_MONTHS, type CategoryMonthTotal, categoryReport } from "./categories";
 import type { ReportPeriod } from "./period";
 import { type DescriptionMonthTotal, recurringExpenses, recurringFrom } from "./recurring";
@@ -83,6 +84,24 @@ export async function getExpenseDescriptionsByMonth(userId: string, first: Month
   return rows.map((row) => ({ ...row, total: Number(row.total) }));
 }
 
+/** Los egresos más altos de `first` a `last` (hasta BIGGEST_CANDIDATES); si empatan, el más reciente primero. */
+export async function getLargestExpenses(userId: string, first: Month, last: Month): Promise<ExpenseRow[]> {
+  return db
+    .select({
+      id: transaction.id,
+      description: transaction.description,
+      amount: transaction.amount,
+      occurredOn: transaction.occurredOn,
+      categoryName: category.name,
+      categoryEmoji: category.emoji,
+    })
+    .from(transaction)
+    .leftJoin(category, eq(category.id, transaction.categoryId))
+    .where(and(activeBetween(userId, first, last), eq(transaction.type, "expense")))
+    .orderBy(desc(transaction.amount), desc(transaction.occurredOn), desc(transaction.createdAt))
+    .limit(BIGGEST_CANDIDATES);
+}
+
 /** Todo lo que muestra Reportes en un período (`current` es el mes en curso, en la zona de la persona). */
 export async function getReport(userId: string, period: ReportPeriod, current: Month) {
   const first = period.months[0];
@@ -90,12 +109,14 @@ export async function getReport(userId: string, period: ReportPeriod, current: M
   // Las categorías se comparan con los meses anteriores (pueden quedar fuera del período) y los gastos
   // fijos se buscan en los últimos meses (en un año que recién empieza, también los del anterior).
   const categoriesFrom = shiftMonth(last, -(AVERAGE_MONTHS + 1));
-  const [activeMonths, monthly, categories, descriptions] = await Promise.all([
+  const [activeMonths, monthly, categories, descriptions, largest] = await Promise.all([
     listActiveMonths(userId),
     getMonthlyTotals(userId, first, last),
     getCategoryMonthlyTotals(userId, compareMonths(categoriesFrom, first) < 0 ? categoriesFrom : first, last),
     getExpenseDescriptionsByMonth(userId, recurringFrom(period.months), last),
+    getLargestExpenses(userId, first, last),
   ]);
+  const recurring = recurringExpenses(descriptions, period.months);
   const series = monthSeries(period.months, monthly);
   // listActiveMonths va del más reciente al más antiguo.
   const firstActive = activeMonths.length > 0 ? monthOf(`${activeMonths[activeMonths.length - 1]}-01`) : null;
@@ -104,7 +125,8 @@ export async function getReport(userId: string, period: ReportPeriod, current: M
     series,
     summary: periodSummary(series, current, firstActive),
     categories: categoryReport(categories, period.months, current, new Set(activeMonths)),
-    recurring: recurringExpenses(descriptions, period.months),
+    recurring,
+    biggest: biggestExpenses(largest, recurring.items),
   };
 }
 

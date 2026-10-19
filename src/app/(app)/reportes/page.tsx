@@ -2,15 +2,26 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { ChangeLine } from "@/components/change-line";
-import { compareMonths, currentMonthRange, formatMonthLabel, formatMonthName, formatShortMonth, type Month, monthParam } from "@/lib/dates";
+import {
+  compareMonths,
+  currentMonthRange,
+  formatMonthLabel,
+  formatMonthName,
+  formatShortDate,
+  formatShortMonth,
+  type Month,
+  monthParam,
+} from "@/lib/dates";
 import { formatMoney, formatShare } from "@/lib/money";
 import { monthHref } from "@/lib/month-nav";
 import { requireUser } from "@/lib/session";
+import { BIGGEST_SHOWN, type ExpenseRow } from "@/modules/reports/biggest";
 import { averagedPhrase, type CategoryReport } from "@/modules/reports/categories";
 import { periodOptions, reportPeriod, type ReportPeriod } from "@/modules/reports/period";
 import { getReport, type Report } from "@/modules/reports/queries";
 import { RECURRING_MIN_MONTHS, RECURRING_WINDOW, type RecurringReport } from "@/modules/reports/recurring";
 import type { PeriodSummary } from "@/modules/reports/summary";
+import { NO_CATEGORY } from "@/modules/transactions/search";
 import { PageSkeleton } from "../page-skeleton";
 import { type TrendPoint, TrendChart } from "./trend-chart";
 
@@ -73,7 +84,10 @@ async function Reports({ period: param }: { period: string | string[] | undefine
           {/* Lado a lado recién en un computador: en un iPad, cada una necesita el ancho para sus montos. */}
           <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
             <Categories categories={report.categories} money={money} />
-            <Recurring recurring={report.recurring} period={period} summary={report.summary} money={money} />
+            <div className="space-y-6">
+              <Recurring recurring={report.recurring} period={period} summary={report.summary} money={money} />
+              <Biggest biggest={report.biggest} hadExpenses={report.summary.expense > 0} current={current} money={money} />
+            </div>
           </div>
         </>
       )}
@@ -300,6 +314,58 @@ function Recurring({ recurring, period, summary, money }: { recurring: Recurring
           </div>
           {average > 0 && (
             <p className="mt-1 text-xs text-muted">Son el {formatShare(recurring.total, average)}% de tu gasto promedio por mes.</p>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
+
+function Biggest({ biggest, hadExpenses, current, money }: { biggest: ExpenseRow[]; hadExpenses: boolean; current: Month; money: Money }) {
+  const first = biggest.slice(0, BIGGEST_SHOWN);
+  const rest = biggest.slice(BIGGEST_SHOWN);
+  const row = (expense: ExpenseRow) => {
+    const date = formatShortDate(expense.occurredOn, { withYear: Number(expense.occurredOn.slice(0, 4)) !== current.year });
+    return (
+      <li key={expense.id}>
+        {/* Toda la fila lleva a editarlo (al guardar, se vuelve a Egresos, al mes del movimiento). */}
+        <Link
+          href={`/movimientos/${expense.id}/editar`}
+          className="-mx-2 flex min-h-11 items-center justify-between gap-3 rounded-md px-2 py-2 text-sm hover:bg-background"
+        >
+          <span className="min-w-0">
+            <span className="sr-only">Editar </span>
+            <span className="block truncate">
+              <span aria-hidden>{expense.categoryEmoji ?? "•"} </span>
+              {expense.description}
+            </span>
+            <span className="block text-xs text-muted">
+              {date} · {expense.categoryName ?? NO_CATEGORY}
+            </span>
+          </span>
+          <span className="shrink-0 whitespace-nowrap font-semibold tabular-nums text-expense">−{money(expense.amount)}</span>
+        </Link>
+      </li>
+    );
+  };
+  return (
+    <section className="card p-4" aria-label="Los gastos más grandes">
+      <h2 className="font-semibold">Los gastos más grandes</h2>
+      <p className="mt-1 text-sm text-muted">Los egresos más altos del período, sin contar los gastos fijos. Toca uno para editarlo.</p>
+      {biggest.length === 0 ? (
+        <p className="py-8 text-center text-sm text-muted">
+          {hadExpenses ? "Todos los egresos del período son gastos fijos." : "Sin egresos en el período."}
+        </p>
+      ) : (
+        <>
+          <ul className="mt-2 divide-y divide-border">{first.map(row)}</ul>
+          {rest.length > 0 && (
+            <details className="text-sm">
+              <summary className="inline-flex min-h-11 cursor-pointer items-center font-medium text-brand pointer-fine:min-h-8">
+                Ver {rest.length === 1 ? "el siguiente" : `los ${rest.length} siguientes`}
+              </summary>
+              <ul className="divide-y divide-border border-t border-border">{rest.map(row)}</ul>
+            </details>
           )}
         </>
       )}
