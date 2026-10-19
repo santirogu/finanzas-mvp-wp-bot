@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, count, eq, ne } from "drizzle-orm";
+import { and, asc, count, eq, ne, sql } from "drizzle-orm";
 import { db } from "@/db";
 import {
   accountEvent,
@@ -122,6 +122,10 @@ export async function setRole(userId: string, role: Role): Promise<{ sessionsClo
  */
 export async function setSuperAdmin(userId: string): Promise<boolean> {
   return db.transaction(async (tx) => {
+    // Una marca a la vez: si dos corren juntas (dos terminales, o el recorrido de diseño con dos
+    // navegadores), las dos verían que no hay otra marcada y la segunda chocaría con el índice único.
+    // El candado dura hasta el final de la transacción.
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext('user_super_admin'))`);
     // Bloqueada hasta terminar: que nadie le quite el rol mientras tanto.
     const [target] = await tx
       .select({ id: user.id })
