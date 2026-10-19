@@ -97,6 +97,35 @@ describe("contraste (WCAG)", () => {
     );
   }
 
+  // El calendario de "¿Qué días gastas más?" (Reportes): el número de cada día sobre su tono, 4,5:1. Los
+  // tonos son el naranja de los egresos con transparencia sobre la tarjeta (bg-expense/12…) o entero.
+  const calendar = readFileSync(path.join(__dirname, "app/(app)/reportes/daily-spending.tsx"), "utf8");
+  const heat = [...calendar.match(/const HEAT[^}]*\}/)![0].matchAll(/\d: "bg-([\w-]+)(?:\/(\d+))? text-([\w-]+)"/g)].map((m) => ({
+    background: m[1],
+    alpha: m[2] ? Number(m[2]) / 100 : 1,
+    text: m[3],
+  }));
+  /** `hex` con transparencia `alpha` sobre `under`. */
+  const blend = (hex: string, under: string, alpha: number) =>
+    `#${[1, 3, 5]
+      .map((i) => Math.round(alpha * parseInt(hex.slice(i, i + 2), 16) + (1 - alpha) * parseInt(under.slice(i, i + 2), 16)))
+      .map((c) => c.toString(16).padStart(2, "0"))
+      .join("")}`;
+
+  it("el calendario tiene sus cinco tonos", () => {
+    expect(heat.map((h) => `${h.background}/${h.alpha}`)).toEqual(["background/1", "expense/0.12", "expense/0.25", "expense/0.45", "expense/1"]);
+  });
+
+  for (const [mode, colors] of Object.entries(MODES)) {
+    it.each(heat.map((h) => [`${h.background} ${Math.round(h.alpha * 100)}%`, h] as const))(
+      `modo ${mode}: el número del día sobre el tono %s, al menos 4,5:1`,
+      (_, { background, alpha, text }) => {
+        const tone = blend(colors[background], colors.surface, alpha);
+        expect(contrast(colors[text], tone)).toBeGreaterThanOrEqual(4.5);
+      },
+    );
+  }
+
   it("el modo oscuro elegido en Mi cuenta es igual al del sistema, y define los mismos colores que el claro", () => {
     const normalize = (block: string) => block.split(";").map((line) => line.trim()).filter(Boolean);
     expect(normalize(darkChosen)).toEqual(normalize(darkFromSystem));

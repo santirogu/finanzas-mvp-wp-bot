@@ -7,6 +7,7 @@ import { listActiveMonths } from "@/modules/transactions/queries";
 import { BIGGEST_CANDIDATES, biggestExpenses, type ExpenseRow } from "./biggest";
 import { AVERAGE_MONTHS, type CategoryMonthTotal, categoryReport } from "./categories";
 import type { CsvMovement } from "./csv";
+import type { DayDescriptionTotal } from "./daily";
 import { getFixedChoices } from "./fixed-choices";
 import { type FixedHistoryEntry, fixedHistories } from "./history";
 import { getExpenseHistoryMonths, getFixedNotes, noteKey } from "./history-notes";
@@ -104,6 +105,41 @@ export async function getLargestExpenses(userId: string, first: Month, last: Mon
     .where(and(activeBetween(userId, first, last), eq(transaction.type, "expense")))
     .orderBy(desc(transaction.amount), desc(transaction.occurredOn), desc(transaction.createdAt))
     .limit(BIGGEST_CANDIDATES);
+}
+
+/**
+ * Los egresos de cada día de `first` a `last`, agrupados por descripción (sin importar mayúsculas ni
+ * espacios en los extremos; las tildes se juntan después, al quitar los gastos fijos).
+ */
+export async function getExpensesByDay(userId: string, first: Month, last: Month): Promise<DayDescriptionTotal[]> {
+  const rows = await db
+    .select({
+      day: sql<string>`${transaction.occurredOn}::text`,
+      description: sql<string>`min(trim(${transaction.description}))`,
+      total: sql<string>`sum(${transaction.amount})`,
+      count: sql<number>`count(*)::int`,
+    })
+    .from(transaction)
+    .where(and(activeBetween(userId, first, last), eq(transaction.type, "expense")))
+    .groupBy(transaction.occurredOn, sql`lower(trim(${transaction.description}))`);
+  return rows.map((row) => ({ ...row, total: Number(row.total) }));
+}
+
+/** Los egresos de un mes, por día y, en el mismo día, del más alto al más bajo: el detalle del calendario. */
+export async function getMonthExpenses(userId: string, month: Month): Promise<ExpenseRow[]> {
+  return db
+    .select({
+      id: transaction.id,
+      description: transaction.description,
+      amount: transaction.amount,
+      occurredOn: transaction.occurredOn,
+      categoryName: category.name,
+      categoryEmoji: category.emoji,
+    })
+    .from(transaction)
+    .leftJoin(category, eq(category.id, transaction.categoryId))
+    .where(and(activeBetween(userId, month, month), eq(transaction.type, "expense")))
+    .orderBy(asc(transaction.occurredOn), desc(transaction.amount), asc(transaction.createdAt));
 }
 
 /** Los movimientos de `first` a `last`, del más antiguo al más reciente: los del CSV de Reportes. */
