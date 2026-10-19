@@ -4,7 +4,7 @@ import postgres from "postgres";
 import { heading, newAdmin, setUpTwoFactor } from "./admin";
 import { monthOf, monthParam, shiftMonth, todayInTimezone } from "../src/lib/dates";
 import { e2eDatabaseUrl } from "./database-url";
-import { addTransaction, openAccountMenu, openTab, register, test, toast, visible } from "./helpers";
+import { addTransaction, closeToasts, openAccountMenu, openTab, register, test, toast, visible } from "./helpers";
 
 // En las pantallas táctiles todo cabe en la pantalla, aunque los textos sean largos (sin scroll de
 // lado), y los campos tienen letra de 16 px o más: con menos, Safari del iPhone y del iPad hace zoom
@@ -141,6 +141,8 @@ test("en pantallas táctiles las páginas caben y los campos no hacen zoom @tact
   // Lo más largo que se puede escribir: categorías de 40 caracteres y descripciones de 140.
   const category = `Suscripciones y servicios digitales ${id}`.slice(0, 40);
   const description = `Pago de la cuota de administración del conjunto residencial ${id} `.repeat(3).slice(0, 140);
+  // Un gasto fijo que pasó de $1 al monto máximo: el historial con la diferencia y el porcentaje más largos.
+  const fixedDescription = `Cuota del plan de telefonía móvil e internet del hogar ${id} `.repeat(3).slice(0, 140).trim();
 
   await test.step("páginas públicas", async () => {
     for (const path of ["/login", "/registro", "/privacidad"]) {
@@ -174,6 +176,12 @@ test("en pantallas táctiles las páginas caben y los campos no hacen zoom @tact
     await openTab(page, "Egresos");
     await addTransaction(page, { amount: "99999999999,99", description, date: `${previousMonth}-28` });
     await expect(toast(page, /^Egreso registrado en /)).toBeVisible();
+    await closeToasts(page);
+    await addTransaction(page, { amount: "1", description: fixedDescription, category, date: `${previousMonth}-27` });
+    await expect(toast(page, /^Egreso registrado en /)).toBeVisible();
+    await closeToasts(page);
+    await addTransaction(page, { amount: "99999999999,99", description: fixedDescription, category });
+    await expect(toast(page, /^Egreso registrado$/)).toBeVisible();
   });
 
   await test.step("las páginas de la persona", async () => {
@@ -215,6 +223,23 @@ test("en pantallas táctiles las páginas caben y los campos no hacen zoom @tact
     await fixed.getByRole("button", { name: "Agregar un gasto fijo" }).click();
     await expect(fixed.getByLabel("Egreso", { exact: true })).toBeFocused();
     await expectFitsOnScreens(page, "Reportes con el formulario de gastos fijos abierto");
+    // Agregar el que subió de $1 al máximo y abrir su historial, con una nota de 280 caracteres sin espacios.
+    await fixed.getByLabel("Egreso", { exact: true }).selectOption(fixedDescription);
+    await fixed.getByRole("button", { name: "Agregar", exact: true }).click();
+    await expect(toast(page, `Se agregó «${fixedDescription}» a los gastos fijos`)).toBeVisible();
+    await closeToasts(page);
+    await fixed.getByRole("button", { name: `Historial de ${fixedDescription}` }).click();
+    // Abierto, la descripción se lee completa: no se corta.
+    const name = fixed.getByText(fixedDescription);
+    expect(await name.evaluate((el) => el.scrollWidth <= el.clientWidth && getComputedStyle(el).textOverflow !== "ellipsis")).toBe(true);
+    await fixed.getByRole("button", { name: /^Agregar nota del cambio/ }).click();
+    await fixed.getByLabel(/^Nota del cambio/).fill(`Subió${"x".repeat(275)}`);
+    await expectFitsOnScreens(page, "Reportes con la nota de un cambio abierta");
+    await fixed.getByRole("button", { name: "Guardar nota" }).click();
+    await expect(toast(page, "Se guardó la nota")).toBeVisible();
+    await closeToasts(page);
+    await expect(fixed.getByText(`“Subió${"x".repeat(275)}”`)).toBeVisible();
+    await expectFitsOnScreens(page, "Reportes con el historial de un gasto fijo abierto");
     await open(page, "/egresos");
     await visible(page.getByRole("link", { name: `Editar ${description}` })).click();
     await expect(heading(page, "Editar movimiento")).toBeVisible();

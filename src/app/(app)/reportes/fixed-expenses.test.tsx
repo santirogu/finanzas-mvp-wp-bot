@@ -1,12 +1,14 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { FixedExpenseState } from "@/modules/reports/actions";
+import type { FixedExpenseState, FixedNoteState } from "@/modules/reports/actions";
+import type { FixedHistoryEntry } from "@/modules/reports/history";
 import type { FixedOption, RecurringExpense } from "@/modules/reports/recurring";
 import { findToast, renderWithToaster as render } from "../../../../test/toaster";
 
 const action = vi.hoisted(() => vi.fn<(prev: FixedExpenseState, data: FormData) => Promise<FixedExpenseState>>());
-vi.mock("@/modules/reports/actions", () => ({ chooseFixedExpenseAction: action }));
+const noteAction = vi.hoisted(() => vi.fn<(prev: FixedNoteState, data: FormData) => Promise<FixedNoteState>>());
+vi.mock("@/modules/reports/actions", () => ({ chooseFixedExpenseAction: action, saveFixedNoteAction: noteAction }));
 
 const { FixedExpenses } = await import("./fixed-expenses");
 
@@ -21,8 +23,25 @@ const item = (description: string, amount: number, origin: RecurringExpense["ori
 const option = (description: string): FixedOption => ({ key: description.toLowerCase(), description, emoji: "🛒" });
 
 const ITEMS = [item("Arriendo", 1800000), item("Seguro del carro", 950000, "manual", 1)];
+const entry = (month: string, amount: number, previous: number | null, note: string | null = null): FixedHistoryEntry => ({
+  month,
+  date: `${month}-05`,
+  amount,
+  previous,
+  diff: previous === null ? null : amount - previous,
+  pct: previous === null ? null : Math.round(((amount - previous) / previous) * 100),
+  note,
+});
+const HISTORIES = {
+  arriendo: {
+    entries: [entry("2026-03", 1890000, 1800000, "Subió con el IPC."), entry("2025-11", 1800000, null)],
+    summary: { direction: "up" as const, text: "5% desde marzo" },
+  },
+  "seguro del carro": { entries: [entry("2026-10", 950000, null)], summary: null },
+};
 const props = {
   items: ITEMS,
+  histories: HISTORIES,
   removed: [option("Netflix")],
   candidates: [option("Mercado"), option("Gimnasio")],
   total: 2750000,
@@ -36,21 +55,23 @@ const sent = (call = 0) => Object.fromEntries(action.mock.calls[call][1]);
 
 beforeEach(() => {
   action.mockReset();
+  noteAction.mockReset();
 });
 
 describe("FixedExpenses", () => {
   it("cada gasto con sus meses (y si lo agregó la persona), el monto, el total y su parte del gasto promedio", () => {
     render(<FixedExpenses {...props} />);
-    const rows = section().getAllByRole("listitem");
-    expect(rows[0]).toHaveTextContent("ArriendoEn 4 de 12 meses−$1.800.000,00");
-    expect(rows[1]).toHaveTextContent("Seguro del carroEn 1 de 12 meses · Agregado por ti−$950.000,00");
+    const rows = section().getAllByRole("listitem").filter((li) => li.parentElement?.tagName === "UL");
+    // (El emoji está en el texto, pero oculto para el lector de pantalla.)
+    expect(rows[0]).toHaveTextContent(/^Historial de 🏠 Arriendo En 4 de 12 meses 5% desde marzo−\$1\.800\.000,00/);
+    expect(rows[1]).toHaveTextContent(/^Historial de 🏠 Seguro del carro En 1 de 12 meses · Agregado por ti−\$950\.000,00/);
     expect(section().getByText("Total al mes").parentElement).toHaveTextContent("−$2.750.000,00");
     expect(section().getByText("Son el 100% de tu gasto promedio por mes.")).toBeVisible();
   });
 
   it("de un período de un mes, dice \"mes\"; sin gasto promedio, no dice qué parte es", () => {
     render(<FixedExpenses {...props} periodMonths={1} averageExpense={0} />);
-    expect(section().getAllByRole("listitem")[0]).toHaveTextContent("En 4 de 1 mes");
+    expect(section().getAllByRole("listitem")[0]).toHaveTextContent(/En 4 de 1 mes 5%/);
     expect(section().queryByText(/de tu gasto promedio/)).toBeNull();
   });
 
@@ -159,3 +180,113 @@ describe("FixedExpenses", () => {
     expect(section().getByRole("button", { name: "Agregar un gasto fijo" })).toBeVisible();
   });
 });
+
+describe("FixedExpenses · historial", () => {
+  const toggle = (name: RegExp) => section().getByRole("button", { name });
+
+  it("cerrado, cada gasto dice su último cambio; uno que nunca cambió, no", () => {
+    render(<FixedExpenses {...props} />);
+    expect(toggle(/^Historial de Arriendo/)).toHaveAttribute("aria-expanded", "false");
+    expect(toggle(/^Historial de Arriendo/)).toHaveTextContent("5% desde marzo");
+    expect(toggle(/^Historial de Seguro del carro/)).not.toHaveTextContent("desde");
+    for (const panel of section().getAllByText("Historial del valor")) expect(panel).not.toBeVisible();
+  });
+
+  it("al tocarlo, cada cambio con la fecha, antes → ahora, la diferencia, su nota, y el primer pago", async () => {
+    const user = userEvent.setup();
+    render(<FixedExpenses {...props} />);
+    await user.click(toggle(/^Historial de Arriendo/));
+    expect(toggle(/^Historial de Arriendo/)).toHaveAttribute("aria-expanded", "true");
+    const panel = document.getElementById(toggle(/^Historial de Arriendo/).getAttribute("aria-controls")!)!;
+    const entries = within(panel).getAllByRole("listitem");
+    expect(entries[0]).toHaveTextContent("5 de mar de 2026+$90.000,00 (+5%)$1.800.000,00 → $1.890.000,00“Subió con el IPC.”Editar nota del cambio del 5 de mar de 2026");
+    expect(entries[1]).toHaveTextContent("5 de nov de 2025Primer pago$1.800.000,00");
+    expect(within(entries[1]).queryByRole("button")).toBeNull();
+    // Abierto, la descripción se lee completa (cerrado se corta con "…").
+    expect(section().getByText("Arriendo")).toHaveClass("break-words");
+    expect(section().getByText("Seguro del carro")).toHaveClass("truncate");
+    await user.click(toggle(/^Historial de Arriendo/));
+    expect(panel).not.toBeVisible();
+    expect(section().getByText("Arriendo")).toHaveClass("truncate");
+  });
+
+  it("una baja, con el signo menos y el porcentaje", async () => {
+    const user = userEvent.setup();
+    const down = { arriendo: { entries: [entry("2026-03", 1700000, 1800000)], summary: { direction: "down" as const, text: "6% desde marzo" } } };
+    render(<FixedExpenses {...props} histories={down} />);
+    await user.click(toggle(/^Historial de Arriendo/));
+    expect(section().getByText(/^−\$100\.000,00/)).toHaveTextContent("−$100.000,00 (−6%)");
+  });
+
+  it("agregar una nota: el campo con el foco, se envía con el gasto y el mes, se cierra y avisa", async () => {
+    noteAction.mockResolvedValue({ message: "Se guardó la nota", tone: "success" });
+    const user = userEvent.setup();
+    const noNote = { ...HISTORIES, arriendo: { ...HISTORIES.arriendo, entries: [entry("2026-03", 1890000, 1800000), entry("2025-11", 1800000, null)] } };
+    render(<FixedExpenses {...props} histories={noNote} />);
+    await user.click(toggle(/^Historial de Arriendo/));
+    await user.click(section().getByRole("button", { name: "Agregar nota del cambio del 5 de mar de 2026" }));
+    const field = section().getByLabelText("Nota del cambio del 5 de mar de 2026");
+    expect(field).toHaveFocus();
+    expect(field).toHaveAttribute("maxlength", "280");
+    expect(field).toHaveClass("input");
+    await user.type(field, "Subió con el IPC.");
+    await user.click(section().getByRole("button", { name: "Guardar nota" }));
+    expect(Object.fromEntries(noteAction.mock.calls[0][1])).toEqual({ description: "Arriendo", month: "2026-03", note: "Subió con el IPC." });
+    expect(await findToast()).toHaveTextContent("Se guardó la nota");
+    expect(section().queryByLabelText(/^Nota del cambio/)).toBeNull();
+  });
+
+  it("editar: trae la nota; \"Borrar nota\" la manda vacía y avisa en rojo", async () => {
+    noteAction.mockResolvedValue({ message: "Se borró la nota", tone: "removal" });
+    const user = userEvent.setup();
+    render(<FixedExpenses {...props} />);
+    await user.click(toggle(/^Historial de Arriendo/));
+    await user.click(section().getByRole("button", { name: "Editar nota del cambio del 5 de mar de 2026" }));
+    expect(section().getByLabelText("Nota del cambio del 5 de mar de 2026")).toHaveValue("Subió con el IPC.");
+    await user.click(section().getByRole("button", { name: "Borrar nota" }));
+    expect(Object.fromEntries(noteAction.mock.calls[0][1])).toMatchObject({ note: "" });
+    expect(await findToast()).toHaveAttribute("data-tone", "removal");
+  });
+
+  it("una nota nueva no ofrece borrar; Cancelar (o Escape) cierra sin enviar y el foco vuelve al botón", async () => {
+    const user = userEvent.setup();
+    const noNote = { ...HISTORIES, arriendo: { ...HISTORIES.arriendo, entries: [entry("2026-03", 1890000, 1800000)] } };
+    render(<FixedExpenses {...props} histories={noNote} />);
+    await user.click(toggle(/^Historial de Arriendo/));
+    const add = () => section().getByRole("button", { name: "Agregar nota del cambio del 5 de mar de 2026" });
+    await user.click(add());
+    expect(section().queryByRole("button", { name: "Borrar nota" })).toBeNull();
+    await user.click(section().getAllByRole("button", { name: "Cancelar" })[0]);
+    expect(section().queryByLabelText(/^Nota del cambio/)).toBeNull();
+    expect(add()).toHaveFocus();
+
+    await user.click(add());
+    await user.type(section().getByLabelText("Nota del cambio del 5 de mar de 2026"), "A medias{Escape}");
+    expect(section().queryByLabelText(/^Nota del cambio/)).toBeNull();
+    expect(add()).toHaveFocus();
+    expect(noteAction).not.toHaveBeenCalled();
+  });
+
+  it("un error del servidor queda debajo del campo", async () => {
+    noteAction.mockResolvedValue({ error: "Máximo 280 caracteres.", field: "note" });
+    const user = userEvent.setup();
+    render(<FixedExpenses {...props} />);
+    await user.click(toggle(/^Historial de Arriendo/));
+    await user.click(section().getByRole("button", { name: "Editar nota del cambio del 5 de mar de 2026" }));
+    await user.click(section().getByRole("button", { name: "Guardar nota" }));
+    const field = section().getByLabelText("Nota del cambio del 5 de mar de 2026");
+    expect(await section().findByText("Máximo 280 caracteres.")).toBeVisible();
+    expect(field).toHaveAttribute("aria-invalid", "true");
+    expect(field).toHaveAccessibleDescription("Máximo 280 caracteres.");
+  });
+
+  it("sin historial (no debería pasar), el desplegable queda vacío sin fallar", async () => {
+    const user = userEvent.setup();
+    render(<FixedExpenses {...props} histories={{}} />);
+    await user.click(toggle(/^Historial de Arriendo/));
+    const panel = document.getElementById(toggle(/^Historial de Arriendo/).getAttribute("aria-controls")!)!;
+    expect(within(panel).getByText("Historial del valor")).toBeVisible();
+    expect(within(panel).queryAllByRole("listitem")).toEqual([]);
+  });
+});
+

@@ -93,6 +93,30 @@ export const fixedExpenseChoice = pgTable(
   (t) => [uniqueIndex("fixed_expense_choice_user_key_uq").on(t.userId, t.descriptionKey)],
 );
 
+// Las notas del historial de un gasto fijo (Reportes, src/modules/reports/history-notes.ts): una por
+// cambio de valor, es decir, por gasto (la clave de la descripción, como fixed_expense_choice) y mes
+// ("YYYY-MM"). Las escribe la persona; se borran con la cuenta (cascada).
+export const FIXED_NOTE_MAX_LENGTH = 280;
+
+export const fixedExpenseNote = pgTable(
+  "fixed_expense_note",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    descriptionKey: text("description_key").notNull(),
+    month: text("month").notNull(),
+    note: text("note").notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("fixed_expense_note_user_key_month_uq").on(t.userId, t.descriptionKey, t.month),
+    check("fixed_expense_note_length", sql`char_length(${t.note}) between 1 and ${sql.raw(String(FIXED_NOTE_MAX_LENGTH))}`),
+    check("fixed_expense_note_month", sql`${t.month} ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'`),
+  ],
+);
+
 export type Category = typeof category.$inferSelect;
 export type Transaction = typeof transaction.$inferSelect;
 export type TransactionType = (typeof transactionType.enumValues)[number];

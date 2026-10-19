@@ -43,6 +43,11 @@ export default function PrivacyPage() {
               quitaste, hasta que lo deshagas o elimines tu cuenta.
             </li>
             <li>
+              <strong>Tus notas del historial de los gastos fijos:</strong> si le escribes una nota a
+              un cambio de valor de un gasto fijo, guardamos la nota, el gasto (sin mayúsculas ni
+              tildes) y el mes, hasta que la borres o elimines tu cuenta.
+            </li>
+            <li>
               <strong>Datos de WhatsApp, si conectas tu número:</strong> tu número de teléfono y el
               contenido de los mensajes que envías al bot, junto con las respuestas del bot.
             </li>

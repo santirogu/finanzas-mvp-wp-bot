@@ -6,6 +6,7 @@ import {
   accountEvent,
   category,
   fixedExpenseChoice,
+  fixedExpenseNote,
   loginFailure,
   session,
   transaction,
@@ -48,6 +49,8 @@ async function fullAccount(email: string, phone: string) {
   await db.insert(loginFailure).values({ email, failures: 2, firstFailureAt: new Date() });
   // Un gasto fijo marcado a mano en Reportes.
   await db.insert(fixedExpenseChoice).values({ userId: id, descriptionKey: "web", choice: "include" });
+  // Y una nota de su historial.
+  await db.insert(fixedExpenseNote).values({ userId: id, descriptionKey: "web", month: "2026-10", note: "Subió" });
   return id;
 }
 
@@ -64,6 +67,7 @@ async function countsFor(userId: string, email: string, phone: string) {
     whatsappMessage: await count(db.select().from(whatsappMessage).where(eq(whatsappMessage.phone, phone))),
     loginFailure: await count(db.select().from(loginFailure).where(eq(loginFailure.email, email))),
     fixedExpenseChoice: await count(db.select().from(fixedExpenseChoice).where(eq(fixedExpenseChoice.userId, userId))),
+    fixedExpenseNote: await count(db.select().from(fixedExpenseNote).where(eq(fixedExpenseNote.userId, userId))),
   };
 }
 
@@ -82,6 +86,7 @@ describe("deleteAccountData", () => {
       whatsappMessage: 2,
       loginFailure: 1,
       fixedExpenseChoice: 1,
+      fixedExpenseNote: 1,
     });
 
     await deleteAccountData(id);
@@ -97,6 +102,7 @@ describe("deleteAccountData", () => {
       whatsappMessage: 0,
       loginFailure: 0,
       fixedExpenseChoice: 0,
+      fixedExpenseNote: 0,
     });
   });
 
