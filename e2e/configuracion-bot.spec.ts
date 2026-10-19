@@ -81,7 +81,7 @@ test("el admin pausa Claude: el bot pide usar la web, los comandos siguen y qued
     // El aviso emergente (rojo: se apagó algo) recibe el foco: la ventana ya se cerró.
     await expect(toast(page, "Claude quedó en pausa")).toBeFocused();
     await expect(toast(page, "Claude quedó en pausa")).toHaveAttribute("data-tone", "removal");
-    await expect(settings(page)).toContainText("En pausa: el bot solo responde balance, deshacer y ayuda.");
+    await expect(settings(page)).toContainText("En pausa: el bot solo responde balance, reporte, deshacer y ayuda.");
     await expect(settings(page)).toContainText(/Último cambio: Ana Admin · /);
   });
 

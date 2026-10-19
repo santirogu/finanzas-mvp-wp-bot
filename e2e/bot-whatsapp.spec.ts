@@ -98,6 +98,19 @@ test("vincular el número desde Mi cuenta y llevar las cuentas por WhatsApp", as
     expect(reply).toContain(`📊 *${formatMonthLabel(previous)}*`);
     expect(reply).toContain("Egresos: $1.200.000,00");
   });
+
+  await test.step("\"reporte\" resume los últimos 12 meses (lo de Reportes) y lleva a la web, sin Claude", async () => {
+    const claudeBefore = (await (await request.get(`${FAKE_SERVICES_URL}/claude`)).json()).length;
+    await sendWhatsApp(request, phone, "reporte");
+    const reply = await nthReply(request, phone, 9);
+    const current = monthOf(todayInTimezone("America/Bogota"));
+    const from = formatMonthName(shiftMonth(current, -11), { withYear: true });
+    expect(reply).toMatch(new RegExp(`^📊 \\*Reporte de ${from} a ${formatMonthName(current, { withYear: true })}\\*\n`));
+    // El arriendo del mes pasado (1.200.000) y el almuerzo de hoy (25.900,50).
+    expect(reply).toContain("Egresos: $1.225.900,50");
+    expect(reply).toContain("Más detalle: http://localhost:3100/reportes");
+    expect((await (await request.get(`${FAKE_SERVICES_URL}/claude`)).json()).length).toBe(claudeBefore);
+  });
 });
 
 test("un número sin vincular recibe instrucciones y no puede usar el bot", async ({ request }) => {

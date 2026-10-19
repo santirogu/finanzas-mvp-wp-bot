@@ -70,10 +70,10 @@ export function BotSettings({ claudePaused, limits, monthlyTokenLimit, month, av
           title="Claude"
           description={
             claudePaused ? (
-              <span className="font-medium text-danger">En pausa: el bot solo responde balance, deshacer y ayuda.</span>
+              <span className="font-medium text-danger">En pausa: el bot solo responde balance, reporte, deshacer y ayuda.</span>
             ) : month.reached ? (
               <span className="font-medium text-danger">
-                En pausa por el tope mensual hasta el {month.resetsOn}: el bot solo responde balance, deshacer y ayuda.
+                En pausa por el tope mensual hasta el {month.resetsOn}: el bot solo responde balance, reporte, deshacer y ayuda.
               </span>
             ) : (
               "Activo: entiende los mensajes escritos libremente."
@@ -112,8 +112,8 @@ export function BotSettings({ claudePaused, limits, monthlyTokenLimit, month, av
 
       {open === "pause" && (
         <ConfirmDialog title="¿Pausar Claude?" action={pauseClaudeAction} submit="Pausar" pending="Pausando…" danger onClose={close} onDone={finish("removal")}>
-          El bot deja de llamar a Claude: a lo escrito libremente responde que lo registren en la web, y balance, deshacer y
-          ayuda siguen funcionando. Mientras esté en pausa no gasta créditos de Anthropic.
+          El bot deja de llamar a Claude: a lo escrito libremente responde que lo registren en la web, y balance, reporte,
+          deshacer y ayuda siguen funcionando. Mientras esté en pausa no gasta créditos de Anthropic.
         </ConfirmDialog>
       )}
       {open === "resume" && (

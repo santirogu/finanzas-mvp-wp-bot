@@ -4,7 +4,7 @@
 /**
  * Mensajes de una cuenta que se pueden interpretar con Claude. Cada uno es una llamada a la API
  * (con costo): sin tope, alguien podría gastar el crédito de la cuenta de Anthropic y dejar el bot
- * sin servicio para todos. Los comandos (balance, deshacer, ayuda) no cuentan: no usan IA.
+ * sin servicio para todos. Los comandos (balance, reporte, deshacer, ayuda) no cuentan: no usan IA.
  */
 export const AI_LIMITS = { perHour: 20, perDay: 100 } as const;
 

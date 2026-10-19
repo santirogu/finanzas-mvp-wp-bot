@@ -18,7 +18,7 @@ const FALLBACK_REPLY =
 
 /**
  * Convierte un mensaje de WhatsApp en una intención del bot.
- * 1) Comandos fijos (balance, deshacer, ayuda, vincular) sin IA.
+ * 1) Comandos fijos (balance, reporte, deshacer, ayuda, vincular) sin IA.
  * 2) Texto libre → extracción con Claude → validación.
  */
 export async function interpretMessage(

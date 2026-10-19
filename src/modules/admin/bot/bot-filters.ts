@@ -130,7 +130,7 @@ export type Outcome = (typeof OUTCOMES)[number];
 
 export const OUTCOME_LABELS: Record<Outcome, string> = {
   registrado: "Registró movimientos",
-  comando: "Comandos (balance, deshacer, ayuda)",
+  comando: "Comandos (balance, reporte, deshacer, ayuda)",
   respuesta: "Respuesta sin registrar nada",
   vinculado: "Vinculó su número",
   tope_claude: "Llegó al tope de Claude",

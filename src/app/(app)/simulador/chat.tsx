@@ -10,6 +10,7 @@ type Bubble =
 const SUGGESTIONS = [
   "ayuda",
   "balance",
+  "reporte",
   "me compré unos zapatos que me costaron $500.000",
   "almuerzo 25 mil y taxi 12 mil",
   "deshacer",

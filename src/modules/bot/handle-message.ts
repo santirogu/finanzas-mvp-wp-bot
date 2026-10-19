@@ -8,13 +8,15 @@ import {
   createTransactionsFromMessage,
   undoLastWhatsAppEntry,
 } from "@/modules/transactions/bot-mutations";
+import { reportPeriod } from "@/modules/reports/period";
+import { getReport } from "@/modules/reports/queries";
 import { getMonthlySummary, listCategories } from "@/modules/transactions/queries";
 import type { Sender } from "@/modules/whatsapp/client";
 import { consumeLinkCode, getUserByPhone } from "@/modules/whatsapp/link";
 import type { IncomingMessage } from "@/modules/whatsapp/payload";
 import { reserveAiCall } from "./ai-quota";
 import type { Extractor } from "./claude-extractor";
-import { balanceMonth, parseCommand } from "./commands";
+import { balanceMonth, parseCommand, reportYear } from "./commands";
 import { interpretMessage, type BotIntent } from "./interpret";
 import { monthlyBudgetReached } from "./limits";
 import * as replies from "./replies";
@@ -199,6 +201,15 @@ async function respond(
             previous: { month: previous, summary: before },
           }),
         };
+      }
+      if (intent.command === "report") {
+        // Los últimos 12 meses o el año que pidió ("reporte 2025"): lo mismo que /reportes en la web.
+        const asked = reportYear(intent.period, range);
+        if ("future" in asked) return { ...base, reply: replies.futureYearReply(asked.future) };
+        if ("tooOld" in asked) return { ...base, reply: replies.tooOldYearReply };
+        const period = reportPeriod(asked.id, range);
+        const report = await getReport(user.id, period, range);
+        return { ...base, reply: replies.reportReply(report, period, { currency: user.currency, appUrl: deps.appUrl }) };
       }
       if (intent.command === "undo") {
         const removed = await undoLastWhatsAppEntry(user.id);

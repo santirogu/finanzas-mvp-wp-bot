@@ -58,7 +58,7 @@ test("el admin ve qué pasó con los mensajes de una cuenta y su consumo de Clau
     await expect(stat(page, "Registraron movimientos")).toHaveText("1");
     await expect(stat(page, "Errores")).toHaveText("0");
     await expect(stat(page, "Llamadas a Claude")).toHaveText("2");
-    for (const label of ["Vinculó su número", "Registró movimientos", "Comandos (balance, deshacer, ayuda)", "Respuesta sin registrar nada", "No era texto (audio, foto…)"]) {
+    for (const label of ["Vinculó su número", "Registró movimientos", "Comandos (balance, reporte, deshacer, ayuda)", "Respuesta sin registrar nada", "No era texto (audio, foto…)"]) {
       await expect(outcome(page, label)).toContainText("1 · 20%");
     }
     await expect(visible(page.getByText(/^Responde en .+ \(la mitad de las veces\)/))).toBeVisible();

@@ -365,8 +365,8 @@ scripts/seed.ts                     Categorías por defecto
    muestra nada de WhatsApp. A un número sin vincular, el bot le responde con ese mismo enlace.
 2. Cada mensaje llega a `POST /api/whatsapp/webhook`. Se verifica la firma `X-Hub-Signature-256`,
    se responde 200 de inmediato y el mensaje se procesa después (`after()`).
-3. Se deduplica por el ID del mensaje, se resuelven los comandos fijos (`balance`, `deshacer`,
-   `ayuda`) y el texto libre se interpreta con Claude. El bot responde por WhatsApp.
+3. Se deduplica por el ID del mensaje, se resuelven los comandos fijos (`balance`, `reporte`,
+   `deshacer`, `ayuda`) y el texto libre se interpreta con Claude. El bot responde por WhatsApp.
 
 **Balance de otro mes** (`src/modules/bot/commands.ts`): un comando fijo más, sin Claude (no gasta
 tokens y funciona con Claude en pausa).
@@ -386,13 +386,29 @@ tokens y funciona con Claude en pausa).
   anterior ("↗ $1.803.978,75 más que agosto"), si ese mes tuvo movimientos. El `balance` de siempre
   también la lleva.
 
+**Reporte** (`reporte`, en `src/modules/bot/commands.ts`): lo de Reportes de la web en un mensaje, sin
+Claude (no gasta tokens y funciona con Claude en pausa), con las mismas consultas y cálculos
+(`getReport`, `src/modules/reports/`).
+- **Qué entiende:**
+  - `reporte` o `informe` (también `mi reporte`, `reporte de los últimos 12 meses`): los últimos 12 meses;
+  - con año, `reporte 2025`, `informe del 2025` o `reporte del año 2025`;
+  - el año en curso: `reporte del año`, `reporte de este año` o `informe anual`;
+  - un año que todavía no llega, o de antes del 2000, lo dice sin consultar nada.
+
+  "Resumen" sigue siendo el balance del mes. Lo demás ("reporte de gastos", "reporte del mes") va a Claude.
+- **La respuesta:** ingresos, egresos y balance (con qué parte de los ingresos se ahorró), el gasto
+  promedio por mes, el mes de más gasto, las 3 categorías que más sumaron, el total de los gastos
+  fijos y el enlace a Reportes (con `?periodo=` si es un año). Sin movimientos en el período, lo dice.
+- **El prompt de Claude no cambió:** el comando se resuelve antes de llegar a él. Por eso no hizo falta
+  `pnpm bot:eval`.
+
 **Límites** (`src/modules/bot/limits.ts`): cada mensaje interpretado es una llamada a Claude con
 costo, y la vinculación por código no debe poder adivinarse.
 - **Mensajes interpretados por cuenta:**
   - máximo 20 por hora y 100 por día (`src/modules/bot/ai-quota.ts`);
   - antes de llamar a Claude se reserva el cupo marcando el mensaje (`ai_requested_at`), en una
     transacción corta con un bloqueo por cuenta, así una ráfaga simultánea no supera el tope;
-  - al pasarlo, el bot avisa y los comandos (`balance`, `deshacer`, `ayuda`) siguen funcionando.
+  - al pasarlo, el bot avisa y los comandos (`balance`, `reporte`, `deshacer`, `ayuda`) siguen funcionando.
 - **Por mensaje:** máximo 20 movimientos (si la IA propone más, pide dividirlo) y `max_tokens` de 2048.
 - **La respuesta libre del modelo** (cuando no hay movimientos) va en una línea, con máximo 300
   caracteres. Si trae un enlace se descarta, porque un texto pegado podría hacer que el bot "hable"
