@@ -109,6 +109,11 @@ export function formatShortDate(isoDate: string): string {
   return `${d} de ${SHORT_MONTHS[m - 1]}`;
 }
 
+/** Septiembre → "sept" (igual en el servidor y en cualquier navegador): debajo de cada barra de Reportes. */
+export function formatShortMonth({ month }: Month): string {
+  return SHORT_MONTHS[month - 1];
+}
+
 /** "2026-10-13" → "martes 13 de octubre de 2026" */
 export function formatLongDate(isoDate: string): string {
   const [y, m, d] = isoDate.split("-").map(Number);

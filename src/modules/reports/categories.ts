@@ -1,0 +1,117 @@
+import { compareMonths, formatMonthName, type Month, monthParam, shiftMonth } from "@/lib/dates";
+import { roundToCents, sumAmounts } from "@/lib/money";
+import { MAX_SLICES } from "@/modules/transactions/category-chart";
+
+// "Gastos por categoría" de Reportes: cuánto se fue en cada una en el período y cómo le fue a cada una
+// en el último mes completo frente a su promedio de los meses anteriores.
+
+/** Cuántos meses antes del comparado se promedian. */
+export const AVERAGE_MONTHS = 3;
+
+/** Lo que sumó una categoría de egresos en un mes ("YYYY-MM"), como lo da la base. */
+export type CategoryMonthTotal = { month: string; name: string; emoji: string; total: number };
+
+export type CategoryChange = { direction: "up" | "down" | "same"; text: string };
+
+export type CategoryRow = {
+  name: string;
+  emoji: string;
+  /** Lo que sumó en el período. */
+  total: number;
+  /** Qué parte de los egresos del período (0 a 1). */
+  share: number;
+  /** Su puesto en la paleta de los gráficos (0 = --chart-1); null, en gris (--chart-rest). */
+  color: number | null;
+  /** El último mes completo frente a su promedio; null si no hay con qué comparar. */
+  change: CategoryChange | null;
+};
+
+export type CategoryReport = {
+  rows: CategoryRow[];
+  /** Los egresos del período (la suma de todas). */
+  total: number;
+  /** El mes que se compara (el último completo del período); null si el período no tiene ninguno. */
+  compared: Month | null;
+  /** Los meses del promedio: hasta AVERAGE_MONTHS antes del comparado, solo los que tienen movimientos. */
+  averaged: Month[];
+};
+
+// El porcentaje ya llega redondeado: el formato solo le pone el punto de los miles ("1.500%").
+const percent = new Intl.NumberFormat("es-CO");
+
+const key = (row: { name: string; emoji: string }) => `${row.emoji} ${row.name}`;
+
+/**
+ * Las categorías del período, de la que más sumó a la que menos. `rows` trae los totales por mes de
+ * los meses del período y de los AVERAGE_MONTHS anteriores al comparado (pueden quedar fuera del
+ * período). `activeMonths` ("YYYY-MM") son los meses en que la persona tiene movimientos: un mes antes
+ * de que empezara a usar la app no cuenta para el promedio (lo bajaría).
+ */
+export function categoryReport(rows: CategoryMonthTotal[], period: Month[], current: Month, activeMonths: Set<string>): CategoryReport {
+  const inPeriod = new Set(period.map(monthParam));
+  const compared = period.findLast((month) => compareMonths(month, current) < 0) ?? null;
+  const averaged = compared
+    ? Array.from({ length: AVERAGE_MONTHS }, (_, i) => shiftMonth(compared, -AVERAGE_MONTHS + i)).filter((month) =>
+        activeMonths.has(monthParam(month)),
+      )
+    : [];
+
+  const totals = new Map<string, { name: string; emoji: string; byMonth: Map<string, number> }>();
+  for (const row of rows) {
+    const entry = totals.get(key(row)) ?? { name: row.name, emoji: row.emoji, byMonth: new Map<string, number>() };
+    entry.byMonth.set(row.month, sumAmounts([entry.byMonth.get(row.month) ?? 0, row.total]));
+    totals.set(key(row), entry);
+  }
+
+  const categories = [...totals.values()]
+    .map((entry) => ({
+      ...entry,
+      total: sumAmounts([...entry.byMonth].filter(([month]) => inPeriod.has(month)).map(([, total]) => total)),
+    }))
+    .filter((entry) => entry.total > 0)
+    .sort((a, b) => b.total - a.total || a.name.localeCompare(b.name, "es"));
+  const periodTotal = sumAmounts(categories.map((entry) => entry.total));
+
+  return {
+    compared,
+    averaged,
+    total: periodTotal,
+    rows: categories.map((entry, i) => ({
+      name: entry.name,
+      emoji: entry.emoji,
+      total: entry.total,
+      share: entry.total / periodTotal,
+      color: i < MAX_SLICES ? i : null,
+      change:
+        compared && averaged.length > 0
+          ? categoryChange(
+              entry.byMonth.get(monthParam(compared)) ?? 0,
+              sumAmounts(averaged.map((month) => entry.byMonth.get(monthParam(month)) ?? 0)) / averaged.length,
+              formatMonthName(compared),
+            )
+          : null,
+    })),
+  };
+}
+
+/** Los meses del promedio, en una frase: "agosto", "julio y agosto" o "junio a agosto". */
+export function averagedPhrase(averaged: Month[]): string {
+  const names = averaged.map((month) => formatMonthName(month));
+  if (names.length <= 1) return names.join("");
+  if (names.length === 2) return `${names[0]} y ${names[1]}`;
+  return `${names[0]} a ${names[names.length - 1]}`;
+}
+
+/**
+ * Lo que gastó en una categoría en el mes comparado frente a su promedio: "En septiembre, 40% más que
+ * su promedio". null si no hubo nada ni en ese mes ni en los anteriores.
+ */
+export function categoryChange(month: number, average: number, monthName: string): CategoryChange | null {
+  if (month === 0 && average === 0) return null;
+  if (average === 0) return { direction: "up", text: `Nueva en ${monthName}` };
+  if (month === 0) return { direction: "down", text: `Sin gastos en ${monthName}` };
+  const diff = roundToCents(month - average);
+  const pct = Math.round((Math.abs(diff) / average) * 100);
+  if (pct === 0) return { direction: "same", text: `En ${monthName}, igual que su promedio` };
+  return { direction: diff > 0 ? "up" : "down", text: `En ${monthName}, ${percent.format(pct)}% ${diff > 0 ? "más" : "menos"} que su promedio` };
+}

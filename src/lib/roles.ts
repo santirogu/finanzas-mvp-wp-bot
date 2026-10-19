@@ -1,7 +1,7 @@
 // Roles de la app. Sin dependencias: lo usan el esquema de la base, el servidor y los comandos
 // de terminal.
 //
-//   user  → toda cuenta al registrarse: Resumen, Ingresos, Egresos y Mi cuenta.
+//   user  → toda cuenta al registrarse: Resumen, Ingresos, Egresos, Reportes y Mi cuenta.
 //   admin → todo lo de "user" y además la sección de administración. Lo da el super admin desde
 //           /admin/usuarios (con su código de Google Authenticator) o la terminal (pnpm admin:grant).
 //

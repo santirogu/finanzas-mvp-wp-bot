@@ -104,7 +104,7 @@ for (const [colorScheme, scheme] of Object.entries(SCHEMES) as [keyof typeof SCH
         await expect(toast(page, /^Egreso registrado$/)).toBeVisible();
       });
 
-      for (const tab of ["Resumen", "Ingresos", "Egresos"] as const) {
+      for (const tab of ["Resumen", "Ingresos", "Egresos", "Reportes"] as const) {
         test(`${tab} no tiene problemas graves de accesibilidad`, async ({ page }) => {
           await openTab(page, tab);
           expect(await seriousViolations(page)).toEqual([]);

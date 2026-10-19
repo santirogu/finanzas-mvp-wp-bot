@@ -69,6 +69,7 @@ export const VISTAS: Vista[] = [
   { id: "resumen-vacio", titulo: "Resumen sin movimientos", persona: "vacia", ruta: fija("/dashboard") },
   { id: "ingresos-vacio", titulo: "Ingresos sin movimientos", persona: "vacia", ruta: fija("/ingresos") },
   { id: "egresos-vacio", titulo: "Egresos sin movimientos", persona: "vacia", ruta: fija("/egresos") },
+  { id: "reportes-vacio", titulo: "Reportes sin movimientos", persona: "vacia", ruta: fija("/reportes") },
   {
     id: "formulario-errores",
     titulo: "Formulario de egreso enviado vacío",
@@ -180,6 +181,19 @@ export const VISTAS: Vista[] = [
     },
   },
   { id: "egresos-mes-anterior", titulo: "Egresos del mes anterior", persona: "datos", ruta: fija(`/egresos?mes=${MES_ANTERIOR}`) },
+  { id: "reportes", titulo: "Reportes con cuatro meses de datos (gastos fijos y promedios)", persona: "datos", ruta: fija("/reportes") },
+  {
+    id: "reportes-detalle",
+    titulo: "Reportes: la tabla mes a mes abierta y el detalle de un mes del gráfico",
+    persona: "datos",
+    ruta: fija("/reportes"),
+    preparar: async (page) => {
+      await visible(page.getByText("Ver mes a mes")).click();
+      await expect(visible(page.getByRole("table"))).toBeVisible();
+      // Con Tab hasta el último mes del gráfico (el actual): su detalle aparece debajo.
+      await visible(page.getByRole("region", { name: "Ingresos y egresos por mes" }).getByRole("link")).last().focus();
+    },
+  },
   {
     id: "egresos-tarjeta-meses",
     titulo: "Egresos: tarjeta de meses abierta",
@@ -195,6 +209,7 @@ export const VISTAS: Vista[] = [
   { id: "resumen-extremo", titulo: "Resumen con textos y montos máximos", persona: "admin", ruta: fija("/dashboard") },
   { id: "ingresos-extremo", titulo: "Ingresos con textos y montos máximos", persona: "admin", ruta: fija("/ingresos") },
   { id: "egresos-extremo", titulo: "Egresos: 25 movimientos y textos máximos", persona: "admin", ruta: fija("/egresos") },
+  { id: "reportes-extremo", titulo: "Reportes con textos y montos máximos", persona: "admin", ruta: fija("/reportes") },
   { id: "editar-extremo", titulo: "Editar un movimiento con textos máximos", persona: "admin", ruta: (d) => d.editar.admin },
 
   // Administración

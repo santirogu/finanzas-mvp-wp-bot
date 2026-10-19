@@ -26,6 +26,7 @@ const PAGES = {
   "/dashboard": "requiere sesión",
   "/ingresos": "requiere sesión",
   "/egresos": "requiere sesión",
+  "/reportes": "requiere sesión; solo los movimientos propios",
   "/simulador": "requiere sesión; solo en desarrollo",
   "/movimientos/[id]/editar": "requiere sesión; solo movimientos propios (los demás dan 404)",
   "/admin": "requiere sesión de admin con la verificación en dos pasos activa (requireAdmin); Inicio de la administración",

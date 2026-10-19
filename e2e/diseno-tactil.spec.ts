@@ -177,7 +177,7 @@ test("en pantallas táctiles las páginas caben y los campos no hacen zoom @tact
   });
 
   await test.step("las páginas de la persona", async () => {
-    for (const path of ["/dashboard", "/ingresos", "/egresos", "/cuenta", `/dashboard?mes=${previousMonth}`, `/egresos?mes=${previousMonth}`]) {
+    for (const path of ["/dashboard", "/ingresos", "/egresos", "/reportes", "/cuenta", `/dashboard?mes=${previousMonth}`, `/egresos?mes=${previousMonth}`]) {
       await open(page, path);
       await expectFitsOnScreens(page, path);
     }
@@ -193,6 +193,11 @@ test("en pantallas táctiles las páginas caben y los campos no hacen zoom @tact
       await expect(visible(page.getByRole("group", { name: "Elegir un mes" }))).toBeVisible();
       await expectFitsOnScreens(page, `tarjeta de meses en ${path}`);
     }
+    // Reportes con la tabla mes a mes abierta (los montos máximos, en sus cuatro columnas).
+    await open(page, "/reportes");
+    await visible(page.getByText("Ver mes a mes")).click();
+    await expect(visible(page.getByRole("table"))).toBeVisible();
+    await expectFitsOnScreens(page, "Reportes con la tabla mes a mes");
     await open(page, "/egresos");
     await visible(page.getByRole("link", { name: `Editar ${description}` })).click();
     await expect(heading(page, "Editar movimiento")).toBeVisible();

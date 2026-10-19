@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
+import { ChangeLine } from "@/components/change-line";
 import { TransactionList } from "@/components/transaction-list";
 import { compareMonths, currentMonthRange, formatMonthName, monthRange, shiftMonth } from "@/lib/dates";
 import { formatMoney } from "@/lib/money";
 import { inMonthPhrase, monthHref, monthNav, selectedMonth } from "@/lib/month-nav";
 import { requireUser } from "@/lib/session";
 import { chartSlices } from "@/modules/transactions/category-chart";
-import { balanceChange, type MonthChange, totalChange } from "@/modules/transactions/month-comparison";
+import { balanceChange, totalChange } from "@/modules/transactions/month-comparison";
 import {
   getMonthlySummary,
   getTotalsByCategory,
@@ -77,21 +78,21 @@ async function Dashboard({ month }: { month: string | string[] | undefined }) {
           >
             {money(summary.balance)}
           </p>
-          {changes && <Change change={changes.balance} />}
+          {changes && <ChangeLine change={changes.balance} />}
         </div>
         <Link href={monthHref("/ingresos", range, current)} className="card p-5 transition hover:border-income/40">
           <p className="text-sm text-muted">Ingresos</p>
           <p className="mt-1 whitespace-nowrap text-2xl font-semibold tabular-nums text-income">
             {money(summary.income)}
           </p>
-          {changes && <Change change={changes.income} />}
+          {changes && <ChangeLine change={changes.income} />}
         </Link>
         <Link href={monthHref("/egresos", range, current)} className="card p-5 transition hover:border-expense/40">
           <p className="text-sm text-muted">Egresos</p>
           <p className="mt-1 whitespace-nowrap text-2xl font-semibold tabular-nums text-expense">
             {money(summary.expense)}
           </p>
-          {changes && <Change change={changes.expense} />}
+          {changes && <ChangeLine change={changes.expense} />}
         </Link>
       </section>
 
@@ -124,24 +125,5 @@ async function Dashboard({ month }: { month: string | string[] | undefined }) {
         </div>
       </div>
     </div>
-  );
-}
-
-// Las flechas de la comparación: arriba, abajo o igual (el texto ya lo dice; son solo de apoyo).
-const CHANGE_ICONS: Record<MonthChange["direction"], string> = {
-  up: "M5.22 14.78a.75.75 0 0 0 1.06 0l7.22-7.22v5.69a.75.75 0 0 0 1.5 0v-7.5a.75.75 0 0 0-.75-.75h-7.5a.75.75 0 0 0 0 1.5h5.69l-7.22 7.22a.75.75 0 0 0 0 1.06Z",
-  down: "M6.28 5.22a.75.75 0 0 0-1.06 1.06l7.22 7.22H6.75a.75.75 0 0 0 0 1.5h7.5a.75.75 0 0 0 .75-.75v-7.5a.75.75 0 0 0-1.5 0v5.69L6.28 5.22Z",
-  same: "M4 7.25a.75.75 0 0 1 .75-.75h10.5a.75.75 0 0 1 0 1.5H4.75A.75.75 0 0 1 4 7.25Zm0 5.5a.75.75 0 0 1 .75-.75h10.5a.75.75 0 0 1 0 1.5H4.75a.75.75 0 0 1-.75-.75Z",
-};
-
-/** "↗ 15% más que agosto", debajo del monto de cada tarjeta. */
-function Change({ change }: { change: MonthChange }) {
-  return (
-    <p className="mt-1 flex items-center gap-1 text-xs text-muted">
-      <svg viewBox="0 0 20 20" fill="currentColor" className="size-4 shrink-0" aria-hidden>
-        <path fillRule="evenodd" d={CHANGE_ICONS[change.direction]} clipRule="evenodd" />
-      </svg>
-      <span className="min-w-0">{change.text}</span>
-    </p>
   );
 }

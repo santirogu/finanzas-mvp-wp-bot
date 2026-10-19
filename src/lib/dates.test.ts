@@ -6,6 +6,7 @@ import {
   formatMonthLabel,
   formatMonthName,
   formatShortDate,
+  formatShortMonth,
   monthOf,
   monthParam,
   monthRange,
@@ -129,6 +130,14 @@ describe("formatShortDate", () => {
       "1 de jul", "1 de ago", "1 de sept", "1 de oct", "1 de nov", "1 de dic",
     ]);
     expect(formatShortDate("2026-12-31")).toBe("31 de dic");
+  });
+});
+
+describe("formatShortMonth", () => {
+  it("el mes corto, el mismo de las fechas cortas", () => {
+    expect(formatShortMonth({ year: 2026, month: 9 })).toBe("sept");
+    expect(formatShortMonth({ year: 2025, month: 1 })).toBe("ene");
+    expect(formatShortMonth({ year: 2025, month: 12 })).toBe("dic");
   });
 });
 
