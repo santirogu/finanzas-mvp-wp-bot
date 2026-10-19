@@ -7,6 +7,7 @@ import { requireAdmin } from "@/lib/session";
 import { botAccounts, botActivity, type AccountRow } from "@/modules/admin/bot/bot-activity";
 import { botSettingsForAdmin } from "@/modules/admin/bot/bot-settings";
 import { pendingResends } from "@/modules/admin/bot/resend";
+import { formatCost, PRICES_CHECKED_ON } from "@/modules/bot/pricing";
 import {
   ACCOUNT_SORTS,
   ACCOUNT_SORT_LABELS,
@@ -28,7 +29,7 @@ import {
   toggleOutcome,
   type BotFilters,
 } from "@/modules/admin/bot/bot-filters";
-import { ADMIN_MAX_ROWS, ADMIN_PAGE_SIZE, ADMIN_TIMEZONE, formatDateTime } from "@/modules/admin/shared/filters";
+import { ADMIN_MAX_ROWS, ADMIN_PAGE_SIZE, ADMIN_TIMEZONE, formatDate, formatDateTime } from "@/modules/admin/shared/filters";
 import { PageSkeleton } from "../../page-skeleton";
 import { ActiveFilters } from "../active-filters";
 import { BotSettings } from "./bot-settings";
@@ -165,16 +166,23 @@ async function Bot({ params }: { params: Record<string, string | string[] | unde
             Consumo de Claude
           </h2>
           <p className="text-sm text-muted">
-            Cada mensaje en texto libre usa una llamada; los comandos (balance, deshacer, ayuda) no. El costo lo ves en la
-            consola de Anthropic: los precios cambian.
+            Cada mensaje en texto libre usa una llamada; los comandos (balance, deshacer, ayuda) no. El costo es un estimado
+            en dólares con los precios públicos de Anthropic del {formatPriceDate(PRICES_CHECKED_ON)}; el cobro real lo ves en
+            la consola de Anthropic.
           </p>
         </div>
         {/* Las llamadas ya están arriba. Dos columnas desde 352 px: un total de cientos de millones de
-            tokens no cabe en una más angosta (e2e/diseno-tactil.spec.ts). */}
-        <dl className="grid grid-cols-1 gap-3 min-[22rem]:grid-cols-2">
+            tokens no cabe en una más angosta (e2e/diseno-tactil.spec.ts); tres desde sm. */}
+        <dl className="grid grid-cols-1 gap-3 min-[22rem]:grid-cols-2 sm:grid-cols-3">
           <Stat label="Tokens de entrada" value={formatCount(activity.claude.inputTokens)} />
           <Stat label="Tokens de salida" value={formatCount(activity.claude.outputTokens)} />
+          <Stat label="Costo estimado" value={formatCost(activity.claude.cost.usd)} />
         </dl>
+        {activity.claude.cost.unpriced.length > 0 && (
+          <p className="text-sm text-muted">
+            Sin precio, no suman al costo: {activity.claude.cost.unpriced.join(", ")} (src/modules/bot/pricing.ts).
+          </p>
+        )}
 
         <div className="space-y-2">
           <h3 className="text-sm font-medium">
@@ -303,15 +311,18 @@ function Stat({ label, value, danger = false }: { label: string; value: string; 
 
 /** "Por cuenta": una fila por cuenta (en celular, las cifras con su nombre; desde sm, en columnas). */
 function Accounts({ filters, today, rows, hasMore }: { filters: BotFilters; today: string; rows: AccountRow[]; hasMore: boolean }) {
-  // El nombre se queda con lo que sobra; las cifras, con lo justo para su encabezado.
-  const columns = "sm:grid-cols-[minmax(0,1fr)_4.5rem_4.5rem_5.5rem_4rem_4.5rem]";
+  // El nombre se queda con lo que sobra; las cifras, con lo justo para su encabezado. En columnas desde
+  // md: con seis cifras, a 640 px al nombre le quedaban unos 56 px.
+  const columns = "md:grid-cols-[minmax(0,1fr)_4.5rem_4.5rem_5.5rem_5rem_4rem_4.5rem]";
   return (
     <section className="card space-y-3 p-4" aria-labelledby="por-cuenta">
       <div className="space-y-1">
         <h2 id="por-cuenta" className="font-semibold">
           Por cuenta
         </h2>
-        <p className="text-sm text-muted">Solo cantidades, con los filtros de arriba. Cada nombre lleva a su detalle en Usuarios.</p>
+        <p className="text-sm text-muted">
+          Solo cantidades, con los filtros de arriba; el costo, estimado en dólares. Cada nombre lleva a su detalle en Usuarios.
+        </p>
       </div>
       {rows.length === 0 ? (
         <p className="text-sm text-muted">Ninguna cuenta con estos filtros.</p>
@@ -334,11 +345,12 @@ function Accounts({ filters, today, rows, hasMore }: { filters: BotFilters; toda
             ))}
           </nav>
           {/* Encabezado solo para la vista: cada cifra ya dice qué es (para el lector de pantalla y en celular). */}
-          <div aria-hidden className={`hidden gap-3 border-b border-border pb-2 text-xs text-muted sm:grid ${columns}`}>
+          <div aria-hidden className={`hidden gap-3 border-b border-border pb-2 text-xs text-muted md:grid ${columns}`}>
             <span>Cuenta</span>
             <span className="text-right">Mensajes</span>
             <span className="text-right">Registró</span>
             <span className="text-right">Tokens</span>
+            <span className="text-right">Costo</span>
             <span className="text-right">Errores</span>
             <span className="text-right">Último</span>
           </div>
@@ -361,10 +373,11 @@ function Accounts({ filters, today, rows, hasMore }: { filters: BotFilters; toda
                     {row.id ? row.email : row.phones === 1 ? "1 número" : `${formatCount(row.phones)} números`}
                   </span>
                 </span>
-                <span className="flex flex-wrap gap-x-3 gap-y-0.5 text-muted sm:contents sm:text-foreground">
+                <span className="flex flex-wrap gap-x-3 gap-y-0.5 text-muted md:contents md:text-foreground">
                   <Figure value={formatCount(row.messages)} label={row.messages === 1 ? "mensaje" : "mensajes"} />
                   <Figure value={formatCount(row.registered)} label="registraron movimientos" />
                   <Figure value={formatCount(row.tokens)} label="tokens" />
+                  <Figure value={formatCost(row.cost)} label="costo estimado" before />
                   <Figure value={formatCount(row.errors)} label={row.errors === 1 ? "error" : "errores"} danger={row.errors > 0} />
                   <Figure value={lastSeenLabel(row.last, today)} label="último mensaje" before />
                 </span>
@@ -389,11 +402,14 @@ function Accounts({ filters, today, rows, hasMore }: { filters: BotFilters; toda
   );
 }
 
-/** Una cifra de "Por cuenta": en celular, con su nombre a la vista ("14 mensajes"); desde sm, solo para el lector. */
+/** El día en que se revisaron los precios ("2026-10-19"), como "19 de oct de 2026" (a mediodía en Colombia). */
+const formatPriceDate = (day: string) => formatDate(new Date(`${day}T12:00:00-05:00`));
+
+/** Una cifra de "Por cuenta": en celular, con su nombre a la vista ("14 mensajes"); desde md, solo para el lector. */
 function Figure({ value, label, danger = false, before = false }: { value: string; label: string; danger?: boolean; before?: boolean }) {
-  const name = <span className="sm:sr-only">{before ? `${label}: ` : ` ${label}`}</span>;
+  const name = <span className="md:sr-only">{before ? `${label}: ` : ` ${label}`}</span>;
   return (
-    <span className={`tabular-nums sm:text-right ${danger ? "font-medium text-danger" : ""}`}>
+    <span className={`tabular-nums md:text-right ${danger ? "font-medium text-danger" : ""}`}>
       {before && name}
       {value}
       {!before && name}

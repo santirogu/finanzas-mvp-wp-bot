@@ -1,10 +1,11 @@
 import "server-only";
-import { and, count, desc, eq, ilike, isNotNull, or, sql, type AnyColumn, type SQL } from "drizzle-orm";
+import { and, count, desc, eq, ilike, inArray, isNotNull, isNull, or, sql, type AnyColumn, type SQL } from "drizzle-orm";
 import { db } from "@/db";
 import { user, whatsappMessage } from "@/db/schema";
 import { todayInTimezone } from "@/lib/dates";
 import { requireAdmin } from "@/lib/session";
 import { monthlyBudgetReached } from "@/modules/bot/limits";
+import { LONG_PROMPT_TOKENS, totalCost, type ModelUsage } from "@/modules/bot/pricing";
 import { getBotSettings } from "@/modules/bot/settings";
 import { tokensUsedThisMonth } from "@/modules/bot/token-budget";
 import { ADMIN_TIMEZONE, dateRange, escapeLike, searchDigits } from "../shared/filters";
@@ -26,6 +27,17 @@ const reason = sql`${whatsappMessage.intent}->>'reason'`;
 const notText = sql`${whatsappMessage.body} ~ '^\\[[a-z_]+\\]$'`;
 const usage = (field: "inputTokens" | "outputTokens") =>
   sql<number>`coalesce(sum((${whatsappMessage.intent}->'usage'->>${sql.raw(`'${field}'`)})::int), 0)::int`;
+/** El modelo que respondió (lo guarda el bot con los tokens). */
+const usageModel = sql<string>`${whatsappMessage.intent}->'usage'->>'model'`;
+/** Una llamada de prompt largo: Haiku 5.5 la cobra a otro precio (src/modules/bot/pricing.ts). */
+const longPrompt = sql<boolean>`coalesce((${whatsappMessage.intent}->'usage'->>'inputTokens')::int, 0) > ${LONG_PROMPT_TOKENS}`;
+/** Los tokens agrupados por modelo y por largo del prompt: con eso se calcula el costo en dólares. */
+const usageColumns = {
+  model: usageModel,
+  longPrompt,
+  inputTokens: usage("inputTokens"),
+  outputTokens: usage("outputTokens"),
+};
 /**
  * Una llamada a Claude: el bot reservó el cupo (ai_requested_at, que existe desde el 15 de octubre de
  * 2026, #55) o guardó los tokens que usó. Los mensajes de antes tienen los tokens pero no la reserva, y
@@ -94,6 +106,11 @@ export type BotActivity = {
     outputTokens: number;
     byDay: { day: string; calls: number }[];
     byModel: { model: string; calls: number; inputTokens: number; outputTokens: number }[];
+    /**
+     * El costo estimado en dólares (src/modules/bot/pricing.ts) y los modelos sin precio, cuyos tokens
+     * no suman.
+     */
+    cost: { usd: number; unpriced: string[] };
   };
   /** Las cuentas que llegaron al tope de Claude, de la que más veces a la que menos (máximo 10). */
   capped: { id: string; name: string; email: string; times: number }[];
@@ -109,7 +126,7 @@ export async function botActivity(filters: BotFilters, today: string): Promise<B
   const days = claudeDays(filters, today);
   const claudeRange = where(filters, today, claudeAt);
 
-  const [outcomeRows, [timing], [claude], byDay, byModel, capped, errors] = await Promise.all([
+  const [outcomeRows, [timing], [claude], byDay, byModel, costRows, capped, errors] = await Promise.all([
     db
       .select({ outcome, times: count() })
       .from(whatsappMessage)
@@ -148,6 +165,12 @@ export async function botActivity(filters: BotFilters, today: string): Promise<B
       .groupBy(sql`1`)
       .orderBy(desc(count())),
     db
+      .select(usageColumns)
+      .from(whatsappMessage)
+      .leftJoin(user, eq(user.id, whatsappMessage.userId))
+      .where(and(claudeRange, sql`${usageModel} is not null`))
+      .groupBy(sql`1`, sql`2`),
+    db
       .select({ id: user.id, name: user.name, email: user.email, times: count() })
       .from(whatsappMessage)
       .innerJoin(user, eq(user.id, whatsappMessage.userId))
@@ -178,7 +201,12 @@ export async function botActivity(filters: BotFilters, today: string): Promise<B
     total: filters.outcome ? outcomes[filters.outcome] : outcomeRows.reduce((sum, row) => sum + row.times, 0),
     outcomes,
     response: timing.median === null || timing.p95 === null ? null : { median: Number(timing.median), p95: Number(timing.p95) },
-    claude: { ...claude, byDay: days.map((d) => ({ day: d, calls: callsByDay.get(d) ?? 0 })), byModel },
+    claude: {
+      ...claude,
+      byDay: days.map((d) => ({ day: d, calls: callsByDay.get(d) ?? 0 })),
+      byModel,
+      cost: totalCost(costRows),
+    },
     capped,
     errors: errors.map((row) => ({ ...row, last: new Date(row.last) })),
   };
@@ -194,6 +222,8 @@ export type AccountRow = {
   messages: number;
   registered: number;
   tokens: number;
+  /** El costo estimado de Claude en dólares; null si alguno de sus mensajes es de un modelo sin precio. */
+  cost: number | null;
   errors: number;
   last: Date;
 };
@@ -236,7 +266,38 @@ export async function botAccounts(filters: BotFilters, today: string): Promise<{
     .groupBy(user.id, user.name, user.email)
     .orderBy(sql`${user.id} is null`, SORT_BY[filters.sort], user.name)
     .limit(filters.limit + 1);
-  return { rows: rows.slice(0, filters.limit).map((row) => ({ ...row, last: new Date(row.last) })), hasMore: rows.length > filters.limit };
+  const page = rows.slice(0, filters.limit);
+
+  // El costo de las cuentas de la página: sus tokens por modelo y por largo del prompt, con los mismos
+  // filtros (los números sin cuenta van juntos, como en la fila).
+  const ids = page.flatMap((row) => (row.id ? [row.id] : []));
+  const withoutAccount = page.some((row) => row.id === null);
+  const costRows =
+    page.length === 0
+      ? []
+      : await db
+          .select({ userId: whatsappMessage.userId, ...usageColumns })
+          .from(whatsappMessage)
+          .leftJoin(user, eq(user.id, whatsappMessage.userId))
+          .where(
+            and(
+              where(filters, today),
+              sql`${usageModel} is not null`,
+              or(ids.length > 0 ? inArray(whatsappMessage.userId, ids) : undefined, withoutAccount ? isNull(whatsappMessage.userId) : undefined),
+            ),
+          )
+          .groupBy(sql`1`, sql`2`, sql`3`);
+  const usagesOf = new Map<string | null, ModelUsage[]>();
+  for (const { userId, ...usage } of costRows) usagesOf.set(userId, [...(usagesOf.get(userId) ?? []), usage]);
+  const costOf = (id: string | null) => {
+    const { usd, unpriced } = totalCost(usagesOf.get(id) ?? []);
+    return unpriced.length > 0 ? null : usd;
+  };
+
+  return {
+    rows: page.map((row) => ({ ...row, cost: costOf(row.id), last: new Date(row.last) })),
+    hasMore: rows.length > filters.limit,
+  };
 }
 
 /** El resumen de la tarjeta de Inicio: mensajes y errores de hoy, y si Claude está en pausa (o en el tope mensual). */
