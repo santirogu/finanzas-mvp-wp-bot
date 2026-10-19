@@ -47,6 +47,7 @@ const API_ROUTES = {
   "/api/whatsapp/webhook POST": "firma HMAC de Meta (X-Hub-Signature-256)",
   "/api/health GET": "pública: no devuelve datos ni detalles de configuración",
   "/api/cron/limpieza GET": "solo Vercel Cron, con el secreto CRON_SECRET (src/lib/cron-auth.ts); devuelve solo cantidades",
+  "/reportes/exportar GET": "requiere sesión (requireUser); solo los movimientos propios del período, sin los eliminados",
 } as const;
 
 const SERVER_ACTIONS = {
@@ -240,6 +241,19 @@ describe("páginas", () => {
     expect(checked.length).toBeGreaterThan(0);
     for (const file of checked) {
       expect(reachesRequireUser(file), routeOf(file)).toBe(true);
+    }
+  });
+
+  it("las rutas que requieren sesión la validan en el servidor (requireUser), y el proxy las manda al login", () => {
+    const withSession = Object.entries(API_ROUTES)
+      .filter(([, rule]) => rule.startsWith("requiere sesión"))
+      .map(([key]) => key.split(" ")[0]);
+    expect(withSession.length).toBeGreaterThan(0);
+    for (const route of withSession) {
+      const file = routeFiles.find((f) => routeOf(f) === route);
+      expect(file, route).toBeDefined();
+      expect(reachesRequireUser(file!), route).toBe(true);
+      expect(visitWithoutSession(route), route).toBe("https://finanzas.test/login");
     }
   });
 

@@ -216,6 +216,16 @@ export const VISTAS: Vista[] = [
   { id: "egresos-extremo", titulo: "Egresos: 25 movimientos y textos máximos", persona: "admin", ruta: fija("/egresos") },
   { id: "reportes-extremo", titulo: "Reportes con textos y montos máximos", persona: "admin", ruta: fija("/reportes") },
   {
+    id: "reportes-descargas",
+    titulo: "Reportes: la lista de descargas abierta (CSV, y PDF con Pronto)",
+    persona: "datos",
+    ruta: fija("/reportes"),
+    preparar: async (page) => {
+      await visible(page.getByRole("button", { name: "Descargar" })).click();
+      await expect(visible(page.getByRole("group", { name: "Opciones de descarga" }))).toBeVisible();
+    },
+  },
+  {
     id: "reportes-gastos-grandes",
     titulo: "Reportes: los gastos más grandes con los siguientes abiertos (textos y montos máximos)",
     persona: "admin",

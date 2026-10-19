@@ -213,7 +213,7 @@ src/
     money.ts, dates.ts              Formato/parsing de COP y "mes actual" según zona horaria
     month-nav.ts                    El mes que pide la URL (?mes=) y los enlaces del navegador de meses
   modules/transactions/             Consultas, Server Actions y validación de movimientos
-  modules/reports/                  Reportes: el período (?periodo=), sus consultas por mes y los cálculos (promedios, gastos fijos)
+  modules/reports/                  Reportes: el período (?periodo=), sus consultas por mes, los cálculos (promedios, gastos fijos) y el CSV
   modules/bot/                      Intérprete de mensajes (comandos fijos + Claude + validación) y flujo completo
   modules/whatsapp/                 Webhook: firma, payload, envío de mensajes y vinculación de números
   app/api/whatsapp/webhook          Endpoint que recibe los mensajes de Meta
@@ -333,8 +333,18 @@ scripts/seed.ts                     Categorías por defecto
     meses y taparía lo que sorprende. Cada uno con su fecha (con el año si no es el actual), su
     categoría y su monto; tocarlo lleva a editarlo y, al guardar, se vuelve a Egresos, al mes del
     movimiento (como desde cualquier lista).
-  - **Privacidad:** solo los movimientos propios y no eliminados (prueba de integración con dos
-    usuarios). No guarda nada nuevo: todo se calcula al abrir la página.
+  - **Descargar movimientos (CSV)** (`src/app/(app)/reportes/exportar/route.ts`, `csv.ts`): los
+    movimientos del período (el mismo `?periodo=`), en orden de fecha, para abrir con doble clic en el
+    Excel en español (y en Google Sheets).
+    - **Columnas:** Fecha (`AAAA-MM-DD`), Tipo, Descripción, Categoría, Monto y Origen (Web o WhatsApp).
+    - **Formato:** separado por `;`, el monto con coma decimal y sin puntos de miles (los egresos,
+      negativos: sumar la columna da el balance), con BOM para que Excel lea las tildes, y saltos de
+      línea de Windows.
+    - **Seguridad:** un texto que empieza con `=`, `+`, `-` o `@` lleva un apóstrofo adelante, para que
+      Excel no lo ejecute como fórmula. Va con `Cache-Control: no-store`. El enlace aparece solo si el
+      período tiene movimientos. Sin sesión, al login.
+  - **Privacidad:** solo los movimientos propios y no eliminados (pruebas de integración con dos
+    usuarios). No guarda nada nuevo: todo se calcula al abrir la página o al descargar.
 - **Todas las consultas filtran por `userId`** obtenido de la sesión en el servidor; cada Server
   Action vuelve a validar la sesión.
 - **Borrado lógico** (`deleted_at`): permite deshacer.

@@ -153,7 +153,8 @@ export default function PrivacyPage() {
           <p>
             Puedes conocer, actualizar, rectificar y eliminar tus datos, así como revocar la
             autorización para tratarlos. Tus movimientos los puedes editar o eliminar en la app, y
-            tu cuenta completa la puedes eliminar en <strong>Mi cuenta</strong>. Para cualquier otra
+            descargar en un archivo (CSV) desde <strong>Reportes</strong>. Tu cuenta completa la
+            puedes eliminar en <strong>Mi cuenta</strong>. Para cualquier otra
             solicitud, escríbenos a{" "}
             <a href={`mailto:${CONTACT_EMAIL}`} className="text-brand underline">
               {CONTACT_EMAIL}

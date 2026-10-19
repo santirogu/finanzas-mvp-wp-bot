@@ -64,6 +64,8 @@ describe("periodHref", () => {
     expect(periodHref(LAST_12_MONTHS)).toBe("/reportes");
     expect(periodHref("12-meses")).toBe("/reportes");
     expect(periodHref("2025")).toBe("/reportes?periodo=2025");
+    expect(periodHref(LAST_12_MONTHS, "/reportes/exportar")).toBe("/reportes/exportar");
+    expect(periodHref("2025", "/reportes/exportar")).toBe("/reportes/exportar?periodo=2025");
   });
 });
 

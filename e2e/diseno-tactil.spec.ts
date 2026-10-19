@@ -199,6 +199,17 @@ test("en pantallas táctiles las páginas caben y los campos no hacen zoom @tact
     // La tabla (desde 640 px) o, en el celular, la lista de los meses.
     await expect(visible(page.locator("details[open] table, details[open] ul"))).toBeVisible();
     await expectFitsOnScreens(page, "Reportes con la tabla mes a mes");
+    // La lista de descargas, abierta: cabe aunque el botón esté contra el borde derecho.
+    await visible(page.getByRole("button", { name: "Descargar" })).click();
+    await expect(visible(page.getByRole("group", { name: "Opciones de descarga" }))).toBeVisible();
+    await expectFitsOnScreens(page, "Reportes con la lista de descargas abierta");
+    // En 320 px (WCAG 1.4.10) tampoco se sale, ni por la izquierda: con el título partido en dos líneas,
+    // el botón bajaba al comienzo y la lista, que se abre hacia la izquierda, quedaba fuera.
+    await page.setViewportSize({ width: 320, height: 700 });
+    const options = (await visible(page.getByRole("group", { name: "Opciones de descarga" })).boundingBox())!;
+    expect(options.x, "la lista de descargas en 320 px").toBeGreaterThanOrEqual(0);
+    expect(options.x + options.width, "la lista de descargas en 320 px").toBeLessThanOrEqual(320);
+    await page.keyboard.press("Escape");
     await open(page, "/egresos");
     await visible(page.getByRole("link", { name: `Editar ${description}` })).click();
     await expect(heading(page, "Editar movimiento")).toBeVisible();

@@ -17,12 +17,13 @@ import { monthHref } from "@/lib/month-nav";
 import { requireUser } from "@/lib/session";
 import { BIGGEST_SHOWN, type ExpenseRow } from "@/modules/reports/biggest";
 import { averagedPhrase, type CategoryReport } from "@/modules/reports/categories";
-import { periodOptions, reportPeriod, type ReportPeriod } from "@/modules/reports/period";
+import { periodHref, periodOptions, reportPeriod, type ReportPeriod } from "@/modules/reports/period";
 import { getReport, type Report } from "@/modules/reports/queries";
 import { RECURRING_MIN_MONTHS, RECURRING_WINDOW, type RecurringReport } from "@/modules/reports/recurring";
 import type { PeriodSummary } from "@/modules/reports/summary";
 import { NO_CATEGORY } from "@/modules/transactions/search";
 import { PageSkeleton } from "../page-skeleton";
+import { DownloadMenu } from "./download-menu";
 import { type TrendPoint, TrendChart } from "./trend-chart";
 
 export const metadata: Metadata = { title: "Reportes" };
@@ -48,8 +49,16 @@ async function Reports({ period: param }: { period: string | string[] | undefine
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Reportes</h1>
-        <p className="mt-1 text-sm text-muted">{period.range}</p>
+        {/* El botón de descargas, siempre a la derecha del título (sin partir la línea): su lista se abre
+            hacia la izquierda y, si el botón bajara al comienzo de la línea, quedaría fuera de la pantalla. */}
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <h1 className="text-2xl font-semibold tracking-tight">Reportes</h1>
+            <p className="mt-1 text-sm text-muted">{period.range}</p>
+          </div>
+          {/* Las descargas, solo si el período tiene movimientos (si no, no hay nada que bajar). */}
+          {(report.summary.income > 0 || report.summary.expense > 0) && <DownloadMenu csvHref={periodHref(period.id, "/reportes/exportar")} />}
+        </div>
         <nav aria-label="Período" className="mt-3 flex flex-wrap gap-2">
           {periodOptions(period, report.activeMonths).map((option) => (
             <Link
