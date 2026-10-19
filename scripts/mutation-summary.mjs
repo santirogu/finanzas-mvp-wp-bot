@@ -1,8 +1,9 @@
 #!/usr/bin/env node
-// Resume el reporte JSON de Stryker (reports/mutation/mutation.json) en una tabla Markdown:
-// puntaje total y por archivo, ordenado de peor a mejor. Lo usa el CI para el resumen de la corrida.
+// Resume los reportes JSON de Stryker (reports/mutation/mutation.json) en una tabla Markdown:
+// puntaje total y por archivo, ordenado de peor a mejor. Lo usa el CI para el resumen de la corrida:
+// con varias partes en paralelo (scripts/mutation-targets.mjs), junta sus reportes en uno.
 //
-// Uso: node scripts/mutation-summary.mjs [reports/mutation/mutation.json]
+// Uso: node scripts/mutation-summary.mjs [reporte.json ...]   (por defecto, reports/mutation/mutation.json)
 
 import { appendFileSync, existsSync, readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
@@ -37,14 +38,17 @@ export function summarize(report) {
     "|---|---|---|",
     ...files.map((f) => `| \`${f.file}\` | ${pct(f.percent)} | ${f.undetected} |`),
     "",
-    "El reporte HTML completo (cada mutante sobreviviente en su línea) está en el artifact `mutation-report`.",
+    "El reporte HTML completo (cada mutante sobreviviente en su línea) está en los artifacts `mutation-report-*` de la corrida.",
   ].join("\n");
 }
 
+const DEFAULT_REPORT = "reports/mutation/mutation.json";
+
 /**
- * Imprime el resumen y lo agrega al resumen de la corrida de GitHub (GITHUB_STEP_SUMMARY).
+ * Imprime el resumen (de uno o varios reportes, juntos) y lo agrega al resumen de la corrida de GitHub
+ * (GITHUB_STEP_SUMMARY).
  *
- * @param {string} [path]
+ * @param {string | string[]} [paths]
  * @param {{
  *   exists?: (path: string) => boolean,
  *   read?: (path: string) => string,
@@ -54,23 +58,28 @@ export function summarize(report) {
  * }} [options]
  */
 export function runCli(
-  path = "reports/mutation/mutation.json",
+  paths = DEFAULT_REPORT,
   {
     exists = existsSync,
+    // Stryker disable next-line StringLiteral: sin "utf8" llega un Buffer y JSON.parse lo lee igual
     read = (file) => readFileSync(file, "utf8"),
     log = console.log,
     summaryFile = process.env.GITHUB_STEP_SUMMARY,
     append = appendFileSync,
   } = {},
 ) {
-  if (!exists(path)) {
-    log(`No existe ${path}: Stryker no generó reporte.`);
-    return;
+  const found = [];
+  for (const path of [paths].flat()) {
+    if (exists(path)) found.push(path);
+    else log(`No existe ${path}: Stryker no generó reporte.`);
   }
-  const markdown = summarize(JSON.parse(read(path)));
+  if (found.length === 0) return;
+  // Cada parte mutó otros archivos: sus reportes se juntan sin pisarse.
+  const files = Object.assign({}, ...found.map((path) => JSON.parse(read(path)).files));
+  const markdown = summarize({ files });
   log(markdown);
   if (summaryFile) append(summaryFile, `${markdown}\n`);
 }
 
 // Stryker disable next-line all: punto de entrada de la línea de comandos; se prueba con la función exportada y lo ejercita el CI.
-if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) runCli(process.argv[2]);
+if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) runCli(process.argv.length > 2 ? process.argv.slice(2) : undefined);

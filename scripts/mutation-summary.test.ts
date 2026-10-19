@@ -1,3 +1,6 @@
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { runCli, score, summarize } from "./mutation-summary.mjs";
 
@@ -57,7 +60,7 @@ describe("summarize · formato completo", () => {
         "| `b.ts` | 50.0 % | 2 |",
         "| `a.ts` | 50.0 % | 1 |",
         "",
-        "El reporte HTML completo (cada mutante sobreviviente en su línea) está en el artifact `mutation-report`.",
+        "El reporte HTML completo (cada mutante sobreviviente en su línea) está en los artifacts `mutation-report-*` de la corrida.",
       ].join("\n"),
     );
   });
@@ -80,6 +83,32 @@ describe("runCli", () => {
     });
     expect(logs[0]).toContain("### Mutation testing: 100.0 %");
     expect(appended).toEqual([["/tmp/summary", `${logs[0]}\n`]]);
+  });
+
+  it("junta los reportes de varias partes en un solo resumen, y avisa de la que no tiene", () => {
+    const reports: Record<string, string> = {
+      "parte-1.json": JSON.stringify({ files: { "a.ts": { mutants: [{ status: "Killed" }, { status: "Survived" }] } } }),
+      "parte-2.json": JSON.stringify({ files: { "b.ts": { mutants: [{ status: "Killed" }, { status: "Killed" }] } } }),
+    };
+    const logs: string[] = [];
+    runCli(["parte-1.json", "parte-3.json", "parte-2.json"], {
+      exists: (path: string) => path in reports,
+      read: (path: string) => reports[path],
+      log: (l: string) => logs.push(l),
+      summaryFile: undefined,
+    });
+    expect(logs[0]).toBe("No existe parte-3.json: Stryker no generó reporte.");
+    expect(logs[1]).toContain("### Mutation testing: 75.0 %");
+    expect(logs[1]).toContain("| `a.ts` | 50.0 % | 1 |");
+    expect(logs[1]).toContain("| `b.ts` | 100.0 % | 0 |");
+  });
+
+  it("por defecto lee el archivo de verdad", () => {
+    const path = join(mkdtempSync(join(tmpdir(), "mutacion-")), "mutation.json");
+    writeFileSync(path, report);
+    const logs: string[] = [];
+    runCli([path], { log: (l: string) => logs.push(l), summaryFile: undefined });
+    expect(logs[0]).toContain("### Mutation testing: 100.0 %");
   });
 
   it("usa el reporte de Stryker por defecto y avisa si no existe", () => {
