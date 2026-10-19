@@ -31,6 +31,9 @@ type Movimiento = { amount: string; description: string; category?: string; date
 
 /** El `?mes=` del mes anterior (el Resumen lo compara con el actual y se puede navegar). */
 export const MES_ANTERIOR = monthParam(shiftMonth(monthOf(todayInTimezone("America/Bogota")), -1));
+/** Dos y tres meses atrás: con ellos, Reportes muestra gastos fijos y compara las categorías con su promedio. */
+const HACE_DOS_MESES = monthParam(shiftMonth(monthOf(todayInTimezone("America/Bogota")), -2));
+const HACE_TRES_MESES = monthParam(shiftMonth(monthOf(todayInTimezone("America/Bogota")), -3));
 
 export const opcionesBase = (baseURL: string) => ({
   baseURL,
@@ -44,11 +47,16 @@ const INGRESOS: Movimiento[] = [
   { amount: "450000", description: "Venta de la bicicleta", category: "Ventas" },
 ];
 
-// Del mes anterior: el Resumen compara cada total con ese mes y la tarjeta del año marca dos.
+// De meses anteriores: el Resumen compara cada total con el mes anterior, la tarjeta del año marca
+// varios y Reportes tiene historia (gastos fijos y promedios).
 const ANTERIORES: { ruta: "/ingresos" | "/egresos"; movimiento: Movimiento }[] = [
   { ruta: "/ingresos", movimiento: { amount: "3678748,50", description: "Salario quincenal", category: "Salario", date: `${MES_ANTERIOR}-15` } },
   { ruta: "/egresos", movimiento: { amount: "1800000", description: "Arriendo del apartamento", category: "Vivienda", date: `${MES_ANTERIOR}-05` } },
   { ruta: "/egresos", movimiento: { amount: "742100", description: "Mercado del mes", category: "Mercado", date: `${MES_ANTERIOR}-20` } },
+  // El arriendo en los últimos cuatro meses y el mercado en tres: los dos son gastos fijos en Reportes.
+  { ruta: "/egresos", movimiento: { amount: "1800000", description: "Arriendo del apartamento", category: "Vivienda", date: `${HACE_DOS_MESES}-05` } },
+  { ruta: "/egresos", movimiento: { amount: "1800000", description: "Arriendo del apartamento", category: "Vivienda", date: `${HACE_TRES_MESES}-05` } },
+  { ruta: "/egresos", movimiento: { amount: "698400", description: "Mercado del mes", category: "Mercado", date: `${HACE_DOS_MESES}-18` } },
 ];
 
 const EGRESOS: Movimiento[] = [

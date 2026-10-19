@@ -1,8 +1,8 @@
 # Finanzas MVP + Bot de WhatsApp
 
 App web para registrar ingresos y egresos y ver el balance del mes actual. Cada usuario tiene
-su propia sesión y su dashboard con tres pestañas: **Resumen**, **Ingresos** y **Egresos**, donde
-cada movimiento se puede editar o eliminar. También se registran escribiéndole a un bot de
+su propia sesión y su dashboard con cuatro pestañas: **Resumen**, **Ingresos** y **Egresos**, donde
+cada movimiento se puede editar o eliminar, y **Reportes**, con cómo le va mes a mes. Los movimientos también se registran escribiéndole a un bot de
 WhatsApp ("me compré unos zapatos de $500.000"), que entiende el mensaje con Claude. En **Mi
 cuenta**, cada persona cambia su contraseña, conecta o desvincula su WhatsApp, elige la apariencia y puede eliminar su cuenta
 y todos sus datos (confirmando con su contraseña).
@@ -193,6 +193,7 @@ src/
     (app)/dashboard                 Resumen: balance del mes (y frente al anterior), últimos movimientos, gastos por categoría (dona)
     (app)/cuenta                    Mi cuenta: tus datos, seguridad (cambiar la contraseña), WhatsApp, apariencia y eliminar la cuenta
     (app)/ingresos, (app)/egresos   Formulario + listado del mes (vista compartida)
+    (app)/reportes                  Reportes: 12 meses (o un año), barras por mes, categorías frente a su promedio y gastos fijos
     (app)/month-nav.tsx             Navegador de meses (flechas y tarjeta del año) del Resumen, Ingresos y Egresos
     (app)/account-menu.tsx          Menú de la cuenta del encabezado (iniciales, escudo de admin, Mi cuenta y Salir)
     api/auth/[...all]               Endpoints de Better Auth
@@ -202,6 +203,7 @@ src/
     money.ts, dates.ts              Formato/parsing de COP y "mes actual" según zona horaria
     month-nav.ts                    El mes que pide la URL (?mes=) y los enlaces del navegador de meses
   modules/transactions/             Consultas, Server Actions y validación de movimientos
+  modules/reports/                  Reportes: el período (?periodo=), sus consultas por mes y los cálculos (promedios, gastos fijos)
   modules/bot/                      Intérprete de mensajes (comandos fijos + Claude + validación) y flujo completo
   modules/whatsapp/                 Webhook: firma, payload, envío de mensajes y vinculación de números
   app/api/whatsapp/webhook          Endpoint que recibe los mensajes de Meta
@@ -293,6 +295,31 @@ scripts/seed.ts                     Categorías por defecto
     en los dos modos (`src/color-contrast.test.ts`).
   - **Tocar** una fila de la lista o una tajada la resalta (más gruesa, y las demás apagadas); otra vez,
     lo quita. La dona es decorativa: el lector de pantalla lee la lista, que dice lo mismo.
+- **Reportes** (`/reportes`, la cuarta pestaña; `src/modules/reports/`).
+  - **El período, en la URL:** sin parámetro, los últimos 12 meses contando el actual; con
+    `?periodo=2025`, ese año (el año en curso llega hasta el mes actual). Hay un chip por cada año con
+    movimientos. Un período mal escrito o futuro muestra los 12 meses. La pestaña no lleva el `?mes=`
+    de las otras.
+  - **Las cifras del período:** ingresos, egresos, el balance con qué parte de los ingresos se ahorró,
+    el gasto promedio por mes y el mes de más gasto. El promedio usa solo los meses completos (el
+    actual va en curso y lo bajaría) desde el primero en que la persona registró algo (antes no usaba
+    la app).
+  - **Ingresos y egresos por mes:** dos barras por mes, en el verde y el naranja de toda la app (no la
+    paleta de la dona: aquí el color dice ingreso o egreso). Cada mes es un enlace a su Resumen, que el
+    lector de pantalla lee con sus tres montos; con el mouse o con Tab, el detalle aparece debajo. "Ver
+    mes a mes" abre la tabla con el balance de cada mes. Los meses cortos ("sept") salen de una tabla
+    fija, como las fechas cortas: el gráfico se dibuja también en el navegador.
+  - **Gastos por categoría:** el total y la parte de cada una en el período, con la paleta de la dona
+    por puesto. Y cómo le fue en el **último mes completo** frente a su promedio de los 3 anteriores
+    con movimientos ("En septiembre, 40% más que su promedio"; "Nueva en…" o "Sin gastos en…" si en
+    uno de los dos no hubo). Esos meses pueden quedar antes del período.
+  - **Gastos fijos** (`recurring.ts`): los egresos con la misma descripción (sin importar mayúsculas,
+    tildes ni espacios) en al menos 3 de los últimos 4 meses, y no más de 2 veces en ninguno de ellos:
+    "Almuerzo" o "Taxi" se repiten todos los meses, pero muchas veces, y no son fijos. Cada uno con lo
+    que sumó el último de esos meses en que apareció, el total al mes y qué parte del gasto promedio
+    es. Se detectan solos; todavía no se pueden marcar o quitar a mano.
+  - **Privacidad:** solo los movimientos propios y no eliminados (prueba de integración con dos
+    usuarios). No guarda nada nuevo: todo se calcula al abrir la página.
 - **Todas las consultas filtran por `userId`** obtenido de la sesión en el servidor; cada Server
   Action vuelve a validar la sesión.
 - **Borrado lógico** (`deleted_at`): permite deshacer.
@@ -485,7 +512,7 @@ Hay dos roles (`src/lib/roles.ts`), guardados en la columna `user.role`, y un ad
 
 | Rol | Quién | Qué ve |
 |---|---|---|
-| `user` | Toda cuenta al registrarse | Resumen, Ingresos, Egresos y Mi cuenta |
+| `user` | Toda cuenta al registrarse | Resumen, Ingresos, Egresos, Reportes y Mi cuenta |
 | `admin` | Quien recibe el rol del super admin (en Usuarios) o desde la terminal | Todo lo de `user` y la sección de administración (pestaña **Admin**), con verificación en dos pasos obligatoria. Su etiqueta va en violeta |
 | super admin | Un admin con la marca `user.super_admin`: uno solo, puesto solo desde la terminal (`pnpm admin:super`) | Todo lo de `admin` y, además, dar y quitar el rol de admin en Usuarios. Su etiqueta ("Super admin") y su escudo van en dorado |
 

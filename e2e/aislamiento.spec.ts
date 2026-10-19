@@ -17,6 +17,8 @@ test("los movimientos de un usuario no aparecen en la cuenta de otro", async ({ 
   await openTab(beto, "Egresos");
   await expect(visible(beto.getByText("No has registrado egresos este mes."))).toBeVisible();
   await expect(visible(beto.getByText("Secreto de Ana"))).toHaveCount(0);
+  await openTab(beto, "Reportes");
+  await expect(visible(beto.getByText("Aún no tienes movimientos."))).toBeVisible();
 
   // Y Ana sigue viendo lo suyo.
   await ana.reload();

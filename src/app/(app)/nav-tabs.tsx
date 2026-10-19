@@ -10,7 +10,11 @@ const TABS = [
   { href: "/dashboard", label: "Resumen" },
   { href: "/ingresos", label: "Ingresos" },
   { href: "/egresos", label: "Egresos" },
+  { href: "/reportes", label: "Reportes" },
 ] as const;
+
+// Las que muestran un mes (y lo siguen al pasar de una a otra). Reportes tiene su propio período.
+const MONTH_TABS = new Set<string>(["/dashboard", "/ingresos", "/egresos"]);
 
 // Solo para admins: el servidor decide si se muestra (src/app/(app)/layout.tsx). Se marca en
 // cualquier página de la sección (/admin/...).
@@ -37,7 +41,7 @@ export function TabLinks({
   showAdmin = false,
 }: {
   pathname: string | null;
-  /** El `?mes=` de la URL; las pestañas de Admin no lo llevan. */
+  /** El `?mes=` de la URL; las pestañas de Reportes y Admin no lo llevan. */
   month?: string | null;
   showAdmin?: boolean;
 }) {
@@ -48,7 +52,8 @@ export function TabLinks({
   // Solo un mes bien escrito: el servidor decide si se puede ver (no futuro).
   const query = parseMonthParam(month) ? `?mes=${month}` : "";
   return (
-    // Sin espacio entre pestañas (su padding ya las separa): así las cuatro caben en 375 px.
+    // Sin espacio entre pestañas (su padding ya las separa): así las cuatro de una persona caben en
+    // 375 px. Con Admin son cinco: la franja se desliza de lado y arranca mostrando la actual.
     <nav ref={nav} className="-mb-px mt-3 flex overflow-x-auto">
       {tabs.map((tab) => {
         const active = isActive(tab.href, pathname);
@@ -63,7 +68,7 @@ export function TabLinks({
         return (
           <Link
             key={tab.href}
-            href={admin ? tab.href : tab.href + query}
+            href={MONTH_TABS.has(tab.href) ? tab.href + query : tab.href}
             aria-current={active ? "page" : undefined}
             className={`whitespace-nowrap border-b-2 px-3 py-2.5 text-sm font-medium transition ${look}`}
           >
