@@ -228,6 +228,19 @@ export const VISTAS: Vista[] = [
     },
   },
   {
+    id: "reportes-fijos-historial",
+    titulo: "Reportes: el historial de un gasto fijo (el mercado, que cambia cada mes) con la nota abierta",
+    persona: "datos",
+    ruta: fija("/reportes"),
+    preparar: async (page) => {
+      const fijos = visible(page.getByRole("region", { name: "Gastos fijos" }));
+      await fijos.getByRole("button", { name: /^Historial de Mercado del mes/ }).click();
+      await fijos.getByRole("button", { name: /^Agregar nota del cambio/ }).first().click();
+      await expect(fijos.getByLabel(/^Nota del cambio/)).toBeFocused();
+      await fijos.scrollIntoViewIfNeeded();
+    },
+  },
+  {
     id: "reportes-descargas",
     titulo: "Reportes: la lista de descargas abierta (CSV, y PDF con Pronto)",
     persona: "datos",

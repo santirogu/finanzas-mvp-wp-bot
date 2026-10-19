@@ -120,6 +120,13 @@
       "when": 1792441108038,
       "tag": "0016_gastos-fijos-a-mano",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1792443845274,
+      "tag": "0017_notas-gastos-fijos",
+      "breakpoints": true
     }
   ]
 }

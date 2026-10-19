@@ -22,7 +22,7 @@ const config = {
     "src/modules/bot/{commands,normalize,interpret,replies,prompt,claude-extractor,limits,pricing}.ts",
     "src/modules/whatsapp/{signature,payload,phone,client,actions}.ts",
     "src/modules/transactions/{validation,default-categories,month-comparison,category-chart,search}.ts",
-    "src/modules/reports/{period,summary,categories,recurring,biggest,csv}.ts",
+    "src/modules/reports/{period,summary,categories,recurring,biggest,csv,history}.ts",
     "src/app/api/{whatsapp/webhook,health}/route.ts",
     "src/app/*/simulador/actions.ts",
     "src/proxy.ts",

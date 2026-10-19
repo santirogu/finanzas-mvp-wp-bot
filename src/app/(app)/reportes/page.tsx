@@ -10,6 +10,7 @@ import {
   formatShortDate,
   formatShortMonth,
   type Month,
+  monthOf,
   monthParam,
 } from "@/lib/dates";
 import { formatMoney, formatShare } from "@/lib/money";
@@ -17,13 +18,14 @@ import { monthHref } from "@/lib/month-nav";
 import { requireUser } from "@/lib/session";
 import { BIGGEST_SHOWN, type ExpenseRow } from "@/modules/reports/biggest";
 import { averagedPhrase, type CategoryReport } from "@/modules/reports/categories";
+import { changeDirection, lastChange, pctLabel } from "@/modules/reports/history";
 import { periodHref, periodOptions, reportPeriod } from "@/modules/reports/period";
 import { getReport, type Report } from "@/modules/reports/queries";
 import type { PeriodSummary } from "@/modules/reports/summary";
 import { NO_CATEGORY } from "@/modules/transactions/search";
 import { PageSkeleton } from "../page-skeleton";
 import { DownloadMenu } from "./download-menu";
-import { FixedExpenses } from "./fixed-expenses";
+import { type FixedHistory, FixedExpenses } from "./fixed-expenses";
 import { type TrendPoint, TrendChart } from "./trend-chart";
 
 export const metadata: Metadata = { title: "Reportes" };
@@ -96,6 +98,7 @@ async function Reports({ period: param }: { period: string | string[] | undefine
             <div className="space-y-6">
               <FixedExpenses
                 items={report.recurring.items}
+                histories={fixedHistoriesView(report, current)}
                 removed={report.recurring.removed}
                 candidates={report.recurring.candidates}
                 total={report.recurring.total}
@@ -113,6 +116,29 @@ async function Reports({ period: param }: { period: string | string[] | undefine
 }
 
 type Money = (n: number) => string;
+
+/**
+ * El historial de cada gasto fijo, con su último cambio en una línea ("11% desde marzo"; con el año si no
+ * es el actual). Armado aquí: el nombre del mes sale de Intl, en el servidor.
+ */
+function fixedHistoriesView(report: Report, current: Month): Record<string, FixedHistory> {
+  const view: Record<string, FixedHistory> = {};
+  for (const [key, entries] of Object.entries(report.histories)) {
+    const change = lastChange(entries);
+    const month = change && monthOf(`${change.month}-01`);
+    view[key] = {
+      entries,
+      summary:
+        change && month
+          ? {
+              direction: changeDirection(change.diff!),
+              text: `${pctLabel(change.pct!)} desde ${formatMonthName(month, { withYear: month.year !== current.year })}`,
+            }
+          : null,
+    };
+  }
+  return view;
+}
 
 /** Las barras: con sus textos ya armados (el gráfico se dibuja también en el navegador). */
 function trendPoints(report: Report, current: Month): TrendPoint[] {

@@ -4,6 +4,7 @@ import { refresh } from "next/cache";
 import { requireUser } from "@/lib/session";
 import type { ToastTone } from "@/lib/toasts";
 import { chooseFixedExpense } from "./fixed-choices";
+import { saveFixedNote } from "./history-notes";
 
 // Las acciones de Reportes. Cada una valida la sesión antes que nada: el dueño sale de la sesión, nunca
 // del formulario.
@@ -21,3 +22,22 @@ export async function chooseFixedExpenseAction(_prev: FixedExpenseState, formDat
   refresh();
   return { message: result.message, tone: result.tone };
 }
+
+export type FixedNoteState = { message?: string; tone?: ToastTone; error?: string; field?: "note" };
+
+/**
+ * Guarda la nota de un cambio del historial de un gasto fijo (o la borra, si llega vacía; ver
+ * src/modules/reports/history-notes.ts). Con éxito, vuelve a dibujar Reportes y avisa.
+ */
+export async function saveFixedNoteAction(_prev: FixedNoteState, formData: FormData): Promise<FixedNoteState> {
+  const user = await requireUser();
+  const result = await saveFixedNote(user.id, {
+    description: formData.get("description"),
+    month: formData.get("month"),
+    note: formData.get("note"),
+  });
+  if (!result.ok) return { error: result.error, field: result.field };
+  refresh();
+  return { message: result.message, tone: result.tone };
+}
+

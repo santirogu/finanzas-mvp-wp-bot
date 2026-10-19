@@ -190,6 +190,64 @@ test("Reportes: las cifras del período, el gráfico, las categorías y los gast
   });
 });
 
+test("el historial de un gasto fijo: cada cambio de valor, con su nota", async ({ page }) => {
+  const today = todayInTimezone("America/Bogota");
+  const date = formatShortDate(today, { withYear: true });
+  await register(page);
+  await openTab(page, "Egresos");
+  for (const month of [m2, m1]) {
+    await add(page, "Egreso", { amount: "250000", description: "Plan del celular", category: "Servicios", date: dayOf(month, 8) }, month);
+  }
+  await add(page, "Egreso", { amount: "270000", description: "Plan del celular", category: "Servicios" });
+  await openTab(page, "Reportes");
+  const fixed = section(page, "Gastos fijos");
+  const history = fixed.getByRole("button", { name: /^Historial de Plan del celular/ });
+
+  await test.step("cerrado dice su último cambio; al tocarlo, el cambio y el primer pago", async () => {
+    await expect(history).toHaveAttribute("aria-expanded", "false");
+    await expect(history).toContainText(`8% desde ${name(current)}`);
+    await history.click();
+    await expect(history).toHaveAttribute("aria-expanded", "true");
+    const entries = fixed.locator(`[id="${await history.getAttribute("aria-controls")}"]`).getByRole("listitem");
+    await expect(entries).toHaveCount(2);
+    await expect(entries.nth(0)).toContainText(`${date}+$20.000,00 (+8%)$250.000,00 → $270.000,00`);
+    await expect(entries.nth(1)).toContainText(`${formatShortDate(dayOf(m2, 8), { withYear: true })}Primer pago$250.000,00`);
+  });
+
+  await test.step("agregarle una nota", async () => {
+    await fixed.getByRole("button", { name: `Agregar nota del cambio del ${date}` }).click();
+    const field = fixed.getByLabel(`Nota del cambio del ${date}`);
+    await expect(field).toBeFocused();
+    expect(await seriousViolations(page)).toEqual([]);
+    await field.fill("Subió la tarifa del plan");
+    await fixed.getByRole("button", { name: "Guardar nota" }).click();
+    await expect(toast(page, "Se guardó la nota")).toHaveAttribute("data-tone", "success");
+    await expect(fixed.getByText("“Subió la tarifa del plan”")).toBeVisible();
+    expect(await seriousViolations(page)).toEqual([]);
+    await closeToasts(page);
+  });
+
+  await test.step("se queda al volver; editarla y borrarla", async () => {
+    await page.reload();
+    await history.click();
+    await expect(fixed.getByText("“Subió la tarifa del plan”")).toBeVisible();
+    await fixed.getByRole("button", { name: `Editar nota del cambio del ${date}` }).click();
+    const field = fixed.getByLabel(`Nota del cambio del ${date}`);
+    await expect(field).toHaveValue("Subió la tarifa del plan");
+    await field.fill("Subió la tarifa: pasé al plan con más datos");
+    await fixed.getByRole("button", { name: "Guardar nota" }).click();
+    await expect(toast(page, "Se guardó la nota")).toBeVisible();
+    await expect(fixed.getByText("“Subió la tarifa: pasé al plan con más datos”")).toBeVisible();
+    await closeToasts(page);
+
+    await fixed.getByRole("button", { name: `Editar nota del cambio del ${date}` }).click();
+    await fixed.getByRole("button", { name: "Borrar nota" }).click();
+    await expect(toast(page, "Se borró la nota")).toHaveAttribute("data-tone", "removal");
+    await expect(fixed.getByText(/^“/)).toHaveCount(0);
+    await expect(fixed.getByRole("button", { name: `Agregar nota del cambio del ${date}` })).toBeVisible();
+  });
+});
+
 test("con más de 10 gastos, los demás se abren con «Ver los N siguientes»", async ({ page }) => {
   const { email } = await register(page);
   // 13 egresos distintos de hoy, cargados en la base de las E2E (por la app serían 13 registros).
@@ -241,6 +299,8 @@ for (const colorScheme of ["light", "dark"] as const) {
     await add(page, "Egreso", { amount: "250000", description: "Plan del celular", category: "Servicios" });
     await openTab(page, "Reportes");
     await expect(visible(page.getByRole("region", { name: "Gastos fijos" }).getByRole("listitem"))).toHaveCount(1);
+    // Con el historial del gasto fijo abierto.
+    await visible(page.getByRole("button", { name: /^Historial de Plan del celular/ })).click();
     await visible(page.getByText("Ver mes a mes")).click();
     // Con el mouse en un mes: el detalle de abajo, en sus colores.
     await visible(page.getByRole("link", { name: new RegExp(`^${formatMonthLabel(m1)}:`) })).hover();

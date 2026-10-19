@@ -327,7 +327,17 @@ scripts/seed.ts                     Categorías por defecto
     tildes ni espacios) en al menos 3 de los últimos 4 meses, y no más de 2 veces en ninguno de ellos:
     "Almuerzo" o "Taxi" se repiten todos los meses, pero muchas veces, y no son fijos. Cada uno con lo
     que sumó el último de esos meses en que apareció, el total al mes y qué parte del gasto promedio
-    es. Se detectan solos; todavía no se pueden marcar o quitar a mano.
+    es. Se detectan solos, y también se marcan a mano (`fixed-choices.ts`, tabla `fixed_expense_choice`):
+    ✕ quita uno detectado (queda en "Quitados", de donde vuelve con "Volver a poner") o saca uno
+    agregado, y "Agregar un gasto fijo" suma uno de los egresos del período. Cada marca vale para
+    todos los períodos.
+  - **Historial de cada gasto fijo** (`history.ts`, `history-notes.ts`): al tocar uno se abre su
+    historial de todo el tiempo, que sale de los movimientos. Cada mes en que su total fue distinto al
+    del último mes en que apareció es un cambio: el valor anterior, el nuevo, la diferencia en plata y
+    en porcentaje y la fecha del primer pago con el valor nuevo; el primer pago es el punto de partida.
+    Cerrado, cada gasto dice su último cambio ("11% desde marzo"). A cada cambio se le puede escribir
+    una nota (hasta 280 caracteres; tabla `fixed_expense_note`), solo de un mes en que la persona pagó
+    ese gasto; vaciarla la borra.
   - **Los gastos más grandes** (`biggest.ts`): los 10 egresos más altos del período (con "Ver los N
     siguientes", hasta 25), **sin los gastos fijos**: si no, el arriendo llenaría la lista todos los
     meses y taparía lo que sorprende. Cada uno con su fecha (con el año si no es el actual), su

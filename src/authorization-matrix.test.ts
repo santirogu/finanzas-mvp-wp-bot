@@ -87,6 +87,8 @@ const SERVER_ACTIONS = {
   resendRepliesAction: "requireAdmin + código de Google Authenticator; solo las respuestas que no salieron en 24 h, sin mostrarlas",
   chooseFixedExpenseAction:
     "requireUser; solo los gastos fijos propios (el dueño sale de la sesión); agregar exige un egreso propio con esa descripción",
+  saveFixedNoteAction:
+    "requireUser; solo notas propias, de un gasto que la persona pagó ese mes; hasta 280 caracteres",
 } as const;
 
 // Acciones que no necesitan validar la sesión, con el porqué.

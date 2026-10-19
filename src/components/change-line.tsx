@@ -7,6 +7,15 @@ const ICONS = {
 
 export type Change = { direction: keyof typeof ICONS; text: string };
 
+/** La flecha sola (decorativa): para usarla dentro de otro elemento, como un botón. */
+export function ChangeIcon({ direction }: { direction: Change["direction"] }) {
+  return (
+    <svg viewBox="0 0 20 20" fill="currentColor" className="size-4 shrink-0" aria-hidden>
+      <path fillRule="evenodd" d={ICONS[direction]} clipRule="evenodd" />
+    </svg>
+  );
+}
+
 /**
  * "↗ 15% más que agosto": la comparación debajo de un monto (las tarjetas del Resumen, las categorías
  * de Reportes).
@@ -14,9 +23,7 @@ export type Change = { direction: keyof typeof ICONS; text: string };
 export function ChangeLine({ change }: { change: Change }) {
   return (
     <p className="mt-1 flex items-center gap-1 text-xs text-muted">
-      <svg viewBox="0 0 20 20" fill="currentColor" className="size-4 shrink-0" aria-hidden>
-        <path fillRule="evenodd" d={ICONS[change.direction]} clipRule="evenodd" />
-      </svg>
+      <ChangeIcon direction={change.direction} />
       <span className="min-w-0">{change.text}</span>
     </p>
   );

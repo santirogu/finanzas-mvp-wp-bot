@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { db } from "@/db";
-import { fixedExpenseChoice, transaction } from "@/db/schema";
+import { fixedExpenseChoice, fixedExpenseNote, transaction } from "@/db/schema";
 import { listCategories } from "@/modules/transactions/queries";
 import { createUser } from "../../../test/integration/factories";
 import { reportPeriod } from "./period";
@@ -239,7 +239,36 @@ describe("getReport", () => {
     expect(report.summary).toMatchObject({ income: 0, expense: 0, balance: 0, saved: null, averageExpense: null, topMonth: null });
     expect(report.categories.rows).toEqual([]);
     expect(report.recurring).toEqual({ items: [], total: 0, removed: [], candidates: [] });
+    expect(report.histories).toEqual({});
     expect(report.biggest).toEqual([]);
+  });
+
+  it("cada gasto fijo trae su historial de todo el tiempo (también de antes del período), con sus notas", async () => {
+    const ana = await createUser();
+    const beto = await createUser();
+    await addTx({ userId: ana.id, description: "Netflix", amount: 41900, occurredOn: "2024-11-06" });
+    await addTx({ userId: ana.id, description: "netflix", amount: 44900, occurredOn: "2025-06-06" });
+    for (const month of ["08", "09", "10"]) {
+      await addTx({ userId: ana.id, description: "Netflix", amount: 49900, occurredOn: `2026-${month}-06` });
+      await addTx({ userId: ana.id, description: "Mercado", amount: 1000 * Number(month), occurredOn: `2026-${month}-20` });
+    }
+    await addTx({ userId: beto.id, description: "Netflix", amount: 1, occurredOn: "2026-08-06" });
+    await db.insert(fixedExpenseNote).values([
+      { userId: ana.id, descriptionKey: "netflix", month: "2025-06", note: "Subió el plan" },
+      // La nota de Beto no le aparece a Ana.
+      { userId: beto.id, descriptionKey: "netflix", month: "2026-08", note: "Ajena" },
+    ]);
+    await db.insert(fixedExpenseChoice).values({ userId: ana.id, descriptionKey: "mercado", choice: "exclude" });
+
+    const { recurring, histories } = await getReport(ana.id, reportPeriod(undefined, october), october);
+    expect(recurring.items.map((i) => i.key)).toEqual(["netflix"]);
+    // Solo de los gastos fijos: el mercado (quitado) no trae historial.
+    expect(Object.keys(histories)).toEqual(["netflix"]);
+    expect(histories.netflix).toEqual([
+      { month: "2026-08", date: "2026-08-06", amount: 49900, previous: 44900, diff: 5000, pct: 11, note: null },
+      { month: "2025-06", date: "2025-06-06", amount: 44900, previous: 41900, diff: 3000, pct: 7, note: "Subió el plan" },
+      { month: "2024-11", date: "2024-11-06", amount: 41900, previous: null, diff: null, pct: null, note: null },
+    ]);
   });
 
   it("las categorías se comparan con meses de antes del período (un año que recién empieza)", async () => {
