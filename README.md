@@ -663,14 +663,22 @@ la fecha de los mensajes, en hora de Colombia.
   con su etiqueta y su ✕ en los filtros activos; otra vez, lo quita). Las barras siguen mostrando todos
   los resultados para poder cambiar de uno a otro.
 - **Por cuenta:** una fila por cuenta, con los filtros de la página: mensajes, cuántos registraron
-  movimientos, tokens de Claude, errores y el último mensaje (hoy, ayer o la fecha), con enlace a su
-  detalle en Usuarios. Se ordena por tokens (de la que más usa), mensajes, errores o el último
-  (`?orden=`); los números que escribieron sin estar vinculados van juntos al final. Se ven 50 y "Ver
-  más cuentas" suma de a 50, hasta 500. En celular, cada cifra lleva su nombre a la vista; desde `sm`,
-  van en columnas. Solo cantidades, nunca el texto.
-- **Consumo de Claude:** llamadas y tokens de entrada y salida (los que guarda el bot en cada
-  mensaje), por día (con "Todo", los últimos 30 días) y por modelo, y las cuentas que llegaron al tope.
-  El costo en dinero se ve en la consola de Anthropic: los precios cambian.
+  movimientos, tokens de Claude, su costo estimado en dólares, errores y el último mensaje (hoy, ayer o
+  la fecha), con enlace a su detalle en Usuarios. Se ordena por tokens (de la que más usa), mensajes,
+  errores o el último (`?orden=`); los números que escribieron sin estar vinculados van juntos al
+  final. Se ven 50 y "Ver más cuentas" suma de a 50, hasta 500. En celular, cada cifra lleva su nombre a
+  la vista; desde `md`, van en columnas. Solo cantidades, nunca el texto.
+- **Consumo de Claude:** llamadas, tokens de entrada y salida (los que guarda el bot en cada mensaje,
+  con el modelo que respondió) y su **costo estimado en dólares**, por día (con "Todo", los últimos 30
+  días) y por modelo, y las cuentas que llegaron al tope.
+- **Costo estimado** (`src/modules/bot/pricing.ts`): los tokens de cada mensaje por el precio público
+  de su modelo (dólares por millón de tokens, de la [página de precios de
+  Anthropic](https://platform.claude.com/docs/en/about-claude/pricing), con la fecha en que se
+  revisaron). Haiku 5.5 cobra más las llamadas de más de 100.000 tokens de entrada: se calcula por
+  llamada. Se muestra con dos decimales, y "<US$0,01" si no alcanza un centavo. Es un estimado: el cobro
+  real está en la consola de Anthropic. **Si cambian los precios o el modelo del bot** (`BOT_MODEL`),
+  hay que actualizar la tabla: una prueba exige que el modelo por defecto tenga precio, y un modelo sin
+  precio no se inventa (en la cuenta sale "—" y el total lo nombra).
 - **Errores:** agrupados por motivo (de Claude, al enviar por WhatsApp o internos), con cuántas veces,
   cuántos números y la última vez. Si en las últimas 24 horas hubo respuestas que no salieron por
   WhatsApp (un token vencido o un número fuera de la lista de Meta, ya arreglados), **"Reenviar"** las

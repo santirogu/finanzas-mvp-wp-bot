@@ -137,6 +137,24 @@ describe("botActivity", () => {
     expect(all.claude.byDay.find((d) => d.day === "2026-10-02")?.calls).toBe(1);
   });
 
+  it("Claude: el costo estimado en dólares, por modelo y con el precio de prompt largo de Haiku 5.5", async () => {
+    await seed();
+    // Los de hoy: Haiku 4.5 (1.700 y 160) y Sonnet 4.5 (700 y 0).
+    const today = await activity({ fecha: "hoy" });
+    expect(today.claude.cost.usd).toBeCloseTo((1700 * 1 + 160 * 5 + 700 * 3) / 1_000_000, 12);
+    expect(today.claude.cost.unpriced).toEqual([]);
+
+    // Haiku 5.5: una llamada corta (US$0,10 y US$0,50) y una de más de 100.000 tokens (US$0,50 y US$2,50).
+    await message({ intent: { kind: "reply", text: "ok", usage: usage(1000, 1000, "claude-haiku-5-5") } });
+    await message({ intent: { kind: "reply", text: "ok", usage: usage(150_000, 1000, "claude-haiku-5-5") } });
+    // Y uno de un modelo sin precio: no suma, y se nombra.
+    await message({ intent: { kind: "reply", text: "ok", usage: usage(9_000_000, 9_000_000, "modelo-raro") } });
+    const withNew = await activity({ fecha: "hoy" });
+    const haiku55 = (1000 * 0.1 + 1000 * 0.5 + 150_000 * 0.5 + 1000 * 2.5) / 1_000_000;
+    expect(withNew.claude.cost.usd).toBeCloseTo((1700 * 1 + 160 * 5 + 700 * 3) / 1_000_000 + haiku55, 12);
+    expect(withNew.claude.cost.unpriced).toEqual(["modelo-raro"]);
+  });
+
   it("cuenta también las llamadas de antes de la reserva del cupo (15 de octubre) y las que fallaron sin respuesta", async () => {
     // De antes de #55: con los tokens que usó Claude, pero sin ai_requested_at (se fecha con la llegada).
     await message({ intent: { kind: "transactions", items: [], usage: usage(1500, 90) }, receivedAt: at("2026-10-10T15:00:00Z") });
@@ -242,12 +260,18 @@ describe("botAccounts", () => {
     const { ana, beto } = await seed();
     const { rows, hasMore } = await accounts({ fecha: "hoy" });
     expect(hasMore).toBe(false);
-    expect(rows.map(({ last, ...row }) => row)).toEqual([
+    // Cada fila con sus cifras (la fecha del último mensaje y el costo, abajo).
+    expect(rows).toMatchObject([
       { id: ana.id, name: "Ana Bot", email: "ana-bot@correo.com", phones: 2, messages: 8, registered: 1, tokens: 2560, errors: 2 },
       { id: beto.id, name: "Beto Bot", email: "beto-bot@correo.com", phones: 1, messages: 3, registered: 0, tokens: 0, errors: 0 },
       { id: null, name: null, email: null, phones: 1, messages: 3, registered: 0, tokens: 0, errors: 0 },
     ]);
     expect(rows[0].last).toEqual(at("2026-10-12T16:00:00Z"));
+    // Ana: Haiku 4.5 (1.700 de entrada a US$1 y 160 de salida a US$5, por millón) y Sonnet 4.5 (700 a US$3).
+    expect(rows[0].cost).toBeCloseTo((1700 * 1 + 160 * 5 + 700 * 3) / 1_000_000, 12);
+    // Sin tokens, cero (no "—").
+    expect(rows[1].cost).toBe(0);
+    expect(rows[2].cost).toBe(0);
   });
 
   it("nunca devuelve el texto ni la respuesta de un mensaje", async () => {
@@ -269,6 +293,18 @@ describe("botAccounts", () => {
       [ana.id, 1],
     ]);
     expect((await accounts({ q: "Beto" })).rows.map((r) => r.id)).toEqual([beto.id]);
+  });
+
+  it("el costo de cada cuenta, con los mismos filtros; con un modelo sin precio, null", async () => {
+    const { ana, beto } = await seed();
+    // Con todo, también el de Ana de hace 10 días (Haiku 4.5, 1.000 y 100).
+    const all = (await accounts()).rows.find((r) => r.id === ana.id);
+    expect(all?.cost).toBeCloseTo((2700 * 1 + 260 * 5 + 700 * 3) / 1_000_000, 12);
+    // Beto usa un modelo que no está en la tabla: no se inventa su costo.
+    await message({ userId: beto.id, intent: { kind: "reply", text: "ok", usage: usage(500, 50, "modelo-raro") } });
+    const today = await accounts({ fecha: "hoy" });
+    expect(today.rows.find((r) => r.id === beto.id)?.cost).toBeNull();
+    expect(today.rows.find((r) => r.id === ana.id)?.cost).toBeCloseTo((1700 * 1 + 160 * 5 + 700 * 3) / 1_000_000, 12);
   });
 
   it("muestra hasta el límite y dice si hay más", async () => {
