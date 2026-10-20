@@ -136,6 +136,8 @@ jobs:
             echo "e2e=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
+          # Si el script falla, el paso también (con "| tee", sin pipefail, valdría el resultado de tee).
+          set -o pipefail
           node scripts/e2e-needed.mjs < changed.txt | tee decision.txt
           { echo "### ¿Correr las E2E?"; echo; echo '```'; cat decision.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
 
@@ -418,6 +420,9 @@ jobs:
           fi
 
           echo "Último despliegue exitoso: $last"
+          # Si el script falla, el paso también: sin pipefail valdría el resultado de tee, no se escribiría
+          # "deploy=" y el despliegue se saltaría en silencio con el CI en verde.
+          set -o pipefail
           git diff --name-only "$last" "$GITHUB_SHA" | tee changed.txt | node scripts/deploy-needed.mjs | tee decision.txt
           { echo "### ¿Desplegar a producción?"; echo; echo '```'; cat decision.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
 

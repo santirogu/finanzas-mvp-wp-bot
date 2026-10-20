@@ -55,6 +55,8 @@ const REQUIRED = [
   "e2e/flujo-principal.spec.ts",
   "e2e/helpers.ts",
   "e2e/fake-services.mjs",
+  // Playwright también corre los *.test.ts de e2e/.
+  "e2e/nueva.test.ts",
   "playwright.config.ts",
   "test/totp.ts",
   "test/reset-database.ts",
