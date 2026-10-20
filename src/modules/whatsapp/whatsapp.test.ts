@@ -95,6 +95,14 @@ describe("extractMessages", () => {
     expect(extractMessages(null)).toEqual([]);
     expect(extractMessages("texto")).toEqual([]);
   });
+
+  it("no procesa los mensajes de otro tipo de objeto, aunque vengan bien formados", () => {
+    const message = { id: "wamid.X", from: "573001112233", type: "text", text: { body: "gasté 20 mil" } };
+    expect(extractMessages({ ...webhook([message]), object: "page" })).toEqual([]);
+    expect(extractMessages({ ...webhook([message]), object: undefined })).toEqual([]);
+    // Y si "entry" no es una lista, tampoco (sin fallar).
+    expect(extractMessages({ object: "whatsapp_business_account", entry: {} })).toEqual([]);
+  });
 });
 
 describe("extractMessages · payloads incompletos", () => {

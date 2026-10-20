@@ -25,15 +25,18 @@ type WebhookValue = {
 };
 
 export function extractMessages(payload: unknown): IncomingMessage[] {
+  // Stryker disable next-line ConditionalExpression: un texto o un número no tienen "object" ni "entry": la línea siguiente devuelve [] igual
   if (!payload || typeof payload !== "object") return [];
   const { object, entry } = payload as { object?: unknown; entry?: unknown };
   if (object !== "whatsapp_business_account" || !Array.isArray(entry)) return [];
 
   const result: IncomingMessage[] = [];
   for (const e of entry) {
+    // Stryker disable next-line ArrayDeclaration: lo que no es un cambio de "messages" se salta (abajo), sea lo que sea
     for (const change of Array.isArray(e?.changes) ? e.changes : []) {
       if (change?.field !== "messages") continue;
       const value = (change.value ?? {}) as WebhookValue;
+      // Stryker disable next-line ArrayDeclaration: lo que no trae id ni remitente se salta (abajo), sea lo que sea
       for (const m of Array.isArray(value.messages) ? value.messages : []) {
         if (typeof m.id !== "string" || typeof m.from !== "string") continue;
         const contact = value.contacts?.find((c) => c.wa_id === m.from);

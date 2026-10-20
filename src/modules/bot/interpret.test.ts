@@ -113,6 +113,15 @@ describe("normalizeTransactions", () => {
     },
   );
 
+  // Lo que propone Claude puede venir mal formado: un mes 00 o 13 en un año que ya pasó (la regla de las
+  // fechas futuras no lo tapa) o con algo de más alrededor. Nunca se guarda tal cual.
+  it.each(["2025-13-01", "2026-00-10", " 2026-10-12", "2026-10-12 ", "02026-10-12", "2026-10-12-1", "x2026-10-12", "2026-10-12x"])(
+    "reemplaza por hoy la fecha mal formada %j",
+    (date) => {
+      expect(normalizeTransactions([{ ...base, date }], ctx)[0].occurredOn).toBe("2026-10-13");
+    },
+  );
+
   it("acepta el 29 de febrero en año bisiesto", () => {
     const leapCtx = { ...ctx, today: "2024-03-10" };
     expect(normalizeTransactions([{ ...base, date: "2024-02-29" }], leapCtx)[0].occurredOn).toBe(
