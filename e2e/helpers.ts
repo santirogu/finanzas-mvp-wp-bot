@@ -111,7 +111,7 @@ export async function addTransaction(
 }
 
 /** Navega con las pestañas, como lo haría una persona. */
-export async function openTab(page: Page, tab: "Resumen" | "Ingresos" | "Egresos" | "Reportes") {
+export async function openTab(page: Page, tab: "Resumen" | "Ingresos" | "Egresos" | "Fijos" | "Reportes") {
   const link = page.getByRole("navigation").getByRole("link", { name: tab, exact: true });
   await link.click();
   await expect(link).toHaveAttribute("aria-current", "page");

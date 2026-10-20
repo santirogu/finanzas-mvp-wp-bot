@@ -69,6 +69,7 @@ export const VISTAS: Vista[] = [
   { id: "resumen-vacio", titulo: "Resumen sin movimientos", persona: "vacia", ruta: fija("/dashboard") },
   { id: "ingresos-vacio", titulo: "Ingresos sin movimientos", persona: "vacia", ruta: fija("/ingresos") },
   { id: "egresos-vacio", titulo: "Egresos sin movimientos", persona: "vacia", ruta: fija("/egresos") },
+  { id: "fijos-vacio", titulo: "Fijos sin movimientos", persona: "vacia", ruta: fija("/gastos-fijos") },
   { id: "reportes-vacio", titulo: "Reportes sin movimientos", persona: "vacia", ruta: fija("/reportes") },
   {
     id: "formulario-errores",
@@ -181,7 +182,8 @@ export const VISTAS: Vista[] = [
     },
   },
   { id: "egresos-mes-anterior", titulo: "Egresos del mes anterior", persona: "datos", ruta: fija(`/egresos?mes=${MES_ANTERIOR}`) },
-  { id: "reportes", titulo: "Reportes con cuatro meses de datos (gastos fijos y promedios)", persona: "datos", ruta: fija("/reportes") },
+  { id: "fijos", titulo: "Fijos con cuatro meses de datos (detectados, agregados y quitados)", persona: "datos", ruta: fija("/gastos-fijos") },
+  { id: "reportes", titulo: "Reportes con cuatro meses de datos (promedios, sin los gastos fijos)", persona: "datos", ruta: fija("/reportes") },
   {
     id: "reportes-detalle",
     titulo: "Reportes: la tabla mes a mes abierta y el detalle de un mes del gráfico",
@@ -214,12 +216,13 @@ export const VISTAS: Vista[] = [
   { id: "resumen-extremo", titulo: "Resumen con textos y montos máximos", persona: "admin", ruta: fija("/dashboard") },
   { id: "ingresos-extremo", titulo: "Ingresos con textos y montos máximos", persona: "admin", ruta: fija("/ingresos") },
   { id: "egresos-extremo", titulo: "Egresos: 25 movimientos y textos máximos", persona: "admin", ruta: fija("/egresos") },
+  { id: "fijos-extremo", titulo: "Fijos con textos y montos máximos", persona: "admin", ruta: fija("/gastos-fijos") },
   { id: "reportes-extremo", titulo: "Reportes con textos y montos máximos", persona: "admin", ruta: fija("/reportes") },
   {
-    id: "reportes-fijos-agregar",
-    titulo: "Reportes: agregar un gasto fijo (el selector de egresos abierto)",
+    id: "fijos-agregar",
+    titulo: "Fijos: agregar un gasto fijo (el selector de egresos abierto)",
     persona: "datos",
-    ruta: fija("/reportes"),
+    ruta: fija("/gastos-fijos"),
     preparar: async (page) => {
       const fijos = visible(page.getByRole("region", { name: "Gastos fijos" }));
       await fijos.getByRole("button", { name: "Agregar un gasto fijo" }).click();
@@ -228,10 +231,10 @@ export const VISTAS: Vista[] = [
     },
   },
   {
-    id: "reportes-fijos-historial",
-    titulo: "Reportes: el historial de un gasto fijo (el mercado, que cambia cada mes) con la nota abierta",
+    id: "fijos-historial",
+    titulo: "Fijos: el historial de un gasto fijo (el mercado, que cambia cada mes) con la nota abierta",
     persona: "datos",
-    ruta: fija("/reportes"),
+    ruta: fija("/gastos-fijos"),
     preparar: async (page) => {
       const fijos = visible(page.getByRole("region", { name: "Gastos fijos" }));
       await fijos.getByRole("button", { name: /^Historial de Mercado del mes/ }).click();

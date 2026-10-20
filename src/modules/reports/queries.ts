@@ -166,36 +166,57 @@ export async function getReport(userId: string, period: ReportPeriod, current: M
   // Las categorías se comparan con los meses anteriores (pueden quedar fuera del período) y los gastos
   // fijos se buscan en los últimos meses (en un año que recién empieza, también los del anterior).
   const categoriesFrom = shiftMonth(last, -(AVERAGE_MONTHS + 1));
-  const [activeMonths, monthly, categories, descriptions, largest, choices, historyMonths, notes] = await Promise.all([
+  const [activeMonths, monthly, categories, descriptions, largest, choices] = await Promise.all([
     listActiveMonths(userId),
     getMonthlyTotals(userId, first, last),
     getCategoryMonthlyTotals(userId, compareMonths(categoriesFrom, first) < 0 ? categoriesFrom : first, last),
     getExpenseDescriptionsByMonth(userId, recurringFrom(period.months), last),
     getLargestExpenses(userId, first, last),
     getFixedChoices(userId),
+  ]);
+  // Los gastos fijos (con lo que la persona agregó o quitó a mano) no se muestran en Reportes (tienen su
+  // pestaña, /gastos-fijos), pero salen de los gastos más grandes y del gasto por día.
+  const recurring = recurringExpenses(descriptions, period.months, choices);
+  const series = monthSeries(period.months, monthly);
+  return {
+    activeMonths,
+    series,
+    summary: periodSummary(series, current, firstActiveOf(activeMonths)),
+    categories: categoryReport(categories, period.months, current, new Set(activeMonths)),
+    recurring,
+    biggest: biggestExpenses(largest, recurring.items),
+  };
+}
+
+/** El primer mes con movimientos; null si no hay. `activeMonths` va del más reciente al más antiguo. */
+const firstActiveOf = (activeMonths: string[]) => (activeMonths.length > 0 ? monthOf(`${activeMonths[activeMonths.length - 1]}-01`) : null);
+
+/**
+ * Lo que muestra "Gastos fijos" (/gastos-fijos) en un período: los gastos fijos (con lo que la persona
+ * agregó o quitó a mano), el historial del valor de cada uno (de todo el tiempo, no solo del período) con
+ * sus notas, y el gasto promedio por mes (para decir qué parte son).
+ */
+export async function getFixedExpenses(userId: string, period: ReportPeriod, current: Month) {
+  const first = period.months[0];
+  const last = period.months[period.months.length - 1];
+  const [activeMonths, monthly, descriptions, choices, historyMonths, notes] = await Promise.all([
+    listActiveMonths(userId),
+    getMonthlyTotals(userId, first, last),
+    getExpenseDescriptionsByMonth(userId, recurringFrom(period.months), last),
+    getFixedChoices(userId),
     getExpenseHistoryMonths(userId),
     getFixedNotes(userId),
   ]);
-  // Los gastos fijos, con lo que la persona agregó o quitó a mano.
   const recurring = recurringExpenses(descriptions, period.months, choices);
-  // El historial del valor de cada uno (de todo el tiempo, no solo del período), con sus notas.
   const byKey = fixedHistories(historyMonths, recurring.items.map((item) => item.key));
   const histories: Record<string, FixedHistoryEntry[]> = {};
   for (const [key, entries] of byKey) {
     histories[key] = entries.map((entry) => ({ ...entry, note: notes.get(noteKey(key, entry.month)) ?? null }));
   }
-  const series = monthSeries(period.months, monthly);
-  // listActiveMonths va del más reciente al más antiguo.
-  const firstActive = activeMonths.length > 0 ? monthOf(`${activeMonths[activeMonths.length - 1]}-01`) : null;
-  return {
-    activeMonths,
-    series,
-    summary: periodSummary(series, current, firstActive),
-    categories: categoryReport(categories, period.months, current, new Set(activeMonths)),
-    recurring,
-    histories,
-    biggest: biggestExpenses(largest, recurring.items),
-  };
+  const { averageExpense } = periodSummary(monthSeries(period.months, monthly), current, firstActiveOf(activeMonths));
+  return { recurring, histories, averageExpense };
 }
+
+export type FixedExpensesReport = Awaited<ReturnType<typeof getFixedExpenses>>;
 
 export type Report = Awaited<ReturnType<typeof getReport>>;

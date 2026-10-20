@@ -7,6 +7,7 @@ import { reportPeriod } from "./period";
 import {
   getCategoryMonthlyTotals,
   getExpenseDescriptionsByMonth,
+  getFixedExpenses,
   getExpensesByDay,
   getLargestExpenses,
   getMonthExpenses,
@@ -292,10 +293,24 @@ describe("getReport", () => {
     expect(report.summary).toMatchObject({ income: 0, expense: 0, balance: 0, saved: null, averageExpense: null, topMonth: null });
     expect(report.categories.rows).toEqual([]);
     expect(report.recurring).toEqual({ items: [], total: 0, removed: [], candidates: [] });
-    expect(report.histories).toEqual({});
     expect(report.biggest).toEqual([]);
   });
 
+  it("las categorías se comparan con meses de antes del período (un año que recién empieza)", async () => {
+    const user = await createUser();
+    const mercado = await globalCategory("Mercado");
+    await addTx({ userId: user.id, categoryId: mercado.id, amount: 100, occurredOn: "2025-12-10" });
+    await addTx({ userId: user.id, categoryId: mercado.id, amount: 150, occurredOn: "2026-01-10" });
+    await addTx({ userId: user.id, categoryId: mercado.id, amount: 10, occurredOn: "2026-02-10" });
+
+    const report = await getReport(user.id, reportPeriod("2026", m(2)), m(2));
+    expect(report.categories.compared).toEqual(m(1));
+    expect(report.categories.averaged).toEqual([m(12, 2025)]);
+    expect(report.categories.rows[0]).toMatchObject({ total: 160, change: { text: "En enero, 50% más que su promedio" } });
+  });
+});
+
+describe("getFixedExpenses (la pestaña Fijos)", () => {
   it("cada gasto fijo trae su historial de todo el tiempo (también de antes del período), con sus notas", async () => {
     const ana = await createUser();
     const beto = await createUser();
@@ -313,7 +328,7 @@ describe("getReport", () => {
     ]);
     await db.insert(fixedExpenseChoice).values({ userId: ana.id, descriptionKey: "mercado", choice: "exclude" });
 
-    const { recurring, histories } = await getReport(ana.id, reportPeriod(undefined, october), october);
+    const { recurring, histories } = await getFixedExpenses(ana.id, reportPeriod(undefined, october), october);
     expect(recurring.items.map((i) => i.key)).toEqual(["netflix"]);
     // Solo de los gastos fijos: el mercado (quitado) no trae historial.
     expect(Object.keys(histories)).toEqual(["netflix"]);
@@ -324,16 +339,36 @@ describe("getReport", () => {
     ]);
   });
 
-  it("las categorías se comparan con meses de antes del período (un año que recién empieza)", async () => {
-    const user = await createUser();
-    const mercado = await globalCategory("Mercado");
-    await addTx({ userId: user.id, categoryId: mercado.id, amount: 100, occurredOn: "2025-12-10" });
-    await addTx({ userId: user.id, categoryId: mercado.id, amount: 150, occurredOn: "2026-01-10" });
-    await addTx({ userId: user.id, categoryId: mercado.id, amount: 10, occurredOn: "2026-02-10" });
+  it("los gastos fijos de la persona (con lo que marcó a mano) y su gasto promedio por mes", async () => {
+    const ana = await createUser();
+    const beto = await createUser();
+    for (const month of ["08", "09", "10"]) {
+      await addTx({ userId: ana.id, description: "Arriendo", amount: 1800000, occurredOn: `2026-${month}-05` });
+      await addTx({ userId: beto.id, description: "Gimnasio", amount: 90000, occurredOn: `2026-${month}-05` });
+    }
+    await addTx({ userId: ana.id, description: "Seguro del carro", amount: 950000, occurredOn: "2026-09-12" });
+    await db.insert(fixedExpenseChoice).values([
+      { userId: ana.id, descriptionKey: "seguro del carro", choice: "include" },
+      // Beto quitó el arriendo: a Ana no le cambia nada.
+      { userId: beto.id, descriptionKey: "arriendo", choice: "exclude" },
+    ]);
 
-    const report = await getReport(user.id, reportPeriod("2026", m(2)), m(2));
-    expect(report.categories.compared).toEqual(m(1));
-    expect(report.categories.averaged).toEqual([m(12, 2025)]);
-    expect(report.categories.rows[0]).toMatchObject({ total: 160, change: { text: "En enero, 50% más que su promedio" } });
+    const { recurring, averageExpense } = await getFixedExpenses(ana.id, reportPeriod(undefined, october), october);
+    expect(recurring.items.map((i) => [i.description, i.origin, i.amount, i.months])).toEqual([
+      ["Arriendo", "auto", 1800000, 3],
+      ["Seguro del carro", "manual", 950000, 1],
+    ]);
+    expect(recurring.total).toBe(2750000);
+    // Agosto (1.800.000) y septiembre (2.750.000); octubre va en curso.
+    expect(averageExpense).toEqual({ amount: 2275000, months: 2, withoutCurrent: true });
+  });
+
+  it("sin movimientos, sin gastos fijos ni promedio", async () => {
+    const user = await createUser();
+    expect(await getFixedExpenses(user.id, reportPeriod(undefined, october), october)).toEqual({
+      recurring: { items: [], total: 0, removed: [], candidates: [] },
+      histories: {},
+      averageExpense: null,
+    });
   });
 });

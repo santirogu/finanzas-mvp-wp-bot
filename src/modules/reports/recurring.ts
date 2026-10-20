@@ -2,8 +2,9 @@ import { compareMonths, type Month, monthParam, shiftMonth } from "@/lib/dates";
 import { sumAmounts } from "@/lib/money";
 import { searchKey } from "@/lib/suggestions";
 
-// "Gastos fijos" de Reportes: los egresos que se repiten cada mes con la misma descripción (el
-// arriendo, Netflix, el plan del celular), detectados solos. La persona puede quitar uno que se detectó
+// Los gastos fijos (la pestaña Fijos; Reportes los descuenta de los gastos más grandes y del gasto por
+// día): los egresos que se repiten cada mes con la misma descripción (el arriendo, Netflix, el plan del
+// celular), detectados solos. La persona puede quitar uno que se detectó
 // por error o agregar uno que todavía lleva pocos meses (fixed_expense_choice).
 
 /** Los meses que se miran para decidir si un gasto es fijo: los últimos del período. */

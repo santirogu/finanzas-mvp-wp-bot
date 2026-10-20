@@ -4,8 +4,8 @@ import { PDF_COLORS as C } from "./colors";
 import type { ReportPdfView } from "./view";
 
 // La hoja del "Reporte (PDF)": tamaño carta, en el modo claro de la app. Página 1: el resumen, el gráfico
-// y la tabla mes a mes; página 2: las categorías y los gastos fijos a la izquierda, y los gastos más
-// grandes y los días de más gasto a la derecha. Los textos llegan armados (src/modules/reports/pdf/view.ts).
+// y la tabla mes a mes; página 2: las categorías a la izquierda, y los gastos más grandes y los días de
+// más gasto a la derecha. Los textos llegan armados (src/modules/reports/pdf/view.ts).
 // La fuente es la de la app (Geist), registrada en render.tsx.
 
 export const FONT = "Geist";
@@ -227,27 +227,6 @@ function Categories({ categories }: { categories: ReportPdfView["categories"] })
   );
 }
 
-function Fixed({ fixed }: { fixed: ReportPdfView["fixed"] }) {
-  return (
-    <Section title="Gastos fijos" intro={fixed.intro}>
-      {fixed.empty ? (
-        <Empty text={fixed.empty} />
-      ) : (
-        <>
-          {fixed.rows.map((row) => (
-            <Line key={row.description} title={row.description} detail={row.detail} amount={row.amount} tone={C.expense} />
-          ))}
-          <View style={[s.row, { borderBottomWidth: 0 }]} wrap={false}>
-            <Text style={s.strong}>Total al mes</Text>
-            <Text style={s.strong}>{fixed.total}</Text>
-          </View>
-          {fixed.note && <Text style={s.muted}>{fixed.note}</Text>}
-        </>
-      )}
-    </Section>
-  );
-}
-
 function Biggest({ biggest }: { biggest: ReportPdfView["biggest"] }) {
   return (
     <Section title="Los gastos más grandes" intro="Los egresos más altos del período, sin contar los gastos fijos.">
@@ -316,7 +295,6 @@ export function ReportDocument({ view }: { view: ReportPdfView }) {
             <View style={{ flexDirection: "row" }}>
               <View style={{ flex: 1, marginRight: 11 }}>
                 <Categories categories={view.categories} />
-                <Fixed fixed={view.fixed} />
               </View>
               <View style={{ flex: 1, marginLeft: 11 }}>
                 <Biggest biggest={view.biggest} />

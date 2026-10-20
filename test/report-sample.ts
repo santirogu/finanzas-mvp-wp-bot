@@ -3,7 +3,6 @@ import { sumAmounts } from "@/lib/money";
 import { biggestExpenses, type ExpenseRow } from "@/modules/reports/biggest";
 import { categoryReport } from "@/modules/reports/categories";
 import type { DayDescriptionTotal } from "@/modules/reports/daily";
-import { fixedHistories } from "@/modules/reports/history";
 import { type ReportPeriod, reportPeriod } from "@/modules/reports/period";
 import type { Report } from "@/modules/reports/queries";
 import { recurringExpenses } from "@/modules/reports/recurring";
@@ -68,13 +67,9 @@ function groupSum<T>(items: SampleMovement[], key: (m: SampleMovement) => string
 const total = (group: SampleMovement[]) => sumAmounts(group.map((m) => m.amount));
 const monthKey = (m: SampleMovement) => m.date.slice(0, 7);
 
-/** El reporte del período (`?periodo=`; sin él, los últimos 12 meses), como lo arma getReport, y los egresos por día. */
-export function sampleReport(
-  movements: SampleMovement[],
-  current: Month,
-  periodParam?: string,
-): { report: Report; period: ReportPeriod; byDay: DayDescriptionTotal[] } {
-  const period = reportPeriod(periodParam, current);
+/** El reporte de los últimos 12 meses, como lo arma getReport, y los egresos por día del período. */
+export function sampleReport(movements: SampleMovement[], current: Month): { report: Report; period: ReportPeriod; byDay: DayDescriptionTotal[] } {
+  const period = reportPeriod(undefined, current);
   const expenses = movements.filter((m) => m.type === "expense");
   const activeMonths = [...new Set(movements.map(monthKey))].sort().reverse();
   const series = monthSeries(
@@ -91,10 +86,6 @@ export function sampleReport(
     (first, group) => ({ month: monthKey(first), description: first.description, emoji: first.emoji, count: group.length, total: total(group), latest: group[group.length - 1].date }),
   );
   const recurring = recurringExpenses(descriptions, period.months);
-  const histories = fixedHistories(
-    descriptions.map((row) => ({ month: row.month, description: row.description, total: row.total, first: `${row.month}-01` })),
-    recurring.items.map((item) => item.key),
-  );
   const largest: ExpenseRow[] = expenses
     .map((m, i) => ({ id: `gasto-${i}`, description: m.description, amount: m.amount, occurredOn: m.date, categoryName: m.category, categoryEmoji: m.category ? m.emoji : null }))
     .sort((a, b) => b.amount - a.amount);
@@ -114,7 +105,6 @@ export function sampleReport(
       new Set(activeMonths),
     ),
     recurring,
-    histories: Object.fromEntries([...histories].map(([key, entries]) => [key, entries.map((entry) => ({ ...entry, note: null }))])),
     biggest: biggestExpenses(largest, recurring.items),
   };
   const byDay = groupSum(

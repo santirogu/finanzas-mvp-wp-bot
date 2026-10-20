@@ -10,9 +10,9 @@ import { axisLabel, chartScale, reportPdfView } from "./view";
 const current: Month = { year: 2026, month: 10 };
 const today = "2026-10-20";
 
-function viewOf(movements: SampleMovement[], { name = "Ana", currency = "COP", now = current, day = today, periodParam = undefined as string | undefined } = {}) {
-  const { report, period, byDay } = sampleReport(movements, now, periodParam);
-  return reportPdfView({ report, period, byDay, current: now, today: day, name, currency });
+function viewOf(movements: SampleMovement[], { name = "Ana", currency = "COP" } = {}) {
+  const { report, period, byDay } = sampleReport(movements, current);
+  return reportPdfView({ report, period, byDay, current, today, name, currency });
 }
 
 const year = viewOf(sampleMovements(current, today));
@@ -138,34 +138,9 @@ describe("reportPdfView", () => {
     expect(view.categories.rows).toEqual([{ name: "Mercado", amount: "$100.000,00", share: "100%", width: 1, color: PDF_COLORS.chart[0], change: null }]);
   });
 
-  it("los gastos fijos: en cuántos meses, su último cambio, el total al mes y su parte del promedio", () => {
-    const { intro, rows, total, note, empty } = year.fixed;
-    expect(intro).toBe("Los egresos con la misma descripción en al menos 3 de los últimos 4 meses, y los que agregaste tú.");
-    expect(empty).toBeNull();
-    expect(rows).toContainEqual({ description: "Arriendo", detail: "En 12 de 12 meses", amount: "−$1.800.000,00" });
-    expect(rows).toContainEqual({ description: "Administración", detail: "En 12 de 12 meses · ↗ 6% desde enero", amount: "−$185.000,00" });
-    expect(rows).toContainEqual({ description: "Netflix", detail: "En 12 de 12 meses · ↗ 15% desde julio", amount: "−$44.900,00" });
-    expect(total).toBe("−$2.324.800,00");
-    expect(note).toBe("Son el 48% de tu gasto promedio por mes.");
-  });
-
-  it("un cambio de un año anterior lleva el año", () => {
-    const rent = (date: string, amount: number) => expense(date, "Arriendo", amount, "Vivienda");
-    const view = viewOf([rent("2025-10-05", 1500000), ...[11, 12].map((m) => rent(`2025-${m}-05`, 1600000)), ...[7, 8, 9, 10].map((m) => rent(`2026-${String(m).padStart(2, "0")}-05`, 1600000))]);
-    expect(view.fixed.rows).toEqual([{ description: "Arriendo", detail: "En 6 de 12 meses · ↗ 7% desde noviembre de 2025", amount: "−$1.600.000,00" }]);
-  });
-
-  it("en un período de un solo mes (el año que empieza), 'En 1 de 1 mes'", () => {
-    const rent = (date: string) => expense(date, "Arriendo", 1600000, "Vivienda");
-    const january = { year: 2026, month: 1 };
-    const view = viewOf([rent("2025-11-05"), rent("2025-12-05"), rent("2026-01-05")], { now: january, day: "2026-01-20", periodParam: "2026" });
-    expect(view.range).toBe("Enero de 2026");
-    expect(view.fixed.rows).toEqual([{ description: "Arriendo", detail: "En 1 de 1 mes", amount: "−$1.600.000,00" }]);
-  });
-
-  it("sin gastos fijos, lo dice (y sin promedio, sin la nota)", () => {
-    const view = viewOf([expense("2026-10-02", "Mercado", 100000)]);
-    expect(view.fixed).toMatchObject({ rows: [], empty: "Todavía no hay egresos que se repitan cada mes.", note: null });
+  it("no trae los gastos fijos (tienen su pestaña), aunque los descuenta de los gastos más grandes", () => {
+    expect(Object.keys(year)).not.toContain("fixed");
+    expect(JSON.stringify(year)).not.toContain("Gastos fijos");
   });
 
   it("los 10 gastos más grandes sin los fijos: la fecha (con el año si no es este) y la categoría", () => {

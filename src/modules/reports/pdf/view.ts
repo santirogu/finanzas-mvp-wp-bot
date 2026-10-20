@@ -4,15 +4,14 @@ import { NO_CATEGORY } from "@/modules/transactions/search";
 import { BIGGEST_SHOWN } from "../biggest";
 import { averagedPhrase } from "../categories";
 import { averagedRange, type DayDescriptionTotal, dayTotals, halves, insightPhrase, weekdayAverages, weekdayInsight, weekdayName } from "../daily";
-import { lastChangeSummary } from "../history";
 import type { ReportPeriod } from "../period";
 import type { Report } from "../queries";
-import { RECURRING_MIN_MONTHS, RECURRING_WINDOW } from "../recurring";
 import { averageNote, savedNote } from "../summary";
 import { PDF_COLORS } from "./colors";
 
 // El "Reporte (PDF)" de Reportes: lo mismo que muestra la página (src/app/(app)/reportes/page.tsx) para
-// el período elegido, con todos los textos ya armados. src/modules/reports/pdf/document.tsx solo los
+// el período elegido, con todos los textos ya armados. Como la página, sin los gastos fijos (tienen su
+// pestaña): solo salen de los gastos más grandes y del gasto por día. src/modules/reports/pdf/document.tsx solo los
 // acomoda en la hoja; así, lo que dice el PDF se prueba aquí, sin dibujarlo.
 
 /** Las flechas de una comparación (las de la app son íconos; en el PDF, letras de la fuente). */
@@ -44,13 +43,6 @@ export type ReportPdfView = {
   categories: {
     intro: string;
     rows: { name: string; amount: string; share: string; width: number; color: string; change: string | null }[];
-    empty: string | null;
-  };
-  fixed: {
-    intro: string;
-    rows: { description: string; detail: string; amount: string }[];
-    total: string;
-    note: string | null;
     empty: string | null;
   };
   biggest: { rows: { description: string; detail: string; amount: string }[]; empty: string | null };
@@ -173,21 +165,6 @@ export function reportPdfView({
         change: row.change && `${ARROWS[row.change.direction]} ${row.change.text}`,
       })),
       empty: categories.rows.length === 0 ? "Sin egresos en el período." : null,
-    },
-    fixed: {
-      intro: `Los egresos con la misma descripción en al menos ${RECURRING_MIN_MONTHS} de los últimos ${RECURRING_WINDOW} meses, y los que agregaste tú.`,
-      rows: recurring.items.map((item) => {
-        const change = lastChangeSummary(report.histories[item.key] ?? [], current);
-        const months = `En ${item.months} de ${period.months.length} ${period.months.length === 1 ? "mes" : "meses"}`;
-        return {
-          description: item.description,
-          detail: change ? `${months} · ${ARROWS[change.direction]} ${change.text}` : months,
-          amount: `−${money(item.amount)}`,
-        };
-      }),
-      total: `−${money(recurring.total)}`,
-      note: summary.averageExpense ? `Son el ${formatShare(recurring.total, summary.averageExpense.amount)}% de tu gasto promedio por mes.` : null,
-      empty: recurring.items.length === 0 ? "Todavía no hay egresos que se repitan cada mes." : null,
     },
     biggest: {
       rows: report.biggest.slice(0, BIGGEST_SHOWN).map((expense) => ({

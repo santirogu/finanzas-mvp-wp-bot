@@ -7,8 +7,9 @@ import { e2eDatabaseUrl } from "./database-url";
 import { addTransaction, closeToasts, openTab, register, test, toast, visible } from "./helpers";
 
 // Reportes de punta a punta: con los movimientos de cuatro meses, las cifras del período, el gráfico
-// (que lleva al Resumen de cada mes), las categorías frente a su promedio, los gastos fijos y el
-// cambio de período.
+// (que lleva al Resumen de cada mes), las categorías frente a su promedio y el cambio de período. Los
+// gastos fijos tienen su pestaña (e2e/gastos-fijos.spec.ts): aquí solo salen de los gastos más grandes y
+// del gasto por día.
 
 const current = monthOf(todayInTimezone("America/Bogota"));
 const [m1, m2, m3] = [1, 2, 3].map((n) => shiftMonth(current, -n));
@@ -80,15 +81,8 @@ test("Reportes: las cifras del período, el gráfico, las categorías y los gast
     await expect(rows.nth(1)).toContainText(`Nueva en ${name(m1)}`);
   });
 
-  await test.step("el arriendo es un gasto fijo (escrito como la última vez)", async () => {
-    const fixed = section(page, "Gastos fijos");
-    const items = fixed.getByRole("listitem");
-    await expect(items).toHaveCount(1);
-    await expect(items.first()).toContainText("arriendo");
-    await expect(items.first()).toContainText("En 4 de 12 meses");
-    await expect(items.first()).toContainText("−$1.800.000,00");
-    await expect(fixed).toContainText("Total al mes−$1.800.000,00");
-    await expect(fixed).toContainText("Son el 98% de tu gasto promedio por mes.");
+  await test.step("los gastos fijos no están: tienen su pestaña", async () => {
+    await expect(visible(page.getByRole("region", { name: "Gastos fijos" }))).toHaveCount(0);
   });
 
   await test.step("descargar los movimientos del período en CSV, para Excel", async () => {
@@ -134,41 +128,6 @@ test("Reportes: las cifras del período, el gráfico, las categorías y los gast
     await expect(section(page, "Los gastos más grandes")).toBeVisible();
   });
 
-  await test.step("los gastos fijos a mano: quitar, volver a poner, agregar y sacar", async () => {
-    const fixed = section(page, "Gastos fijos");
-    const biggest = section(page, "Los gastos más grandes");
-    // Quitar el arriendo (detectado): pasa a "Quitados" y ahora está entre los más grandes.
-    await fixed.getByRole("button", { name: "Quitar arriendo de los gastos fijos" }).click();
-    await expect(toast(page, "Se quitó «arriendo» de los gastos fijos")).toHaveAttribute("data-tone", "removal");
-    await expect(fixed).toContainText("Todavía no hay egresos que se repitan cada mes.");
-    await expect(biggest).toContainText("arriendo");
-    await fixed.getByText("Quitados (1)").click();
-    await fixed.getByRole("button", { name: "Volver a poner arriendo en los gastos fijos" }).click();
-    await expect(toast(page, "Volvió «arriendo» a los gastos fijos")).toHaveAttribute("data-tone", "success");
-    await expect(fixed.getByRole("listitem")).toHaveCount(1);
-    await closeToasts(page);
-
-    // Agregar el restaurante (lleva un solo mes): queda "Agregado por ti" y sale de los más grandes.
-    await fixed.getByRole("button", { name: "Agregar un gasto fijo" }).click();
-    const select = fixed.getByLabel("Egreso", { exact: true });
-    await expect(select).toBeFocused();
-    expect(await seriousViolations(page)).toEqual([]);
-    await select.selectOption({ label: "🍽️ Restaurante con amigos" });
-    await fixed.getByRole("button", { name: "Agregar", exact: true }).click();
-    await expect(toast(page, "Se agregó «Restaurante con amigos» a los gastos fijos")).toHaveAttribute("data-tone", "success");
-    await expect(fixed.getByRole("listitem").filter({ hasText: "Restaurante con amigos" })).toContainText("Agregado por ti");
-    await expect(biggest).toContainText("Todos los egresos del período son gastos fijos.");
-    await closeToasts(page);
-
-    // Sacarlo: vuelve a ser un gasto más (sin pasar por "Quitados").
-    await fixed.getByRole("button", { name: "Quitar Restaurante con amigos de los gastos fijos" }).click();
-    await expect(toast(page, "Se quitó «Restaurante con amigos» de los gastos fijos")).toBeVisible();
-    await expect(fixed.getByRole("listitem")).toHaveCount(1);
-    await expect(fixed.getByText(/^Quitados/)).toHaveCount(0);
-    await expect(biggest).toContainText("Restaurante con amigos");
-    await closeToasts(page);
-  });
-
   await test.step("la tabla mes a mes y, al tocar un mes del gráfico, su Resumen", async () => {
     const byMonth = section(page, "Ingresos y egresos por mes");
     await byMonth.getByText("Ver mes a mes").click();
@@ -198,66 +157,6 @@ test("Reportes: las cifras del período, el gráfico, las categorías y los gast
     await expect(year).toHaveAttribute("aria-current", "page");
     const range = current.month === 1 ? formatMonthLabel(current) : `De enero a ${formatMonthName(current, { withYear: true })}`;
     await expect(visible(page.getByText(range, { exact: true }))).toBeVisible();
-  });
-});
-
-test("el historial de un gasto fijo: cada cambio de valor, con su nota", async ({ page }) => {
-  const today = todayInTimezone("America/Bogota");
-  const date = formatShortDate(today, { withYear: true });
-  await register(page);
-  await openTab(page, "Egresos");
-  for (const month of [m2, m1]) {
-    await add(page, "Egreso", { amount: "250000", description: "Plan del celular", category: "Servicios", date: dayOf(month, 8) }, month);
-  }
-  await add(page, "Egreso", { amount: "270000", description: "Plan del celular", category: "Servicios" });
-  await openTab(page, "Reportes");
-  const fixed = section(page, "Gastos fijos");
-  const history = fixed.getByRole("button", { name: /^Historial de Plan del celular/ });
-
-  await test.step("cerrado dice su último cambio; al tocarlo, el cambio y el primer pago", async () => {
-    await expect(history).toHaveAttribute("aria-expanded", "false");
-    await expect(history).toContainText(`8% desde ${name(current)}`);
-    await history.click();
-    await expect(history).toHaveAttribute("aria-expanded", "true");
-    const entries = fixed.locator(`[id="${await history.getAttribute("aria-controls")}"]`).getByRole("listitem");
-    await expect(entries).toHaveCount(2);
-    await expect(entries.nth(0)).toContainText(`${date}+$20.000,00 (+8%)$250.000,00 → $270.000,00`);
-    await expect(entries.nth(1)).toContainText(`${formatShortDate(dayOf(m2, 8), { withYear: true })}Primer pago$250.000,00`);
-  });
-
-  await test.step("agregarle una nota", async () => {
-    await fixed.getByRole("button", { name: `Agregar nota del cambio del ${date}` }).click();
-    const field = fixed.getByLabel(`Nota del cambio del ${date}`);
-    await expect(field).toBeFocused();
-    expect(await seriousViolations(page)).toEqual([]);
-    await field.fill("Subió la tarifa del plan");
-    await fixed.getByRole("button", { name: "Guardar nota" }).click();
-    await expect(toast(page, "Se guardó la nota")).toHaveAttribute("data-tone", "success");
-    await expect(fixed.getByText("“Subió la tarifa del plan”")).toBeVisible();
-    // Sin el aviso: mientras aparece (con su animación), axe lo mide a medio camino. Su contraste lo
-    // revisa src/color-contrast.test.ts.
-    await closeToasts(page);
-    expect(await seriousViolations(page)).toEqual([]);
-  });
-
-  await test.step("se queda al volver; editarla y borrarla", async () => {
-    await page.reload();
-    await history.click();
-    await expect(fixed.getByText("“Subió la tarifa del plan”")).toBeVisible();
-    await fixed.getByRole("button", { name: `Editar nota del cambio del ${date}` }).click();
-    const field = fixed.getByLabel(`Nota del cambio del ${date}`);
-    await expect(field).toHaveValue("Subió la tarifa del plan");
-    await field.fill("Subió la tarifa: pasé al plan con más datos");
-    await fixed.getByRole("button", { name: "Guardar nota" }).click();
-    await expect(toast(page, "Se guardó la nota")).toBeVisible();
-    await expect(fixed.getByText("“Subió la tarifa: pasé al plan con más datos”")).toBeVisible();
-    await closeToasts(page);
-
-    await fixed.getByRole("button", { name: `Editar nota del cambio del ${date}` }).click();
-    await fixed.getByRole("button", { name: "Borrar nota" }).click();
-    await expect(toast(page, "Se borró la nota")).toHaveAttribute("data-tone", "removal");
-    await expect(fixed.getByText(/^“/)).toHaveCount(0);
-    await expect(fixed.getByRole("button", { name: `Agregar nota del cambio del ${date}` })).toBeVisible();
   });
 });
 
@@ -369,10 +268,7 @@ for (const colorScheme of ["light", "dark"] as const) {
     // Uno que no es fijo: el calendario de "¿Qué días gastas más?" tiene un día con gastos, elegido.
     await add(page, "Egreso", { amount: "45000", description: "Cine", category: "Entretenimiento" });
     await openTab(page, "Reportes");
-    await expect(visible(page.getByRole("region", { name: "Gastos fijos" }).getByRole("listitem"))).toHaveCount(1);
     await expect(visible(page.getByRole("region", { name: "¿Qué días gastas más?" }).getByRole("button", { pressed: true }))).toBeVisible();
-    // Con el historial del gasto fijo abierto.
-    await visible(page.getByRole("button", { name: /^Historial de Plan del celular/ })).click();
     await visible(page.getByText("Ver mes a mes")).click();
     // Con el mouse en un mes: el detalle de abajo, en sus colores.
     await visible(page.getByRole("link", { name: new RegExp(`^${formatMonthLabel(m1)}:`) })).hover();

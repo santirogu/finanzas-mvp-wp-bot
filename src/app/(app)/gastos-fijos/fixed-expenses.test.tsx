@@ -67,6 +67,8 @@ describe("FixedExpenses", () => {
     expect(rows[1]).toHaveTextContent(/^Historial de 🏠 Seguro del carro En 1 de 12 meses · Agregado por ti−\$950\.000,00/);
     expect(section().getByText("Total al mes").parentElement).toHaveTextContent("−$2.750.000,00");
     expect(section().getByText("Son el 100% de tu gasto promedio por mes.")).toBeVisible();
+    // El título y qué cuenta como fijo los pone la página (/gastos-fijos).
+    expect(section().queryByRole("heading")).toBeNull();
   });
 
   it("de un período de un mes, dice \"mes\"; sin gasto promedio, no dice qué parte es", () => {

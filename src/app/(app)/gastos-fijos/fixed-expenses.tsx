@@ -9,7 +9,7 @@ import { formatShortDate } from "@/lib/dates";
 import { formatMoney, formatShare } from "@/lib/money";
 import { chooseFixedExpenseAction, type FixedExpenseState, type FixedNoteState, saveFixedNoteAction } from "@/modules/reports/actions";
 import { changeDirection, type FixedHistoryEntry, NOTE_MAX_LENGTH, pctLabel } from "@/modules/reports/history";
-import { type FixedOption, RECURRING_MIN_MONTHS, RECURRING_WINDOW, type RecurringExpense } from "@/modules/reports/recurring";
+import type { FixedOption, RecurringExpense } from "@/modules/reports/recurring";
 
 /** El historial del valor de un gasto fijo y, en una línea, su último cambio ("↗ 11% desde marzo"; null si nunca cambió). */
 export type FixedHistory = { entries: FixedHistoryEntry[]; summary: Change | null };
@@ -18,7 +18,8 @@ export type FixedHistory = { entries: FixedHistoryEntry[]; summary: Change | nul
 const MESSAGES = { description: { required: "Elige un egreso." } };
 
 /**
- * "Gastos fijos" de Reportes: los que se detectaron solos y los que agregó la persona. Cada uno se puede
+ * La lista de "Gastos fijos" (/gastos-fijos, la pestaña Fijos; su título y qué cuenta como fijo los pone
+ * la página): los que se detectaron solos y los que agregó la persona. Cada uno se puede
  * quitar (✕); los detectados que se quitaron quedan en "Quitados", de donde se pueden volver a poner, y
  * "Agregar un gasto fijo" suma uno de los egresos del período. Cada cambio vale para todos los períodos y
  * avisa abajo (verde si el gasto queda, rojo si sale), con el foco: lo que se tocó ya no está ahí.
@@ -50,15 +51,11 @@ export function FixedExpenses({
   const money = (n: number) => formatMoney(n, currency);
   return (
     <section className="card p-4" aria-label="Gastos fijos">
-      <h2 className="font-semibold">Gastos fijos</h2>
-      <p className="mt-1 text-sm text-muted">
-        Los egresos con la misma descripción en al menos {RECURRING_MIN_MONTHS} de los últimos {RECURRING_WINDOW} meses, y los que agregaste tú.
-      </p>
       {items.length === 0 ? (
         <p className="py-8 text-center text-sm text-muted">Todavía no hay egresos que se repitan cada mes.</p>
       ) : (
         <>
-          <ul className="mt-2 divide-y divide-border">
+          <ul className="divide-y divide-border">
             {items.map((item) => (
               <FixedItem key={item.key} item={item} history={histories[item.key]} periodMonths={periodMonths} money={money} />
             ))}
