@@ -20,7 +20,9 @@ export default defineConfig({
   workers: 4,
   reporter: [["line"]],
   outputDir: path.join(RAIZ, "test-results/auditoria-diseno"),
-  use: { ...base.use, trace: "off", screenshot: "off", video: "off" },
+  // Un clic o una página que no llega falla en segundos, no a los 30 minutos del grupo: la vista queda con
+  // su captura -error.jpg y el grupo sigue con las demás (recorrerVista atrapa el error).
+  use: { ...base.use, trace: "off", screenshot: "off", video: "off", actionTimeout: 15_000, navigationTimeout: 30_000 },
   projects: [
     { name: "chromium", use: { browserName: "chromium" } },
     // El motor de Safari (iPhone, iPad y Mac). Se instala con `pnpm exec playwright install webkit`.

@@ -1,3 +1,4 @@
+import { randomInt } from "node:crypto";
 import { expect, type Page } from "@playwright/test";
 import { PASSWORD, adminCommand, uniqueEmail, visible } from "../../../../e2e/helpers";
 import { MES_ANTERIOR, type Datos, type Persona } from "./datos";
@@ -19,6 +20,28 @@ export type Vista = {
 };
 
 const dialogo = (page: Page) => page.getByRole("dialog");
+
+/**
+ * Le vuelve a dar la marca de super admin al admin de este grupo y recarga la página. La marca es de una
+ * sola cuenta y cada grupo del recorrido crea su admin: con los grupos en paralelo (y los dos motores),
+ * el último que la toma se la quita a los demás, y "Hacer admin" o "Quitar admin" no aparecen. Si otro
+ * grupo se la vuelve a quitar antes de que cargue la página, lo intenta otra vez (tras una espera al
+ * azar, para no chocar de nuevo).
+ */
+async function comoSuperAdmin(page: Page, datos: Datos) {
+  const cuenta = visible(page.getByRole("button", { name: /^Tu cuenta: .*, super admin$/ }));
+  for (let intento = 1; ; intento++) {
+    adminCommand("super", datos.correos.admin!);
+    await page.reload();
+    try {
+      await expect(cuenta).toBeVisible({ timeout: 5_000 });
+      return;
+    } catch (error) {
+      if (intento === 3) throw error;
+      await page.waitForTimeout(randomInt(200, 2_000));
+    }
+  }
+}
 
 const fija = (ruta: string) => () => ruta;
 
@@ -155,11 +178,7 @@ export const VISTAS: Vista[] = [
     persona: "admin",
     ruta: fija("/dashboard"),
     preparar: async (page, datos) => {
-      // Cada grupo del recorrido crea su propio admin y la marca de super admin (una sola) queda en el
-      // último: se le vuelve a poner a este justo antes de la captura. Con grupos en paralelo, otro se la
-      // puede quitar en el medio; para ver el dorado en todas las capturas, correr con --workers=1.
-      adminCommand("super", datos.correos.admin!);
-      await page.reload();
+      await comoSuperAdmin(page, datos);
       await visible(page.getByRole("button", { name: /^Tu cuenta: / })).click();
       await expect(visible(page.getByRole("group", { name: "Tu cuenta" }))).toBeVisible();
     },
@@ -338,7 +357,8 @@ export const VISTAS: Vista[] = [
     persona: "admin",
     necesita: ["datos"],
     ruta: (d) => d.cuentaDatos,
-    preparar: async (page) => {
+    preparar: async (page, datos) => {
+      await comoSuperAdmin(page, datos);
       await visible(page.getByRole("region", { name: "Zona de peligro" })).getByRole("button", { name: "Hacer admin" }).click();
       await expect(dialogo(page)).toBeVisible();
     },
@@ -348,6 +368,10 @@ export const VISTAS: Vista[] = [
     titulo: "Administración: la cuenta de otro admin (el super admin puede quitarle el rol)",
     persona: "admin",
     ruta: (d) => d.cuentaOtroAdmin,
+    preparar: async (page, datos) => {
+      await comoSuperAdmin(page, datos);
+      await expect(visible(page.getByRole("button", { name: "Quitar admin" }))).toBeVisible();
+    },
   },
   // Con la persona de datos, para que haya mensajes del bot (vinculación, movimientos y Claude).
   { id: "admin-bot", titulo: "Administración: bot de WhatsApp", persona: "admin", necesita: ["datos"], ruta: fija("/admin/bot") },

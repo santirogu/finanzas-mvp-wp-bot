@@ -187,3 +187,6 @@ Para cada posible hallazgo (de las medidas, de los subagentes o tuyo):
 - Dispositivo nuevo que importe (otro tamaño de iPhone o de iPad) → `recorrido/dispositivos.ts` y
   [dispositivos.md](dispositivos.md).
 - Una medida que da falsos positivos → corrígela en `recorrido/medir.ts` con un comentario del caso.
+- Una vista que necesita al super admin (lo dorado, "Hacer admin", "Quitar admin") → `comoSuperAdmin(page,
+  datos)` al empezar su `preparar` (`recorrido/vistas.ts`). La marca es de una sola cuenta y cada grupo
+  crea su admin: en paralelo, otro grupo se la quita.
