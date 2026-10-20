@@ -64,6 +64,40 @@ describe("runDailyCleanup", () => {
   });
 });
 
+describe("runDailyCleanup: el plazo exacto que promete /privacidad", () => {
+  const HOUR = 60 * 60 * 1000;
+  // Un poco antes y un poco después de cumplir el plazo: así un corte corrido en un día (o en nueve)
+  // hace fallar la prueba.
+  const justBefore = (days: number) => new Date(daysAgo(days).getTime() + HOUR);
+  const justAfter = (days: number) => new Date(daysAgo(days).getTime() - HOUR);
+
+  it("los movimientos eliminados se borran al cumplir 30 días, no antes", async () => {
+    const ana = await createUser();
+    const keep = await tx(ana.id, justBefore(RETENTION_DAYS.deletedTransactions));
+    await tx(ana.id, justAfter(RETENTION_DAYS.deletedTransactions));
+
+    expect(await runDailyCleanup(NOW)).toMatchObject({ transactions: 1 });
+    expect((await db.select({ id: transaction.id }).from(transaction)).map((row) => row.id)).toEqual([keep]);
+  });
+
+  it("los mensajes y los intentos de un número sin cuenta se borran al cumplir 30 días, no antes", async () => {
+    await db.insert(whatsappMessage).values([
+      { id: "wamid.casi", phone: "573009990000", body: "hola", receivedAt: justBefore(RETENTION_DAYS.orphans) },
+      { id: "wamid.vencido", phone: "573009990000", body: "hola", receivedAt: justAfter(RETENTION_DAYS.orphans) },
+    ]);
+    await db.insert(accountEvent).values([
+      { type: "whatsapp_link_failed", phone: "573009990000", details: { reason: "invalid_code" }, createdAt: justBefore(RETENTION_DAYS.orphans) },
+      { type: "whatsapp_link_failed", phone: "573009990000", details: { reason: "invalid_code" }, createdAt: justAfter(RETENTION_DAYS.orphans) },
+    ]);
+
+    expect(await runDailyCleanup(NOW)).toEqual({ messages: 1, events: 1, transactions: 0 });
+    expect((await db.select({ id: whatsappMessage.id }).from(whatsappMessage)).map((row) => row.id)).toEqual(["wamid.casi"]);
+    expect(await db.select({ createdAt: accountEvent.createdAt }).from(accountEvent)).toEqual([
+      { createdAt: justBefore(RETENTION_DAYS.orphans) },
+    ]);
+  });
+});
+
 describe("las acciones del admin sin cuenta ni número", () => {
   it("se conservan: no son datos de un número sin cuenta", async () => {
     const admin = await createUser({ role: "admin" });
