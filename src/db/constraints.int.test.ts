@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { db } from "@/db";
-import { botSetting, category, fixedPaymentSkip, notificationSetting, transaction, whatsappLink, whatsappLinkCode } from "@/db/schema";
+import { botSetting, category, fixedPaymentSkip, notificationRead, notificationSetting, transaction, whatsappLink, whatsappLinkCode } from "@/db/schema";
 import { createUser } from "../../test/integration/factories";
 
 // Las restricciones de la base (src/db/schema/) son la última defensa si el código falla: un monto
@@ -139,5 +139,18 @@ describe("configuración de los avisos", () => {
     const user = await createUser();
     expect(await rejectedBy(db.insert(notificationSetting).values({ userId: user.id }))).toBeNull();
     expect(await rejectedBy(db.insert(notificationSetting).values({ userId: user.id }))).toBe("notification_setting_pkey");
+  });
+});
+
+describe("notificaciones leídas", () => {
+  it("el id, de 1 a 200 caracteres (notification_read_id_length), una vez por cuenta (notification_read_user_notification_uq)", async () => {
+    const ana = await createUser();
+    const beto = await createUser();
+    const read = (userId: string, notificationId: string) => db.insert(notificationRead).values({ userId, notificationId });
+    expect(await rejectedBy(read(ana.id, ""))).toBe("notification_read_id_length");
+    expect(await rejectedBy(read(ana.id, "x".repeat(201)))).toBe("notification_read_id_length");
+    expect(await rejectedBy(read(ana.id, "pago|2026-10|arriendo"))).toBeNull();
+    expect(await rejectedBy(read(ana.id, "pago|2026-10|arriendo"))).toBe("notification_read_user_notification_uq");
+    expect(await rejectedBy(read(beto.id, "pago|2026-10|arriendo"))).toBeNull();
   });
 });

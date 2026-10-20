@@ -235,9 +235,9 @@ export async function getUpcomingPayments(
   userId: string,
   current: Month,
   today: string,
-): Promise<{ days: number; payments: (UpcomingPayment & { category: string })[] }> {
+): Promise<{ enabled: boolean; days: number; payments: (UpcomingPayment & { category: string })[] }> {
   const settings = await getUpcomingSettings(userId);
-  if (!settings.enabled) return { days: settings.days, payments: [] };
+  if (!settings.enabled) return { ...settings, payments: [] };
   const period = reportPeriod(undefined, current);
   const [descriptions, choices, history, skipped, lastPayments] = await Promise.all([
     getExpenseDescriptionsByMonth(userId, recurringFrom(period.months), period.months[period.months.length - 1]),
@@ -252,5 +252,5 @@ export async function getUpcomingPayments(
     ...payment,
     category: lastPayments.get(payment.key)?.category ?? "Sin categoría",
   }));
-  return { days: settings.days, payments };
+  return { ...settings, payments };
 }

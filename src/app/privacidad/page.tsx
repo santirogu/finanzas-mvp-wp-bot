@@ -58,6 +58,10 @@ export default function PrivacyPage() {
               elección, hasta que elimines tu cuenta.
             </li>
             <li>
+              <strong>Las notificaciones que marcas como leídas:</strong> si en la campana marcas una
+              notificación como leída, guardamos cuál fue y cuándo, hasta que elimines tu cuenta.
+            </li>
+            <li>
               <strong>Datos de WhatsApp, si conectas tu número:</strong> tu número de teléfono y el
               contenido de los mensajes que envías al bot, junto con las respuestas del bot.
             </li>

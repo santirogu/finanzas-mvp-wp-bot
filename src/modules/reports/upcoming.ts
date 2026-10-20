@@ -173,6 +173,8 @@ export function dateLine(payment: UpcomingPayment, today: string): string {
 export type UpcomingItem = {
   /** "<clave> YYYY-MM": único entre los avisos. */
   id: string;
+  /** La clave del gasto (`searchKey` de la descripción). */
+  key: string;
   description: string;
   emoji: string;
   /** El mes del pago ("YYYY-MM"): el que oculta "ya no aplica". */
@@ -196,6 +198,7 @@ export type UpcomingItem = {
 export function upcomingItems(payments: (UpcomingPayment & { category?: string })[], today: string, currency: string): UpcomingItem[] {
   return payments.map((payment) => ({
     id: `${payment.key} ${payment.month}`,
+    key: payment.key,
     description: payment.description,
     emoji: payment.emoji,
     month: payment.month,

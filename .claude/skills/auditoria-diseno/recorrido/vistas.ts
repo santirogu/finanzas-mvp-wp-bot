@@ -109,6 +109,16 @@ export const VISTAS: Vista[] = [
   // Una cuenta con datos normales y WhatsApp vinculado
   { id: "resumen", titulo: "Resumen con datos (y los avisos de próximos pagos)", persona: "datos", ruta: fija("/dashboard") },
   {
+    id: "campana",
+    titulo: "La campana de notificaciones abierta (en Egresos)",
+    persona: "datos",
+    ruta: fija("/egresos"),
+    preparar: async (page) => {
+      await visible(page.getByRole("button", { name: /^Notificaciones/ })).click();
+      await expect(visible(page.getByRole("group", { name: "Notificaciones" }))).toBeVisible();
+    },
+  },
+  {
     id: "resumen-registrar-pago",
     titulo: "Resumen: la ventana de Registrar pago de un aviso de próximos pagos",
     persona: "datos",

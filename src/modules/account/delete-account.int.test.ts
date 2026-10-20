@@ -10,6 +10,7 @@ import {
   fixedExpenseChoice,
   fixedExpenseNote,
   fixedPaymentSkip,
+  notificationRead,
   notificationSetting,
   loginFailure,
   session,
@@ -58,6 +59,7 @@ async function fullAccount(email: string, phone: string) {
   await db.insert(fixedExpenseNote).values({ userId: id, descriptionKey: "web", month: "2026-10", note: "Subió" });
   await db.insert(fixedPaymentSkip).values({ userId: id, descriptionKey: "web", month: "2026-10" });
   await db.insert(notificationSetting).values({ userId: id, upcomingDays: 5 });
+  await db.insert(notificationRead).values({ userId: id, notificationId: "pago|2026-10|web" });
   // La verificación en dos pasos (su clave secreta y sus códigos de respaldo) y, como admin, el último
   // código con el que confirmó una acción: un admin también puede eliminar su cuenta.
   await db.insert(twoFactor).values({ id: randomUUID(), userId: id, secret: "secreto-cifrado", backupCodes: "codigos-cifrados" });
@@ -81,6 +83,7 @@ async function countsFor(userId: string, email: string, phone: string) {
     fixedExpenseNote: await count(db.select().from(fixedExpenseNote).where(eq(fixedExpenseNote.userId, userId))),
     fixedPaymentSkip: await count(db.select().from(fixedPaymentSkip).where(eq(fixedPaymentSkip.userId, userId))),
     notificationSetting: await count(db.select().from(notificationSetting).where(eq(notificationSetting.userId, userId))),
+    notificationRead: await count(db.select().from(notificationRead).where(eq(notificationRead.userId, userId))),
     twoFactor: await count(db.select().from(twoFactor).where(eq(twoFactor.userId, userId))),
     adminCodeUse: await count(db.select().from(adminCodeUse).where(eq(adminCodeUse.userId, userId))),
   };
@@ -104,6 +107,7 @@ describe("deleteAccountData", () => {
       fixedExpenseNote: 1,
       fixedPaymentSkip: 1,
       notificationSetting: 1,
+      notificationRead: 1,
       twoFactor: 1,
       adminCodeUse: 1,
     });
@@ -124,6 +128,7 @@ describe("deleteAccountData", () => {
       fixedExpenseNote: 0,
       fixedPaymentSkip: 0,
       notificationSetting: 0,
+      notificationRead: 0,
       twoFactor: 0,
       adminCodeUse: 0,
     });

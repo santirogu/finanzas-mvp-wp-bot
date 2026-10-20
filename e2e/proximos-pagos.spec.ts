@@ -225,3 +225,56 @@ test("Registrar pago desde el aviso: con el monto y la fecha que se confirman, y
     await expect(row).toContainText("Salud");
   });
 });
+
+test("La campana: desde cualquier página, el número, Marcar como leído (sigue en el Resumen) y Registrar pago", async ({ page }) => {
+  const { email } = await register(page);
+  await addPayments(email, [
+    { description: "Gimnasio", amount: 120000, dates: paymentsFor(shiftDay(-5)), category: "Salud" },
+    { description: "Netflix", amount: 44900, dates: paymentsFor(shiftDay(2)), category: "Entretenimiento" },
+  ]);
+  await openTab(page, "Egresos");
+  const bell = visible(page.getByRole("button", { name: /^Notificaciones/ }));
+  const panel = visible(page.getByRole("group", { name: "Notificaciones" }));
+
+  await test.step("en Egresos, la campana dice 2 sin leer; abierta, los dos avisos (y sin problemas de accesibilidad)", async () => {
+    await expect(bell).toHaveAccessibleName("Notificaciones: 2 sin leer");
+    await bell.click();
+    await expect(panel.getByRole("listitem")).toHaveCount(2);
+    expect(await seriousViolations(page)).toEqual([]);
+    await page.keyboard.press("Escape");
+    await expect(panel).toBeHidden();
+    await expect(bell).toBeFocused();
+  });
+
+  await test.step("Marcar como leído el gimnasio: sale de la campana, pero sigue en el Resumen", async () => {
+    await bell.click();
+    const month = formatMonthName(monthOf(shiftDay(-5)), { withYear: shiftDay(-5).slice(0, 4) !== today.slice(0, 4) });
+    await panel.getByRole("button", { name: `Marcar como leído el pago de ${month} de Gimnasio` }).click();
+    await expect(toast(page, "Se marcó como leída")).toHaveAttribute("data-tone", "success");
+    await expect(bell).toHaveAccessibleName("Notificaciones: 1 sin leer");
+    await closeToasts(page);
+    await openTab(page, "Resumen");
+    await expect(card(page).getByRole("listitem").filter({ hasText: "Gimnasio" })).toHaveCount(1);
+  });
+
+  await test.step("Registrar el pago de Netflix desde la campana: sin notificaciones, y tampoco en el Resumen", async () => {
+    await bell.click();
+    await panel.getByRole("button", { name: "Registrar el pago de Netflix" }).click();
+    const dialog = page.getByRole("dialog", { name: "Registrar el pago de Netflix" });
+    await expect(dialog.getByLabel("Monto")).toHaveValue("44.900,00");
+    await dialog.getByRole("button", { name: "Registrar pago" }).click();
+    await expect(toast(page, "Se registró el pago de «Netflix»: −$44.900,00")).toBeVisible();
+    await expect(bell).toHaveAccessibleName("Notificaciones");
+    await expect(card(page).getByRole("listitem").filter({ hasText: "Netflix" })).toHaveCount(0);
+  });
+
+  await test.step("con los avisos apagados, no hay campana", async () => {
+    await closeToasts(page);
+    await page.goto("/cuenta");
+    const settings = visible(page.getByRole("region", { name: "Notificaciones" }));
+    await settings.getByText("Avisos de próximos pagos", { exact: true }).click();
+    await settings.getByRole("button", { name: "Guardar" }).click();
+    await expect(toast(page, "Se apagaron los avisos de próximos pagos")).toBeVisible();
+    await expect(page.getByRole("button", { name: /^Notificaciones/ })).toHaveCount(0);
+  });
+});

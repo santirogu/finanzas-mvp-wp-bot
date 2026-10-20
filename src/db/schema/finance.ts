@@ -157,6 +157,27 @@ export const notificationSetting = pgTable(
   (t) => [check("notification_setting_upcoming_days", sql`${t.upcomingDays} between 0 and ${sql.raw(String(UPCOMING_DAYS_MAX))}`)],
 );
 
+// Las notificaciones de la campana que la persona marcó como leídas: salen de la campana (el aviso sigue
+// en el Resumen). Por su id (src/modules/notifications/notifications.ts: "pago|YYYY-MM|<clave>"; otros
+// tipos, con otro prefijo). Se borran con la cuenta.
+export const NOTIFICATION_ID_MAX_LENGTH = 200;
+
+export const notificationRead = pgTable(
+  "notification_read",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    notificationId: text("notification_id").notNull(),
+    readAt: timestamp("read_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("notification_read_user_notification_uq").on(t.userId, t.notificationId),
+    check("notification_read_id_length", sql`char_length(${t.notificationId}) between 1 and ${sql.raw(String(NOTIFICATION_ID_MAX_LENGTH))}`),
+  ],
+);
+
 export type Category = typeof category.$inferSelect;
 export type Transaction = typeof transaction.$inferSelect;
 export type TransactionType = (typeof transactionType.enumValues)[number];
