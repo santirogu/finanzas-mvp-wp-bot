@@ -41,7 +41,7 @@ describe("AccountMenu", () => {
     expect(toggle()).toHaveTextContent("S");
   });
 
-  it("al tocarlo abre la tarjeta: nombre, correo, Mi cuenta y Salir", async () => {
+  it("al tocarlo abre la tarjeta: nombre, correo, Mi cuenta, Ayuda y Salir", async () => {
     renderMenu();
     await userEvent.click(toggle());
     expect(toggle()).toHaveAttribute("aria-expanded", "true");
@@ -50,6 +50,7 @@ describe("AccountMenu", () => {
     expect(card()).toHaveTextContent("Santiago Rodriguez Gutierrez");
     expect(card()).toHaveTextContent("santi@test.local");
     expect(screen.getByRole("link", { name: "Mi cuenta" })).toHaveAttribute("href", "/cuenta");
+    expect(screen.getByRole("link", { name: "Ayuda" })).toHaveAttribute("href", "/ayuda");
     expect(screen.getByRole("button", { name: "Salir" })).toHaveClass("text-danger");
   });
 
@@ -60,11 +61,15 @@ describe("AccountMenu", () => {
     expect(signOut).toHaveBeenCalledOnce();
   });
 
-  it("en Mi cuenta, la marca como la página actual", async () => {
-    navigation.pathname = "/cuenta";
+  it.each([
+    ["/cuenta", "Mi cuenta", "Ayuda"],
+    ["/ayuda", "Ayuda", "Mi cuenta"],
+  ])("en %s, marca %s como la página actual (y no %s)", async (pathname, current, other) => {
+    navigation.pathname = pathname;
     renderMenu();
     await userEvent.click(toggle());
-    expect(screen.getByRole("link", { name: "Mi cuenta" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: current })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: other })).not.toHaveAttribute("aria-current");
   });
 
   it("para un admin: el botón lo dice, y se ven el escudo y la etiqueta que manda el servidor", async () => {
@@ -108,6 +113,8 @@ describe("AccountMenu", () => {
     await userEvent.tab();
     expect(screen.getByRole("link", { name: "Mi cuenta" })).toHaveFocus();
     await userEvent.tab();
+    expect(screen.getByRole("link", { name: "Ayuda" })).toHaveFocus();
+    await userEvent.tab();
     expect(screen.getByRole("button", { name: "Salir" })).toHaveFocus();
     expect(card()).toBeVisible();
     await userEvent.tab();
@@ -115,13 +122,13 @@ describe("AccountMenu", () => {
     expect(card()).not.toBeVisible();
   });
 
-  it("al elegir Mi cuenta se cierra", async () => {
+  it.each(["Mi cuenta", "Ayuda"])("al elegir %s se cierra", async (name) => {
     renderMenu();
     await userEvent.click(toggle());
     // jsdom no navega (lo dice en la consola): aquí el enlace solo tiene que cerrar la tarjeta.
     const stay = (event: MouseEvent) => event.preventDefault();
     window.addEventListener("click", stay);
-    await userEvent.click(screen.getByRole("link", { name: "Mi cuenta" }));
+    await userEvent.click(screen.getByRole("link", { name }));
     window.removeEventListener("click", stay);
     expect(card()).not.toBeVisible();
   });

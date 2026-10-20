@@ -378,6 +378,11 @@ scripts/seed.ts                     Categorías por defecto
   - **Atrasados:** los que no tienen pago, hasta 3 meses atrás (`MONTHS_BACK`), en rojo. "Este pago ya no
     aplica" oculta solo el de ese mes (tabla `fixed_payment_skip`); para no avisar más de un gasto, se
     quita en Fijos.
+- **Ayuda** (`/ayuda`, desde el menú de la cuenta, entre Mi cuenta y Salir): cómo usar la app por temas
+  que se abren (registrar movimientos, el bot de WhatsApp, gastos fijos y avisos, reportes y descargas,
+  tu cuenta y tus datos). Los números salen de las constantes de la app y los comandos del bot, de la
+  misma lista que su respuesta a "ayuda" (`src/modules/bot/help.ts`): si algo cambia, la ayuda también.
+  Con sesión y sin contacto, por ahora.
 - **Reportes** (`/reportes`, la quinta pestaña; `src/modules/reports/`).
   - **El período, en la URL:** sin parámetro, los últimos 12 meses contando el actual; con
     `?periodo=2025`, ese año (el año en curso llega hasta el mes actual). Hay un chip por cada año con

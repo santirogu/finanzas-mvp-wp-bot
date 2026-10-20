@@ -7,7 +7,7 @@ import { initialsOf } from "@/lib/text";
 
 /**
  * El menú de la cuenta, arriba a la derecha: un círculo con las iniciales (y el escudo de admin, si lo
- * es) que abre una tarjeta con el nombre, el correo, Mi cuenta y Salir. Se maneja como la tarjeta del
+ * es) que abre una tarjeta con el nombre, el correo, Mi cuenta, Ayuda y Salir. Se maneja como la tarjeta del
  * selector de meses: se cierra con Escape (el foco vuelve al botón), al tocar fuera o al salir con Tab.
  *
  * Lo de admin (la etiqueta y el escudo) llega ya dibujado por el servidor, solo si tiene el rol: a una
@@ -129,6 +129,23 @@ export function AccountMenu({
                 />
               </svg>
               Mi cuenta
+            </Link>
+          </li>
+          <li>
+            <Link
+              href="/ayuda"
+              aria-current={pathname === "/ayuda" ? "page" : undefined}
+              onClick={() => setOpen(false)}
+              className={`${item} hover:bg-background aria-[current=page]:font-medium`}
+            >
+              <svg viewBox="0 0 20 20" fill="currentColor" className="size-4.5 shrink-0 text-muted" aria-hidden>
+                <path
+                  fillRule="evenodd"
+                  d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0ZM8.94 6.94a.75.75 0 1 1-1.061-1.061 3 3 0 1 1 2.871 5.026v.345a.75.75 0 0 1-1.5 0v-.5c0-.72.57-1.172 1.081-1.287A1.5 1.5 0 1 0 8.94 6.94ZM10 15a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              Ayuda
             </Link>
           </li>
         </ul>

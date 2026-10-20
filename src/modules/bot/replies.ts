@@ -7,6 +7,7 @@ import { periodHref, type ReportPeriod } from "@/modules/reports/period";
 import type { RecurringReport } from "@/modules/reports/recurring";
 import type { PeriodSummary } from "@/modules/reports/summary";
 import { balanceChange } from "@/modules/transactions/month-comparison";
+import { BOT_COMMANDS, BOT_EXAMPLES } from "./help";
 import type { ParsedTransaction } from "./normalize";
 
 export function registeredReply(
@@ -126,19 +127,18 @@ export function undoReply(
   return [`Listo, eliminé:`, ...lines].join("\n");
 }
 
+// Los ejemplos y los comandos salen de src/modules/bot/help.ts (los mismos de la página Ayuda de la web).
 export const helpReply = (name?: string) =>
   [
     `Hola${name ? ` ${name.split(" ")[0]}` : ""} 👋 Escríbeme tus ingresos y gastos como se los contarías a alguien:`,
     "",
-    "• _me compré unos zapatos de $500.000_",
-    "• _almuerzo 25 mil y taxi 12 mil_",
-    "• _me pagaron la quincena 2.100.000_",
+    ...BOT_EXAMPLES.map((example) => `• _${example}_`),
     "",
     "También entiendo:",
-    "• *balance* — cómo vas este mes",
-    "• *balance septiembre* o *balance mes pasado* — otro mes",
-    "• *reporte* — tus últimos 12 meses (o *reporte 2025*, un año)",
-    "• *deshacer* — borra el último registro",
+    ...BOT_COMMANDS.map(
+      (c) =>
+        `• *${c.command}*${"alternative" in c ? ` o *${c.alternative}*` : ""} — ${c.description}${"note" in c ? ` (${c.note})` : ""}`,
+    ),
   ].join("\n");
 
 export const notLinkedReply = (appUrl: string) =>
