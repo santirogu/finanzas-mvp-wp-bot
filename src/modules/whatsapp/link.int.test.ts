@@ -1,15 +1,24 @@
+import { randomInt } from "node:crypto";
 import { eq } from "drizzle-orm";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { db } from "@/db";
 import { accountEvent, user as userTable, whatsappLink, whatsappLinkCode } from "@/db/schema";
+import { LINK_LIMITS } from "@/modules/bot/limits";
 import { createUser } from "../../../test/integration/factories";
 import {
   consumeLinkCode,
   createLinkCode,
   getLinkForUser,
   getUserByPhone,
+  LinkCodeLimitError,
   unlinkUser,
 } from "./link";
+
+// Los códigos salen de randomInt: una prueba lo fija para forzar un choque con el código de otra cuenta.
+vi.mock("node:crypto", async (importOriginal) => {
+  const crypto = await importOriginal<typeof import("node:crypto")>();
+  return { ...crypto, randomInt: vi.fn(crypto.randomInt) };
+});
 
 describe("vinculación de WhatsApp", () => {
   it("el código tiene 6 dígitos, vence en ~10 minutos y se guarda solo su hash", async () => {
@@ -96,5 +105,42 @@ describe("vinculación de WhatsApp", () => {
     await db.delete(userTable).where(eq(userTable.id, user.id));
 
     expect(await getUserByPhone("573001112233")).toBeNull();
+  });
+});
+
+describe("los topes de la vinculación son de cada cuenta y de cada número", () => {
+  it("el tope de códigos por hora es por cuenta: Ana llega al tope y Beto todavía genera el suyo", async () => {
+    const ana = await createUser();
+    const beto = await createUser();
+    for (let i = 0; i < LINK_LIMITS.codesPerHour; i++) await createLinkCode(ana.id);
+    await expect(createLinkCode(ana.id)).rejects.toBeInstanceOf(LinkCodeLimitError);
+
+    const { code } = await createLinkCode(beto.id);
+    expect(await consumeLinkCode("573002222222", code)).toMatchObject({ ok: true, userId: beto.id });
+  });
+
+  it("los códigos equivocados se cuentan por número: uno bloqueado no bloquea a otro", async () => {
+    const ana = await createUser();
+    for (let i = 0; i < LINK_LIMITS.failedAttemptsPerHour; i++) {
+      expect(await consumeLinkCode("573001111111", "000000")).toEqual({ ok: false, reason: "invalid" });
+    }
+    const { code } = await createLinkCode(ana.id);
+    // Bloqueado, ni con el código bueno; desde otro número, sí.
+    expect(await consumeLinkCode("573001111111", code)).toEqual({ ok: false, reason: "rate_limited" });
+    expect(await consumeLinkCode("573002222222", code)).toMatchObject({ ok: true, userId: ana.id });
+  });
+
+  it("si el código nuevo choca con el vigente de otra cuenta, se genera otro: cada código vincula a su cuenta", async () => {
+    const ana = await createUser();
+    const beto = await createUser();
+    vi.mocked(randomInt).mockReturnValueOnce(123456 as never);
+    expect((await createLinkCode(ana.id)).code).toBe("123456");
+    vi.mocked(randomInt)
+      .mockReturnValueOnce(123456 as never)
+      .mockReturnValueOnce(654321 as never);
+    expect((await createLinkCode(beto.id)).code).toBe("654321");
+
+    expect(await consumeLinkCode("573001111111", "123456")).toMatchObject({ ok: true, userId: ana.id });
+    expect(await consumeLinkCode("573002222222", "654321")).toMatchObject({ ok: true, userId: beto.id });
   });
 });
