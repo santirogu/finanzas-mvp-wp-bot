@@ -506,6 +506,8 @@ jobs:
           "$VERCEL" build --prod
 
       # --skip-domain: la versión nueva queda publicada en su propia URL, sin recibir tráfico.
+      # --archive=tgz: sube el build comprimido en pocas partes. Archivo por archivo eran cientos de
+      # subidas por despliegue, y el plan gratis rechaza más de 5000 en 24 horas (le pasó a #147).
       - name: Publicar sin dominio
         id: publicar
         env:
@@ -513,7 +515,7 @@ jobs:
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
-          url=$("$VERCEL" deploy --prebuilt --prod --skip-domain --token="$VERCEL_TOKEN")
+          url=$("$VERCEL" deploy --prebuilt --prod --skip-domain --archive=tgz --token="$VERCEL_TOKEN")
           echo "Versión nueva, todavía sin tráfico: $url"
           echo "url=$url" >> "$GITHUB_OUTPUT"
 
