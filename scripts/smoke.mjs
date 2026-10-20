@@ -39,6 +39,9 @@ export const CHECKS = [
   },
   { name: "La política de privacidad es pública (la exige Meta)", path: "/privacidad", status: 200 },
   { name: "La página para eliminar datos es pública (la exige Meta)", path: "/eliminar-datos", status: 200 },
+  // Se arman en cada pedido con la URL de la app: si la leyeran al compilar, dirían http://localhost:3000.
+  { name: "El sitemap es público y lleva la URL de producción", path: "/sitemap.xml", status: 200, contains: "<loc>https://" },
+  { name: "robots.txt es público y apunta al sitemap de producción", path: "/robots.txt", status: 200, contains: "Sitemap: https://" },
   {
     name: "La base de datos responde, tiene todas las migraciones y no falta configuración",
     path: "/api/health",

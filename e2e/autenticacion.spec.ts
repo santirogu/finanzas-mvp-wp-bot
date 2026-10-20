@@ -11,7 +11,7 @@ test.describe("sin sesión", () => {
     });
   }
 
-  test("robots.txt es público y pide a los buscadores no entrar a la parte privada", async ({ request }) => {
+  test("robots.txt es público y pide a los buscadores no entrar a la parte privada", async ({ request, baseURL }) => {
     const response = await request.get("/robots.txt", { maxRedirects: 0 });
     expect(response.status()).toBe(200);
     expect(response.headers()["content-type"]).toContain("text/plain");
@@ -20,16 +20,18 @@ test.describe("sin sesión", () => {
     for (const path of ["/dashboard", "/ingresos", "/egresos", "/api/"]) {
       expect(body).toContain(`Disallow: ${path}`);
     }
-    expect(body).toMatch(/^Sitemap: https?:\/\/\S+\/sitemap\.xml$/m);
+    // La URL de la app con la que corre, no con la que se compiló (en el CI y en Vercel, sin la de producción).
+    expect(body).toContain(`Sitemap: ${baseURL}/sitemap.xml`);
   });
 
-  test("sitemap.xml es público y cada página que lista se ve sin sesión", async ({ request }) => {
+  test("sitemap.xml es público y cada página que lista se ve sin sesión", async ({ request, baseURL }) => {
     const response = await request.get("/sitemap.xml", { maxRedirects: 0 });
     expect(response.status()).toBe(200);
     expect(response.headers()["content-type"]).toContain("application/xml");
-    // El dominio depende de cómo se compiló (BETTER_AUTH_URL): se comparan solo las rutas.
-    const paths = [...(await response.text()).matchAll(/<loc>(.+?)<\/loc>/g)].map(([, loc]) => new URL(loc).pathname);
-    expect(paths).toEqual(["/", "/registro", "/login", "/privacidad", "/eliminar-datos"]);
+    // Con la URL de la app con la que corre (BETTER_AUTH_URL), no con la que se compiló.
+    const locs = [...(await response.text()).matchAll(/<loc>(.+?)<\/loc>/g)].map(([, loc]) => loc);
+    const paths = ["/", "/registro", "/login", "/privacidad", "/eliminar-datos"];
+    expect(locs).toEqual(paths.map((path) => (path === "/" ? baseURL : `${baseURL}${path}`)));
     for (const path of paths) {
       const page = await request.get(path, { maxRedirects: 0 });
       expect(page.status(), path).toBe(200);
