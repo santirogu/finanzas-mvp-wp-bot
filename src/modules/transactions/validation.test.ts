@@ -54,7 +54,7 @@ describe("newTransactionSchema", () => {
     );
   });
 
-  it.each(["-5.000", "$-5.000", "- 5.000", "-$5.000", "−$5.000"])("rechaza el monto negativo %j", (amount) => {
+  it.each(["-5.000", "$-5.000", "- 5.000", "-$5.000", "−$5.000", "–5.000", "—$5.000"])("rechaza el monto negativo %j", (amount) => {
     expect(errorsOf({ ...base, amount })).toHaveProperty(
       "amount",
       "Ingresa un monto mayor que cero",
