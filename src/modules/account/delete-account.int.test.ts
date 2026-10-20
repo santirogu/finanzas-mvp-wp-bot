@@ -1,15 +1,18 @@
+import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { db } from "@/db";
 import {
   account,
   accountEvent,
+  adminCodeUse,
   category,
   fixedExpenseChoice,
   fixedExpenseNote,
   loginFailure,
   session,
   transaction,
+  twoFactor,
   user,
   whatsappLink,
   whatsappLinkCode,
@@ -51,6 +54,10 @@ async function fullAccount(email: string, phone: string) {
   await db.insert(fixedExpenseChoice).values({ userId: id, descriptionKey: "web", choice: "include" });
   // Y una nota de su historial.
   await db.insert(fixedExpenseNote).values({ userId: id, descriptionKey: "web", month: "2026-10", note: "Subió" });
+  // La verificación en dos pasos (su clave secreta y sus códigos de respaldo) y, como admin, el último
+  // código con el que confirmó una acción: un admin también puede eliminar su cuenta.
+  await db.insert(twoFactor).values({ id: randomUUID(), userId: id, secret: "secreto-cifrado", backupCodes: "codigos-cifrados" });
+  await db.insert(adminCodeUse).values({ userId: id, lastStep: 59_000_000 });
   return id;
 }
 
@@ -68,6 +75,8 @@ async function countsFor(userId: string, email: string, phone: string) {
     loginFailure: await count(db.select().from(loginFailure).where(eq(loginFailure.email, email))),
     fixedExpenseChoice: await count(db.select().from(fixedExpenseChoice).where(eq(fixedExpenseChoice.userId, userId))),
     fixedExpenseNote: await count(db.select().from(fixedExpenseNote).where(eq(fixedExpenseNote.userId, userId))),
+    twoFactor: await count(db.select().from(twoFactor).where(eq(twoFactor.userId, userId))),
+    adminCodeUse: await count(db.select().from(adminCodeUse).where(eq(adminCodeUse.userId, userId))),
   };
 }
 
@@ -87,6 +96,8 @@ describe("deleteAccountData", () => {
       loginFailure: 1,
       fixedExpenseChoice: 1,
       fixedExpenseNote: 1,
+      twoFactor: 1,
+      adminCodeUse: 1,
     });
 
     await deleteAccountData(id);
@@ -103,6 +114,8 @@ describe("deleteAccountData", () => {
       loginFailure: 0,
       fixedExpenseChoice: 0,
       fixedExpenseNote: 0,
+      twoFactor: 0,
+      adminCodeUse: 0,
     });
   });
 
