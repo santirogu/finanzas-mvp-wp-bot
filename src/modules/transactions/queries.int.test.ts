@@ -457,3 +457,13 @@ describe("getTransactionNotice", () => {
     expect(await getTransactionNotice(user.id, foreign.id, "restored", now)).toBeNull();
   });
 });
+
+describe("getTotalsByCategory · los movimientos sin categoría", () => {
+  it("van juntos, con el nombre que pida la página (en español, el de siempre)", async () => {
+    const user = await createUser();
+    await addTx({ userId: user.id, amount: 1000 });
+    await addTx({ userId: user.id, amount: 2000 });
+    expect(await getTotalsByCategory(user.id, "expense", october)).toEqual([{ name: "Sin categoría", emoji: "•", total: 3000 }]);
+    expect(await getTotalsByCategory(user.id, "expense", october, "No category")).toEqual([{ name: "No category", emoji: "•", total: 3000 }]);
+  });
+});

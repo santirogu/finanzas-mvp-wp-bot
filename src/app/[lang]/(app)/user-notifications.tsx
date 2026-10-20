@@ -1,3 +1,4 @@
+import { getLocale } from "@/i18n/server";
 import { currentMonthRange, todayInTimezone } from "@/lib/dates";
 import { requireUser } from "@/lib/session";
 import { unreadNotifications } from "@/modules/notifications/notifications";
@@ -14,10 +15,11 @@ import { NotificationBell } from "./notification-bell";
 export async function UserNotifications() {
   const user = await requireUser();
   const today = todayInTimezone(user.timezone);
-  const [upcoming, read] = await Promise.all([
+  const [upcoming, read, locale] = await Promise.all([
     getUpcomingPayments(user.id, currentMonthRange(user.timezone), today),
     getReadNotifications(user.id),
+    getLocale(),
   ]);
   if (!upcoming.enabled) return null;
-  return <NotificationBell notifications={unreadNotifications(upcomingItems(upcoming.payments, today, user.currency), read)} today={today} />;
+  return <NotificationBell notifications={unreadNotifications(upcomingItems(upcoming.payments, today, user.currency, locale), read)} today={today} />;
 }

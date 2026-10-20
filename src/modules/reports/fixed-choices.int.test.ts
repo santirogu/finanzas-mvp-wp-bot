@@ -190,3 +190,19 @@ describe("chooseFixedExpenseAction", () => {
     expect(refresh).not.toHaveBeenCalled();
   });
 });
+
+describe("chooseFixedExpense · en inglés", () => {
+  it("los avisos y los errores, en inglés", async () => {
+    const { id } = await createUser();
+    await addExpense(id, "Netflix");
+    expect(await chooseFixedExpense(id, { description: "Netflix", action: "include" }, "en")).toEqual({
+      ok: true,
+      message: "“Netflix” was added to your bills",
+      tone: "success",
+    });
+    expect((await chooseFixedExpense(id, { description: "Netflix", action: "restore" }, "en")).ok).toBe(true);
+    expect(await chooseFixedExpense(id, { description: "Netflix", action: "exclude" }, "en")).toMatchObject({ message: "“Netflix” was removed from your bills" });
+    expect(await chooseFixedExpense(id, { description: "Otro", action: "include" }, "en")).toEqual({ ok: false, error: "That expense isn't among your transactions." });
+    expect(await chooseFixedExpense(id, { description: "", action: "include" }, "en")).toEqual({ ok: false, error: "Pick an expense." });
+  });
+});

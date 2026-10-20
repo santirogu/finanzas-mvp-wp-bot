@@ -1,6 +1,7 @@
 "use server";
 
 import { refresh } from "next/cache";
+import { getRequestLocale } from "@/i18n/request";
 import { requireUser } from "@/lib/session";
 import type { ToastTone } from "@/lib/toasts";
 import { markNotificationsRead } from "./reads";
@@ -16,7 +17,7 @@ export type MarkReadState = { message?: string; tone?: ToastTone; error?: string
  */
 export async function markNotificationsReadAction(_prev: MarkReadState, formData: FormData): Promise<MarkReadState> {
   const user = await requireUser();
-  const result = await markNotificationsRead(user.id, formData.getAll("id"));
+  const result = await markNotificationsRead(user.id, formData.getAll("id"), await getRequestLocale());
   if (!result.ok) return { error: result.error };
   refresh();
   return { message: result.message, tone: result.tone };

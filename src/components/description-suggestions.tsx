@@ -1,7 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { useTexts } from "@/i18n/client";
+import { texts } from "@/i18n/texts";
 import { matchSuggestions } from "@/lib/suggestions";
+
+const TEXTS = texts({ label: "Descripciones que ya usaste" }, { en: { label: "Descriptions you've used" } });
 
 // Las sugerencias del campo de descripción (el formulario de movimientos): una lista con el diseño de
 // la app debajo del campo, en vez de la del navegador (que cada sistema dibuja a su manera y pinta el
@@ -22,6 +26,7 @@ export function useDescriptionSuggestions({
   /** Al elegir una (con el dedo, el mouse o Enter): el campo ya tiene su texto. */
   onPick: (suggestion: Suggestion) => void;
 }) {
+  const t = useTexts(TEXTS);
   const [typed, setTyped] = useState("");
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
@@ -122,7 +127,7 @@ export function useDescriptionSuggestions({
       ref={list}
       id={listId}
       role="listbox"
-      aria-label="Descripciones que ya usaste"
+      aria-label={t.label}
       hidden={!shown}
       className="card absolute inset-x-0 top-1 z-20 max-h-72 overflow-y-auto p-1 shadow-lg"
     >

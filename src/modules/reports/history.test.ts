@@ -115,3 +115,17 @@ describe("lastChangeSummary (el último cambio en una línea, en la página y en
     expect(lastChangeSummary(entries([row("2026-01", "Arriendo", 1000), row("2026-02", "Arriendo", 1000)]), october)).toBeNull();
   });
 });
+
+describe("lastChangeSummary · en inglés", () => {
+  it("con el mes en inglés (y el año si no es el actual)", () => {
+    const entries = fixedHistories(
+      [
+        { month: "2026-02", description: "Netflix", total: 100, first: "2026-02-03" },
+        { month: "2026-03", description: "Netflix", total: 111, first: "2026-03-03" },
+      ],
+      ["netflix"],
+    ).get("netflix")!;
+    expect(lastChangeSummary(entries, { year: 2026, month: 10 }, "en")).toEqual({ direction: "up", text: "11% since March" });
+    expect(lastChangeSummary(entries, { year: 2027, month: 1 }, "en")?.text).toBe("11% since March 2026");
+  });
+});

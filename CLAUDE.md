@@ -186,7 +186,8 @@ de Vercel ni muevas las migraciones fuera del job `deploy`.
   (lo agrega el proxy por dentro). En un componente de cliente, la ruta actual se lee con `useAppPathname()`
   (`src/i18n/navigation.ts`), nunca con `usePathname()` (`src/i18n/guard.test.ts` lo revisa). Un texto nuevo en una página que ya tiene
   inglés va con `texts()` en los dos idiomas, nunca escrito solo en español; los montos y las fechas, con el
-  idioma de la página (`formatMoney(…, locale)`).
+  idioma de la página (`formatMoney(…, locale)`). Una Server Action lee el idioma con `getRequestLocale()`
+  (`src/i18n/request.ts`) y lo pasa a la función que arma el mensaje.
 - **E2E que cambian algo de toda la app** (pausar Claude, los topes del bot, la configuración): van en
   `e2e/configuracion-*.spec.ts`, el proyecto "configuracion" de Playwright, que corre aparte (README →
   Pruebas y CI). En paralelo con las demás les cambiaría lo que responde el bot.

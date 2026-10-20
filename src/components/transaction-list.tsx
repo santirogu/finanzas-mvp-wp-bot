@@ -1,9 +1,16 @@
 import Link from "next/link";
+import { DEFAULT_LOCALE, type Locale } from "@/i18n/locales";
+import { texts } from "@/i18n/texts";
 import { deleteTransactionAction } from "@/modules/transactions/actions";
 import type { TransactionRow } from "@/modules/transactions/queries";
-import { NO_CATEGORY } from "@/modules/transactions/search";
+import { NO_CATEGORIES } from "@/modules/transactions/search";
 import { formatShortDate } from "@/lib/dates";
 import { formatMoney } from "@/lib/money";
+
+const TEXTS = texts(
+  { viaWhatsApp: " · vía WhatsApp", edit: "Editar", delete: "Eliminar" },
+  { en: { viaWhatsApp: " · via WhatsApp", edit: "Edit", delete: "Delete" } },
+);
 
 // Editar y eliminar en cada fila.
 const ROW_BUTTON =
@@ -25,30 +32,37 @@ function Marked({ text, range }: { text: string; range: Range | null | undefined
   );
 }
 
+/**
+ * Los movimientos de una lista (Ingresos, Egresos, los últimos del Resumen). Recibe el idioma (no lo lee
+ * con un hook): la usan componentes de servidor y de cliente.
+ */
 export function TransactionList({
   items,
   emptyMessage,
   allowDelete = false,
   marks,
+  locale = DEFAULT_LOCALE,
 }: {
   items: TransactionRow[];
   emptyMessage: string;
   allowDelete?: boolean;
   marks?: ListMarks;
+  locale?: Locale;
 }) {
+  const t = TEXTS[locale];
   if (items.length === 0) {
     return <p className="px-4 py-10 text-center text-sm text-muted">{emptyMessage}</p>;
   }
 
   return (
     <ul className="divide-y divide-border">
-      {items.map((t) => {
-        const isIncome = t.type === "income";
+      {items.map((row) => {
+        const isIncome = row.type === "income";
         return (
-          <li key={t.id} className="flex items-center gap-3 px-4 py-3">
+          <li key={row.id} className="flex items-center gap-3 px-4 py-3">
             {/* --chip: en modo oscuro, un tono más clara que la tarjeta (los emojis oscuros se ven). */}
             <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-chip text-base">
-              {t.categoryEmoji ?? "•"}
+              {row.categoryEmoji ?? "•"}
             </span>
             {/* En celular, dos renglones: la descripción con el monto y, abajo, la fecha y la categoría
                 con los botones (así la descripción no se aplasta con un monto largo). Desde sm, el
@@ -57,26 +71,27 @@ export function TransactionList({
               className={`grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 ${allowDelete ? "sm:grid-cols-[minmax(0,1fr)_auto_auto]" : ""}`}
             >
               <p className="truncate text-sm font-medium">
-                <Marked text={t.description} range={marks?.get(t.id)?.description} />
+                <Marked text={row.description} range={marks?.get(row.id)?.description} />
               </p>
               <span
                 className={`col-start-2 row-start-1 whitespace-nowrap text-right text-sm font-semibold tabular-nums sm:row-span-2 ${isIncome ? "text-income" : "text-expense"}`}
               >
                 {isIncome ? "+" : "−"}
-                {formatMoney(t.amount, t.currency)}
+                {formatMoney(row.amount, row.currency, locale)}
               </span>
               <p className={`truncate text-xs text-muted ${allowDelete ? "" : "col-span-2 sm:col-span-1"}`}>
-                {formatShortDate(t.occurredOn)} · <Marked text={t.categoryName ?? NO_CATEGORY} range={marks?.get(t.id)?.category} />
-                {t.source === "whatsapp" && " · vía WhatsApp"}
+                {formatShortDate(row.occurredOn, { locale })} ·{" "}
+                <Marked text={row.categoryName ?? NO_CATEGORIES[locale]} range={marks?.get(row.id)?.category} />
+                {row.source === "whatsapp" && t.viaWhatsApp}
               </p>
               {allowDelete && (
                 // En pantallas táctiles, botones de 44 px (lo que recomienda Apple); con mouse, 28 px.
                 // El margen negativo evita que agranden la fila en celular.
                 <div className="-my-2 flex justify-end sm:col-start-3 sm:row-span-2 sm:row-start-1 sm:my-0">
                   <Link
-                    href={`/movimientos/${t.id}/editar`}
-                    aria-label={`Editar ${t.description}`}
-                    title="Editar"
+                    href={`/movimientos/${row.id}/editar`}
+                    aria-label={`${t.edit} ${row.description}`}
+                    title={t.edit}
                     className={ROW_BUTTON + " hover:bg-brand/10 hover:text-brand"}
                   >
                     <svg viewBox="0 0 20 20" fill="currentColor" className="size-4" aria-hidden>
@@ -84,11 +99,11 @@ export function TransactionList({
                     </svg>
                   </Link>
                   <form action={deleteTransactionAction}>
-                    <input type="hidden" name="id" value={t.id} />
+                    <input type="hidden" name="id" value={row.id} />
                     <button
                       type="submit"
-                      aria-label={`Eliminar ${t.description}`}
-                      title="Eliminar"
+                      aria-label={`${t.delete} ${row.description}`}
+                      title={t.delete}
                       className={ROW_BUTTON + " hover:bg-expense/10 hover:text-expense"}
                     >
                       <svg viewBox="0 0 20 20" fill="currentColor" className="size-4" aria-hidden>

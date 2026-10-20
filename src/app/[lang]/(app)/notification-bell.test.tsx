@@ -168,3 +168,24 @@ describe("NotificationBell", () => {
     expect(screen.queryByRole("group", { name: "Notificaciones" })).toBeNull();
   });
 });
+
+describe("NotificationBell · en inglés", () => {
+  it("la campana, la lista y Marcar como leído, en inglés", async () => {
+    markRead.mockResolvedValue({ message: "2 marked as read", tone: "success" });
+    const [gym, netflix] = TWO.map(({ id, item }) => ({ id, item: { ...item, monthName: "October" } }));
+    render(<NotificationBell notifications={[gym, netflix]} today="2026-10-20" />, { english: true });
+    await userEvent.click(screen.getByRole("button", { name: "Notifications: 2 unread" }));
+    const list = within(screen.getByRole("group", { name: "Notifications" }));
+    expect(list.getByText("Upcoming payments of your bills.")).toBeVisible();
+    expect(list.getByRole("button", { name: "Mark the October payment of Gimnasio as read" })).toHaveTextContent("Mark as read");
+    expect(list.getByRole("link", { name: "See upcoming payments in the Overview" })).toHaveAttribute("href", "/dashboard");
+    await userEvent.click(list.getByRole("button", { name: "Mark all as read" }));
+    expect(await findToast()).toHaveTextContent("2 marked as read");
+  });
+
+  it("sin notificaciones", async () => {
+    render(<NotificationBell notifications={[]} today="2026-10-20" />, { english: true });
+    await userEvent.click(screen.getByRole("button", { name: "Notifications" }));
+    expect(screen.getByText("You don't have new notifications.")).toBeVisible();
+  });
+});

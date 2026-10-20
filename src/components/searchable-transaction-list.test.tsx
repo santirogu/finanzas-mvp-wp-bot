@@ -2,6 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { TransactionRow } from "@/modules/transactions/queries";
+import { InEnglish } from "../../test/locale";
 
 vi.mock("@/modules/transactions/actions", () => ({ deleteTransactionAction: vi.fn() }));
 
@@ -180,5 +181,29 @@ describe("SearchableTransactionList", () => {
     await user.clear(box);
     await user.type(box, "nada");
     expect(screen.getByText("Ningún ingreso coincide con «nada» en septiembre.")).toBeVisible();
+  });
+});
+
+describe("SearchableTransactionList · en inglés", () => {
+  it("el título, el buscador, el total y lo que no coincide, en inglés", async () => {
+    render(
+      <SearchableTransactionList items={[...SEPTEMBER, row("Almuerzo", null, 25_000)]} type="expense" inMonth="in September" currency="COP" emptyMessage="—" />,
+      { wrapper: InEnglish },
+    );
+    expect(screen.getByRole("heading", { name: "7 transactions in September" })).toBeVisible();
+    const search = screen.getByRole("searchbox", { name: "Search expenses" });
+    expect(search).toHaveAttribute("placeholder", "Search by description or category");
+    await userEvent.type(search, "claro");
+    expect(screen.getByRole("heading", { name: "3 of 7 transactions in September" })).toBeVisible();
+    expect(screen.getByText("−$282,799.00")).toBeVisible();
+    // Sin categoría se busca por lo que dice en inglés.
+    await userEvent.clear(search);
+    await userEvent.type(search, "no cat");
+    expect(screen.getByRole("heading", { name: "1 of 7 transactions in September" })).toBeVisible();
+    await userEvent.clear(search);
+    await userEvent.type(search, "zzz");
+    expect(screen.getByText(/No expense matches «zzz» in September\./)).toBeVisible();
+    await userEvent.click(screen.getAllByRole("button", { name: "Clear the search" })[0]);
+    expect(search).toHaveValue("");
   });
 });

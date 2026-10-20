@@ -6,12 +6,21 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/db";
 import { transaction } from "@/db/schema";
+import type { Locale } from "@/i18n/locales";
+import { getRequestLocale } from "@/i18n/request";
+import { texts } from "@/i18n/texts";
 import { currentMonthRange, monthOf } from "@/lib/dates";
 import { monthHref } from "@/lib/month-nav";
 import { TOAST_PARAM } from "@/lib/toasts";
 import { requireUser } from "@/lib/session";
 import { isCategoryAvailable, undoableSince } from "./queries";
-import { newTransactionSchema } from "./validation";
+import { transactionSchema } from "./validation";
+
+// Los mensajes, en el idioma de quien usa la página (la cookie: src/i18n/server.ts).
+const TEXTS = texts(
+  { invalidCategory: "Categoría inválida", notFound: "No encontramos ese movimiento", income: "Ingreso registrado", expense: "Egreso registrado" },
+  { en: { invalidCategory: "Invalid category", notFound: "We couldn't find that transaction", income: "Income added", expense: "Expense added" } },
+);
 
 export type FormState = {
   ok: boolean;
@@ -29,11 +38,13 @@ export async function createTransactionAction(
 ): Promise<FormState> {
   // Cada Server Action re-valida la sesión: nunca se confía en el cliente.
   const user = await requireUser();
+  const locale = await getRequestLocale();
+  const t = TEXTS[locale];
 
-  const { values, input, fieldErrors } = readForm(formData);
+  const { values, input, fieldErrors } = readForm(formData, locale);
   if (!input) return { ok: false, fieldErrors, values };
   if (input.categoryId && !(await isCategoryAvailable(user.id, input.categoryId, input.type))) {
-    return { ok: false, fieldErrors: { categoryId: "Categoría inválida" }, values };
+    return { ok: false, fieldErrors: { categoryId: t.invalidCategory }, values };
   }
 
   await db.insert(transaction).values({
@@ -50,13 +61,13 @@ export async function createTransactionAction(
   refresh();
   return {
     ok: true,
-    message: input.type === "income" ? "Ingreso registrado" : "Egreso registrado",
+    message: input.type === "income" ? t.income : t.expense,
     occurredOn: input.occurredOn,
   };
 }
 
-/** Lee y valida los campos comunes del formulario de movimientos. */
-function readForm(formData: FormData) {
+/** Lee y valida los campos comunes del formulario de movimientos (el monto, con los separadores del idioma). */
+function readForm(formData: FormData, locale: Locale) {
   const values = {
     type: String(formData.get("type") ?? ""),
     amount: String(formData.get("amount") ?? ""),
@@ -64,7 +75,7 @@ function readForm(formData: FormData) {
     categoryId: String(formData.get("categoryId") ?? ""),
     occurredOn: String(formData.get("occurredOn") ?? ""),
   };
-  const parsed = newTransactionSchema.safeParse(values);
+  const parsed = transactionSchema(locale).safeParse(values);
   if (parsed.success) return { values, input: parsed.data };
 
   const fieldErrors: FormState["fieldErrors"] = {};
@@ -81,14 +92,16 @@ export async function updateTransactionAction(
 ): Promise<FormState> {
   // Cada Server Action re-valida la sesión: nunca se confía en el cliente.
   const user = await requireUser();
+  const locale = await getRequestLocale();
+  const t = TEXTS[locale];
   const id = z.uuid().safeParse(formData.get("id"));
-  if (!id.success) return { ok: false, message: "No encontramos ese movimiento" };
+  if (!id.success) return { ok: false, message: t.notFound };
 
-  const { values, input, fieldErrors } = readForm(formData);
+  const { values, input, fieldErrors } = readForm(formData, locale);
   if (!input) return { ok: false, fieldErrors, values };
   // Puede conservar la categoría que ya tenía aunque el admin la haya archivado.
   if (input.categoryId && !(await isCategoryAvailable(user.id, input.categoryId, input.type, { keepFrom: id.data }))) {
-    return { ok: false, fieldErrors: { categoryId: "Categoría inválida" }, values };
+    return { ok: false, fieldErrors: { categoryId: t.invalidCategory }, values };
   }
 
   // Solo movimientos propios y no eliminados, y sin cambiar su tipo: un egreso sigue siendo
@@ -110,7 +123,7 @@ export async function updateTransactionAction(
       ),
     )
     .returning({ id: transaction.id });
-  if (updated.length === 0) return { ok: false, message: "No encontramos ese movimiento", values };
+  if (updated.length === 0) return { ok: false, message: t.notFound, values };
 
   // La lista muestra el aviso "Cambios guardados" (?aviso=, src/lib/toasts.ts).
   redirect(listOf(input.type, input.occurredOn, user.timezone, { [TOAST_PARAM]: "guardado" }));

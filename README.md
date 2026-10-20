@@ -253,7 +253,8 @@ scripts/seed.ts                     Categorías por defecto
 ### Idiomas
 
 La app tiene español (el de siempre) e inglés, que se pasa por partes: todavía no se puede elegir, pero
-con la cookie `idioma=en` ya se ve lo que está traducido (la navegación, el login y el registro, la 404).
+con la cookie `idioma=en` ya se ve lo que está traducido (la navegación, el login y el registro, el
+Resumen con la campana y los próximos pagos, Ingresos, Egresos, Fijos y la 404).
 
 - **Las direcciones no llevan el idioma.** Las páginas están en `src/app/[lang]/` y el proxy
   (`src/proxy.ts`) arma cada una, por dentro, en el idioma de la cookie `idioma`: `/dashboard` se arma
@@ -266,7 +267,15 @@ con la cookie `idioma=en` ya se ve lo que está traducido (la navegación, el lo
   (`src/i18n/texts.ts`): el español manda y TypeScript exige las mismas claves en el inglés. Un texto con
   datos es una función. Se leen con `getTexts()` en el servidor (`src/i18n/server.ts`, que también da
   `getLocale()`) y con `useTexts()` en el cliente (`src/i18n/client.tsx`: el layout raíz pone el idioma).
-  En las pruebas de componentes, `render(ui, { wrapper: InEnglish })` (`test/locale.tsx`).
+  Un componente que usan el servidor y el cliente (`TransactionList`) recibe el idioma por prop.
+- **En las Server Actions** no hay segmento `[lang]`: el idioma sale de la cookie con
+  `getRequestLocale()` (`src/i18n/request.ts`) y se pasa a la función del módulo que arma el mensaje
+  (`skipFixedPayment(…, locale)`). El monto del formulario se lee con los separadores de ese idioma
+  (`transactionSchema(locale)`).
+- **En las pruebas:** los componentes, `render(ui, { wrapper: InEnglish })` (`test/locale.tsx`) o
+  `renderWithToaster(ui, { english: true })`; las acciones en integración, `requestLocale.value = "en"`
+  (`test/integration/locale.ts`). `next/root-params` y `getRequestLocale` se simulan en los archivos de
+  configuración de cada proyecto de Vitest (español por defecto).
 - **Montos y fechas:** `formatMoney`, `parseAmountInput`, `formatAmountTyping`, `formatMonthName`,
   `formatShortDate`… reciben el idioma (por defecto, español). En inglés, con el formato de EE. UU.:
   "$1,000,000.00" (en el campo de monto, la coma separa los miles) y "Oct 13". El bot, el PDF y el CSV

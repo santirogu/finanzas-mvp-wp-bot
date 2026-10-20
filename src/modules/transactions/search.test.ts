@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { NO_CATEGORY, SEARCH_FROM, searchTransactions } from "./search";
+import { NO_CATEGORIES, NO_CATEGORY, SEARCH_FROM, searchTransactions } from "./search";
 
 const t = (description: string, categoryName: string | null = "Servicios") => ({ description, categoryName });
 const ITEMS = [
@@ -62,5 +62,14 @@ describe("searchTransactions", () => {
 
   it("nada coincide: lista vacía (no null)", () => {
     expect(searchTransactions("zzz", ITEMS)).toEqual([]);
+  });
+});
+
+describe("searchTransactions · en inglés", () => {
+  it("los que no tienen categoría se encuentran por lo que dice la fila en inglés", () => {
+    const items = [{ description: "Lunch", categoryName: null }, { description: "Rent", categoryName: "Vivienda" }];
+    expect(searchTransactions("no cat", items, "en")?.map((h) => h.item.description)).toEqual(["Lunch"]);
+    expect(searchTransactions("sin cat", items, "en")).toEqual([]);
+    expect(NO_CATEGORIES).toEqual({ es: NO_CATEGORY, en: "No category" });
   });
 });

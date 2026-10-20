@@ -93,3 +93,12 @@ describe("markNotificationsReadAction", () => {
     expect(refresh).not.toHaveBeenCalled();
   });
 });
+
+describe("markNotificationsRead · en inglés", () => {
+  it("los avisos y el error, en inglés", async () => {
+    const { id } = await createUser();
+    expect(await markNotificationsRead(id, ["pago|2026-10|arriendo"], "en")).toEqual({ ok: true, message: "Marked as read", tone: "success" });
+    expect(await markNotificationsRead(id, ["pago|2026-10|gimnasio", "pago|2026-10|netflix"], "en")).toMatchObject({ message: "2 marked as read" });
+    expect(await markNotificationsRead(id, ["otra cosa"], "en")).toEqual({ ok: false, error: "It couldn't be marked as read." });
+  });
+});

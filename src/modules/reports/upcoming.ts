@@ -1,6 +1,9 @@
+import { DEFAULT_LOCALE, type Locale } from "@/i18n/locales";
+import { texts } from "@/i18n/texts";
 import { formatMonthName, formatShortDate, monthOf, monthParam, shiftMonth } from "@/lib/dates";
 import { amountInputValue, formatMoney } from "@/lib/money";
 import { searchKey } from "@/lib/suggestions";
+import { NO_CATEGORIES } from "@/modules/transactions/search";
 import type { HistoryMonth } from "./history";
 import type { FixedOption } from "./recurring";
 
@@ -142,31 +145,61 @@ export function upcomingPayments(
   return result.sort((a, b) => a.date.localeCompare(b.date) || a.description.localeCompare(b.description));
 }
 
+const TEXTS = texts(
+  {
+    window: { today: "de hoy", tomorrow: "de hoy y mañana", days: (n: number) => `de los próximos ${n} días` },
+    ahead: { sameDay: "el mismo día", days: (n: number) => `${n} ${n === 1 ? "día" : "días"} antes` },
+    when: { overdue: "Atrasado", today: "Hoy", tomorrow: "Mañana", days: (n: number) => `En ${n} días` },
+    usually: (day: number) => `lo sueles pagar el ${day}`,
+    approximate: " (aprox.)",
+  },
+  {
+    en: {
+      window: { today: "for today", tomorrow: "for today and tomorrow", days: (n) => `for the next ${n} days` },
+      ahead: { sameDay: "the same day", days: (n) => `${n} ${n === 1 ? "day" : "days"} before` },
+      when: { overdue: "Overdue", today: "Today", tomorrow: "Tomorrow", days: (n) => `In ${n} days` },
+      usually: (day) => `you usually pay it on the ${ordinal(day)}`,
+      approximate: " (approx.)",
+    },
+  },
+);
+
+/** 1 → "1st", 2 → "2nd", 11 → "11th", 22 → "22nd": el día del mes en inglés. */
+export function ordinal(day: number): string {
+  const teen = day % 100 >= 11 && day % 100 <= 13;
+  const suffix = teen ? "th" : (["th", "st", "nd", "rd"][day % 10] ?? "th");
+  return `${day}${suffix}`;
+}
+
 /** Los días que mira la tarjeta, para su texto: "de hoy", "de hoy y mañana" o "de los próximos 3 días". */
-export function windowPhrase(daysAhead: number): string {
-  if (daysAhead === 0) return "de hoy";
-  if (daysAhead === 1) return "de hoy y mañana";
-  return `de los próximos ${daysAhead} días`;
+export function windowPhrase(daysAhead: number, locale: Locale = DEFAULT_LOCALE): string {
+  const { window } = TEXTS[locale];
+  if (daysAhead === 0) return window.today;
+  if (daysAhead === 1) return window.tomorrow;
+  return window.days(daysAhead);
 }
 
 /** Con cuánta anticipación, para el aviso al guardar: "el mismo día", "1 día antes" o "5 días antes". */
-export function daysAheadPhrase(daysAhead: number): string {
-  if (daysAhead === 0) return "el mismo día";
-  return `${daysAhead} ${daysAhead === 1 ? "día" : "días"} antes`;
+export function daysAheadPhrase(daysAhead: number, locale: Locale = DEFAULT_LOCALE): string {
+  const { ahead } = TEXTS[locale];
+  if (daysAhead === 0) return ahead.sameDay;
+  return ahead.days(daysAhead);
 }
 
 /** Cuándo, en palabras: "Atrasado", "Hoy", "Mañana" o "En 3 días". */
-export function whenLabel(days: number): string {
-  if (days < 0) return "Atrasado";
-  if (days === 0) return "Hoy";
-  if (days === 1) return "Mañana";
-  return `En ${days} días`;
+export function whenLabel(days: number, locale: Locale = DEFAULT_LOCALE): string {
+  const { when } = TEXTS[locale];
+  if (days < 0) return when.overdue;
+  if (days === 0) return when.today;
+  if (days === 1) return when.tomorrow;
+  return when.days(days);
 }
 
 /** La fecha y de dónde sale: "5 de oct · lo sueles pagar el 5" (con "aprox." si son pocos pagos; con el año si no es el actual). */
-export function dateLine(payment: UpcomingPayment, today: string): string {
-  const date = formatShortDate(payment.date, { withYear: payment.date.slice(0, 4) !== today.slice(0, 4) });
-  return `${date} · lo sueles pagar el ${payment.usualDay}${payment.approximate ? " (aprox.)" : ""}`;
+export function dateLine(payment: UpcomingPayment, today: string, locale: Locale = DEFAULT_LOCALE): string {
+  const t = TEXTS[locale];
+  const date = formatShortDate(payment.date, { withYear: payment.date.slice(0, 4) !== today.slice(0, 4), locale });
+  return `${date} · ${t.usually(payment.usualDay)}${payment.approximate ? t.approximate : ""}`;
 }
 
 /** Un aviso, con sus textos ya armados (para el Resumen y la campana). */
@@ -194,20 +227,25 @@ export type UpcomingItem = {
   amountInput: string;
 };
 
-/** Los avisos con sus textos: los nombres de los meses salen de Intl, en el servidor. */
-export function upcomingItems(payments: (UpcomingPayment & { category?: string })[], today: string, currency: string): UpcomingItem[] {
+/** Los avisos con sus textos, en el idioma de la página: los nombres de los meses salen de Intl, en el servidor. */
+export function upcomingItems(
+  payments: (UpcomingPayment & { category?: string | null })[],
+  today: string,
+  currency: string,
+  locale: Locale = DEFAULT_LOCALE,
+): UpcomingItem[] {
   return payments.map((payment) => ({
     id: `${payment.key} ${payment.month}`,
     key: payment.key,
     description: payment.description,
     emoji: payment.emoji,
     month: payment.month,
-    monthName: formatMonthName(monthOf(`${payment.month}-01`), { withYear: payment.month.slice(0, 4) !== today.slice(0, 4) }),
-    amount: `≈ −${formatMoney(payment.amount, currency)}`,
-    when: whenLabel(payment.days),
-    dateLine: dateLine(payment, today),
+    monthName: formatMonthName(monthOf(`${payment.month}-01`), { withYear: payment.month.slice(0, 4) !== today.slice(0, 4), locale }),
+    amount: `≈ −${formatMoney(payment.amount, currency, locale)}`,
+    when: whenLabel(payment.days, locale),
+    dateLine: dateLine(payment, today, locale),
     overdue: payment.days < 0,
-    category: payment.category ?? "Sin categoría",
-    amountInput: amountInputValue(payment.amount),
+    category: payment.category ?? NO_CATEGORIES[locale],
+    amountInput: amountInputValue(payment.amount, locale),
   }));
 }

@@ -2,6 +2,9 @@
 
 import Link from "next/link";
 import { useActionState, useEffect, useId, useRef, useState } from "react";
+import { useLocale } from "@/i18n/client";
+import type { Locale } from "@/i18n/locales";
+import { texts } from "@/i18n/texts";
 import { formatMonthName, monthOf } from "@/lib/dates";
 import type { FieldMessages } from "@/lib/field-errors";
 import { amountInputValue, completeAmountDecimals, formatAmountTyping } from "@/lib/money";
@@ -29,12 +32,55 @@ export type TransactionToEdit = {
   occurredOn: string;
 };
 
-// Los errores de los campos antes de enviar, en español (en vez del globo del navegador).
-const MESSAGES: Record<string, FieldMessages> = {
-  amount: { required: "Escribe el monto." },
-  description: { required: 'Escribe una descripción, por ejemplo "Almuerzo".' },
-  occurredOn: { required: "Elige la fecha.", max: "La fecha no puede ser después de hoy." },
-};
+const TEXTS = texts(
+  {
+    // Los errores de los campos antes de enviar (en vez del globo del navegador).
+    messages: {
+      amount: { required: "Escribe el monto." },
+      description: { required: 'Escribe una descripción, por ejemplo "Almuerzo".' },
+      occurredOn: { required: "Elige la fecha.", max: "La fecha no puede ser después de hoy." },
+    } as Record<string, FieldMessages>,
+    income: { new: "Nuevo ingreso", edit: "Editar ingreso", submit: "Registrar ingreso", placeholder: "Pago de nómina" },
+    expense: { new: "Nuevo egreso", edit: "Editar egreso", submit: "Registrar egreso", placeholder: "Zapatos" },
+    required: "Obligatorio",
+    amount: "Monto",
+    amountPlaceholder: "500.000,00",
+    description: "Descripción",
+    category: "Categoría",
+    noCategory: "Sin categoría",
+    archived: " (archivada)",
+    date: "Fecha",
+    proposed: (category: string) => `Se eligió la categoría ${category}, la de la última vez.`,
+    elsewhere: (month: string) => ` en ${month}`,
+    pending: "Guardando…",
+    save: "Guardar cambios",
+    cancel: "Cancelar",
+  },
+  {
+    en: {
+      messages: {
+        amount: { required: "Enter the amount." },
+        description: { required: 'Enter a description, for example "Lunch".' },
+        occurredOn: { required: "Pick the date.", max: "The date can't be after today." },
+      },
+      income: { new: "New income", edit: "Edit income", submit: "Add income", placeholder: "Paycheck" },
+      expense: { new: "New expense", edit: "Edit expense", submit: "Add expense", placeholder: "Shoes" },
+      required: "Required",
+      amount: "Amount",
+      amountPlaceholder: "500,000.00",
+      description: "Description",
+      category: "Category",
+      noCategory: "No category",
+      archived: " (archived)",
+      date: "Date",
+      proposed: (category) => `The category ${category} was picked, the same as last time.`,
+      elsewhere: (month) => ` in ${month}`,
+      pending: "Saving…",
+      save: "Save changes",
+      cancel: "Cancel",
+    },
+  },
+);
 
 export function TransactionForm({
   type,
@@ -64,6 +110,8 @@ export function TransactionForm({
   suggestions?: DescriptionSuggestion[];
 }) {
   const editing = Boolean(transaction);
+  const locale = useLocale();
+  const t = TEXTS[locale];
   // Al editar, si se guarda bien, la Server Action redirige a la lista.
   const [state, formAction, pending] = useActionState<FormState, FormData>(
     editing ? updateTransactionAction : createTransactionAction,
@@ -89,7 +137,7 @@ export function TransactionForm({
     const category = proposedCategory(text, suggestions, categories);
     if (!category || categoryChosen.current || !categoryRef.current) return;
     categoryRef.current.value = category.id;
-    setProposed(`Se eligió la categoría ${category.name}, la de la última vez.`);
+    setProposed(t.proposed(category.name));
   }
 
   useEffect(() => {
@@ -99,11 +147,11 @@ export function TransactionForm({
     setProposed("");
     resetSuggestions();
     amountRef.current?.focus();
-    toast({ tone: "success", message: `${state.message}${elsewhere(state.occurredOn, listMonth)}` });
-  }, [state, toast, listMonth, resetSuggestions]);
+    toast({ tone: "success", message: `${state.message}${elsewhere(state.occurredOn, listMonth, locale)}` });
+  }, [state, toast, listMonth, resetSuggestions, locale]);
 
-  // Los del navegador (antes de enviar, en español) y, si no hay, los del servidor.
-  const { errors: fieldErrors, formProps } = useFieldErrors(MESSAGES);
+  // Los del navegador (antes de enviar) y, si no hay, los del servidor.
+  const { errors: fieldErrors, formProps } = useFieldErrors(t.messages);
   const serverErrors = state.fieldErrors ?? {};
   const errorOf = (name: keyof NonNullable<FormState["fieldErrors"]>) => fieldErrors[name] ?? serverErrors[name];
   const ids = { amount: useId(), description: useId(), categoryId: useId(), occurredOn: useId() };
@@ -112,24 +160,23 @@ export function TransactionForm({
     "aria-describedby": describedBy(errorOf(name) && ids[name]),
   });
   // Lo que devolvió el servidor tras un error; si no, los datos del movimiento que se edita.
-  const values = state.values ?? (transaction ? valuesOf(transaction) : {});
-  const isIncome = type === "income";
-  const noun = isIncome ? "ingreso" : "egreso";
+  const values = state.values ?? (transaction ? valuesOf(transaction, locale) : {});
+  const kind = type === "income" ? t.income : t.expense;
 
   return (
     <form action={formAction} {...formProps} className="card space-y-4 p-4 sm:p-5">
       <div className="flex items-baseline justify-between gap-2">
-        <h2 className="font-semibold">{editing ? `Editar ${noun}` : `Nuevo ${noun}`}</h2>
+        <h2 className="font-semibold">{editing ? kind.edit : kind.new}</h2>
         {/* La explicación del asterisco, solo a la vista: el lector de pantalla ya anuncia cada campo
             obligatorio. */}
         <p aria-hidden className="text-xs text-muted">
-          <RequiredMark /> Obligatorio
+          <RequiredMark /> {t.required}
         </p>
       </div>
       <input type="hidden" name="type" value={type} />
       {transaction && <input type="hidden" name="id" value={transaction.id} />}
 
-      <Field label="Monto" required error={errorOf("amount")} errorId={ids.amount}>
+      <Field label={t.amount} required error={errorOf("amount")} errorId={ids.amount}>
         <div className="relative">
           <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-base text-muted pointer-fine:text-sm">
             $
@@ -138,25 +185,26 @@ export function TransactionForm({
             ref={amountRef}
             name="amount"
             inputMode="decimal"
-            placeholder="500.000,00"
+            placeholder={t.amountPlaceholder}
             defaultValue={values.amount}
             required
             {...aria("amount")}
             className="input pl-7 tabular-nums"
             onChange={(e) => {
               // Puntos de miles mientras se escribe y, tras la coma, hasta dos centavos: 45900,5 → 45.900,5
-              e.target.value = formatAmountTyping(e.target.value);
+              // (en inglés, al revés: 45900.5 → 45,900.5).
+              e.target.value = formatAmountTyping(e.target.value, locale);
             }}
             onBlur={(e) => {
               // Al salir del campo, con sus dos decimales: 500.000 → 500.000,00 y 45.900,5 → 45.900,50
-              e.target.value = completeAmountDecimals(e.target.value);
+              e.target.value = completeAmountDecimals(e.target.value, locale);
             }}
           />
         </div>
       </Field>
 
       <Field
-        label="Descripción"
+        label={t.description}
         required
         error={errorOf("description")}
         errorId={ids.description}
@@ -167,7 +215,7 @@ export function TransactionForm({
           required
           maxLength={140}
           defaultValue={values.description}
-          placeholder={isIncome ? "Pago de nómina" : "Zapatos"}
+          placeholder={kind.placeholder}
           {...aria("description")}
           className="input"
           // Las descripciones que ya usó: la lista de abajo (src/components/description-suggestions.tsx).
@@ -179,7 +227,7 @@ export function TransactionForm({
       {/* Categoría y fecha lado a lado desde 360 px; en pantallas más angostas (o con mucho zoom), una
           debajo de la otra: si no, no caben ("Sin categ", "18 / 10 / 202"). */}
       <div className="grid grid-cols-1 gap-3 min-[22.5rem]:grid-cols-2">
-        <Field label="Categoría" error={errorOf("categoryId")} errorId={ids.categoryId}>
+        <Field label={t.category} error={errorOf("categoryId")} errorId={ids.categoryId}>
           {/* key: React 19 reinicia el formulario al terminar la acción y un <select> no toma un
               defaultValue nuevo después de montarse; con la key se vuelve a montar con la
               categoría que había elegido la persona (si no, tras un error volvería a "Sin
@@ -196,16 +244,16 @@ export function TransactionForm({
             className="input"
             defaultValue={values.categoryId ?? ""}
           >
-            <option value="">Sin categoría</option>
+            <option value="">{t.noCategory}</option>
             {categories.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.emoji} {c.name}
-                {c.archived && " (archivada)"}
+                {c.archived && t.archived}
               </option>
             ))}
           </select>
         </Field>
-        <Field label="Fecha" required error={errorOf("occurredOn")} errorId={ids.occurredOn}>
+        <Field label={t.date} required error={errorOf("occurredOn")} errorId={ids.occurredOn}>
           <input
             name="occurredOn"
             type="date"
@@ -225,12 +273,12 @@ export function TransactionForm({
       </p>
 
       <button type="submit" disabled={pending} className="btn-primary w-full">
-        {pending ? "Guardando…" : editing ? "Guardar cambios" : `Registrar ${noun}`}
+        {pending ? t.pending : editing ? t.save : kind.submit}
       </button>
 
       {editing && cancelHref && (
         <Link href={cancelHref} className="block text-center text-sm font-medium text-muted">
-          Cancelar
+          {t.cancel}
         </Link>
       )}
 
@@ -244,9 +292,9 @@ export function TransactionForm({
 }
 
 /** " en septiembre de 2026" si el movimiento registrado quedó fuera del mes de la lista; si no, nada. */
-function elsewhere(occurredOn: string | undefined, listMonth: { start: string; end: string } | undefined) {
+function elsewhere(occurredOn: string | undefined, listMonth: { start: string; end: string } | undefined, locale: Locale) {
   if (!occurredOn || !listMonth || (occurredOn >= listMonth.start && occurredOn < listMonth.end)) return "";
-  return ` en ${formatMonthName(monthOf(occurredOn), { withYear: true })}`;
+  return TEXTS[locale].elsewhere(formatMonthName(monthOf(occurredOn), { withYear: true, locale }));
 }
 
 function RequiredMark() {
@@ -268,9 +316,9 @@ function proposedCategory(typed: string, suggestions: DescriptionSuggestion[], c
 }
 
 /** Valores del formulario a partir de un movimiento guardado (el monto con separadores y sus centavos). */
-function valuesOf(transaction: TransactionToEdit): Record<string, string> {
+function valuesOf(transaction: TransactionToEdit, locale: Locale): Record<string, string> {
   return {
-    amount: amountInputValue(transaction.amount),
+    amount: amountInputValue(transaction.amount, locale),
     description: transaction.description,
     categoryId: transaction.categoryId ?? "",
     occurredOn: transaction.occurredOn,
