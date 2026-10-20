@@ -38,19 +38,20 @@ export function matchCategory(proposed: string, available: readonly string[]): s
   return available.find((name) => fold(name) === "otros") ?? null;
 }
 
-/** true si "YYYY-MM-DD" es un día que existe (Date.parse acepta "2026-02-30" y lo corre a marzo). */
+/**
+ * true si "YYYY-MM-DD" es un día que existe (Date.parse acepta "2026-02-30" y lo corre a marzo): armada
+ * la fecha, vuelve a dar el mismo texto. "2026-02-30" da "2026-03-02", y "0099-05-05" da "1999-05-05".
+ */
 function isCalendarDate(iso: string): boolean {
   const [year, month, day] = iso.split("-").map(Number);
-  const date = new Date(Date.UTC(year, month - 1, day));
-  return (
-    date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day
-  );
+  return new Date(Date.UTC(year, month - 1, day)).toISOString().slice(0, 10) === iso;
 }
 
 function normalizeDate(proposed: string, today: string): string {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(proposed) || !isCalendarDate(proposed)) return today;
   const time = Date.parse(`${proposed}T00:00:00Z`);
   // Nunca fechas futuras ni absurdamente viejas.
+  // Stryker disable next-line EqualityOperator: si la fecha es la de hoy, devuelve hoy en los dos casos
   if (proposed > today) return today;
   const daysBack = (Date.parse(`${today}T00:00:00Z`) - time) / 86_400_000;
   return daysBack > MAX_DAYS_BACK ? today : proposed;
