@@ -23,7 +23,7 @@ export default defineConfig({
         "src/app/api/**",
         "src/app/**/actions.ts",
         "src/proxy.ts",
-        "src/app/robots.ts",
+        "src/app/{robots,sitemap}.ts",
         "src/components/**",
         // Los componentes de src/app con su prueba. test/cobertura.test.ts falla si un componente de cliente
         // ("use client") no está aquí ni excluido a propósito.

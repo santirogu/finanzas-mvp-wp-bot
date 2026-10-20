@@ -68,6 +68,8 @@ describe("CHECKS", () => {
       ["GET", "/login", 200],
       ["GET", "/privacidad", 200],
       ["GET", "/eliminar-datos", 200],
+      ["GET", "/sitemap.xml", 200],
+      ["GET", "/robots.txt", 200],
       ["GET", "/api/health", 200],
       [
         "GET",
@@ -84,6 +86,8 @@ describe("CHECKS", () => {
       "Las cabeceras de seguridad están activas",
       "La política de privacidad es pública (la exige Meta)",
       "La página para eliminar datos es pública (la exige Meta)",
+      "El sitemap es público y lleva la URL de producción",
+      "robots.txt es público y apunta al sitemap de producción",
       "La base de datos responde, tiene todas las migraciones y no falta configuración",
       "El webhook de WhatsApp rechaza un token de verificación falso",
       "El webhook de WhatsApp rechaza mensajes con firma falsa",
@@ -112,6 +116,11 @@ describe("CHECKS", () => {
     expect(CHECKS.find((c) => c.path === "/login")?.contains).toBe("Entrar");
     expect(CHECKS.find((c) => c.path === "/api/health")?.contains).toBe('"status":"ok"');
   });
+
+  it("el sitemap y robots.txt llevan la URL https de producción (no http://localhost:3000)", () => {
+    expect(CHECKS.find((c) => c.path === "/sitemap.xml")?.contains).toBe("<loc>https://");
+    expect(CHECKS.find((c) => c.path === "/robots.txt")?.contains).toBe("Sitemap: https://");
+  });
 });
 
 describe("runSmoke", () => {
@@ -124,7 +133,7 @@ describe("runSmoke", () => {
       [
         "Smoke tests contra https://app.test",
         ...CHECKS.map((c) => `  ✓ ${c.name}`),
-        "\n✓ Los 7 chequeos pasaron.",
+        "\n✓ Los 9 chequeos pasaron.",
       ].join("\n"),
     );
     expect(result.sleep).not.toHaveBeenCalled();
@@ -142,7 +151,7 @@ describe("runSmoke", () => {
       [
         "  ✗ La política de privacidad es pública (la exige Meta): respondió 307 → https://app.test/login, se esperaba 200",
         "  ✗ La base de datos responde, tiene todas las migraciones y no falta configuración: respondió 503, se esperaba 200",
-        "\n✗ 2 de 7 chequeos fallaron.",
+        "\n✗ 2 de 9 chequeos fallaron.",
       ].join("\n"),
     );
     expect(result.logs).toContain("  ✓ La página de inicio de sesión carga");
