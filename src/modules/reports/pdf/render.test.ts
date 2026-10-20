@@ -1,9 +1,11 @@
+import { readdirSync } from "node:fs";
 import { isValidElement, type ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 import type { Month } from "@/lib/dates";
 import { sampleMovements, sampleReport } from "../../../../test/report-sample";
 import { ReportDocument } from "./document";
-import { renderReportPdf } from "./render";
+import nextConfig from "../../../../next.config";
+import { FONTS_DIR, renderReportPdf } from "./render";
 import { type ReportPdfView, reportPdfView } from "./view";
 
 // La hoja del "Reporte (PDF)": que muestre todo lo que trae la vista (src/modules/reports/pdf/view.ts,
@@ -86,4 +88,13 @@ describe("renderReportPdf", () => {
     const long: ReportPdfView = { ...view, categories: { ...view.categories, rows: many }, fixed: { ...view.fixed, rows: fixed } };
     expect(pagesOf(await renderReportPdf(long))).toBeGreaterThan(2);
   }, 20_000);
+});
+
+describe("la fuente en Vercel", () => {
+  // render.tsx la lee del disco: si no viaja con la función de la ruta, el PDF falla solo en producción.
+  it("next.config.ts incluye en la ruta del PDF los archivos de la fuente", () => {
+    expect(nextConfig.outputFileTracingIncludes?.["/reportes/pdf"]).toEqual(["./src/modules/reports/pdf/fonts/*.ttf"]);
+    expect(FONTS_DIR.endsWith("src/modules/reports/pdf/fonts")).toBe(true);
+    expect(readdirSync(FONTS_DIR).filter((file) => file.endsWith(".ttf")).sort()).toEqual(["Geist-Regular.ttf", "Geist-SemiBold.ttf"]);
+  });
 });
