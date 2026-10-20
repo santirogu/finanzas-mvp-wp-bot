@@ -1,5 +1,6 @@
 "use client";
 
+import { useFormStatus } from "react-dom";
 import { useToast } from "@/components/toaster";
 import { unlinkWhatsAppAction } from "@/modules/whatsapp/actions";
 
@@ -13,9 +14,21 @@ export function UnlinkWhatsApp() {
         toast({ tone: "removal", message: "Se desvinculó tu WhatsApp", focus: true });
       }}
     >
-      <button type="submit" className="text-xs font-medium text-muted underline underline-offset-2 hover:text-danger">
-        Desvincular número
-      </button>
+      <UnlinkButton />
     </form>
+  );
+}
+
+/** Mientras se envía, dice "Desvinculando…" y no deja tocarlo otra vez (un doble clic daba dos avisos). */
+function UnlinkButton() {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="text-xs font-medium text-muted underline underline-offset-2 hover:text-danger disabled:opacity-60"
+    >
+      {pending ? "Desvinculando…" : "Desvincular número"}
+    </button>
   );
 }
