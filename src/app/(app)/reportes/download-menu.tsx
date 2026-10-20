@@ -4,11 +4,11 @@ import { useEffect, useId, useRef, useState } from "react";
 
 /**
  * Las descargas de Reportes: un botón con solo el ícono que abre la lista de lo que se puede bajar del
- * período. Hoy, los movimientos en CSV (src/app/(app)/reportes/exportar/route.ts); el reporte en PDF
- * dice "Pronto". Se maneja como el menú de la cuenta: se cierra con Escape (el foco vuelve al botón),
- * al tocar fuera, al salir con Tab o al elegir una descarga.
+ * período: los movimientos en CSV (src/app/(app)/reportes/exportar/route.ts) y el reporte en PDF
+ * (src/app/(app)/reportes/pdf/route.ts). Se maneja como el menú de la cuenta: se cierra con Escape (el
+ * foco vuelve al botón), al tocar fuera, al salir con Tab o al elegir una descarga.
  */
-export function DownloadMenu({ csvHref }: { csvHref: string }) {
+export function DownloadMenu({ csvHref, pdfHref }: { csvHref: string; pdfHref: string }) {
   const [open, setOpen] = useState(false);
   const listId = useId();
   const wrapper = useRef<HTMLDivElement>(null);
@@ -84,14 +84,15 @@ export function DownloadMenu({ csvHref }: { csvHref: string }) {
             </a>
           </li>
           <li>
-            {/* Todavía no existe: se ve (para saber que viene) pero no se puede elegir. */}
-            <span aria-disabled="true" className={`${item} cursor-default text-muted`}>
-              <svg viewBox="0 0 20 20" fill="currentColor" className="size-4.5 shrink-0" aria-hidden>
+            <a href={pdfHref} download onClick={() => setOpen(false)} className={`${item} hover:bg-background`}>
+              <svg viewBox="0 0 20 20" fill="currentColor" className="size-4.5 shrink-0 text-muted" aria-hidden>
                 <path d="M3 3.5A1.5 1.5 0 0 1 4.5 2h6.879a1.5 1.5 0 0 1 1.06.44l4.122 4.12A1.5 1.5 0 0 1 17 7.622V16.5a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 3 16.5v-13Z" />
               </svg>
-              <span className="min-w-0 flex-1">Reporte (PDF)</span>
-              <span className="whitespace-nowrap rounded-full border border-border px-2 text-xs">Pronto</span>
-            </span>
+              <span className="min-w-0">
+                <span className="block">Reporte (PDF)</span>
+                <span className="block text-xs text-muted">Para guardar o imprimir</span>
+              </span>
+            </a>
           </li>
         </ul>
       </div>

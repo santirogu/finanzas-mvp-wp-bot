@@ -1,3 +1,4 @@
+import { formatMonthName, type Month, monthOf } from "@/lib/dates";
 import { roundToCents, sumAmounts } from "@/lib/money";
 import { searchKey } from "@/lib/suggestions";
 
@@ -85,3 +86,17 @@ export type FixedHistoryEntry = HistoryEntry & { note: string | null };
 /** El cambio más reciente (no el primer pago); null si el valor nunca cambió. */
 export const lastChange = (entries: HistoryEntry[]) => entries.find((entry) => entry.previous !== null) ?? null;
 
+
+/**
+ * El último cambio en una línea, con su dirección: "11% desde marzo" (con el año si no es el de
+ * `current`: "11% desde marzo de 2025"); null si el valor nunca cambió.
+ */
+export function lastChangeSummary(entries: HistoryEntry[], current: Month): { direction: "up" | "down"; text: string } | null {
+  const change = lastChange(entries);
+  if (!change) return null;
+  const month = monthOf(`${change.month}-01`);
+  return {
+    direction: changeDirection(change.diff!),
+    text: `${pctLabel(change.pct!)} desde ${formatMonthName(month, { withYear: month.year !== current.year })}`,
+  };
+}

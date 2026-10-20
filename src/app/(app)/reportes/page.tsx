@@ -10,7 +10,6 @@ import {
   formatShortDate,
   formatShortMonth,
   type Month,
-  monthOf,
   monthParam,
   todayInTimezone,
 } from "@/lib/dates";
@@ -34,10 +33,10 @@ import {
   weekdayName,
   weekdayOf,
 } from "@/modules/reports/daily";
-import { changeDirection, lastChange, pctLabel } from "@/modules/reports/history";
+import { lastChangeSummary } from "@/modules/reports/history";
 import { periodHref, periodOptions, type ReportPeriod, reportPeriod } from "@/modules/reports/period";
 import { getExpensesByDay, getMonthExpenses, getReport, type Report } from "@/modules/reports/queries";
-import type { PeriodSummary } from "@/modules/reports/summary";
+import { averageNote, type PeriodSummary, savedNote } from "@/modules/reports/summary";
 import { NO_CATEGORY } from "@/modules/transactions/search";
 import { PageSkeleton } from "../page-skeleton";
 import { DailySpending, type DailySpendingProps } from "./daily-spending";
@@ -84,7 +83,7 @@ async function Reports({ period: param, calendar: calendarParam }: { period: Par
             <p className="mt-1 text-sm text-muted">{period.range}</p>
           </div>
           {/* Las descargas, solo si el período tiene movimientos (si no, no hay nada que bajar). */}
-          {(report.summary.income > 0 || report.summary.expense > 0) && <DownloadMenu csvHref={periodHref(period.id, "/reportes/exportar")} />}
+          {(report.summary.income > 0 || report.summary.expense > 0) && <DownloadMenu csvHref={periodHref(period.id, "/reportes/exportar")} pdfHref={periodHref(period.id, "/reportes/pdf")} />}
         </div>
         <nav aria-label="Período" className="mt-3 flex flex-wrap gap-2">
           {periodOptions(period, report.activeMonths).map((option) => (
@@ -202,20 +201,7 @@ function dailyView({
  */
 function fixedHistoriesView(report: Report, current: Month): Record<string, FixedHistory> {
   const view: Record<string, FixedHistory> = {};
-  for (const [key, entries] of Object.entries(report.histories)) {
-    const change = lastChange(entries);
-    const month = change && monthOf(`${change.month}-01`);
-    view[key] = {
-      entries,
-      summary:
-        change && month
-          ? {
-              direction: changeDirection(change.diff!),
-              text: `${pctLabel(change.pct!)} desde ${formatMonthName(month, { withYear: month.year !== current.year })}`,
-            }
-          : null,
-    };
-  }
+  for (const [key, entries] of Object.entries(report.histories)) view[key] = { entries, summary: lastChangeSummary(entries, current) };
   return view;
 }
 
@@ -252,15 +238,6 @@ function Stat({ label, value, note, tone = "", className = "" }: { label: string
  */
 function Summary({ summary, current, money }: { summary: PeriodSummary; current: Month; money: Money }) {
   const { averageExpense: average, topMonth } = summary;
-  const savedNote =
-    summary.saved === "overspent"
-      ? "Gastaste más de lo que ganaste"
-      : summary.saved
-        ? `Ahorraste el ${summary.saved}% de tus ingresos`
-        : undefined;
-  const averageNote = average
-    ? `En ${average.months} ${average.months === 1 ? "mes" : "meses"}${average.withoutCurrent ? `, sin ${formatMonthName(current)} (va en curso)` : ""}`
-    : "Se calcula cuando termine tu primer mes";
   return (
     <section aria-label="Resumen del período" className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
       <Stat label="Ingresos" value={money(summary.income)} tone="text-income" className="lg:col-span-2" />
@@ -268,11 +245,11 @@ function Summary({ summary, current, money }: { summary: PeriodSummary; current:
       <Stat
         label="Balance del período"
         value={money(summary.balance)}
-        note={savedNote}
+        note={savedNote(summary.saved)}
         tone={summary.balance < 0 ? "text-expense" : ""}
         className="sm:col-span-2"
       />
-      <Stat label="Gasto promedio por mes" value={average ? money(average.amount) : "—"} note={averageNote} className="lg:col-span-3" />
+      <Stat label="Gasto promedio por mes" value={average ? money(average.amount) : "—"} note={averageNote(average, current)} className="lg:col-span-3" />
       <Stat
         label="El mes de más gasto"
         value={topMonth ? formatMonthLabel(topMonth.month) : "—"}
