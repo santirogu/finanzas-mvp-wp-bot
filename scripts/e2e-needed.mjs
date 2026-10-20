@@ -19,7 +19,9 @@ export const E2E_SKIP_PATTERNS = [
   /^\.githooks\//,
   /^\.zap\//, // reglas del escaneo de seguridad (ZAP), que es otro job
   /^\.github\/(?!workflows\/ci\.yml$)/, // otros workflows y el CLI de Vercel (ci.yml sí: es el que corre las E2E)
-  /\.test\.tsx?$/, // pruebas unitarias, de integración y de componentes (las E2E son e2e/*.spec.ts)
+  // Pruebas unitarias, de integración y de componentes. En e2e/ no: Playwright también corre los
+  // *.test.ts de ahí, así que una E2E nueva con ese nombre se saltaría en el PR.
+  /^(?!e2e\/).*\.test\.tsx?$/,
   /^test\/integration\//, // infraestructura de las pruebas de integración
   // Herramientas de desarrollo. Las E2E sí usan admin.ts y db-cli.ts (pnpm admin:grant), y seed.ts
   // corre en el despliegue.
