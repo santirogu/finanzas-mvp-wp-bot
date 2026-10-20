@@ -55,7 +55,7 @@ Archivos: `src/lib/**`, `src/modules/**` (lo que no usa la base), `scripts/*.mjs
   - **Dinero:**
     - centavos (`0,1 + 0,2`);
     - negativos con el signo menos tipográfico (U+2212);
-    - el monto máximo (`numeric(18, 2)`: 99.999.999.999,99);
+    - el monto máximo (`MAX_AMOUNT` de `src/lib/money.ts`, el límite que usa la validación);
     - "punto = miles, coma = centavos" en `parseAmountInput`.
   - **Fechas:**
     - la zona horaria de la persona (`todayInTimezone`), con un reloj fijo en la prueba;
@@ -67,6 +67,9 @@ Archivos: `src/lib/**`, `src/modules/**` (lo que no usa la base), `scripts/*.mjs
 - **Pruebas que dependen de la hora real:** una prueba que usa `new Date()` sin fijarla puede fallar
   a fin de mes, a medianoche o el 29 de febrero. Busca `new Date()` y `Date.now()` en las pruebas y en
   el código que prueban sin un reloj inyectado.
+- **Datos al azar:** el inventario lista las pruebas con `Math.random` o `randomInt`. Revisa que ninguna
+  aserción dependa de lo que sale: una búsqueda de "100%_nadie" fallaba 1 de cada 200 corridas porque
+  también buscaba "100" en un número al azar. Mejor datos fijos, o aserciones que no los toquen.
 - **Una prueba por comportamiento:** el nombre en español dice la regla ("si empatan, el primero de
   la semana"). Si un nombre dice "funciona" o "caso 3", no se sabe qué protege.
 
@@ -122,8 +125,10 @@ Archivos: `e2e/*.spec.ts`, `e2e/helpers.ts`, `e2e/admin.ts`, `e2e/whatsapp.ts`,
   `e2e/configuracion-*.spec.ts` (CLAUDE.md).
   - Si una cae a mitad de camino, ¿deja la configuración cambiada para la siguiente?
   - Que la restauración vaya en un `beforeEach` o `afterEach`, no solo al final de la prueba.
-- **El servidor falso** (`fake-services.mjs`): errores de red ("socket hang up") por conexiones que
-  se cierran entre consultas.
+- **Conexiones que se cierran:** "socket hang up" o `ECONNRESET` en el CI. El servidor falso y
+  `next start` no cierran las conexiones inactivas (`keepAliveTimeout`), y `sendWhatsApp` y `sentTo`
+  reintentan (`maxRetries`). Un pedido nuevo con `request` que no pase por ellos y vuelva a consultar
+  después de varios segundos de interfaz, revísalo.
 - **axe:** las páginas nuevas pasan axe en claro y oscuro, con datos.
   - axe se pasa sin avisos emergentes animándose: mide el contraste a medio camino y da falsos
     positivos.

@@ -150,8 +150,8 @@ pnpm dev                        # http://localhost:3000 (antes, copia la base lo
     - un inventario automático (`inventario.mjs`, solo lee archivos) junta lo mecánico;
     - la cobertura, el último reporte de Stryker y el historial del CI completan las medidas;
     - Claude y sus subagentes revisan las pruebas con un checklist;
-    - cada hallazgo se demuestra metiendo el error (con Stryker o en un worktree aparte, sin tocar
-      la copia de trabajo) y viendo que ninguna prueba falla.
+    - cada hallazgo se demuestra metiendo el error en un worktree aparte (sin tocar la copia de
+      trabajo) y viendo que ninguna prueba falla. Stryker solo corre si se pide: tarda.
   - **Modos:**
     - `completa`: una vez al mes;
     - `cambios`: antes de un PR que agregue o cambie lógica;

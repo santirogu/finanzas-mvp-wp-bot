@@ -66,12 +66,12 @@ código sin revisar lo que devuelve también suma. Por eso esta auditoría combi
    - las marcas en las pruebas: `.only`, `.skip`, `it.fails`, esperas fijas, aserciones débiles;
    - las páginas sin revisión táctil o de diseño, las tablas fuera de la prueba del borrado de la
      cuenta y las Server Actions o rutas sin prueba de integración.
-3. **Mutación:**
-   - en `cambios`, `pnpm test:mutation:cambios` (minutos; solo los archivos de la lista que cambiaron);
-   - en `completa`, el reporte de la corrida completa del lunes: *Actions → Mutation testing*, el
-     último run de `main`. Bajar sus artefactos es una descarga: pide permiso antes, con el nombre y
-     el tamaño. Sin permiso, usa el reporte local y anota que es parcial. Nunca corras
-     `pnpm test:mutation` entero en local (unas 8 horas).
+3. **Mutación** (Stryker tarda y ocupa el Mac: **no lo corras sin que la persona lo pida**):
+   - el puntaje y los sobrevivientes de la corrida completa del lunes salen de los **logs** de su run
+     (*Actions → Mutation testing*, el último de `main`): `gh run view <id> --log | grep -A3 "\[Survived\]"`.
+     Leer los logs no es una descarga; bajar los artefactos sí (pide permiso, con nombre y tamaño);
+   - si la persona lo pide, en `cambios`, `pnpm test:mutation:cambios` (solo los archivos de la lista
+     que cambiaron). Nunca `pnpm test:mutation` entero en local (unas 8 horas).
 4. **El CI** (en `completa` y en el área `ci`):
 
    ```bash
@@ -127,16 +127,8 @@ Para cada uno, pregunta: si mañana alguien rompe esto, ¿qué prueba fallaría?
 Para cada posible hallazgo:
 
 1. **Demuéstralo.** Según el tipo:
-   - **"Nada detectaría este error":** mete el error y corre las pruebas. Lo más simple es Stryker
-     sobre ese archivo o esas líneas (no toca la copia de trabajo):
-
-     ```bash
-     npx stryker run --mutate "src/modules/reports/daily.ts:40-50"
-     ```
-
-     (Sobrescribe `reports/mutation/`: si ese reporte hace falta, cópialo antes al scratchpad.)
-
-     Si el error no es un mutante de Stryker, usa un worktree aparte y bórralo al terminar:
+   - **"Nada detectaría este error":** mete el error en un worktree aparte (nunca en la copia de
+     trabajo), corre ahí las pruebas que lo cubren y borra el worktree al terminar:
 
      ```bash
      git worktree add <scratchpad>/wt HEAD
@@ -145,11 +137,17 @@ Para cada posible hallazgo:
      # editar el archivo en <scratchpad>/wt, y ahí:
      (cd <scratchpad>/wt && pnpm exec vitest run --project unit <prueba>)
      git worktree remove --force <scratchpad>/wt
+     # Con git anterior a 2.17 (no tiene "worktree remove"):
+     rm -rf <scratchpad>/wt && git worktree prune
      ```
 
      El worktree tiene lo que está en commits: en modo `cambios`, si hay cambios sin commit, copia
      esos archivos al worktree antes de meter el error.
 
+     Si la persona pidió mutación, Stryker sobre unas líneas también sirve (no toca la copia de trabajo;
+     sobrescribe `reports/mutation/`): `npx stryker run --mutate "src/modules/reports/daily.ts:40-50"`.
+     Ojo al leer sus mutantes: los muestra sin paréntesis. `(a && b) && c` con el primer `&&` cambiado
+     se lee `a || b && c`, pero es `(a || b) && c`. Antes de clasificar uno, míralo en el código.
    - **"Esta prueba no revisa lo que dice":** el mismo método. Si con el error la prueba sigue
      pasando, está demostrado.
    - **"Fuera de la medición" o "sin prueba":** la salida del inventario y la cobertura del archivo
