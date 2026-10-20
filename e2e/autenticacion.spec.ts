@@ -20,6 +20,20 @@ test.describe("sin sesión", () => {
     for (const path of ["/dashboard", "/ingresos", "/egresos", "/api/"]) {
       expect(body).toContain(`Disallow: ${path}`);
     }
+    expect(body).toMatch(/^Sitemap: https?:\/\/\S+\/sitemap\.xml$/m);
+  });
+
+  test("sitemap.xml es público y cada página que lista se ve sin sesión", async ({ request }) => {
+    const response = await request.get("/sitemap.xml", { maxRedirects: 0 });
+    expect(response.status()).toBe(200);
+    expect(response.headers()["content-type"]).toContain("application/xml");
+    // El dominio depende de cómo se compiló (BETTER_AUTH_URL): se comparan solo las rutas.
+    const paths = [...(await response.text()).matchAll(/<loc>(.+?)<\/loc>/g)].map(([, loc]) => new URL(loc).pathname);
+    expect(paths).toEqual(["/", "/registro", "/login", "/privacidad", "/eliminar-datos"]);
+    for (const path of paths) {
+      const page = await request.get(path, { maxRedirects: 0 });
+      expect(page.status(), path).toBe(200);
+    }
   });
 
   test("la política de privacidad y la página para eliminar datos son públicas", async ({ page }) => {

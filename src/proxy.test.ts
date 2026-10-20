@@ -70,6 +70,7 @@ describe("proxy · matcher", () => {
       "/_next/image?url=x",
       "/favicon.ico",
       "/robots.txt",
+      "/sitemap.xml",
       "/_vercel/insights/script.js",
       "/_vercel/insights/view",
     ]) {
@@ -78,7 +79,7 @@ describe("proxy · matcher", () => {
   });
 
   it("no se salta páginas que solo empiezan como una ruta excluida", () => {
-    for (const url of ["/apiario", "/api-docs", "/_next/staticos", "/_next/imagenes", "/favicon.icono", "/faviconXico", "/robots.txt.bak", "/robotsXtxt", "/_vercelito", "/_vercel"]) {
+    for (const url of ["/apiario", "/api-docs", "/_next/staticos", "/_next/imagenes", "/favicon.icono", "/faviconXico", "/robots.txt.bak", "/robotsXtxt", "/sitemap.xml.bak", "/sitemapXxml", "/_vercelito", "/_vercel"]) {
       expect(runsOn(url), url).toBe(true);
     }
   });

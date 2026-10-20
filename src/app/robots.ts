@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { getAppUrl } from "@/lib/app-url";
 
 // Los buscadores pueden indexar la portada, el login, el registro y las páginas legales; nunca
 // la parte privada ni la API. No es una medida de seguridad (esas páginas igual exigen sesión):
@@ -6,5 +7,9 @@ import type { MetadataRoute } from "next";
 export const PRIVATE_PATHS = ["/dashboard", "/ingresos", "/egresos", "/simulador", "/api/"];
 
 export default function robots(): MetadataRoute.Robots {
-  return { rules: { userAgent: "*", allow: "/", disallow: PRIVATE_PATHS } };
+  return {
+    rules: { userAgent: "*", allow: "/", disallow: PRIVATE_PATHS },
+    // Las páginas públicas están en src/app/sitemap.ts.
+    sitemap: `${getAppUrl()}/sitemap.xml`,
+  };
 }
