@@ -1,9 +1,36 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import config from "../stryker.config.mjs";
-import { allTargets, changedTargets, gitOutput, isTarget, MAX_SHARDS, runCli, runLocal, runStryker, shard, SHARD_BYTES } from "./mutation-targets.mjs";
+import {
+  addedTargets,
+  allTargets,
+  changedTargets,
+  CONFIG_FILE,
+  gitOutput,
+  isTarget,
+  MAX_SHARDS,
+  patternsBefore,
+  runCli,
+  runLocal,
+  runStryker,
+  shard,
+  SHARD_BYTES,
+  targetsFor,
+} from "./mutation-targets.mjs";
 
 const PATTERNS = ["src/lib/{money,dates}.ts", "src/app/*/simulador/actions.ts", "scripts/{smoke,release}.mjs"];
 const always = () => true;
+/** Un glob de mentira: cada patrón de PATTERNS (o de BEFORE) encuentra estos archivos. */
+const FOUND: Record<string, string[]> = {
+  "src/lib/{money,dates}.ts": ["src/lib/money.ts", "src/lib/dates.ts"],
+  "src/lib/money.ts": ["src/lib/money.ts"],
+  "src/app/*/simulador/actions.ts": ["src/app/(app)/simulador/actions.ts"],
+  "scripts/{smoke,release}.mjs": ["scripts/smoke.mjs", "scripts/release.mjs"],
+};
+const glob = (pattern: string) => FOUND[pattern] ?? [];
+/** La lista de antes: sin dates.ts ni los scripts (entran con PATTERNS). */
+const BEFORE = ["src/lib/money.ts", "src/app/*/simulador/actions.ts"];
+/** Un stryker.config.mjs como lo devuelve `git show` (con un # en un comentario: el texto va codificado). */
+const configSource = (patterns: string[]) => `// La lista #1\nconst config = { mutate: ${JSON.stringify(patterns)} };\nexport default config;\n`;
 
 describe("isTarget", () => {
   it("los archivos de la lista de stryker.config.mjs, con sus llaves y comodines", () => {
@@ -52,6 +79,59 @@ describe("allTargets", () => {
     expect(files).toContain("src/lib/money.ts");
     expect(files).toContain("src/modules/reports/period.ts");
     expect(files.every((file) => isTarget(file, config.mutate))).toBe(true);
+  });
+});
+
+describe("addedTargets", () => {
+  it("los archivos que entran a la lista: los de ahora que no estaban antes, en orden", () => {
+    expect(addedTargets(BEFORE, { patterns: PATTERNS, glob })).toEqual(["scripts/release.mjs", "scripts/smoke.mjs", "src/lib/dates.ts"]);
+  });
+
+  it("si la lista no cambió (o solo sacó archivos), ninguno", () => {
+    expect(addedTargets(PATTERNS, { patterns: PATTERNS, glob })).toEqual([]);
+    expect(addedTargets(PATTERNS, { patterns: BEFORE, glob })).toEqual([]);
+  });
+
+  it("por defecto, frente a la lista de stryker.config.mjs en el disco", () => {
+    expect(addedTargets([])).toEqual(allTargets());
+    expect(addedTargets(config.mutate)).toEqual([]);
+  });
+});
+
+describe("targetsFor", () => {
+  const deps = { patterns: PATTERNS, exists: always, glob };
+
+  it("sin la lista de antes, solo los archivos de la lista que cambiaron", () => {
+    expect(targetsFor(["src/lib/money.ts", "README.md"], undefined, deps)).toEqual({ files: ["src/lib/money.ts"], added: [] });
+  });
+
+  it("con la lista de antes, también los que entran: sin repetir y en orden", () => {
+    // dates.ts cambió y además entra: va una vez.
+    expect(targetsFor(["src/lib/money.ts", "src/lib/dates.ts", CONFIG_FILE], BEFORE, deps)).toEqual({
+      files: ["scripts/release.mjs", "scripts/smoke.mjs", "src/lib/dates.ts", "src/lib/money.ts"],
+      added: ["scripts/release.mjs", "scripts/smoke.mjs", "src/lib/dates.ts"],
+    });
+  });
+});
+
+describe("patternsBefore", () => {
+  it("si cambió stryker.config.mjs, su lista en esa versión (con git show)", async () => {
+    const git = vi.fn(() => configSource(BEFORE));
+    expect(await patternsBefore(`README.md\n ${CONFIG_FILE} \n`, "abc123", git)).toEqual(BEFORE);
+    expect(git).toHaveBeenCalledWith(["show", "abc123:stryker.config.mjs"]);
+  });
+
+  it("si no cambió, o no hay con qué comparar, nada (y no llama a git)", async () => {
+    const git = vi.fn(() => configSource(BEFORE));
+    expect(await patternsBefore("README.md\nsrc/lib/money.ts\n", "abc123", git)).toBeUndefined();
+    expect(await patternsBefore(`scripts/${CONFIG_FILE}\n`, "abc123", git)).toBeUndefined();
+    expect(await patternsBefore(CONFIG_FILE, undefined, git)).toBeUndefined();
+    expect(await patternsBefore(CONFIG_FILE, "", git)).toBeUndefined();
+    expect(git).not.toHaveBeenCalled();
+  });
+
+  it("por defecto lo lee con git de verdad", async () => {
+    expect(await patternsBefore(CONFIG_FILE, "HEAD")).toEqual(expect.arrayContaining(["src/proxy.ts"]));
   });
 });
 
@@ -127,12 +207,28 @@ describe("runCli", () => {
     expect(append).toHaveBeenCalledWith("/tmp/out", "count=0\nmatrix=[]\n");
   });
 
+  it("si el PR cambió la lista, dice cuáles entran y los muta con lo que cambió", () => {
+    const logs: string[] = [];
+    const parts = runCli("cambios", `${CONFIG_FILE}\nsrc/lib/money.ts\n`, { ...deps, glob, before: BEFORE, log: (line: string) => logs.push(line), outputFile: undefined });
+    expect(parts).toEqual([{ parte: "1 de 1", files: "scripts/release.mjs,scripts/smoke.mjs,src/lib/dates.ts,src/lib/money.ts" }]);
+    expect(logs).toEqual([
+      "Entran a la lista de stryker.config.mjs (3): scripts/release.mjs, scripts/smoke.mjs, src/lib/dates.ts",
+      "Los archivos del PR que muta Stryker (4), en 1 parte:",
+      "  • Parte 1 de 1: scripts/release.mjs, scripts/smoke.mjs, src/lib/dates.ts, src/lib/money.ts",
+    ]);
+  });
+
   it("la corrida completa, en varias partes", () => {
     const logs: string[] = [];
-    const glob = () => ["src/lib/money.ts", "src/lib/dates.ts"];
-    const parts = runCli("todos", "", { ...deps, glob, size: () => SHARD_BYTES, log: (line: string) => logs.push(line), outputFile: undefined });
+    const all = () => ["src/lib/money.ts", "src/lib/dates.ts"];
+    // Con la lista de antes, igual: en la corrida completa no se dice qué entra.
+    const parts = runCli("todos", "", { ...deps, glob: all, before: [], size: () => SHARD_BYTES, log: (line: string) => logs.push(line), outputFile: undefined });
     expect(parts.map((p) => p.parte)).toEqual(["1 de 2", "2 de 2"]);
-    expect(logs[0]).toBe("La lista completa de stryker.config.mjs (2), en 2 partes:");
+    expect(logs).toEqual([
+      "La lista completa de stryker.config.mjs (2), en 2 partes:",
+      "  • Parte 1 de 2: src/lib/dates.ts",
+      "  • Parte 2 de 2: src/lib/money.ts",
+    ]);
   });
 
   describe("sin indicar el archivo de salida", () => {
@@ -154,10 +250,10 @@ describe("runCli", () => {
 describe("runLocal", () => {
   const git = (outputs: Record<string, string>) => (args: string[]) => outputs[args.join(" ")] ?? "";
 
-  it("muta lo cambiado frente a origin/main, lo que no está en un commit y los archivos nuevos", () => {
+  it("muta lo cambiado frente a origin/main, lo que no está en un commit y los archivos nuevos", async () => {
     const run = vi.fn(() => 0);
     const logs: string[] = [];
-    const code = runLocal({
+    const code = await runLocal({
       // Cada consulta trae un archivo distinto: las tres cuentan.
       git: git({
         "diff --name-only origin/main...HEAD": "src/lib/money.ts\nREADME.md\n",
@@ -175,9 +271,9 @@ describe("runLocal", () => {
     expect(logs).toEqual(["Stryker muta 3 archivos: scripts/smoke.mjs, src/lib/dates.ts, src/lib/money.ts"]);
   });
 
-  it("con un solo archivo lo dice en singular, y devuelve lo que devuelva Stryker", () => {
+  it("con un solo archivo lo dice en singular, y devuelve lo que devuelva Stryker", async () => {
     const logs: string[] = [];
-    const code = runLocal({
+    const code = await runLocal({
       git: git({ "diff --name-only HEAD": "src/lib/money.ts" }),
       run: () => 1,
       log: (line: string) => logs.push(line),
@@ -188,12 +284,30 @@ describe("runLocal", () => {
     expect(logs).toEqual(["Stryker muta 1 archivo: src/lib/money.ts"]);
   });
 
-  it("sin cambios en la lista, no corre Stryker", () => {
+  it("sin cambios en la lista, no corre Stryker", async () => {
     const run = vi.fn(() => 0);
     const logs: string[] = [];
-    expect(runLocal({ git: git({ "diff --name-only HEAD": "README.md" }), run, log: (line: string) => logs.push(line), patterns: PATTERNS })).toBe(0);
+    expect(await runLocal({ git: git({ "diff --name-only HEAD": "README.md" }), run, log: (line: string) => logs.push(line), patterns: PATTERNS })).toBe(0);
     expect(run).not.toHaveBeenCalled();
     expect(logs).toEqual(["No cambiaste ningún archivo de la lista de stryker.config.mjs frente a origin/main: no hay nada que mutar."]);
+  });
+});
+
+describe("runLocal con la lista cambiada", () => {
+  it("frente a la de origin/main: dice cuáles entran y los muta con lo que cambió", async () => {
+    const run = vi.fn(() => 0);
+    const logs: string[] = [];
+    const outputs: Record<string, string> = {
+      "diff --name-only HEAD": `${CONFIG_FILE}\nsrc/lib/money.ts\n`,
+      "show origin/main:stryker.config.mjs": configSource(BEFORE),
+    };
+    const code = await runLocal({ git: (args: string[]) => outputs[args.join(" ")] ?? "", run, log: (line: string) => logs.push(line), patterns: PATTERNS, exists: always, glob });
+    expect(code).toBe(0);
+    expect(run).toHaveBeenCalledWith("scripts/release.mjs,scripts/smoke.mjs,src/lib/dates.ts,src/lib/money.ts");
+    expect(logs).toEqual([
+      "Entran a la lista de stryker.config.mjs (3): scripts/release.mjs, scripts/smoke.mjs, src/lib/dates.ts",
+      "Stryker muta 4 archivos: scripts/release.mjs, scripts/smoke.mjs, src/lib/dates.ts, src/lib/money.ts",
+    ]);
   });
 });
 

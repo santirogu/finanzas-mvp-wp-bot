@@ -177,20 +177,23 @@ pnpm dev                        # http://localhost:3000 (antes, copia la base lo
   cambios pequeños en la lógica (cambia `>` por `>=`, borra condiciones, vacía textos) y verifica que
   alguna prueba unitaria falle. El puntaje es el % de mutantes detectados (~95 %; lo que sobrevive
   son mutantes equivalentes, que no cambian el comportamiento). Muta `src/lib`, los módulos del bot,
-  WhatsApp y transacciones, el webhook y los scripts del CI. El reporte HTML queda en
+  WhatsApp, transacciones, reportes (con los próximos pagos y la vista del PDF) y notificaciones, el
+  webhook y los scripts del CI. El reporte HTML queda en
   `reports/mutation/index.html`. Falla si el puntaje baja del umbral `break` de `stryker.config.mjs`,
   pero no bloquea el merge.
   - **Cuánto tarda:** cada mutante corre la suite unitaria completa (el runner por comando: el de
     Vitest para Stryker todavía no soporta Vitest 5). La lista entera son ~5000 mutantes, unas 8 horas
     en un runner de GitHub, más de lo que dura un job.
   - **En un PR**, al ponerle la etiqueta `mutation-testing` (y en cada push mientras la tenga), muta
-    **solo los archivos de la lista que el PR cambió** (`scripts/mutation-targets.mjs`): minutos. Si no
-    cambió ninguno, lo dice y termina. Al cerrar o fusionar el PR, la corrida que quede se cancela.
+    **solo los archivos de la lista que el PR cambió** (`scripts/mutation-targets.mjs`): minutos. Si el
+    PR agrega archivos a la lista de `stryker.config.mjs`, también muta esos (si no, nada los mutaría
+    hasta el lunes). Si no cambió ninguno, lo dice y termina. Al cerrar o fusionar el PR, la corrida que
+    quede se cancela.
   - **Cada lunes** sobre `main` y con *Actions → Mutation testing → Run workflow*, la lista completa,
     repartida en partes de ~45 minutos (parejas por tamaño del código) que corren a la vez; un último
     job junta sus reportes en un resumen.
   - **En local**, `pnpm test:mutation:cambios` muta lo que cambiaste frente a `origin/main` (con lo que
-    no está en un commit).
+    no está en un commit) y lo que agregaste a la lista.
 - **Evaluación del bot** (`pnpm bot:eval`): 56 frases contra la API real de Claude. Tiene costo,
   por eso no corre en CI.
 

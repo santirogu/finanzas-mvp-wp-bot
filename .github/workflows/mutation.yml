@@ -5,7 +5,7 @@ name: Mutation testing
 # (~5000 mutantes) tarda ~8 horas en un runner, más de lo que dura un job. Por eso
 # (scripts/mutation-targets.mjs):
 #   · en un PR con la etiqueta "mutation-testing" (y en cada push mientras la tenga) se mutan solo
-#     los archivos de esa lista que el PR cambió: unos minutos;
+#     los archivos de esa lista que el PR cambió, y los que agrega a la lista: unos minutos;
 #   · cada lunes sobre main y a mano (Actions → Mutation testing → Run workflow), la lista completa,
 #     repartida en partes de ~45 minutos que corren a la vez.
 # No es check obligatorio.
@@ -57,6 +57,7 @@ jobs:
       - name: Decidir qué archivos mutar
         id: decide
         env:
+          # También para ver qué archivos entran a la lista, si el PR cambia stryker.config.mjs.
           BASE: ${{ github.event.pull_request.base.sha }}
         run: |
           # Si el script falla, el paso también (y no corre una matriz vacía).
