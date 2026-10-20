@@ -227,7 +227,10 @@ describe("botActivity", () => {
     const spaced = `+${phoneAna.slice(0, 2)} ${phoneAna.slice(2, 5)} ${phoneAna.slice(5)}`;
     // Los 8 mensajes que llegaron desde el número de Ana.
     expect((await activity({ q: spaced })).total).toBe(8);
-    expect((await activity({ q: "100%_nadie" })).total).toBe(0);
+    // "%" y "_" se buscan como texto, no como comodines (sin escaparlos, encontrarían todo). Sin dígitos:
+    // los de la búsqueda también se buscan en los números, que aquí salen al azar.
+    expect((await activity({ q: "%" })).total).toBe(0);
+    expect((await activity({ q: "_" })).total).toBe(0);
   });
 
   it("sin rol de admin no consulta nada", async () => {
