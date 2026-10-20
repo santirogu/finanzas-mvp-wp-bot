@@ -168,7 +168,9 @@ async function admin(browser: Browser, baseURL: string, datos: Datos) {
   const page = await nuevaPagina(browser, baseURL);
   datos.correos.admin = await newAdmin(page);
   await setUpTwoFactor(page);
-  // El super admin (en dorado, y con "Hacer admin" y "Quitar admin" en Usuarios).
+  // El super admin (en dorado, y con "Hacer admin" y "Quitar admin" en Usuarios). Con los grupos en
+  // paralelo, el admin de otro grupo se la quita: las vistas que la necesitan se la vuelven a poner
+  // (comoSuperAdmin en vistas.ts).
   adminCommand("super", datos.correos.admin);
   await page.reload();
 
