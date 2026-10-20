@@ -86,6 +86,31 @@ describe("TwoFactorSetup · paso 2 (escanear)", () => {
     expect(screen.queryByText(BACKUP_CODES[0])).toBeNull();
   });
 
+  it("mientras espera, cada botón lo dice y no deja enviar dos veces", async () => {
+    let enabled: (result: Result) => void = () => {};
+    mocks.enable.mockReturnValue(new Promise((resolve) => (enabled = resolve)));
+    render(<TwoFactorSetup onDone={mocks.done} />);
+    await userEvent.type(screen.getByLabelText("Tu contraseña"), "clave-segura-123");
+    await userEvent.click(screen.getByRole("button", { name: "Continuar" }));
+    const waiting = await screen.findByRole("button", { name: "Un momento…" });
+    expect(waiting).toBeDisabled();
+    await userEvent.click(waiting);
+    expect(mocks.enable).toHaveBeenCalledTimes(1);
+    enabled({ data: { method: "totp", totpURI: TOTP_URI, backupCodes: BACKUP_CODES }, error: null });
+    await screen.findByRole("heading", { name: /Paso 2 de 3/ });
+
+    let verified: (result: Result) => void = () => {};
+    mocks.verifyTotp.mockReturnValue(new Promise((resolve) => (verified = resolve)));
+    await userEvent.type(screen.getByLabelText("Código de 6 dígitos"), "123456");
+    await userEvent.click(screen.getByRole("button", { name: "Activar la verificación" }));
+    const verifying = await screen.findByRole("button", { name: "Verificando…" });
+    expect(verifying).toBeDisabled();
+    await userEvent.click(verifying);
+    expect(mocks.verifyTotp).toHaveBeenCalledTimes(1);
+    verified({ data: {}, error: null });
+    expect(await screen.findByRole("heading", { name: /Paso 3 de 3/ })).toBeVisible();
+  });
+
   it("con el código correcto la activa, cierra las otras sesiones y muestra los códigos de respaldo", async () => {
     render(<TwoFactorSetup onDone={mocks.done} />);
     await passStep1();

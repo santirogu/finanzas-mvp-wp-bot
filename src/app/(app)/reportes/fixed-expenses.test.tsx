@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { FixedExpenseState, FixedNoteState } from "@/modules/reports/actions";
@@ -108,6 +108,22 @@ describe("FixedExpenses", () => {
     expect(await findToast()).toHaveAttribute("data-tone", "success");
   });
 
+  it("mientras vuelve a poner uno, el botón dice «Volviendo…» y no deja enviar dos veces", async () => {
+    let finish: (state: FixedExpenseState) => void = () => {};
+    action.mockReturnValue(new Promise((resolve) => (finish = resolve)));
+    const user = userEvent.setup();
+    render(<FixedExpenses {...props} />);
+    await user.click(section().getByText("Quitados (1)"));
+    const restore = section().getByRole("button", { name: "Volver a poner Netflix en los gastos fijos" });
+    await user.click(restore);
+    await waitFor(() => expect(restore).toHaveTextContent("Volviendo…"));
+    expect(restore).toBeDisabled();
+    await user.click(restore);
+    expect(action).toHaveBeenCalledTimes(1);
+    finish({ error: "Ese egreso no está entre tus movimientos." });
+    await waitFor(() => expect(restore).toBeEnabled());
+  });
+
   describe("agregar un gasto fijo", () => {
     const open = async (user: ReturnType<typeof userEvent.setup>) => {
       await user.click(section().getByRole("button", { name: "Agregar un gasto fijo" }));
@@ -144,6 +160,21 @@ describe("FixedExpenses", () => {
       expect(sent()).toEqual({ action: "include", description: "Gimnasio" });
       expect(await findToast()).toHaveTextContent("Se agregó «Gimnasio» a los gastos fijos");
       expect(section().queryByLabelText("Egreso")).toBeNull();
+    });
+
+    it("mientras agrega, el botón dice «Agregando…» y no deja enviar dos veces", async () => {
+      let finish: (state: FixedExpenseState) => void = () => {};
+      action.mockReturnValue(new Promise((resolve) => (finish = resolve)));
+      const user = userEvent.setup();
+      render(<FixedExpenses {...props} />);
+      await user.selectOptions(await open(user), "Gimnasio");
+      await user.click(section().getByRole("button", { name: "Agregar" }));
+      const busy = await section().findByRole("button", { name: "Agregando…" });
+      expect(busy).toBeDisabled();
+      await user.click(busy);
+      expect(action).toHaveBeenCalledTimes(1);
+      finish({ error: "Ese egreso no está entre tus movimientos." });
+      expect(await section().findByRole("button", { name: "Agregar" })).toBeEnabled();
     });
 
     it("un error del servidor queda debajo del selector", async () => {
@@ -232,8 +263,29 @@ describe("FixedExpenses · historial", () => {
     await user.type(field, "Subió con el IPC.");
     await user.click(section().getByRole("button", { name: "Guardar nota" }));
     expect(Object.fromEntries(noteAction.mock.calls[0][1])).toEqual({ description: "Arriendo", month: "2026-03", note: "Subió con el IPC." });
-    expect(await findToast()).toHaveTextContent("Se guardó la nota");
+    const toast = await findToast();
+    expect(toast).toHaveTextContent("Se guardó la nota");
+    // El campo se cerró: el foco va al aviso (si no, el teclado quedaría en ninguna parte).
+    expect(toast).toHaveFocus();
     expect(section().queryByLabelText(/^Nota del cambio/)).toBeNull();
+  });
+
+  it("mientras guarda la nota, «Guardando…» no deja enviar dos veces y Escape no la cierra", async () => {
+    let finish: (state: FixedNoteState) => void = () => {};
+    noteAction.mockReturnValue(new Promise((resolve) => (finish = resolve)));
+    const user = userEvent.setup();
+    render(<FixedExpenses {...props} />);
+    await user.click(toggle(/^Historial de Arriendo/));
+    await user.click(section().getByRole("button", { name: "Editar nota del cambio del 5 de mar de 2026" }));
+    await user.click(section().getByRole("button", { name: "Guardar nota" }));
+    const busy = await section().findByRole("button", { name: "Guardando…" });
+    expect(busy).toBeDisabled();
+    await user.click(busy);
+    await user.keyboard("{Escape}");
+    expect(noteAction).toHaveBeenCalledTimes(1);
+    expect(section().getByLabelText("Nota del cambio del 5 de mar de 2026")).toBeInTheDocument();
+    finish({ error: "No se pudo guardar la nota." });
+    expect(await section().findByRole("button", { name: "Guardar nota" })).toBeEnabled();
   });
 
   it("editar: trae la nota; \"Borrar nota\" la manda vacía y avisa en rojo", async () => {
