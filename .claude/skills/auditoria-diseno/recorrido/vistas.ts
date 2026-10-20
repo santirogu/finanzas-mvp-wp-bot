@@ -107,7 +107,7 @@ export const VISTAS: Vista[] = [
   { id: "no-encontrada", titulo: "Página que no existe (404)", persona: "vacia", ruta: fija("/esta-pagina-no-existe") },
 
   // Una cuenta con datos normales y WhatsApp vinculado
-  { id: "resumen", titulo: "Resumen con datos", persona: "datos", ruta: fija("/dashboard") },
+  { id: "resumen", titulo: "Resumen con datos (y los avisos de próximos pagos)", persona: "datos", ruta: fija("/dashboard") },
   {
     id: "menu-cuenta",
     titulo: "Menú de la cuenta abierto (nombre largo)",

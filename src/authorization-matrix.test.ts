@@ -91,6 +91,8 @@ const SERVER_ACTIONS = {
     "requireUser; solo los gastos fijos propios (el dueño sale de la sesión); agregar exige un egreso propio con esa descripción",
   saveFixedNoteAction:
     "requireUser; solo notas propias, de un gasto que la persona pagó ese mes; hasta 280 caracteres",
+  skipFixedPaymentAction:
+    "requireUser; solo marca 'ya no aplica' el pago de un mes de un gasto propio (un egreso propio con esa descripción)",
 } as const;
 
 // Acciones que no necesitan validar la sesión, con el porqué.

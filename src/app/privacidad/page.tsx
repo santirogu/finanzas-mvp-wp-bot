@@ -38,7 +38,7 @@ export default function PrivacyPage() {
               categorías y fechas de tus ingresos y egresos.
             </li>
             <li>
-              <strong>Tus gastos fijos marcados a mano:</strong> si en Reportes agregas o quitas un
+              <strong>Tus gastos fijos marcados a mano:</strong> si en Fijos agregas o quitas un
               gasto fijo, guardamos su descripción (sin mayúsculas ni tildes) y si lo agregaste o lo
               quitaste, hasta que lo deshagas o elimines tu cuenta.
             </li>
@@ -46,6 +46,11 @@ export default function PrivacyPage() {
               <strong>Tus notas del historial de los gastos fijos:</strong> si le escribes una nota a
               un cambio de valor de un gasto fijo, guardamos la nota, el gasto (sin mayúsculas ni
               tildes) y el mes, hasta que la borres o elimines tu cuenta.
+            </li>
+            <li>
+              <strong>Los pagos que marcas como que ya no aplican:</strong> si en los avisos de próximos
+              pagos del Resumen marcas &quot;Este pago ya no aplica&quot;, guardamos el gasto (sin
+              mayúsculas ni tildes) y el mes, hasta que elimines tu cuenta.
             </li>
             <li>
               <strong>Datos de WhatsApp, si conectas tu número:</strong> tu número de teléfono y el

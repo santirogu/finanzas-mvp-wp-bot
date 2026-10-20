@@ -117,6 +117,26 @@ export const fixedExpenseNote = pgTable(
   ],
 );
 
+// Los pagos de un gasto fijo que la persona marcó "Este pago ya no aplica" en los avisos de próximos
+// pagos (Resumen, src/modules/reports/upcoming.ts): por gasto (la clave de la descripción, como
+// fixed_expense_choice) y mes ("YYYY-MM"). Solo oculta el aviso de ese mes. Se borran con la cuenta.
+export const fixedPaymentSkip = pgTable(
+  "fixed_payment_skip",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    descriptionKey: text("description_key").notNull(),
+    month: text("month").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("fixed_payment_skip_user_key_month_uq").on(t.userId, t.descriptionKey, t.month),
+    check("fixed_payment_skip_month", sql`${t.month} ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'`),
+  ],
+);
+
 export type Category = typeof category.$inferSelect;
 export type Transaction = typeof transaction.$inferSelect;
 export type TransactionType = (typeof transactionType.enumValues)[number];
