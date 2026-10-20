@@ -12,6 +12,7 @@ import {
   signIn,
   type Jar,
 } from "../../../test/integration/auth-http";
+import { requestLocale } from "../../../test/integration/locale";
 import { totp } from "../../../test/totp";
 
 // "Cambiar contraseña" (Mi cuenta) con Better Auth y sesiones de verdad: la contraseña cambia, las
@@ -148,5 +149,20 @@ describe("changePasswordAction", () => {
     await change(valid);
     expect(await sessionOf(here)).not.toBeNull();
     expect(await db.select().from(session).where(eq(session.userId, id))).toHaveLength(1);
+  });
+});
+
+describe("changePasswordAction · en inglés", () => {
+  it("los errores de los campos y la contraseña equivocada, en inglés", async () => {
+    const here = await register("ana@test.local");
+    as(here);
+    requestLocale.value = "en";
+
+    expect(await change({ current: "", next: "corta", repeat: "otra" })).toEqual({
+      fieldErrors: { current: "Enter your current password.", next: "It must have at least 8 characters." },
+    });
+    expect(await change({ current: PASSWORD, next: NEW_PASSWORD, repeat: "otra" })).toEqual({ fieldErrors: { repeat: "It doesn't match the new password." } });
+    expect(await change({ ...valid, current: "no-es-la-mia-123" })).toEqual({ fieldErrors: { current: "Wrong password." } });
+    expect(await change(valid)).toEqual({ ok: true });
   });
 });

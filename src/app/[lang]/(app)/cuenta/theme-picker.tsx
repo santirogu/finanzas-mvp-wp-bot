@@ -1,7 +1,14 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import { useTexts } from "@/i18n/client";
+import { texts } from "@/i18n/texts";
 import { THEME_EVENT, THEME_KEY, THEME_LABELS, THEMES, readTheme, saveTheme } from "@/lib/theme";
+
+const TEXTS = texts(
+  { legend: "Apariencia", labels: THEME_LABELS },
+  { en: { legend: "Appearance", labels: { system: "System", light: "Light", dark: "Dark" } } },
+);
 
 // El tema guardado en este navegador, como estado de React: cambia al elegir otro aquí o en otra
 // pestaña. En el servidor (y antes de hidratar) es "Sistema".
@@ -20,10 +27,11 @@ function subscribe(onChange: () => void) {
 /** "Sistema · Claro · Oscuro": la apariencia de la app en este dispositivo (src/lib/theme.ts). */
 export function ThemePicker() {
   const theme = useSyncExternalStore(subscribe, readTheme, () => "system" as const);
+  const t = useTexts(TEXTS);
 
   return (
     <fieldset>
-      <legend className="sr-only">Apariencia</legend>
+      <legend className="sr-only">{t.legend}</legend>
       <div className="grid grid-cols-3 gap-1 rounded-lg border border-control p-1">
         {THEMES.map((option) => (
           <label
@@ -38,7 +46,7 @@ export function ThemePicker() {
               onChange={() => saveTheme(option)}
               className="sr-only"
             />
-            {THEME_LABELS[option]}
+            {t.labels[option]}
           </label>
         ))}
       </div>

@@ -70,7 +70,7 @@ export type UpcomingSettingsState = { message?: string; tone?: ToastTone; error?
  */
 export async function saveUpcomingSettingsAction(_prev: UpcomingSettingsState, formData: FormData): Promise<UpcomingSettingsState> {
   const user = await requireUser();
-  const result = await saveUpcomingSettings(user.id, { enabled: formData.get("enabled"), days: formData.get("days") });
+  const result = await saveUpcomingSettings(user.id, { enabled: formData.get("enabled"), days: formData.get("days") }, await getRequestLocale());
   if (!result.ok) return { error: result.error, field: result.field };
   refresh();
   return { message: result.message, tone: result.tone };

@@ -95,3 +95,18 @@ describe("NotificationSettings", () => {
     expect(screen.queryByRole("status")).toBeNull();
   });
 });
+
+describe("NotificationSettings · en inglés", () => {
+  it("la sección, el interruptor, los días y su mensaje, en inglés", async () => {
+    render(<NotificationSettings enabled days={3} />, { english: true });
+    const settings = within(screen.getByRole("region", { name: "Notifications" }));
+    expect(settings.getByRole("switch", { name: /Upcoming payment notices/ })).toBeChecked();
+    expect(settings.getByText("On")).toBeVisible();
+    const days = settings.getByLabelText("Days in advance");
+    await userEvent.clear(days);
+    await userEvent.click(settings.getByRole("button", { name: "Save" }));
+    expect(await settings.findByText("Enter how many days before you want the notice.")).toBeVisible();
+    await userEvent.click(settings.getByRole("switch", { name: /Upcoming payment notices/ }));
+    expect(settings.getByText("Off")).toBeVisible();
+  });
+});

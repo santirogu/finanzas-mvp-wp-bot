@@ -8,6 +8,8 @@
 // El super admin no es otro rol: es un admin con la marca super_admin (una sola cuenta, puesta solo
 // desde la terminal con pnpm admin:super). Además de lo de admin, da y quita el rol de admin.
 
+import type { Locale } from "@/i18n/locales";
+
 export const ROLES = ["user", "admin"] as const;
 export type Role = (typeof ROLES)[number];
 
@@ -41,9 +43,13 @@ export function isSuperAdmin(role: Role, superAdmin: boolean): boolean {
   return superAdmin && hasRole(role, "admin");
 }
 
-/** El rol para mostrar: "Superadministrador" para el super admin. */
-export function roleLabel(role: Role, superAdmin: boolean): string {
-  return isSuperAdmin(role, superAdmin) ? "Superadministrador" : ROLE_LABELS[role];
+/** Los nombres de los roles en inglés. */
+const ROLE_LABELS_EN: Record<Role, string> = { user: "User", admin: "Administrator" };
+
+/** El rol para mostrar: "Superadministrador" para el super admin (en inglés, "Super administrator"). */
+export function roleLabel(role: Role, superAdmin: boolean, locale: Locale = "es"): string {
+  if (isSuperAdmin(role, superAdmin)) return locale === "es" ? "Superadministrador" : "Super administrator";
+  return (locale === "es" ? ROLE_LABELS : ROLE_LABELS_EN)[role];
 }
 
 /** Donde un admin configura la verificación en dos pasos (/admin/seguridad). */

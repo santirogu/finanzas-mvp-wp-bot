@@ -3,25 +3,52 @@
 import { useActionState, useId, useState } from "react";
 import { describedBy, FieldError } from "@/components/field-error";
 import { useFieldErrors } from "@/components/use-field-errors";
+import { useLocale } from "@/i18n/client";
+import { texts } from "@/i18n/texts";
 import type { FieldMessages } from "@/lib/field-errors";
 import { deleteAccountAction, type DeleteAccountState } from "@/modules/account/actions";
-import { CONFIRMATION_WORD } from "@/modules/account/confirmation";
+import { CONFIRMATION_WORDS } from "@/modules/account/confirmation";
 
-// Los errores de los campos antes de enviar, en español (en vez del globo del navegador).
-const MESSAGES: Record<string, FieldMessages> = {
-  password: { required: "Escribe tu contraseña." },
-  confirmation: { required: `Escribe ${CONFIRMATION_WORD} para confirmar.` },
-};
+const TEXTS = texts(
+  {
+    // Los errores de los campos antes de enviar (en vez del globo del navegador).
+    messages: {
+      password: { required: "Escribe tu contraseña." },
+      confirmation: { required: `Escribe ${CONFIRMATION_WORDS.es} para confirmar.` },
+    } as Record<string, FieldMessages>,
+    password: "Tu contraseña",
+    type: "Escribe",
+    toConfirm: "para confirmar",
+    deleting: "Eliminando…",
+    delete: "Eliminar mi cuenta para siempre",
+  },
+  {
+    en: {
+      messages: {
+        password: { required: "Enter your password." },
+        confirmation: { required: `Type ${CONFIRMATION_WORDS.en} to confirm.` },
+      },
+      password: "Your password",
+      type: "Type",
+      toConfirm: "to confirm",
+      deleting: "Deleting…",
+      delete: "Delete my account forever",
+    },
+  },
+);
 
 export function DeleteAccountForm() {
   const [state, formAction, pending] = useActionState<DeleteAccountState, FormData>(
     deleteAccountAction,
     {},
   );
+  const locale = useLocale();
+  const t = TEXTS[locale];
+  const word = CONFIRMATION_WORDS[locale];
   const [confirmation, setConfirmation] = useState("");
-  const confirmed = confirmation.trim().toUpperCase() === CONFIRMATION_WORD;
-  // Los del navegador (antes de enviar, en español) y, si no hay, los del servidor.
-  const { errors: fieldErrors, formProps } = useFieldErrors(MESSAGES);
+  const confirmed = confirmation.trim().toUpperCase() === word;
+  // Los del navegador (antes de enviar) y, si no hay, los del servidor.
+  const { errors: fieldErrors, formProps } = useFieldErrors(t.messages);
   const errorOf = (name: "password" | "confirmation") => fieldErrors[name] ?? state.fieldErrors?.[name];
   const passwordErrorId = useId();
   const confirmationErrorId = useId();
@@ -30,7 +57,7 @@ export function DeleteAccountForm() {
     <form action={formAction} {...formProps} className="space-y-4">
       <div className="space-y-1.5">
         <label className="block space-y-1.5">
-          <span className="text-sm font-medium">Tu contraseña</span>
+          <span className="text-sm font-medium">{t.password}</span>
           <input
             name="password"
             type="password"
@@ -46,7 +73,7 @@ export function DeleteAccountForm() {
       <div className="space-y-1.5">
         <label className="block space-y-1.5">
           <span className="text-sm font-medium">
-            Escribe <strong>{CONFIRMATION_WORD}</strong> para confirmar
+            {t.type} <strong>{word}</strong> {t.toConfirm}
           </span>
           <input
             name="confirmation"
@@ -73,7 +100,7 @@ export function DeleteAccountForm() {
         disabled={!confirmed || pending}
         className="btn-danger w-full"
       >
-        {pending ? "Eliminando…" : "Eliminar mi cuenta para siempre"}
+        {pending ? t.deleting : t.delete}
       </button>
     </form>
   );

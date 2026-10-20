@@ -126,3 +126,17 @@ describe("saveUpcomingSettingsAction", () => {
     expect(refresh).not.toHaveBeenCalled();
   });
 });
+
+describe("saveUpcomingSettings · en inglés", () => {
+  it("los avisos y el error, en inglés", async () => {
+    const user = await signIn();
+    expect(await saveUpcomingSettings(user.id, { enabled: "on", days: "5" }, "en")).toEqual({
+      ok: true,
+      message: "Saved: we'll notify you 5 days before each bill is due",
+      tone: "success",
+    });
+    expect(await saveUpcomingSettings(user.id, { enabled: "on", days: "0" }, "en")).toMatchObject({ message: "Saved: we'll notify you the same day each bill is due" });
+    expect(await saveUpcomingSettings(user.id, { enabled: null, days: null }, "en")).toEqual({ ok: true, message: "Upcoming payment notices were turned off", tone: "removal" });
+    expect(await saveUpcomingSettings(user.id, { enabled: "on", days: "11" }, "en")).toEqual({ ok: false, error: "Enter a number between 0 and 10.", field: "days" });
+  });
+});

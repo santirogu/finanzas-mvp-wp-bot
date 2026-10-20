@@ -132,3 +132,25 @@ describe("ChangePassword", () => {
     expect(action).not.toHaveBeenCalled();
   });
 });
+
+describe("ChangePassword · en inglés", () => {
+  it("la sección, el formulario, sus mensajes y el aviso, en inglés", async () => {
+    action.mockResolvedValue({ ok: true });
+    render(<ChangePassword needsCode />, { english: true });
+    const security = within(screen.getByRole("region", { name: "Security" }));
+    expect(security.getByText("Changing it signs out your other sessions.")).toBeVisible();
+    await userEvent.click(security.getByRole("button", { name: "Change password" }));
+    expect(security.getByLabelText("Current password")).toHaveFocus();
+    expect(security.getByText("At least 8 characters.")).toBeVisible();
+    expect(security.getByLabelText("Google Authenticator code")).toBeVisible();
+    await userEvent.click(security.getByRole("button", { name: "Save password" }));
+    expect(await security.findByText("Enter your current password.")).toBeVisible();
+    expect(security.getByText("Enter the 6-digit code from Google Authenticator.")).toBeVisible();
+    await userEvent.type(security.getByLabelText("Current password"), "clave-actual-1");
+    await userEvent.type(security.getByLabelText("New password"), "clave-nueva-123");
+    await userEvent.type(security.getByLabelText("Repeat the new password"), "clave-nueva-123");
+    await userEvent.type(security.getByLabelText("Google Authenticator code"), "123456");
+    await userEvent.click(security.getByRole("button", { name: "Save password" }));
+    expect(await findToast()).toHaveTextContent("Your password was changed. We signed out your other sessions.");
+  });
+});

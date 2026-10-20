@@ -140,3 +140,32 @@ test("en inglés: Reportes, con la descarga del CSV para el Excel en inglés @pr
   expect(lines[0]).toBe("Date,Type,Description,Category,Amount,Source");
   expect(lines[1]).toMatch(/^\d{4}-\d{2}-\d{2},Expense,Almuerzo,No category,-1250\.50,Web$/);
 });
+
+test("en inglés: Mi cuenta, la Ayuda y las páginas legales (solo en español, con su nota) @principal", async ({ page }) => {
+  await register(page);
+  await inEnglish(page);
+
+  await page.goto("/cuenta");
+  await expect(page).toHaveTitle("My account · Finanzas");
+  await expect(visible(page.getByRole("heading", { level: 1, name: "My account" }))).toBeVisible();
+  await expect(visible(page.getByRole("region", { name: "Your details" }))).toContainText("User");
+  await expect(visible(page.getByRole("region", { name: "Security" }))).toBeVisible();
+  await expect(visible(page.getByRole("region", { name: "Notifications" }))).toBeVisible();
+  await expect(visible(page.getByLabel("Type DELETE to confirm"))).toBeVisible();
+  expect(await seriousViolations(page)).toEqual([]);
+
+  await page.goto("/ayuda");
+  await expect(page).toHaveTitle("Help · Finanzas");
+  const topics = visible(page.getByRole("region", { name: "Help topics" }));
+  await topics.locator("summary", { hasText: "The WhatsApp bot" }).click();
+  await expect(topics).toContainText("For now the bot answers in Spanish.");
+  const closed = topics.locator("details:not([open])");
+  while ((await closed.count()) > 0) await closed.first().locator("summary").click();
+  expect(await seriousViolations(page)).toEqual([]);
+
+  await page.goto("/privacidad");
+  await expect(visible(page.getByText("This page is only available in Spanish."))).toBeVisible();
+  await expect(page.locator("main")).toHaveAttribute("lang", "es");
+  await expect(page.getByText("This page is only available in Spanish.")).toHaveAttribute("lang", "en");
+  expect(await seriousViolations(page)).toEqual([]);
+});

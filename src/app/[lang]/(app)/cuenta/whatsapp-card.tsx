@@ -1,9 +1,17 @@
+import { getTexts } from "@/i18n/server";
+import { texts } from "@/i18n/texts";
 import { requireUser } from "@/lib/session";
 import { getLinkForUser } from "@/modules/whatsapp/link";
 import { maskPhone } from "@/modules/whatsapp/phone";
 import { UnlinkWhatsApp } from "./unlink-whatsapp";
 import { WhatsAppConnect } from "./whatsapp-connect";
 import { envVar } from "@/lib/env";
+
+const TEXTS = texts(
+  { connected: "Conectado", linked: "Registra movimientos escribiendo desde", tryIt: "Prueba:", example: "“gasté 20 mil en almuerzo”" },
+  // El ejemplo, en español: el bot todavía responde en español.
+  { en: { connected: "Connected", linked: "Add transactions by writing from", tryIt: "Try:", example: "“gasté 20 mil en almuerzo”" } },
+);
 
 /**
  * El WhatsApp de la cuenta, en Mi cuenta: conectarlo (el código para enviarle al bot) o, ya vinculado,
@@ -12,6 +20,7 @@ import { envVar } from "@/lib/env";
 export async function WhatsAppCard() {
   const user = await requireUser();
   const link = await getLinkForUser(user.id);
+  const t = await getTexts(TEXTS);
 
   return (
     <section id="whatsapp" className="card scroll-mt-4 p-4" aria-labelledby="whatsapp-titulo">
@@ -21,7 +30,7 @@ export async function WhatsAppCard() {
         </h2>
         {link && (
           <span className="rounded-full bg-income/10 px-2 py-0.5 text-xs font-medium text-income">
-            Conectado
+            {t.connected}
           </span>
         )}
       </div>
@@ -29,9 +38,8 @@ export async function WhatsAppCard() {
       {link ? (
         <div className="mt-3 space-y-3 text-sm">
           <p className="text-muted">
-            Registra movimientos escribiendo desde{" "}
-            <span className="whitespace-nowrap font-medium text-foreground">{maskPhone(link.phone)}</span>. Prueba:{" "}
-            <em>“gasté 20 mil en almuerzo”</em>.
+            {t.linked} <span className="whitespace-nowrap font-medium text-foreground">{maskPhone(link.phone)}</span>. {t.tryIt}{" "}
+            <em>{t.example}</em>.
           </p>
           <UnlinkWhatsApp />
         </div>

@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it } from "vitest";
 import { THEME_KEY, THEME_SCRIPT } from "@/lib/theme";
 import { ThemePicker } from "./theme-picker";
+import { InEnglish } from "../../../../../test/locale";
 
 const root = document.documentElement;
 const runScript = () => new Function(THEME_SCRIPT)();
@@ -64,5 +65,13 @@ describe("ThemePicker", () => {
       window.dispatchEvent(new StorageEvent("storage", { key: THEME_KEY }));
     });
     expect(screen.getByRole("radio", { name: "Oscuro" })).toBeChecked();
+  });
+});
+
+describe("ThemePicker · en inglés", () => {
+  it("las opciones en inglés", () => {
+    render(<ThemePicker />, { wrapper: InEnglish });
+    expect(screen.getByRole("group", { name: "Appearance" })).toBeVisible();
+    for (const name of ["System", "Light", "Dark"]) expect(screen.getByRole("radio", { name })).toBeInTheDocument();
   });
 });

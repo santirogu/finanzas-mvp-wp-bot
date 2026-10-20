@@ -43,3 +43,13 @@ describe("checkPasswordChange", () => {
     });
   });
 });
+
+describe("checkPasswordChange · en inglés", () => {
+  it("los mensajes de cada campo, en inglés", () => {
+    expect(checkPasswordChange({ current: "", next: "", repeat: "" }, "en")).toEqual({ current: "Enter your current password.", next: "Enter the new password." });
+    expect(checkPasswordChange({ current: "a", next: "corta", repeat: "corta" }, "en")).toEqual({ next: "It must have at least 8 characters." });
+    expect(checkPasswordChange({ current: "a", next: "x".repeat(129), repeat: "" }, "en")).toEqual({ next: "It must have at most 128 characters." });
+    expect(checkPasswordChange({ current: "clave-segura", next: "clave-segura", repeat: "clave-segura" }, "en")).toEqual({ next: "It must be different from the current one." });
+    expect(checkPasswordChange({ current: "a", next: "clave-segura", repeat: "otra" }, "en")).toEqual({ repeat: "It doesn't match the new password." });
+  });
+});

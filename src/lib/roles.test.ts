@@ -78,3 +78,12 @@ describe("afterLoginPath", () => {
     expect(afterLoginPath({ role: "admin", twoFactorEnabled: "true" })).toBe("/admin/seguridad");
   });
 });
+
+describe("roleLabel · en inglés", () => {
+  it("el nombre del rol en inglés", () => {
+    expect(roleLabel("user", false, "en")).toBe("User");
+    expect(roleLabel("admin", false, "en")).toBe("Administrator");
+    expect(roleLabel("admin", true, "en")).toBe("Super administrator");
+    expect(roleLabel("admin", true)).toBe("Superadministrador");
+  });
+});
