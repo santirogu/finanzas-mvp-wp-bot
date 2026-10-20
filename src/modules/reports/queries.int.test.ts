@@ -1,6 +1,7 @@
+import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { db } from "@/db";
-import { fixedExpenseChoice, fixedExpenseNote, fixedPaymentSkip, transaction } from "@/db/schema";
+import { fixedExpenseChoice, fixedExpenseNote, fixedPaymentSkip, notificationSetting, transaction } from "@/db/schema";
 import { listCategories } from "@/modules/transactions/queries";
 import { createUser } from "../../../test/integration/factories";
 import { reportPeriod } from "./period";
@@ -389,13 +390,14 @@ describe("getUpcomingPayments (los avisos del Resumen)", () => {
     await addTx({ userId: ana.id, description: "Borrado", amount: 1, occurredOn: "2026-10-01", deletedAt: new Date() });
 
     const upcoming = await getUpcomingPayments(ana.id, october, "2026-10-03");
-    expect(upcoming.map((p) => [p.description, p.month, p.date, p.days, p.amount])).toEqual([["Arriendo", "2026-10", "2026-10-05", 2, 1800000]]);
+    expect(upcoming.days).toBe(3);
+    expect(upcoming.payments.map((p) => [p.description, p.month, p.date, p.days, p.amount])).toEqual([["Arriendo", "2026-10", "2026-10-05", 2, 1800000]]);
 
     // Atrasado (el 10, sin pago) hasta que lo marca; la marca de Beto no le cambia nada.
     await db.insert(fixedPaymentSkip).values({ userId: beto.id, descriptionKey: "arriendo", month: "2026-10" });
-    expect((await getUpcomingPayments(ana.id, october, "2026-10-10")).map((p) => p.days)).toEqual([-5]);
+    expect((await getUpcomingPayments(ana.id, october, "2026-10-10")).payments.map((p) => p.days)).toEqual([-5]);
     await db.insert(fixedPaymentSkip).values({ userId: ana.id, descriptionKey: "arriendo", month: "2026-10" });
-    expect(await getUpcomingPayments(ana.id, october, "2026-10-10")).toEqual([]);
+    expect((await getUpcomingPayments(ana.id, october, "2026-10-10")).payments).toEqual([]);
   });
 
   it("uno quitado de los gastos fijos no avisa; uno agregado a mano, sí", async () => {
@@ -407,6 +409,21 @@ describe("getUpcomingPayments (los avisos del Resumen)", () => {
       { userId: ana.id, descriptionKey: "arriendo", choice: "exclude" },
     ]);
     const upcoming = await getUpcomingPayments(ana.id, october, "2026-10-12");
-    expect(upcoming.map((p) => [p.description, p.days, p.approximate])).toEqual([["Netflix", 2, true]]);
+    expect(upcoming.payments.map((p) => [p.description, p.days, p.approximate])).toEqual([["Netflix", 2, true]]);
+  });
+
+  it("con los días que eligió la persona; apagados, ninguno (los de otra cuenta no le cambian nada)", async () => {
+    const ana = await createUser();
+    const beto = await createUser();
+    for (const month of ["07", "08", "09"]) await addTx({ userId: ana.id, description: "Arriendo", amount: 1800000, occurredOn: `2026-${month}-10` });
+    // El 10, a 7 días del 3: con 3 días de anticipación (lo de siempre) todavía no avisa.
+    expect((await getUpcomingPayments(ana.id, october, "2026-10-03")).payments).toEqual([]);
+    await db.insert(notificationSetting).values({ userId: beto.id, upcomingEnabled: true, upcomingDays: 10 });
+    expect((await getUpcomingPayments(ana.id, october, "2026-10-03")).payments).toEqual([]);
+    await db.insert(notificationSetting).values({ userId: ana.id, upcomingEnabled: true, upcomingDays: 7 });
+    expect(await getUpcomingPayments(ana.id, october, "2026-10-03")).toMatchObject({ days: 7, payments: [{ description: "Arriendo", days: 7 }] });
+    await db.update(notificationSetting).set({ upcomingEnabled: false }).where(eq(notificationSetting.userId, ana.id));
+    // Apagados, tampoco los atrasados.
+    expect(await getUpcomingPayments(ana.id, october, "2026-10-20")).toEqual({ days: 7, payments: [] });
   });
 });

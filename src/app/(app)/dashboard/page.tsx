@@ -8,7 +8,7 @@ import { formatMoney } from "@/lib/money";
 import { inMonthPhrase, monthHref, monthNav, selectedMonth } from "@/lib/month-nav";
 import { requireUser } from "@/lib/session";
 import { getUpcomingPayments } from "@/modules/reports/queries";
-import { DAYS_AHEAD, upcomingItems } from "@/modules/reports/upcoming";
+import { upcomingItems, windowPhrase } from "@/modules/reports/upcoming";
 import { chartSlices } from "@/modules/transactions/category-chart";
 import { balanceChange, totalChange } from "@/modules/transactions/month-comparison";
 import {
@@ -50,7 +50,7 @@ async function Dashboard({ month }: { month: string | string[] | undefined }) {
     listTransactions(user.id, range, { limit: 6 }),
     listActiveMonths(user.id),
     // Los avisos de próximos pagos son de ahora: solo en el mes actual.
-    isCurrent ? getUpcomingPayments(user.id, current, today) : [],
+    isCurrent ? getUpcomingPayments(user.id, current, today) : null,
   ]);
   const money = (n: number) => formatMoney(n, user.currency);
   const firstName = user.name.split(" ")[0];
@@ -102,7 +102,9 @@ async function Dashboard({ month }: { month: string | string[] | undefined }) {
         </Link>
       </section>
 
-      {upcoming.length > 0 && <UpcomingPayments items={upcomingItems(upcoming, today, user.currency)} daysAhead={DAYS_AHEAD} />}
+      {upcoming && upcoming.payments.length > 0 && (
+        <UpcomingPayments items={upcomingItems(upcoming.payments, today, user.currency)} span={windowPhrase(upcoming.days)} />
+      )}
 
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-5">
         <section className="card lg:col-span-3">

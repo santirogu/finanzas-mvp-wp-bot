@@ -15,13 +15,24 @@ export type FieldMessages = {
   pattern?: string;
   /** Mayor que su max (p. ej. una fecha futura). */
   max?: string;
+  /** Un campo numérico (type="number") fuera de su rango, con decimales o con algo que no es un número. */
+  number?: string;
 };
 
 /** Lo que el navegador dice de un campo (ValidityState) y lo necesario para el mensaje. */
 export type FieldState = {
   validity: Pick<
     ValidityState,
-    "valid" | "valueMissing" | "typeMismatch" | "tooShort" | "tooLong" | "patternMismatch" | "rangeOverflow" | "rangeUnderflow"
+    | "valid"
+    | "valueMissing"
+    | "typeMismatch"
+    | "tooShort"
+    | "tooLong"
+    | "patternMismatch"
+    | "rangeOverflow"
+    | "rangeUnderflow"
+    | "stepMismatch"
+    | "badInput"
   >;
   type: string;
   value: string;
@@ -55,5 +66,6 @@ export function fieldErrorMessage(field: FieldState, messages: FieldMessages = {
   if (validity.tooLong) return GENERAL.tooLong(field.maxLength);
   if (validity.patternMismatch) return messages.pattern ?? GENERAL.pattern;
   if (validity.rangeOverflow && messages.max) return messages.max;
+  if ((validity.rangeUnderflow || validity.rangeOverflow || validity.stepMismatch || validity.badInput) && messages.number) return messages.number;
   return GENERAL.other;
 }

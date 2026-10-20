@@ -7,14 +7,21 @@ import type { FixedOption } from "./recurring";
 // Los avisos de próximos pagos (Resumen): para cada gasto fijo, la fecha en que se espera el pago de cada
 // mes y si ya se pagó. La fecha sale del día del mes en que se pagó las últimas veces (la mediana de los
 // últimos PAYMENTS_FOR_DAY pagos: resiste un pago fuera de lo normal). Se avisa de los que tocan en los
-// próximos DAYS_AHEAD días y de los atrasados (sin pago) de hasta MONTHS_BACK meses atrás, salvo que la
-// persona haya marcado "Este pago ya no aplica" (solo para ese mes: fixed_payment_skip).
+// próximos días (los que elija la persona; si no, DAYS_AHEAD) y de los atrasados (sin pago) de hasta
+// MONTHS_BACK meses atrás, salvo que la persona haya marcado "Este pago ya no aplica" (solo para ese mes:
+// fixed_payment_skip).
 
 /** Cuántos pagos se miran para saber qué día del mes se paga. Con menos, la fecha es aproximada. */
 export const PAYMENTS_FOR_DAY = 3;
 
-/** Con cuántos días de anticipación se avisa (por ahora fijo; después, configurable). */
+/** Con cuántos días de anticipación se avisa si la persona no lo cambió (Mi cuenta → Notificaciones). */
 export const DAYS_AHEAD = 3;
+
+/** Lo más que se puede pedir (el mismo límite que pone la base: UPCOMING_DAYS_MAX); 0 es el mismo día. */
+export const MAX_DAYS_AHEAD = 10;
+
+/** El error del campo de los días de anticipación (en el navegador y en el servidor). */
+export const DAYS_AHEAD_MESSAGE = `Escribe un número entre 0 y ${MAX_DAYS_AHEAD}.`;
 
 /** Hasta cuántos meses atrás se sigue avisando de un pago atrasado. */
 export const MONTHS_BACK = 3;
@@ -83,13 +90,15 @@ function paymentsByKey(rows: HistoryMonth[], keys: Set<string>): Map<string, str
 /**
  * Los pagos de los gastos fijos (`items`) que hay que avisar hoy (`today`, YYYY-MM-DD en la zona de la
  * persona), de la fecha más vieja a la más próxima. `history` son los egresos por mes y descripción (de
- * todo el tiempo) y `skipped`, los pagos marcados "ya no aplica" ("<clave> YYYY-MM").
+ * todo el tiempo), `skipped`, los pagos marcados "ya no aplica" ("<clave> YYYY-MM"), y `daysAhead`, con
+ * cuántos días de anticipación se avisa (0: el mismo día).
  */
 export function upcomingPayments(
   items: (FixedOption & { amount: number })[],
   history: HistoryMonth[],
   skipped: ReadonlySet<string>,
   today: string,
+  daysAhead: number = DAYS_AHEAD,
 ): UpcomingPayment[] {
   const payments = paymentsByKey(history, new Set(items.map((item) => item.key)));
   const current = monthOf(today);
@@ -102,7 +111,7 @@ export function upcomingPayments(
     const day = usualDay(recent);
     // Un pago por mes, desde el que corresponde al primer pago (si se pagó el 25 lo que se suele pagar el
     // 5, es el del mes siguiente) hasta el del mes siguiente al actual (a fin de mes, el del 1 ya puede
-    // estar a menos de DAYS_AHEAD días).
+    // estar a menos de los días de anticipación; con 10, el del 5 también).
     const due: { month: string; date: string; paid: boolean }[] = [];
     for (let month = shiftMonth(monthOf(dates[0]), -1); monthParam(month) <= monthParam(shiftMonth(current, 1)); month = shiftMonth(month, 1)) {
       const date = dateInMonth(monthParam(month), day);
@@ -116,7 +125,7 @@ export function upcomingPayments(
     }
     for (const d of due) {
       const days = daysBetween(today, d.date);
-      if (d.paid || days > DAYS_AHEAD || d.month < oldest || skipped.has(`${item.key} ${d.month}`)) continue;
+      if (d.paid || days > daysAhead || d.month < oldest || skipped.has(`${item.key} ${d.month}`)) continue;
       result.push({
         key: item.key,
         description: item.description,
@@ -131,6 +140,19 @@ export function upcomingPayments(
     }
   }
   return result.sort((a, b) => a.date.localeCompare(b.date) || a.description.localeCompare(b.description));
+}
+
+/** Los días que mira la tarjeta, para su texto: "de hoy", "de hoy y mañana" o "de los próximos 3 días". */
+export function windowPhrase(daysAhead: number): string {
+  if (daysAhead === 0) return "de hoy";
+  if (daysAhead === 1) return "de hoy y mañana";
+  return `de los próximos ${daysAhead} días`;
+}
+
+/** Con cuánta anticipación, para el aviso al guardar: "el mismo día", "1 día antes" o "5 días antes". */
+export function daysAheadPhrase(daysAhead: number): string {
+  if (daysAhead === 0) return "el mismo día";
+  return `${daysAhead} ${daysAhead === 1 ? "día" : "días"} antes`;
 }
 
 /** Cuándo, en palabras: "Atrasado", "Hoy", "Mañana" o "En 3 días". */

@@ -15,7 +15,7 @@ export const SHOWN = 5;
  * ya no aplica" oculta el de ese mes y avisa abajo (rojo: algo dejó de mostrarse), con el foco: el aviso
  * ya no está.
  */
-export function UpcomingPayments({ items, daysAhead }: { items: UpcomingItem[]; daysAhead: number }) {
+export function UpcomingPayments({ items, span }: { items: UpcomingItem[]; /** "de los próximos 3 días" (los que eligió la persona). */ span: string }) {
   const [expanded, setExpanded] = useState(false);
   const shown = expanded ? items : items.slice(0, SHOWN);
   const rest = items.length - SHOWN;
@@ -27,7 +27,7 @@ export function UpcomingPayments({ items, daysAhead }: { items: UpcomingItem[]; 
           Ver gastos fijos
         </Link>
       </div>
-      <p className="text-sm text-muted">Tus gastos fijos de los próximos {daysAhead} días y los que todavía no registras.</p>
+      <p className="text-sm text-muted">Tus gastos fijos {span} y los que todavía no registras.</p>
       <ul className="mt-2 divide-y divide-border">
         {shown.map((item) => (
           <Item key={item.id} item={item} />

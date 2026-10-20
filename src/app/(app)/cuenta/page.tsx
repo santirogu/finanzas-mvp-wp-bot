@@ -2,9 +2,11 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { hasRole, roleLabel } from "@/lib/roles";
 import { requireUser } from "@/lib/session";
+import { getUpcomingSettings } from "@/modules/reports/upcoming-settings";
 import { PageSkeleton } from "../page-skeleton";
 import { ChangePassword } from "./change-password";
 import { DeleteAccountForm } from "./delete-account-form";
+import { NotificationSettings } from "./notification-settings";
 import { ThemePicker } from "./theme-picker";
 import { WhatsAppCard } from "./whatsapp-card";
 
@@ -20,6 +22,7 @@ export default function AccountPage() {
 
 async function Account() {
   const user = await requireUser();
+  const notifications = await getUpcomingSettings(user.id);
 
   return (
     <div className="mx-auto max-w-xl space-y-6">
@@ -62,6 +65,8 @@ async function Account() {
       <ChangePassword needsCode={hasRole(user.role, "admin") && user.twoFactorEnabled} />
 
       <WhatsAppCard />
+
+      <NotificationSettings {...notifications} />
 
       <section className="card space-y-3 p-4 text-sm" aria-labelledby="apariencia">
         <div className="space-y-1">

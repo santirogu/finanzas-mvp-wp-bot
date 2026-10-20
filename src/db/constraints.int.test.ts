@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { db } from "@/db";
-import { botSetting, category, fixedPaymentSkip, transaction, whatsappLink, whatsappLinkCode } from "@/db/schema";
+import { botSetting, category, fixedPaymentSkip, notificationSetting, transaction, whatsappLink, whatsappLinkCode } from "@/db/schema";
 import { createUser } from "../../test/integration/factories";
 
 // Las restricciones de la base (src/db/schema/) son la última defensa si el código falla: un monto
@@ -123,5 +123,21 @@ describe("pagos que ya no aplican (avisos de próximos pagos)", () => {
     expect(await rejectedBy(skip(ana.id, "2026-10"))).toBe("fixed_payment_skip_user_key_month_uq");
     expect(await rejectedBy(skip(ana.id, "2026-09"))).toBeNull();
     expect(await rejectedBy(skip(beto.id, "2026-10"))).toBeNull();
+  });
+});
+
+describe("configuración de los avisos", () => {
+  it("de 0 a 10 días de anticipación (notification_setting_upcoming_days)", async () => {
+    const setting = async (upcomingDays: number) => db.insert(notificationSetting).values({ userId: (await createUser()).id, upcomingDays });
+    expect(await rejectedBy(setting(-1))).toBe("notification_setting_upcoming_days");
+    expect(await rejectedBy(setting(11))).toBe("notification_setting_upcoming_days");
+    expect(await rejectedBy(setting(0))).toBeNull();
+    expect(await rejectedBy(setting(10))).toBeNull();
+  });
+
+  it("una por cuenta", async () => {
+    const user = await createUser();
+    expect(await rejectedBy(db.insert(notificationSetting).values({ userId: user.id }))).toBeNull();
+    expect(await rejectedBy(db.insert(notificationSetting).values({ userId: user.id }))).toBe("notification_setting_pkey");
   });
 });

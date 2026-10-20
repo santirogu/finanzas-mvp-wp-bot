@@ -6,9 +6,11 @@ import type { ToastTone } from "@/lib/toasts";
 import { chooseFixedExpense } from "./fixed-choices";
 import { saveFixedNote } from "./history-notes";
 import { skipFixedPayment } from "./payment-skips";
+import { saveUpcomingSettings } from "./upcoming-settings";
 
 // Las acciones de los gastos fijos (la pestaña Fijos, /gastos-fijos, y los avisos de próximos pagos del
-// Resumen). Cada una valida la sesión antes que nada: el dueño sale de la sesión, nunca del formulario.
+// Resumen y de Mi cuenta). Cada una valida la sesión antes que nada: el dueño sale de la sesión, nunca del
+// formulario.
 
 export type FixedExpenseState = { message?: string; tone?: ToastTone; error?: string };
 
@@ -53,6 +55,20 @@ export async function skipFixedPaymentAction(_prev: PaymentSkipState, formData: 
   const user = await requireUser();
   const result = await skipFixedPayment(user.id, { description: formData.get("description"), month: formData.get("month") });
   if (!result.ok) return { error: result.error };
+  refresh();
+  return { message: result.message, tone: result.tone };
+}
+
+export type UpcomingSettingsState = { message?: string; tone?: ToastTone; error?: string; field?: "days" };
+
+/**
+ * Mi cuenta → Notificaciones: prende o apaga los avisos de próximos pagos y guarda con cuántos días de anticipación
+ * (ver src/modules/reports/upcoming-settings.ts). Con éxito, vuelve a dibujar la página y avisa.
+ */
+export async function saveUpcomingSettingsAction(_prev: UpcomingSettingsState, formData: FormData): Promise<UpcomingSettingsState> {
+  const user = await requireUser();
+  const result = await saveUpcomingSettings(user.id, { enabled: formData.get("enabled"), days: formData.get("days") });
+  if (!result.ok) return { error: result.error, field: result.field };
   refresh();
   return { message: result.message, tone: result.tone };
 }

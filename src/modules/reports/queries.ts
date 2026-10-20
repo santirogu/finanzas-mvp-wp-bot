@@ -16,6 +16,7 @@ import { type ReportPeriod, reportPeriod } from "./period";
 import { type DescriptionMonthTotal, recurringExpenses, recurringFrom } from "./recurring";
 import { monthSeries, type MonthTotals, periodSummary } from "./summary";
 import { type UpcomingPayment, upcomingPayments } from "./upcoming";
+import { getUpcomingSettings } from "./upcoming-settings";
 
 // Las consultas de Reportes. Reciben el userId ya validado por el Data Access Layer
 // (src/lib/session.ts) y siempre filtran por él. Agrupan por mes en la base; lo demás (promedios,
@@ -225,10 +226,13 @@ export type Report = Awaited<ReturnType<typeof getReport>>;
 
 /**
  * Los avisos de próximos pagos del Resumen: los gastos fijos de los últimos 12 meses (con lo que la
- * persona marcó a mano) cuyo pago toca pronto o está atrasado, sin los que marcó "ya no aplica".
- * `current` y `today` (YYYY-MM-DD), en la zona de la persona.
+ * persona marcó a mano) cuyo pago toca en los días de anticipación que eligió (`days`) o está atrasado,
+ * sin los que marcó "ya no aplica". Con los avisos apagados, ninguno. `current` y `today` (YYYY-MM-DD),
+ * en la zona de la persona.
  */
-export async function getUpcomingPayments(userId: string, current: Month, today: string): Promise<UpcomingPayment[]> {
+export async function getUpcomingPayments(userId: string, current: Month, today: string): Promise<{ days: number; payments: UpcomingPayment[] }> {
+  const settings = await getUpcomingSettings(userId);
+  if (!settings.enabled) return { days: settings.days, payments: [] };
   const period = reportPeriod(undefined, current);
   const [descriptions, choices, history, skipped] = await Promise.all([
     getExpenseDescriptionsByMonth(userId, recurringFrom(period.months), period.months[period.months.length - 1]),
@@ -237,5 +241,5 @@ export async function getUpcomingPayments(userId: string, current: Month, today:
     getPaymentSkips(userId),
   ]);
   const { items } = recurringExpenses(descriptions, period.months, choices);
-  return upcomingPayments(items, history, skipped, today);
+  return { days: settings.days, payments: upcomingPayments(items, history, skipped, today, settings.days) };
 }

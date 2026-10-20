@@ -35,7 +35,7 @@ beforeEach(() => {
 
 describe("UpcomingPayments", () => {
   it("cada aviso: el gasto, la fecha, el monto y cuándo; con el enlace a Fijos", () => {
-    render(<UpcomingPayments items={SEVEN.slice(0, 2)} daysAhead={3} />);
+    render(<UpcomingPayments items={SEVEN.slice(0, 2)} span="de los próximos 3 días" />);
     expect(card().getByRole("heading", { name: "Próximos pagos" })).toBeVisible();
     expect(card().getByText("Tus gastos fijos de los próximos 3 días y los que todavía no registras.")).toBeVisible();
     expect(card().getByRole("link", { name: "Ver gastos fijos" })).toHaveAttribute("href", "/gastos-fijos");
@@ -44,14 +44,14 @@ describe("UpcomingPayments", () => {
   });
 
   it("los atrasados, en rojo; los demás, no", () => {
-    render(<UpcomingPayments items={SEVEN.slice(0, 2)} daysAhead={3} />);
+    render(<UpcomingPayments items={SEVEN.slice(0, 2)} span="de los próximos 3 días" />);
     expect(within(rows()[0]).getByText("Atrasado")).toHaveClass("text-danger");
     expect(within(rows()[1]).getByText("En 2 días")).not.toHaveClass("text-danger");
   });
 
   it("muestra los primeros 5; 'Mostrar 2 más' abre el resto y 'Mostrar menos' los vuelve a esconder", async () => {
     const user = userEvent.setup();
-    render(<UpcomingPayments items={SEVEN} daysAhead={3} />);
+    render(<UpcomingPayments items={SEVEN} span="de los próximos 3 días" />);
     expect(rows()).toHaveLength(5);
     const more = card().getByRole("button", { name: "Mostrar 2 más" });
     expect(more).toHaveAttribute("aria-expanded", "false");
@@ -64,14 +64,14 @@ describe("UpcomingPayments", () => {
   });
 
   it("con 5 o menos, sin 'Mostrar más'", () => {
-    render(<UpcomingPayments items={SEVEN.slice(0, 5)} daysAhead={3} />);
+    render(<UpcomingPayments items={SEVEN.slice(0, 5)} span="de los próximos 3 días" />);
     expect(card().queryByRole("button", { name: /^Mostrar/ })).toBeNull();
   });
 
   it("'Este pago ya no aplica' manda el gasto y el mes, y avisa en rojo con el foco", async () => {
     action.mockResolvedValue({ message: "No se avisará del pago de octubre de «Arriendo»", tone: "removal" });
     const user = userEvent.setup();
-    render(<UpcomingPayments items={SEVEN.slice(0, 2)} daysAhead={3} />);
+    render(<UpcomingPayments items={SEVEN.slice(0, 2)} span="de los próximos 3 días" />);
     await user.click(card().getByRole("button", { name: "El pago de octubre de Arriendo ya no aplica" }));
     expect(Object.fromEntries(action.mock.calls[0][1])).toEqual({ description: "Arriendo", month: "2026-10" });
     const toast = await findToast();
@@ -84,7 +84,7 @@ describe("UpcomingPayments", () => {
     let finish!: (state: PaymentSkipState) => void;
     action.mockReturnValue(new Promise((resolve) => (finish = resolve)));
     const user = userEvent.setup();
-    render(<UpcomingPayments items={SEVEN.slice(0, 1)} daysAhead={3} />);
+    render(<UpcomingPayments items={SEVEN.slice(0, 1)} span="de los próximos 3 días" />);
     await user.click(card().getByRole("button", { name: /ya no aplica$/ }));
     await waitFor(() => expect(card().getByRole("button", { name: /ya no aplica$/ })).toHaveTextContent("Ocultando…"));
     expect(card().getByRole("button", { name: /ya no aplica$/ })).toBeDisabled();
