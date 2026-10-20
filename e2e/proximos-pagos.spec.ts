@@ -232,6 +232,9 @@ test("La campana: desde cualquier página, el número, Marcar como leído (sigue
     { description: "Gimnasio", amount: 120000, dates: paymentsFor(shiftDay(-5)), category: "Salud" },
     { description: "Netflix", amount: 44900, dates: paymentsFor(shiftDay(2)), category: "Entretenimiento" },
   ]);
+  // La campana está en el encabezado, que no se vuelve a dibujar al cambiar de pestaña: se ve lo cargado
+  // en la base al recargar (en la app, cada acción llama a refresh() y la actualiza).
+  await page.reload();
   await openTab(page, "Egresos");
   const bell = visible(page.getByRole("button", { name: /^Notificaciones/ }));
   const panel = visible(page.getByRole("group", { name: "Notificaciones" }));
