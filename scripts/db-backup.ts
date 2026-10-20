@@ -53,6 +53,7 @@ export function backupName(database: string, date: Date): string {
 
 /** La fecha de una copia según su nombre (null si el nombre no es de una copia de esa base). */
 export function backupDate(database: string, name: string): Date | null {
+  // Stryker disable next-line Regex: (.+) es codicioso: si coincide en algún lugar, también desde el comienzo
   const match = name.match(/^(.+)-(\d{4})-(\d{2})-(\d{2})-(\d{2})(\d{2})(\d{2})\.sql\.gz$/);
   if (!match || match[1] !== database) return null;
   const [year, month, day, hours, minutes, seconds] = match.slice(2).map(Number);

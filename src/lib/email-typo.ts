@@ -17,12 +17,14 @@ const KNOWN_DOMAINS = new Set([
   "mail.com",
   "email.com",
   "ymail.com",
+  // Stryker disable StringLiteral: hoy ninguno está a 2 letras o menos de un dominio popular, así que sacarlo no cambia ninguna sugerencia; están para que no se "corrijan" si se sube el umbral
   "gmx.com",
   "aol.com",
   "me.com",
   "mac.com",
   "proton.me",
   "protonmail.com",
+  // Stryker restore StringLiteral
 ]);
 
 /**

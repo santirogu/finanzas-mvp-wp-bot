@@ -17,6 +17,7 @@ import {
 /** El mes que pide la URL, si es válido y no es futuro; si no, el actual. */
 export function selectedMonth(param: unknown, current: MonthRange): MonthRange {
   const month = parseMonthParam(param);
+  // Stryker disable next-line EqualityOperator: con el mes actual, monthRange da lo mismo que current
   return month && compareMonths(month, current) < 0 ? monthRange(month.year, month.month) : current;
 }
 

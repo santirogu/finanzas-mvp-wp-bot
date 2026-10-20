@@ -45,6 +45,7 @@ export async function checkHealth({
 
   try {
     const applied = await latestAppliedMigration();
+    // Stryker disable next-line ConditionalExpression: null < expectedMigration también es true (siempre hay migraciones)
     if (applied === null || applied < expectedMigration) {
       problems.push(
         `la base no tiene todas las migraciones: la última aplicada es ${applied ?? "ninguna"} y el código espera ${expectedMigration}`,
