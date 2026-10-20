@@ -4,6 +4,8 @@
 // con varias partes en paralelo (scripts/mutation-targets.mjs), junta sus reportes en uno.
 //
 // Uso: node scripts/mutation-summary.mjs [reporte.json ...]   (por defecto, reports/mutation/mutation.json)
+// En el CI recibe el reporte de cada parte (también los que no llegaron): si falta alguno, el resumen lo
+// dice en vez de mostrar el puntaje como si estuviera completo.
 
 import { appendFileSync, existsSync, readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
@@ -19,8 +21,11 @@ export function score(mutants) {
   return { detected, undetected, valid, percent: valid ? (detected / valid) * 100 : 100 };
 }
 
-/** @param {{ files: Record<string, { mutants: { status: string }[] }> }} report */
-export function summarize(report) {
+/**
+ * @param {{ files: Record<string, { mutants: { status: string }[] }> }} report
+ * @param {string[]} [missing] los reportes que se esperaban y no llegaron
+ */
+export function summarize(report, missing = []) {
   const files = Object.entries(report.files).map(([file, { mutants }]) => ({
     file,
     ...score(mutants),
@@ -32,6 +37,7 @@ export function summarize(report) {
   return [
     `### Mutation testing: ${pct(total.percent)}`,
     "",
+    ...(missing.length > 0 ? [missingWarning(missing), ""] : []),
     `${total.detected} de ${total.valid} mutantes detectados por las pruebas; ${total.undetected} sobrevivieron.`,
     "",
     "| Archivo | Puntaje | Sobrevivientes |",
@@ -41,6 +47,15 @@ export function summarize(report) {
     "El reporte HTML completo (cada mutante sobreviviente en su línea) está en los artifacts `mutation-report-*` de la corrida.",
   ].join("\n");
 }
+
+/** El aviso de los reportes que no llegaron: el puntaje es solo de los demás. */
+const missingWarning = (missing) => {
+  const one = missing.length === 1;
+  const list = missing.map((path) => `\`${path}\``).join(", ");
+  return one
+    ? `> **Falta 1 reporte** (${list}): Stryker no lo generó o no se pudo subir. El puntaje es solo del resto.`
+    : `> **Faltan ${missing.length} reportes** (${list}): Stryker no los generó o no se pudieron subir. El puntaje es solo del resto.`;
+};
 
 const DEFAULT_REPORT = "reports/mutation/mutation.json";
 
@@ -69,14 +84,21 @@ export function runCli(
   } = {},
 ) {
   const found = [];
+  const missing = [];
   for (const path of [paths].flat()) {
     if (exists(path)) found.push(path);
-    else log(`No existe ${path}: Stryker no generó reporte.`);
+    else {
+      missing.push(path);
+      log(`No llegó ${path}: Stryker no lo generó o no se pudo subir.`);
+    }
   }
-  if (found.length === 0) return;
+  if (found.length === 0) {
+    if (summaryFile) append(summaryFile, `### Mutation testing\n\n${missingWarning(missing)}\n`);
+    return;
+  }
   // Cada parte mutó otros archivos: sus reportes se juntan sin pisarse.
   const files = Object.assign({}, ...found.map((path) => JSON.parse(read(path)).files));
-  const markdown = summarize({ files });
+  const markdown = summarize({ files }, missing);
   log(markdown);
   if (summaryFile) append(summaryFile, `${markdown}\n`);
 }

@@ -97,10 +97,41 @@ describe("runCli", () => {
       log: (l: string) => logs.push(l),
       summaryFile: undefined,
     });
-    expect(logs[0]).toBe("No existe parte-3.json: Stryker no generó reporte.");
+    expect(logs[0]).toBe("No llegó parte-3.json: Stryker no lo generó o no se pudo subir.");
     expect(logs[1]).toContain("### Mutation testing: 75.0 %");
     expect(logs[1]).toContain("| `a.ts` | 50.0 % | 1 |");
     expect(logs[1]).toContain("| `b.ts` | 100.0 % | 0 |");
+    // El resumen dice que falta una parte (debajo del título, en su propio párrafo): el puntaje no es de
+    // toda la lista.
+    expect(logs[1]).toContain(
+      "### Mutation testing: 75.0 %\n\n> **Falta 1 reporte** (`parte-3.json`): Stryker no lo generó o no se pudo subir. El puntaje es solo del resto.\n\n3 de 4 mutantes",
+    );
+  });
+
+  it("con todos los reportes, no avisa de ninguno; si faltan varios, los nombra", () => {
+    const reports: Record<string, string> = { "parte-1.json": report };
+    const run = (paths: string[]) => {
+      const logs: string[] = [];
+      runCli(paths, { exists: (path: string) => path in reports, read: (path: string) => reports[path], log: (l: string) => logs.push(l), summaryFile: undefined });
+      return logs.at(-1)!;
+    };
+    expect(run(["parte-1.json"])).not.toContain("Falta");
+    expect(run(["parte-1.json", "parte-2.json", "parte-3.json"])).toContain("> **Faltan 2 reportes** (`parte-2.json`, `parte-3.json`)");
+  });
+
+  it("si no llegó ninguno, el resumen de la corrida lo dice", () => {
+    const appended: string[] = [];
+    runCli(["parte-1.json", "parte-2.json"], {
+      exists: () => false,
+      log: () => {},
+      summaryFile: "/tmp/summary",
+      append: (_file: string, text: string) => {
+        appended.push(text);
+      },
+    });
+    expect(appended).toEqual([
+      "### Mutation testing\n\n> **Faltan 2 reportes** (`parte-1.json`, `parte-2.json`): Stryker no los generó o no se pudieron subir. El puntaje es solo del resto.\n",
+    ]);
   });
 
   it("por defecto lee el archivo de verdad", () => {
@@ -115,7 +146,7 @@ describe("runCli", () => {
     const logs: string[] = [];
     const read = vi.fn();
     runCli(undefined, { exists: () => false, read, log: (l: string) => logs.push(l) });
-    expect(logs).toEqual(["No existe reports/mutation/mutation.json: Stryker no generó reporte."]);
+    expect(logs).toEqual(["No llegó reports/mutation/mutation.json: Stryker no lo generó o no se pudo subir."]);
     expect(read).not.toHaveBeenCalled();
   });
 
