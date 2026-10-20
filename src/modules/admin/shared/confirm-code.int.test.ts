@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "@/db";
 import { adminCodeUse, twoFactor } from "@/db/schema";
+import { requestLocale } from "../../../../test/integration/locale";
 import { createAdminWithTwoFactor } from "../../../../test/integration/two-factor";
 
 // La confirmación de las acciones del admin con el código de Google Authenticator, con la base de
@@ -157,5 +158,42 @@ describe("confirmAdminCode", () => {
     await expect(confirmAdminCode("000000", NOW)).rejects.toThrow(error.message);
     expect(await factorOf(admin.id)).toEqual({ failures: 0, lockedUntil: null });
     expect(await db.$count(adminCodeUse)).toBe(0);
+  });
+});
+
+describe("confirmAdminCode en inglés (el idioma de quien hace el pedido)", () => {
+  beforeEach(() => {
+    requestLocale.value = "en";
+  });
+
+  it("los intentos que quedan y el bloqueo, con la hora como en Estados Unidos", async () => {
+    const { codeAt } = await adminReady();
+    const wrong = wrongCode(codeAt);
+    const errors = [];
+    for (let i = 0; i < 4; i++) errors.push(((await confirmAdminCode(wrong, NOW)) as { error: string }).error);
+    expect(errors).toEqual([
+      "The code isn't right. You have 4 attempts left.",
+      "The code isn't right. You have 3 attempts left.",
+      "The code isn't right. You have 2 attempts left.",
+      "The code isn't right. You have 1 attempt left.",
+    ]);
+    expect(await confirmAdminCode(wrong, NOW)).toEqual({
+      ok: false,
+      error: "The code isn't right. Because of too many wrong codes, actions and your sign-in are locked until 4:15 PM.",
+    });
+    expect(await confirmAdminCode(codeAt(NOW), NOW)).toEqual({
+      ok: false,
+      error: "Because of too many wrong codes, actions and your sign-in are locked until 4:15 PM.",
+    });
+  });
+
+  it("un código ya usado y uno sin formato", async () => {
+    const { codeAt } = await adminReady();
+    expect(await confirmAdminCode(codeAt(NOW), NOW)).toEqual({ ok: true });
+    expect(await confirmAdminCode(codeAt(NOW), later(5))).toEqual({
+      ok: false,
+      error: "That code was already used. Wait for the next one in Google Authenticator.",
+    });
+    expect(await confirmAdminCode("12-345", NOW)).toEqual({ ok: false, error: "Enter the 6 digits of the Google Authenticator code." });
   });
 });

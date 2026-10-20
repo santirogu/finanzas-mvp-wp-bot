@@ -4,9 +4,11 @@ import { useId, useState, useTransition, type FormEvent } from "react";
 import { describedBy, FieldError } from "@/components/field-error";
 import { QrCode } from "@/components/qr-code";
 import { useFieldErrors } from "@/components/use-field-errors";
+import { useLocale } from "@/i18n/client";
+import { texts } from "@/i18n/texts";
 import { authClient } from "@/lib/auth-client";
 import { authErrorMessage } from "@/lib/auth-errors";
-import { TOTP_CODE_MESSAGES, type FieldMessages } from "@/lib/field-errors";
+import { FIELD_TEXTS, type FieldMessages } from "@/lib/field-errors";
 import { manualKeyFromUri } from "@/modules/auth/two-factor-rules";
 import { finishTwoFactorSetupAction } from "./actions";
 
@@ -16,11 +18,62 @@ type Step = { name: "password" } | { name: "scan"; totpURI: string; backupCodes:
  * Configurar la verificación en dos pasos, una sola vez: (1) confirmar la contraseña, (2) escanear el
  * QR con Google Authenticator y escribir el primer código, (3) guardar los códigos de respaldo.
  */
-// Los errores de los campos, en español (en vez del globo del navegador).
-const MESSAGES: Record<string, FieldMessages> = {
-  password: { required: "Escribe tu contraseña." },
-  code: TOTP_CODE_MESSAGES,
-};
+const TEXTS = texts(
+  {
+    // Los errores de los campos (en vez del globo del navegador).
+    messages: { password: { required: "Escribe tu contraseña." }, code: FIELD_TEXTS.es.totpCode } as Record<string, FieldMessages>,
+    startError: "No pudimos empezar la configuración. Intenta de nuevo.",
+    step1: "Paso 1 de 3: confirma que eres tú",
+    step1Intro: "Necesitas Google Authenticator (o cualquier app de códigos) instalada en tu celular.",
+    password: "Tu contraseña",
+    wait: "Un momento…",
+    next: "Continuar",
+    step2: "Paso 2 de 3: escanea el código",
+    step2Intro: { tap: "En Google Authenticator toca", scan: "Escanear un código QR", rest: "y apunta la cámara aquí. Luego escribe el código de 6 dígitos que aparece." },
+    qr: "Código QR para agregar Finanzas MVP a Google Authenticator",
+    manual: "¿No puedes escanearlo? Elige “Ingresar una clave de configuración” y escribe:",
+    manualLabel: "Clave de configuración",
+    code: "Código de 6 dígitos",
+    verifying: "Verificando…",
+    activate: "Activar la verificación",
+    step3: "Paso 3 de 3: guarda tus códigos de respaldo",
+    done: "✓ La verificación en dos pasos quedó activa y cerramos tus otras sesiones abiertas.",
+    backupIntro:
+      "Si pierdes el celular, entra con uno de estos códigos (cada uno sirve una vez). Guárdalos en tu gestor de contraseñas: no los volveremos a mostrar.",
+    backupLabel: "Códigos de respaldo",
+    copied: "Copiados ✓",
+    copy: "Copiar los códigos",
+    saved: "Ya guardé mis códigos de respaldo",
+    goToAdmin: "Ir a Administración",
+  },
+  {
+    en: {
+      messages: { password: { required: "Enter your password." }, code: FIELD_TEXTS.en.totpCode },
+      startError: "We couldn't start the setup. Try again.",
+      step1: "Step 1 of 3: confirm it's you",
+      step1Intro: "You need Google Authenticator (or any code app) installed on your phone.",
+      password: "Your password",
+      wait: "One moment…",
+      next: "Continue",
+      step2: "Step 2 of 3: scan the code",
+      step2Intro: { tap: "In Google Authenticator tap", scan: "Scan a QR code", rest: "and point the camera here. Then enter the 6-digit code that shows up." },
+      qr: "QR code to add Finanzas MVP to Google Authenticator",
+      manual: "Can't scan it? Choose “Enter a setup key” and type:",
+      manualLabel: "Setup key",
+      code: "6-digit code",
+      verifying: "Verifying…",
+      activate: "Turn on verification",
+      step3: "Step 3 of 3: save your backup codes",
+      done: "✓ Two-step verification is on and we signed out your other open sessions.",
+      backupIntro: "If you lose your phone, sign in with one of these codes (each one works once). Save them in your password manager: we won't show them again.",
+      backupLabel: "Backup codes",
+      copied: "Copied ✓",
+      copy: "Copy the codes",
+      saved: "I saved my backup codes",
+      goToAdmin: "Go to Administration",
+    },
+  },
+);
 
 export function TwoFactorSetup({
   // Carga completa (no navegación del router de Next): la cookie de sesión acaba de cambiar y el
@@ -30,9 +83,11 @@ export function TwoFactorSetup({
 }: {
   onDone?: () => void;
 }) {
+  const locale = useLocale();
+  const t = TEXTS[locale];
   const [step, setStep] = useState<Step>({ name: "password" });
   // Cada paso es un formulario nuevo: al cambiar de paso no quedan mensajes del anterior.
-  const { errors, reset, formProps } = useFieldErrors(MESSAGES);
+  const { errors, reset, formProps } = useFieldErrors(t.messages);
   const passwordErrorId = useId();
   const codeErrorId = useId();
   const [error, setError] = useState<string | null>(null);
@@ -47,7 +102,7 @@ export function TwoFactorSetup({
     startTransition(async () => {
       const { data, error } = await authClient.twoFactor.enable({ password });
       if (error || !data || !("totpURI" in data) || !data.totpURI) {
-        setError(error ? authErrorMessage(error) : "No pudimos empezar la configuración. Intenta de nuevo.");
+        setError(error ? authErrorMessage(error, locale) : t.startError);
         return;
       }
       setStep({ name: "scan", totpURI: data.totpURI, backupCodes: data.backupCodes ?? [] });
@@ -62,7 +117,7 @@ export function TwoFactorSetup({
     startTransition(async () => {
       const { error } = await authClient.twoFactor.verifyTotp({ code });
       if (error) {
-        setError(authErrorMessage(error));
+        setError(authErrorMessage(error, locale));
         return;
       }
       await finishTwoFactorSetupAction();
@@ -82,14 +137,12 @@ export function TwoFactorSetup({
       // key: cada paso es un formulario nuevo (nada del anterior, como lo escrito, pasa al siguiente).
       <form key="password" method="post" onSubmit={onPassword} {...formProps} className="card space-y-4 p-4">
         <div className="space-y-1 text-sm">
-          <h3 className="font-semibold">Paso 1 de 3: confirma que eres tú</h3>
-          <p className="text-muted">
-            Necesitas Google Authenticator (o cualquier app de códigos) instalada en tu celular.
-          </p>
+          <h3 className="font-semibold">{t.step1}</h3>
+          <p className="text-muted">{t.step1Intro}</p>
         </div>
         <div className="space-y-1.5">
           <label className="block space-y-1.5">
-            <span className="text-sm font-medium">Tu contraseña</span>
+            <span className="text-sm font-medium">{t.password}</span>
             <input
               name="password"
               type="password"
@@ -104,7 +157,7 @@ export function TwoFactorSetup({
         </div>
         {alert}
         <button type="submit" disabled={pending} className="btn-primary">
-          {pending ? "Un momento…" : "Continuar"}
+          {pending ? t.wait : t.next}
         </button>
       </form>
     );
@@ -115,24 +168,23 @@ export function TwoFactorSetup({
     return (
       <form key="scan" method="post" onSubmit={(e) => onCode(e, step.backupCodes)} {...formProps} className="card space-y-4 p-4">
         <div className="space-y-1 text-sm">
-          <h3 className="font-semibold">Paso 2 de 3: escanea el código</h3>
+          <h3 className="font-semibold">{t.step2}</h3>
           <p className="text-muted">
-            En Google Authenticator toca <strong>+</strong> → <strong>Escanear un código QR</strong> y apunta
-            la cámara aquí. Luego escribe el código de 6 dígitos que aparece.
+            {t.step2Intro.tap} <strong>+</strong> → <strong>{t.step2Intro.scan}</strong> {t.step2Intro.rest}
           </p>
         </div>
-        <QrCode value={step.totpURI} label="Código QR para agregar Finanzas MVP a Google Authenticator" />
+        <QrCode value={step.totpURI} label={t.qr} />
         {manualKey && (
           <div className="space-y-1 text-sm">
-            <p className="text-muted">¿No puedes escanearlo? Elige “Ingresar una clave de configuración” y escribe:</p>
-            <p className="break-all rounded-lg bg-background px-3 py-2 font-mono" aria-label="Clave de configuración">
+            <p className="text-muted">{t.manual}</p>
+            <p className="break-all rounded-lg bg-background px-3 py-2 font-mono" aria-label={t.manualLabel}>
               {manualKey}
             </p>
           </div>
         )}
         <div className="space-y-1.5">
           <label className="block space-y-1.5">
-            <span className="text-sm font-medium">Código de 6 dígitos</span>
+            <span className="text-sm font-medium">{t.code}</span>
             <input
               name="code"
               required
@@ -149,7 +201,7 @@ export function TwoFactorSetup({
         </div>
         {alert}
         <button type="submit" disabled={pending} className="btn-primary">
-          {pending ? "Verificando…" : "Activar la verificación"}
+          {pending ? t.verifying : t.activate}
         </button>
       </form>
     );
@@ -158,16 +210,11 @@ export function TwoFactorSetup({
   return (
     <section className="card space-y-4 p-4">
       <div className="space-y-1 text-sm">
-        <h3 className="font-semibold">Paso 3 de 3: guarda tus códigos de respaldo</h3>
-        <p>
-          ✓ La verificación en dos pasos quedó activa y cerramos tus otras sesiones abiertas.
-        </p>
-        <p className="text-muted">
-          Si pierdes el celular, entra con uno de estos códigos (cada uno sirve una vez). Guárdalos en
-          tu gestor de contraseñas: no los volveremos a mostrar.
-        </p>
+        <h3 className="font-semibold">{t.step3}</h3>
+        <p>{t.done}</p>
+        <p className="text-muted">{t.backupIntro}</p>
       </div>
-      <ul aria-label="Códigos de respaldo" className="grid grid-cols-2 gap-2 font-mono text-sm">
+      <ul aria-label={t.backupLabel} className="grid grid-cols-2 gap-2 font-mono text-sm">
         {step.backupCodes.map((code) => (
           <li key={code} className="rounded-lg bg-background px-3 py-1.5 text-center">
             {code}
@@ -182,11 +229,11 @@ export function TwoFactorSetup({
           setCopied(true);
         }}
       >
-        {copied ? "Copiados ✓" : "Copiar los códigos"}
+        {copied ? t.copied : t.copy}
       </button>
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" checked={saved} onChange={(e) => setSaved(e.target.checked)} />
-        Ya guardé mis códigos de respaldo
+        {t.saved}
       </label>
       <button
         type="button"
@@ -194,7 +241,7 @@ export function TwoFactorSetup({
         className="btn-primary"
         onClick={onDone}
       >
-        Ir a Administración
+        {t.goToAdmin}
       </button>
     </section>
   );

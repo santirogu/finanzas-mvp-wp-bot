@@ -107,5 +107,5 @@ function HistoryActiveFilters({ filters }: { filters: LogFilters }) {
     ...(filters.date !== "todo" ? [{ label: dateFilterLabel(filters), href: logHref(withoutFilter(filters, "date")) }] : []),
     ...(filters.search ? [{ label: `“${filters.search}”`, href: logHref(withoutFilter(filters, "search")) }] : []),
   ];
-  return <ActiveFilters items={items} clearHref={logHref(NO_FILTERS)} />;
+  return <ActiveFilters items={items} clearHref={logHref(NO_FILTERS)} locale="es" />;
 }

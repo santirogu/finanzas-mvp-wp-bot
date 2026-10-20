@@ -26,7 +26,7 @@ export function FilterBar({ filters, panelOpen }: { filters: LogFilters; panelOp
           options: EVENT_FILTERS.map((type) => ({ value: type, label: EVENT_TYPE_FILTER_LABELS[type] })),
           selected: filters.types,
         },
-        dateChipGroup("Fecha", filters),
+        dateChipGroup("Fecha", filters, "es"),
       ]}
     />
   );

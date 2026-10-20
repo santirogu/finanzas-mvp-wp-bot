@@ -1,52 +1,63 @@
 "use client";
 
+import { useLocale } from "@/i18n/client";
+import { texts } from "@/i18n/texts";
 import {
   ANY,
   LOCKED_FILTER,
-  ROLE_FILTER_LABELS,
   SUSPENDED_FILTER,
+  USER_FILTER_TEXTS,
   USERS_PATH,
-  WHATSAPP_FILTER_LABELS,
   activeUserFilters,
   whatsappParam,
   type UserFilters,
 } from "@/modules/admin/users/user-filters";
 import { ChipFilterBar, dateChipGroup } from "../chip-filter-bar";
 
-const ALL = { value: ANY, label: "Todos" };
+const TEXTS = texts(
+  { all: "Todos", search: "Nombre, correo o número", role: "Rol", state: "Estado", date: "Fecha de registro" },
+  { en: { all: "All", search: "Name, email or number", role: "Role", state: "Status", date: "Sign-up date" } },
+);
 
 /** Los filtros de Usuarios: rol, WhatsApp, estado (bloqueo, suspendida) y fecha de registro. */
 export function UsersFilterBar({ filters, panelOpen }: { filters: UserFilters; panelOpen: boolean }) {
+  const locale = useLocale();
+  const t = TEXTS[locale];
+  const labels = USER_FILTER_TEXTS[locale];
+  const all = { value: ANY, label: t.all };
   return (
     <ChipFilterBar
       action={USERS_PATH}
       search={filters.search}
-      searchPlaceholder="Nombre, correo o número"
+      searchPlaceholder={t.search}
       activeCount={activeUserFilters(filters).length}
       panelOpen={panelOpen}
       groups={[
         {
           name: "rol",
-          legend: "Rol",
+          legend: t.role,
           type: "radio",
-          options: [ALL, { value: "admin", label: ROLE_FILTER_LABELS.admin }, { value: "user", label: ROLE_FILTER_LABELS.user }],
+          options: [all, { value: "admin", label: labels.role.admin }, { value: "user", label: labels.role.user }],
           selected: [filters.role ?? ANY],
         },
         {
           name: "whatsapp",
           legend: "WhatsApp",
           type: "radio",
-          options: [ALL, { value: "si", label: WHATSAPP_FILTER_LABELS.si }, { value: "no", label: WHATSAPP_FILTER_LABELS.no }],
+          options: [all, { value: "si", label: labels.whatsapp.si }, { value: "no", label: labels.whatsapp.no }],
           selected: [whatsappParam(filters.whatsapp)],
         },
         {
           name: "estado",
-          legend: "Estado",
+          legend: t.state,
           type: "checkbox",
-          options: [LOCKED_FILTER, SUSPENDED_FILTER],
+          options: [
+            { value: LOCKED_FILTER.value, label: labels.locked },
+            { value: SUSPENDED_FILTER.value, label: labels.suspended },
+          ],
           selected: [...(filters.locked ? [LOCKED_FILTER.value] : []), ...(filters.suspended ? [SUSPENDED_FILTER.value] : [])],
         },
-        dateChipGroup("Fecha de registro", filters),
+        dateChipGroup(t.date, filters, locale),
       ]}
     />
   );

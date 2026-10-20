@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NO_USER_FILTERS, type UserFilters } from "@/modules/admin/users/user-filters";
+import { InEnglish } from "../../../../../../test/locale";
 
 // next/form necesita el router de Next: aquí es un <form> común (su envío se espía).
 vi.mock("next/form", () => ({
@@ -154,5 +155,39 @@ describe("UsersFilterBar", () => {
     expect(submitted).toHaveLength(0);
     expect(screen.getByLabelText("Desde")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Aplicar" })).toHaveAttribute("type", "submit");
+  });
+});
+
+describe("UsersFilterBar en inglés", () => {
+  it("la búsqueda, el botón, los grupos y sus chips", () => {
+    render(<UsersFilterBar filters={f({ search: "ana", role: "user", suspended: true })} panelOpen />, { wrapper: InEnglish });
+    expect(screen.getByRole("searchbox", { name: "Search" })).toHaveAttribute("placeholder", "Name, email or number");
+    expect(screen.getByRole("button", { name: /^Filters/ })).toHaveAccessibleName("Filters (active: 3)");
+    expect(screen.getAllByRole("group").map((g) => g.querySelector("legend")?.textContent)).toEqual([
+      "Role",
+      "WhatsApp",
+      "Status",
+      "Sign-up date",
+    ]);
+    expect(group("Role").getAllByRole("radio").map((r) => r.parentElement?.textContent)).toEqual(["All", "Admin", "User"]);
+    expect(group("Role").getByRole("radio", { name: "User" })).toBeChecked();
+    expect(group("WhatsApp").getAllByRole("radio").map((r) => r.parentElement?.textContent)).toEqual(["All", "Linked", "Not linked"]);
+    expect(group("Status").getByRole("checkbox", { name: "Sign-in locked" })).not.toBeChecked();
+    expect(group("Status").getByRole("checkbox", { name: "Suspended" })).toBeChecked();
+    expect(group("Sign-up date").getAllByRole("radio").map((r) => r.parentElement?.textContent)).toEqual([
+      "All",
+      "Today",
+      "Last 7 days",
+      "Last 30 days",
+      "Custom",
+    ]);
+  });
+
+  it("el rango personalizado: Desde, Hasta y Aplicar", async () => {
+    render(<UsersFilterBar filters={f()} panelOpen />, { wrapper: InEnglish });
+    await userEvent.click(group("Sign-up date").getByRole("radio", { name: "Custom" }));
+    expect(screen.getByLabelText("From")).toBeInTheDocument();
+    expect(screen.getByLabelText("To")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Apply" })).toHaveAttribute("type", "submit");
   });
 });
