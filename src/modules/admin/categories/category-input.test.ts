@@ -5,6 +5,7 @@ import {
   CATEGORY_TYPES,
   CATEGORY_TYPE_LABELS,
   CATEGORY_TYPE_PARAMS,
+  CATEGORY_TYPE_TEXTS,
   DEFAULT_CATEGORY,
   DEFAULT_EMOJI,
   EMOJI_SUGGESTIONS,
@@ -163,5 +164,40 @@ describe("changeSentence", () => {
 
   it("si la cuenta del admin ya no existe, dice 'Un admin'", () => {
     expect(changeSentence(change({ admin: null })).text).toBe("Un admin creó ☕ Café (egresos)");
+  });
+});
+
+describe("en inglés", () => {
+  const change = (overrides: Partial<CategoryChangeEntry>): CategoryChangeEntry => ({
+    action: "created",
+    type: "expense",
+    name: "Café",
+    emoji: "☕",
+    details: {},
+    admin: { name: "Ana Admin" },
+    ...overrides,
+  });
+
+  it("los tipos y los errores de lo que escribe el admin", () => {
+    expect(CATEGORY_TYPE_TEXTS.en).toEqual({ expense: "Expenses", income: "Income" });
+    expect(CATEGORY_TYPE_LABELS).toBe(CATEGORY_TYPE_TEXTS.es);
+    expect(parseCategoryName("  ", "en")).toEqual({ ok: false, error: "Enter a name." });
+    expect(parseCategoryName("x".repeat(CATEGORY_NAME_MAX + 1), "en")).toEqual({ ok: false, error: `${CATEGORY_NAME_MAX} characters at most.` });
+    expect(parseEmoji("ab", "en")).toEqual({ ok: false, error: "Enter a single emoji." });
+    expect(parseEmoji("🎮", "en")).toEqual({ ok: true, value: "🎮" });
+  });
+
+  it.each([
+    [{}, "Ana Admin created ☕ Café (expenses)", null],
+    [{ action: "updated", details: { previousName: "Cafe" } }, "Ana Admin renamed Cafe to ☕ Café (expenses)", null],
+    [{ action: "updated", details: { previousName: "Café", previousEmoji: "🍵" } }, "Ana Admin changed the emoji of Café (expenses): 🍵 → ☕", null],
+    [{ action: "updated", details: {} }, `Ana Admin changed the emoji of Café (expenses): ${DEFAULT_EMOJI} → ☕`, null],
+    [{ action: "archived", type: "income" }, "Ana Admin archived ☕ Café (income)", null],
+    [{ action: "restored" }, "Ana Admin restored ☕ Café (expenses)", null],
+    [{ action: "deleted", details: { moved: 1 } }, "Ana Admin deleted the category ☕ Café (expenses)", `1 transaction moved to ${DEFAULT_CATEGORY}`],
+    [{ action: "deleted", details: { moved: 4 } }, "Ana Admin deleted the category ☕ Café (expenses)", `4 transactions moved to ${DEFAULT_CATEGORY}`],
+    [{ action: "deleted", admin: null }, "An admin deleted the category ☕ Café (expenses)", null],
+  ] as const)("el cambio %j", (overrides, text, detail) => {
+    expect(changeSentence(change(overrides as Partial<CategoryChangeEntry>), "en")).toEqual({ text, detail });
   });
 });

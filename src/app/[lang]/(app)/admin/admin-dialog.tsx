@@ -21,9 +21,6 @@ export const CODE_FIELD_TEXTS: Readonly<Record<Locale, Record<string, FieldMessa
   en: { code: FIELD_TEXTS.en.totpCode },
 };
 
-/** En español (el de siempre). */
-export const CODE_FIELD_MESSAGES = CODE_FIELD_TEXTS.es;
-
 /**
  * El campo del código de Google Authenticator. Muestra el error del navegador (`clientError`, antes
  * de enviar) o, si no hay, el del servidor (un código equivocado).

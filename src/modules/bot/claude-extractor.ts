@@ -140,7 +140,7 @@ export async function checkClaudeConnection(): Promise<ServiceCheck> {
     const info = await getClient().models.retrieve(model, {}, { timeout: CHECK_TIMEOUT_MS, maxRetries: 0 });
     const detail = info.display_name && info.display_name !== info.id ? `${info.display_name} (${info.id})` : info.id;
     return info.deprecated_at
-      ? { status: "ok", detail, warning: `Anthropic marcó el modelo como obsoleto (${info.deprecated_at.slice(0, 10)}): conviene cambiarlo.` }
+      ? { status: "ok", detail, warning: { kind: "deprecated_model", since: info.deprecated_at.slice(0, 10) } }
       : { status: "ok", detail };
   } catch (error) {
     // El SDK pone el estado HTTP al inicio del mensaje ("404 {...}"), como en las llamadas del bot.

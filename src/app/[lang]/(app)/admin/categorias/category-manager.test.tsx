@@ -322,3 +322,55 @@ describe("CategoryManager · errores de los campos en español", () => {
   });
 });
 
+describe("en inglés", () => {
+  const renderEnglish = (type: "expense" | "income" = "expense") =>
+    render(<CategoryManager type={type} categories={CATEGORIES} />, { english: true });
+
+  it("la lista, Otros y las archivadas", () => {
+    renderEnglish();
+    expect(screen.getByText("They apply right away in the forms and in the bot.")).toBeInTheDocument();
+    const active = within(screen.getByRole("list", { name: "Expense categories" }));
+    expect(active.getAllByRole("listitem")[0]).toHaveTextContent("Mercado124 transactions");
+    expect(row("Café")).toHaveTextContent("No transactions");
+    expect(row("Otros")).toHaveTextContent("OtrosDefault57 transactions · only the emoji changes");
+    expect(screen.getByRole("button", { name: "Edit Mercado" })).toHaveTextContent("Edit");
+    expect(screen.getByRole("heading", { name: "Archived" })).toBeInTheDocument();
+    expect(within(screen.getByRole("list", { name: "Archived expense categories" })).getByRole("button", { name: "Restore Videojuegos" })).toBeInTheDocument();
+  });
+
+  it("'⋯': archivar y eliminar, con lo que pasa con los movimientos", async () => {
+    renderEnglish();
+    await userEvent.click(screen.getByRole("button", { name: "More actions for Mercado" }));
+    expect(screen.getAllByText("Asks for the code")).not.toHaveLength(0);
+    await userEvent.click(screen.getByRole("button", { name: /^Archive/ }));
+    expect(dialog()).toHaveAccessibleName("Archive the category Mercado?");
+    expect(dialog()).toHaveAccessibleDescription(expect.stringContaining("The 124 transactions that already have it keep it."));
+    await userEvent.click(within(dialog()).getByRole("button", { name: "Cancel" }));
+
+    await userEvent.click(screen.getByRole("button", { name: "More actions for Mercado" }));
+    await userEvent.click(screen.getByRole("button", { name: /^Delete/ }));
+    expect(dialog()).toHaveAccessibleName("Delete the category Mercado?");
+    expect(dialog()).toHaveAccessibleDescription(expect.stringContaining("It has 124 transactions. If you delete it, they'll move to 📦 Otros."));
+    expect(within(dialog()).getByRole("button", { name: "Delete and move to Otros" })).toBeInTheDocument();
+  });
+
+  it("nueva categoría: el formulario y el error del nombre", async () => {
+    renderEnglish("income");
+    await userEvent.click(screen.getByRole("button", { name: "New category" }));
+    expect(dialog()).toHaveAccessibleName("New income category");
+    expect(dialog()).toHaveAccessibleDescription("Income · it applies right away in the forms and in the bot.");
+    const box = within(dialog());
+    expect(box.getByRole("group", { name: "Suggested emojis" })).toBeInTheDocument();
+    await userEvent.click(box.getByRole("button", { name: "Create" }));
+    expect(box.getByLabelText("Name")).toHaveAccessibleDescription("Enter a name.");
+    expect(actions.createCategoryAction).not.toHaveBeenCalled();
+  });
+
+  it("editar Otros: solo el emoji", async () => {
+    renderEnglish();
+    await userEvent.click(screen.getByRole("button", { name: "Edit Otros" }));
+    expect(dialog()).toHaveAccessibleName("Edit the category Otros");
+    expect(within(dialog()).getByText('Only the emoji of "Otros" can be changed.')).toBeInTheDocument();
+    expect(within(dialog()).getByRole("button", { name: "Save" })).toBeInTheDocument();
+  });
+});

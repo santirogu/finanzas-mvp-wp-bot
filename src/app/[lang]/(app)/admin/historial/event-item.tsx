@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import type { Locale } from "@/i18n/locales";
 import type { LogEntry } from "@/modules/admin/history/events-log";
 import {
   NO_FILTERS,
@@ -12,8 +13,8 @@ import {
   type LogFilters,
 } from "@/modules/admin/history/log-filters";
 
-// Un evento del historial: ícono, frase ("Beto vinculó su WhatsApp +57 300…") y detalle. Lo usan el
-// Historial y el detalle de cada cuenta en Usuarios.
+// Un evento del historial: ícono, frase ("Beto vinculó su WhatsApp +57 300…") y detalle, en el idioma de
+// la página. Lo usan el Historial y el detalle de cada cuenta en Usuarios.
 
 // Ícono y color de cada tipo de evento (el texto ya dice qué pasó: el ícono es decorativo).
 const ICON_PATHS: Record<LogEntry["type"], ReactNode> = {
@@ -87,8 +88,19 @@ const BOT_EVENTS: readonly LogEntry["type"][] = [
  * ellos, el nombre va sin enlace. `inAccount`: en el detalle de una cuenta, con la fecha completa
  * (ahí no se agrupan por día) y sin repetir el correo.
  */
-export function EventItem({ entry, filters, inAccount = false }: { entry: LogEntry; filters?: LogFilters; inAccount?: boolean }) {
-  const who = entry.account && filters ? (
+export function EventItem({
+  entry,
+  filters,
+  inAccount = false,
+  locale,
+}: {
+  entry: LogEntry;
+  filters?: LogFilters;
+  inAccount?: boolean;
+  locale: Locale;
+}) {
+  const es = locale === "es";
+  const name = entry.account && filters ? (
     <Link
       href={logHref({ ...filters, search: entry.account.email, limit: NO_FILTERS.limit })}
       scroll={false}
@@ -97,17 +109,28 @@ export function EventItem({ entry, filters, inAccount = false }: { entry: LogEnt
       {entry.account.name}
     </Link>
   ) : (
-    (entry.account?.name ?? "Una cuenta")
+    entry.account?.name
   );
+  // Sin la cuenta (ya no existe), "Una cuenta"; en inglés cambia según dónde va en la frase.
+  const who: Who = name
+    ? { subject: name, object: name, whose: <>{name}&apos;s</>, account: <>{name}&apos;s account</> }
+    : es
+      ? { subject: "Una cuenta", object: "Una cuenta", whose: "Una cuenta", account: "Una cuenta" }
+      : { subject: "An account", object: "an account", whose: "an account's", account: "an account" };
   const phone = entry.phone ? <span className="whitespace-nowrap">{formatPhone(entry.phone)}</span> : null;
-  const detail = eventDetail(entry.details);
+  const detail = eventDetail(entry.details, locale);
   const color = isAdminAction(entry) ? ADMIN_COLOR : ICON_COLORS[entry.type];
   // De una cuenta que eliminó el admin no queda ningún dato; la configuración del bot no es de una cuenta.
   const where = BOT_EVENTS.includes(entry.type)
-    ? "Bot de WhatsApp"
+    ? es
+      ? "Bot de WhatsApp"
+      : "WhatsApp bot"
     : entry.type === "account_deleted"
-      ? "Sin datos de la cuenta"
-      : (entry.account?.email ?? "Sin cuenta");
+      ? es
+        ? "Sin datos de la cuenta"
+        : "No account data"
+      : (entry.account?.email ?? (es ? "Sin cuenta" : "No account"));
+  const sentence = es ? spanishSentence : englishSentence;
 
   return (
     <li className="flex gap-3 py-3">
@@ -117,12 +140,12 @@ export function EventItem({ entry, filters, inAccount = false }: { entry: LogEnt
         </svg>
       </span>
       <div className="min-w-0 flex-1">
-        <p className="text-sm leading-snug">{sentence(entry, who, phone)}</p>
+        <p className="text-sm leading-snug">{sentence(entry, who, phone, entry.admin?.name)}</p>
         <p className="mt-0.5 break-words text-xs text-muted">
           {/* "correo · detalle · " antes de la hora (lo que no haya, se omite). */}
           {[...[inAccount ? "" : where, detail].filter(Boolean), ""].join(" · ")}
-          <time dateTime={entry.createdAt.toISOString()} title={formatEventTime(entry.createdAt)}>
-            {inAccount ? formatEventTime(entry.createdAt) : formatEventHour(entry.createdAt)}
+          <time dateTime={entry.createdAt.toISOString()} title={formatEventTime(entry.createdAt, locale)}>
+            {inAccount ? formatEventTime(entry.createdAt, locale) : formatEventHour(entry.createdAt, locale)}
           </time>
         </p>
       </div>
@@ -130,10 +153,16 @@ export function EventItem({ entry, filters, inAccount = false }: { entry: LogEnt
   );
 }
 
+/**
+ * La cuenta en la frase: como sujeto ("Beto se registró"), como objeto, como dueña ("Beto's sign-in") y la
+ * cuenta misma ("Beto's account"; sin la cuenta, "an account", no "an account's account").
+ */
+type Who = { subject: ReactNode; object: ReactNode; whose: ReactNode; account: ReactNode };
+
 /** Qué pasó, como frase: "Beto vinculó su WhatsApp +57 300 111 2233". */
-function sentence(entry: LogEntry, who: ReactNode, phone: ReactNode): ReactNode {
+function spanishSentence(entry: LogEntry, { subject: who }: Who, phone: ReactNode, adminName: string | undefined): ReactNode {
   // Si la cuenta del admin ya no existe, no se sabe su nombre.
-  const admin = entry.admin?.name ?? "Un admin";
+  const admin = adminName ?? "Un admin";
   switch (entry.type) {
     case "registered":
       return <>{who} se registró</>;
@@ -173,5 +202,50 @@ function sentence(entry: LogEntry, who: ReactNode, phone: ReactNode): ReactNode 
       return <>{admin} cambió el tope mensual de tokens de Claude</>;
     case "bot_replies_resent":
       return <>{admin} reenvió las respuestas del bot que no habían salido</>;
+  }
+}
+
+/** Lo mismo en inglés: "Beto linked their WhatsApp +57 300 111 2233". */
+function englishSentence(entry: LogEntry, { subject, object, whose, account }: Who, phone: ReactNode, adminName: string | undefined): ReactNode {
+  const admin = adminName ?? "An admin";
+  switch (entry.type) {
+    case "registered":
+      return <>{subject} signed up</>;
+    case "whatsapp_code_created":
+      return <>{subject} requested a code to link their WhatsApp</>;
+    case "whatsapp_linked":
+      return <>{subject} linked their WhatsApp {phone}</>;
+    case "whatsapp_unlinked":
+      if (entry.details.reason === "by_user") return <>{subject} unlinked their WhatsApp {phone}</>;
+      if (entry.details.reason === "by_admin") return <>{admin} unlinked the WhatsApp {phone} from {object}</>;
+      return <>The WhatsApp {phone} was unlinked from {object}</>;
+    case "whatsapp_link_failed":
+      return <>Failed linking attempt from {phone}</>;
+    case "password_changed":
+      return <>{subject} changed their password</>;
+    case "login_unlocked":
+      return <>{admin} unlocked {whose} sign-in</>;
+    case "sessions_revoked":
+      return <>{admin} signed {object} out of their sessions</>;
+    case "account_suspended":
+      return <>{admin} suspended {account}</>;
+    case "account_reactivated":
+      return <>{admin} reactivated {account}</>;
+    case "account_deleted":
+      return <>{admin} deleted an account</>;
+    case "admin_granted":
+      return <>{admin} made {object} an admin</>;
+    case "admin_revoked":
+      return <>{admin} removed {whose} admin role</>;
+    case "bot_claude_paused":
+      return <>{admin} paused Claude in the bot</>;
+    case "bot_claude_resumed":
+      return <>{admin} resumed Claude in the bot</>;
+    case "bot_limits_changed":
+      return <>{admin} changed Claude&apos;s per-account limits</>;
+    case "bot_monthly_limit_changed":
+      return <>{admin} changed Claude&apos;s monthly token limit</>;
+    case "bot_replies_resent":
+      return <>{admin} resent the bot replies that hadn&apos;t gone out</>;
   }
 }

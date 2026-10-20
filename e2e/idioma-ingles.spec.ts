@@ -3,7 +3,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page } from "@playwright/test";
 import { monthOf, monthParam, shiftMonth, todayInTimezone } from "../src/lib/dates";
 import { totp } from "../test/totp";
-import { newAdmin, wrongCode } from "./admin";
+import { newAdmin, setUpTwoFactor, wrongCode } from "./admin";
 import { PASSWORD, addTransaction, newPerson, register, test, toast, uniqueEmail, visible } from "./helpers";
 
 // El inglés, con la cookie `idioma=en` (todavía no se elige desde la app): lo que ya está traducido —las
@@ -256,4 +256,54 @@ test("en inglés: la administración (Seguridad, el inicio, Usuarios y una acci�
   });
 
   await beto.context().close();
+});
+
+test("en inglés: el Historial, el Bot y Categorías de la administración @principal", async ({ page }) => {
+  const email = await newAdmin(page);
+  await setUpTwoFactor(page);
+  await inEnglish(page);
+  const heading = (name: string | RegExp) => visible(page.getByRole("heading", { name }));
+
+  await test.step("Historial: sus eventos, agrupados por día", async () => {
+    await page.goto("/admin/historial");
+    await expect(page).toHaveTitle("History · Administration · Finanzas");
+    await expect(heading("Sign-ups and WhatsApp linking")).toBeVisible();
+    const search = visible(page.getByRole("searchbox", { name: "Search" }));
+    await search.fill(email);
+    await search.press("Enter");
+    // Todos los admins de las E2E se llaman Ana Admin: hasta que se aplica la búsqueda hay varios.
+    await expect.poll(() => new URL(page.url()).searchParams.get("q")).toBe(email);
+    await expect(heading("Today")).toBeVisible();
+    await expect(visible(page.getByText("Ana Admin signed up"))).toHaveCount(1);
+    expect(await seriousViolations(page)).toEqual([]);
+  });
+
+  await test.step("Bot: sus secciones y la ventana de los topes (sin cambiarlos)", async () => {
+    await page.goto("/admin/bot");
+    await expect(page).toHaveTitle("WhatsApp bot · Administration · Finanzas");
+    for (const name of ["Settings", "Connections", "What happened with the messages", "By account", "Claude usage", "Errors"]) {
+      await expect(heading(name)).toBeVisible();
+    }
+    expect(await seriousViolations(page)).toEqual([]);
+    await visible(page.getByRole("button", { name: "Change the limits per account" })).click();
+    const dialog = page.getByRole("dialog", { name: "Change the limits per account" });
+    await expect(dialog).toContainText("Up to 200 per hour and 2,000 per day.");
+    await dialog.getByRole("button", { name: "Cancel" }).click();
+    await expect(dialog).toBeHidden();
+  });
+
+  await test.step("Categorías: crear una y verla en los cambios recientes", async () => {
+    await page.goto("/admin/categorias");
+    await expect(page).toHaveTitle("Categories · Administration · Finanzas");
+    await expect(visible(page.getByRole("navigation", { name: "Category type" }).getByRole("link", { name: /^Expenses · \d+$/ }))).toBeVisible();
+    expect(await seriousViolations(page)).toEqual([]);
+    const name = `Juegos ${Date.now() % 100_000}`;
+    await visible(page.getByRole("button", { name: "New category" })).click();
+    const dialog = page.getByRole("dialog", { name: "New expense category" });
+    await dialog.getByLabel("Name").fill(name);
+    await dialog.getByRole("button", { name: "Use 🎬" }).click();
+    await dialog.getByRole("button", { name: "Create" }).click();
+    await expect(page.getByRole("region", { name: "Notices" }).getByText(`The category 🎬 ${name} was created.`)).toBeVisible();
+    await expect(visible(page.getByRole("list", { name: "Recent changes" }))).toContainText(`Ana Admin created 🎬 ${name} (expenses)`);
+  });
 });

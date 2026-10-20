@@ -64,3 +64,20 @@ describe("ResendReplies", () => {
     expect(screen.getByRole("dialog", { name: "¿Reenviar 1 respuesta?" })).toBeInTheDocument();
   });
 });
+
+describe("ResendReplies en inglés", () => {
+  it("cuántas no salieron y la ventana para reenviarlas", async () => {
+    render(<ResendReplies pending={2} windowHours={24} />, { english: true });
+    expect(screen.getByText("2 replies didn't go out in the last 24 hours.")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Resend" }));
+    const box = screen.getByRole("dialog", { name: "Resend 2 replies?" });
+    expect(box).toHaveAccessibleDescription(expect.stringContaining("Only those from the last 24 hours"));
+    expect(within(box).getByLabelText("Google Authenticator code")).toBeRequired();
+    expect(within(box).getByRole("button", { name: "Cancel" })).toBeInTheDocument();
+  });
+
+  it("una sola, en singular", () => {
+    render(<ResendReplies pending={1} windowHours={24} />, { english: true });
+    expect(screen.getByText("1 reply didn't go out in the last 24 hours.")).toBeInTheDocument();
+  });
+});

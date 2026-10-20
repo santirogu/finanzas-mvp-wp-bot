@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NO_FILTERS, type LogFilters } from "@/modules/admin/history/log-filters";
+import { InEnglish } from "../../../../../../test/locale";
 
 // next/form necesita el router de Next: aquí es un <form> común (su envío se espía).
 vi.mock("next/form", () => ({
@@ -123,5 +124,17 @@ describe("FilterBar", () => {
   it("el formulario va a /admin/historial", () => {
     render(<FilterBar filters={f()} panelOpen={false} />);
     expect(document.querySelector("form")).toHaveAttribute("action", "/admin/historial");
+  });
+});
+
+describe("FilterBar en inglés", () => {
+  it("la búsqueda, los tipos de evento y la fecha", async () => {
+    render(<FilterBar filters={f({ types: ["registered"] })} panelOpen />, { wrapper: InEnglish });
+    expect(screen.getByRole("searchbox", { name: "Search" })).toHaveAttribute("placeholder", "Name, email or number");
+    expect(screen.getByRole("button", { name: /^Filters/ })).toHaveAccessibleName("Filters (active: 1)");
+    expect(screen.getAllByRole("group").map((g) => g.querySelector("legend")?.textContent)).toEqual(["Event type", "Date"]);
+    expect(screen.getByRole("checkbox", { name: "Sign-ups" })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Admin actions" })).not.toBeChecked();
+    expect(screen.getByRole("radio", { name: "Last 30 days" })).toBeInTheDocument();
   });
 });

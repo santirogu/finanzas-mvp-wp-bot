@@ -1,7 +1,8 @@
 import { eq } from "drizzle-orm";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "@/db";
 import { accountEvent, botSetting, whatsappMessage } from "@/db/schema";
+import { requestLocale } from "../../../../../../test/integration/locale";
 import { createAdminWithTwoFactor } from "../../../../../../test/integration/two-factor";
 
 // La configuración del bot desde /admin/bot: las Server Actions con la capa de datos y la base de
@@ -343,5 +344,97 @@ describe("reenviar las respuestas que no salieron", () => {
     mocks.requireAdmin.mockRejectedValue(new Error("NEXT_NOT_FOUND"));
     await expect(resendRepliesAction({}, form({ code: "123456" }))).rejects.toThrow("NEXT_NOT_FOUND");
     await expect(pendingResends()).rejects.toThrow("NEXT_NOT_FOUND");
+  });
+});
+
+describe("en inglés (el idioma de quien hace el pedido)", () => {
+  beforeEach(() => {
+    requestLocale.value = "en";
+  });
+
+  it("pausar y reanudar Claude", async () => {
+    const { code } = await seed();
+    expect(await pauseClaudeAction({}, form({ code: code() }))).toEqual({
+      message: "Claude is paused: the bot answers the commands and asks to record everything else on the web.",
+    });
+    // Si no hay nada que cambiar, no se mira el código (cada prueba tiene dos válidos: el de ahora y el siguiente).
+    expect(await pauseClaudeAction({}, form({ code: "000000" }))).toEqual({ error: "Claude is already paused." });
+    expect(await resumeClaudeAction({}, form({ code: code() }))).toEqual({
+      message: "Claude is working again: the bot understands freely written messages again.",
+    });
+    expect(await resumeClaudeAction({}, form({ code: "000000" }))).toEqual({ error: "Claude is already on." });
+    expect(await pauseClaudeAction({}, form({ code: "12" }))).toEqual({ error: "Enter the 6 digits of the Google Authenticator code.", field: "code" });
+  });
+
+  it("los topes por cuenta, con la coma de los miles", async () => {
+    const { code } = await seed();
+    const unused = code();
+    expect(await changeAiLimitsAction({}, form({ perHour: "500", perDay: "1,000", code: unused }))).toEqual({
+      error: "The limit per hour goes from 1 to 200.",
+      field: "perHour",
+    });
+    expect(await changeAiLimitsAction({}, form({ perHour: "20", perDay: "100", code: unused }))).toEqual({ error: "Those are already the limits: change one." });
+    expect(await changeAiLimitsAction({}, form({ perHour: "30", perDay: "1,500", code: unused }))).toEqual({
+      message: "The limits are now 30 per hour and 1,500 per day, per account.",
+    });
+    expect(await getBotSettings()).toMatchObject({ limits: { perHour: 30, perDay: 1500 } });
+  });
+
+  it("el tope mensual de tokens", async () => {
+    const { code } = await seed();
+    const unused = code();
+    expect(await changeMonthlyLimitAction({}, form({ monthlyLimit: "500", code: unused }))).toEqual({
+      error: "The monthly limit goes from 10,000 to 100,000,000 tokens.",
+      field: "monthlyLimit",
+    });
+    expect(await changeMonthlyLimitAction({}, form({ monthlyLimit: "", code: unused }))).toEqual({ error: "There's already no monthly limit." });
+    expect(await changeMonthlyLimitAction({}, form({ monthlyLimit: "2,000,000", code: unused }))).toEqual({
+      message: "The monthly limit is now 2,000,000 tokens: once it's reached, the bot stops using Claude until next month.",
+    });
+    expect(await changeMonthlyLimitAction({}, form({ monthlyLimit: "2,000,000", code: "000000" }))).toEqual({
+      error: "That's already the monthly limit: change the number.",
+    });
+    expect(await changeMonthlyLimitAction({}, form({ monthlyLimit: "", code: code() }))).toEqual({ message: "The monthly token limit was removed." });
+  });
+
+  it("reenviar las respuestas que no salieron", async () => {
+    const { code } = await seed();
+    const now = new Date();
+    const send = vi.fn(async () => ({ ok: true as const }));
+    expect(await resendFailedReplies({ code: "000000" }, now, send)).toEqual({ ok: false, error: "There are no replies to resend." });
+    const failed = (id: string) =>
+      db.insert(whatsappMessage).values({
+        id,
+        phone: "573001112233",
+        body: "x",
+        status: "failed",
+        intent: { kind: "transactions" },
+        reply: "✅",
+        error: "envío: 400 {}",
+        receivedAt: new Date(now.getTime() - 60_000),
+      });
+    await failed("wamid.en1");
+    await failed("wamid.en2");
+    const rejectOne = vi.fn().mockResolvedValueOnce({ ok: true }).mockResolvedValueOnce({ ok: false, error: "400 {}" });
+    expect(await resendFailedReplies({ code: code() }, now, rejectOne)).toEqual({ ok: true, message: "1 reply was resent; 1 didn't go out again." });
+    const rejectAll = vi.fn(async () => ({ ok: false as const, error: "400 {}" }));
+    expect(await resendFailedReplies({ code: code() }, now, rejectAll)).toEqual({ ok: false, error: "None went out: WhatsApp rejected the reply again." });
+  });
+
+  it("probar las conexiones: el resultado y las fechas en inglés", async () => {
+    await seed();
+    mocks.whatsapp.mockResolvedValue({ status: "ok", detail: "Finanzas MVP", warning: { kind: "low_quality", quality: "YELLOW" } });
+    mocks.claude.mockResolvedValue({ status: "sin_configurar", missing: ["ANTHROPIC_API_KEY"] });
+    await db.insert(whatsappMessage).values({ id: "wamid.en", phone: "573001112233", body: "x", receivedAt: new Date("2026-10-16T23:00:00Z") });
+    const result = await testConnectionsAction();
+    expect(result.whatsapp).toEqual({
+      ok: true,
+      title: "Connected",
+      detail: "Finanzas MVP",
+      warning: "Meta rates the number's quality as YELLOW: it could limit sending.",
+    });
+    expect(result.claude).toMatchObject({ ok: false, title: "ANTHROPIC_API_KEY isn't set up" });
+    expect(result.lastMessage).toBe("Oct 16, 2026, 6:00 PM");
+    expect(result.checkedAt).toMatch(/^\d{1,2}:\d{2} [AP]M$/);
   });
 });

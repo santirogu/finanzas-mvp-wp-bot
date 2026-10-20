@@ -143,21 +143,21 @@ async function Account({ id }: { id: string }) {
               suspensionReason: account.suspensionReason,
             }}
           />
-          <AdminActions account={account} t={t} />
+          <AdminActions account={account} t={t} locale={locale} />
         </>
       )}
       {canRevokeAdmin && (
         <>
           <RevokeAdminActions target={{ id: account.id, name: account.name }} />
-          <AdminActions account={account} t={t} />
+          <AdminActions account={account} t={t} locale={locale} />
         </>
       )}
-      <Events account={account} t={t} />
+      <Events account={account} t={t} locale={locale} />
     </div>
   );
 }
 
-function AdminActions({ account, t }: { account: UserDetail; t: Texts }) {
+function AdminActions({ account, t, locale }: { account: UserDetail; t: Texts; locale: Locale }) {
   return (
     <section className="card space-y-3 p-4" aria-labelledby="acciones-admin">
       <h2 id="acciones-admin" className="font-semibold">
@@ -168,7 +168,7 @@ function AdminActions({ account, t }: { account: UserDetail; t: Texts }) {
       ) : (
         <ol aria-label={t.adminActions} className="divide-y divide-border">
           {account.adminActions.map((entry) => (
-            <EventItem key={entry.id} entry={entry} inAccount />
+            <EventItem key={entry.id} entry={entry} inAccount locale={locale} />
           ))}
         </ol>
       )}
@@ -263,7 +263,7 @@ function Sessions({ account, t, locale }: { account: UserDetail; t: Texts; local
   );
 }
 
-function Events({ account, t }: { account: UserDetail; t: Texts }) {
+function Events({ account, t, locale }: { account: UserDetail; t: Texts; locale: Locale }) {
   return (
     <section className="card space-y-3 p-4" aria-labelledby="eventos">
       <div className="space-y-1">
@@ -277,7 +277,7 @@ function Events({ account, t }: { account: UserDetail; t: Texts }) {
       ) : (
         <ol aria-label={t.events} className="divide-y divide-border">
           {account.events.map((entry) => (
-            <EventItem key={entry.id} entry={entry} inAccount />
+            <EventItem key={entry.id} entry={entry} inAccount locale={locale} />
           ))}
         </ol>
       )}

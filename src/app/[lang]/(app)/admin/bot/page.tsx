@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
+import type { Locale } from "@/i18n/locales";
+import { getLocale } from "@/i18n/server";
+import { texts } from "@/i18n/texts";
 import { todayInTimezone } from "@/lib/dates";
 import { formatShare } from "@/lib/money";
 import { requireAdmin } from "@/lib/session";
@@ -10,10 +13,10 @@ import { pendingResends } from "@/modules/admin/bot/resend";
 import { formatCost, PRICES_CHECKED_ON } from "@/modules/bot/pricing";
 import {
   ACCOUNT_SORTS,
-  ACCOUNT_SORT_LABELS,
+  ACCOUNT_SORT_TEXTS,
   BOT_PATH,
   OUTCOMES,
-  OUTCOME_LABELS,
+  OUTCOME_TEXTS,
   PROBLEM_OUTCOMES,
   RESEND_WINDOW_HOURS,
   activeBotFilters,
@@ -29,6 +32,7 @@ import {
   toggleOutcome,
   type BotFilters,
 } from "@/modules/admin/bot/bot-filters";
+import { adminModuleLabel, adminTitle } from "@/modules/admin/modules";
 import { ADMIN_MAX_ROWS, ADMIN_PAGE_SIZE, ADMIN_TIMEZONE, formatDate, formatDateTime } from "@/modules/admin/shared/filters";
 import { PageSkeleton } from "../../page-skeleton";
 import { ActiveFilters } from "../active-filters";
@@ -37,7 +41,127 @@ import { Connections } from "./connections";
 import { ResendReplies } from "./resend-replies";
 import { BotFilterBar } from "./filter-bar";
 
-export const metadata: Metadata = { title: "Bot de WhatsApp · Administración" };
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  return { title: adminTitle(adminModuleLabel("bot", locale), locale) };
+}
+
+// Los comandos (balance, reporte, deshacer, ayuda) van como se escriben en el bot, que responde en español.
+const TEXTS = texts(
+  {
+    title: "Bot de WhatsApp",
+    intro: "Todas las cuentas · hora de Colombia. Sin el texto de los mensajes: solo qué pasó con cada uno.",
+    messages: "Mensajes",
+    recorded: "Registraron movimientos",
+    errors: "Errores",
+    calls: "Llamadas a Claude",
+    response: (median: string, p95: string) => `Responde en ${median} (la mitad de las veces); el 95 % en menos de ${p95}.`,
+    someAdmin: "Un admin",
+    outcomesTitle: "Qué pasó con los mensajes",
+    outcomesHint: "Toca uno para ver solo esos mensajes (otra vez, para quitarlo).",
+    noneFiltered: "No hay mensajes con estos filtros.",
+    none: "Todavía no hay mensajes.",
+    filtering: " · filtrando",
+    claudeTitle: "Consumo de Claude",
+    claudeIntro: (date: string) =>
+      `Cada mensaje en texto libre usa una llamada; los comandos (balance, reporte, deshacer, ayuda) no. El costo es un estimado en dólares con los precios públicos de Anthropic del ${date}; el cobro real lo ves en la consola de Anthropic.`,
+    inputTokens: "Tokens de entrada",
+    outputTokens: "Tokens de salida",
+    cost: "Costo estimado",
+    unpriced: (models: string) => `Sin precio, no suman al costo: ${models} (src/modules/bot/pricing.ts).`,
+    perDay: "Llamadas por día",
+    last30: " · últimos 30 días",
+    tableCaption: "Llamadas a Claude por día",
+    day: "Día",
+    callsColumn: "Llamadas",
+    byModel: "Por modelo",
+    modelLine: (n: number, calls: string, input: string, output: string) =>
+      `${calls} ${n === 1 ? "llamada" : "llamadas"} · ${input} de entrada · ${output} de salida`,
+    capped: "Cuentas que llegaron al tope",
+    cappedLimits: (perHour: string, perDay: string) => `(${perHour} por hora o ${perDay} por día)`,
+    noneCapped: "Ninguna.",
+    times: (n: number, count: string) => `${count} ${n === 1 ? "vez" : "veces"}`,
+    noErrors: (filtered: boolean) => `Sin errores${filtered ? " con estos filtros" : ""}.`,
+    numbers: (n: number, count: string) => `${count} ${n === 1 ? "número" : "números"}`,
+    lastError: (date: string) => `La última: ${date}`,
+    byAccount: "Por cuenta",
+    byAccountIntro: "Solo cantidades, con los filtros de arriba; el costo, estimado en dólares. Cada nombre lleva a su detalle en Usuarios.",
+    noAccounts: "Ninguna cuenta con estos filtros.",
+    sortBy: "Ordenar por",
+    columns: { account: "Cuenta", messages: "Mensajes", registered: "Registró", tokens: "Tokens", cost: "Costo", errors: "Errores", last: "Último" },
+    accounts: "Cuentas",
+    noAccount: "Números sin cuenta",
+    phones: (n: number, count: string): string => (n === 1 ? "1 número" : `${count} números`),
+    figures: {
+      messages: (n: number): string => (n === 1 ? "mensaje" : "mensajes"),
+      registered: "registraron movimientos",
+      tokens: "tokens",
+      cost: "costo estimado",
+      errors: (n: number): string => (n === 1 ? "error" : "errores"),
+      last: "último mensaje",
+    },
+    moreAccounts: "Ver más cuentas",
+    maxAccounts: (n: number) => `Se muestran las ${n} primeras: usa los filtros para ver las demás.`,
+  },
+  {
+    en: {
+      title: "WhatsApp bot",
+      intro: "Every account · Colombia time. Without the text of the messages: only what happened with each one.",
+      messages: "Messages",
+      recorded: "Recorded transactions",
+      errors: "Errors",
+      calls: "Claude calls",
+      response: (median, p95) => `It answers in ${median} (half of the time); 95% in under ${p95}.`,
+      someAdmin: "An admin",
+      outcomesTitle: "What happened with the messages",
+      outcomesHint: "Tap one to see only those messages (again, to remove it).",
+      noneFiltered: "There are no messages with these filters.",
+      none: "There are no messages yet.",
+      filtering: " · filtering",
+      claudeTitle: "Claude usage",
+      claudeIntro: (date) =>
+        `Each free-text message uses one call; the commands (balance, reporte, deshacer, ayuda) don't. The cost is an estimate in US dollars with Anthropic's public prices as of ${date}; you see the actual charge in the Anthropic console.`,
+      inputTokens: "Input tokens",
+      outputTokens: "Output tokens",
+      cost: "Estimated cost",
+      unpriced: (models) => `No price, so not added to the cost: ${models} (src/modules/bot/pricing.ts).`,
+      perDay: "Calls per day",
+      last30: " · last 30 days",
+      tableCaption: "Claude calls per day",
+      day: "Day",
+      callsColumn: "Calls",
+      byModel: "By model",
+      modelLine: (n, calls, input, output) => `${calls} ${n === 1 ? "call" : "calls"} · ${input} input · ${output} output`,
+      capped: "Accounts that hit the limit",
+      cappedLimits: (perHour, perDay) => `(${perHour} per hour or ${perDay} per day)`,
+      noneCapped: "None.",
+      times: (n, count) => `${count} ${n === 1 ? "time" : "times"}`,
+      noErrors: (filtered) => `No errors${filtered ? " with these filters" : ""}.`,
+      numbers: (n, count) => `${count} ${n === 1 ? "number" : "numbers"}`,
+      lastError: (date) => `The last one: ${date}`,
+      byAccount: "By account",
+      byAccountIntro: "Only counts, with the filters above; the cost, estimated in US dollars. Each name leads to its detail in Users.",
+      noAccounts: "No accounts with these filters.",
+      sortBy: "Sort by",
+      columns: { account: "Account", messages: "Messages", registered: "Recorded", tokens: "Tokens", cost: "Cost", errors: "Errors", last: "Last" },
+      accounts: "Accounts",
+      noAccount: "Numbers without an account",
+      phones: (n, count) => (n === 1 ? "1 number" : `${count} numbers`),
+      figures: {
+        messages: (n) => (n === 1 ? "message" : "messages"),
+        registered: "recorded transactions",
+        tokens: "tokens",
+        cost: "estimated cost",
+        errors: (n) => (n === 1 ? "error" : "errors"),
+        last: "last message",
+      },
+      moreAccounts: "See more accounts",
+      maxAccounts: (n) => `The first ${n} are shown: use the filters to see the rest.`,
+    },
+  },
+);
+
+type Texts = (typeof TEXTS)["es"];
 
 // Cómo funciona el bot de WhatsApp: qué pasó con los mensajes, el consumo de Claude y los errores, de
 // todas las cuentas. Nunca el texto de los mensajes (la política de privacidad lo promete): las
@@ -56,6 +180,9 @@ export default function BotPage({ searchParams }: PageProps<"/[lang]/admin/bot">
 async function Bot({ params }: { params: Record<string, string | string[] | undefined> }) {
   // Rol de admin y verificación en dos pasos activa (sin ella, lleva a configurarla).
   await requireAdmin();
+  const locale = await getLocale();
+  const t = TEXTS[locale];
+  const count = (n: number) => formatCount(n, locale);
   const filters = parseBotFilters(params);
   const today = todayInTimezone(ADMIN_TIMEZONE);
   const [activity, accounts, settings, resends] = await Promise.all([
@@ -77,26 +204,23 @@ async function Bot({ params }: { params: Record<string, string | string[] | unde
       <section className="card space-y-4 p-4" aria-labelledby="bot">
         <div className="space-y-1">
           <h2 id="bot" className="font-semibold">
-            Bot de WhatsApp
+            {t.title}
           </h2>
-          <p className="text-sm text-muted">
-            Todas las cuentas · hora de Colombia. Sin el texto de los mensajes: solo qué pasó con cada uno.
-          </p>
+          <p className="text-sm text-muted">{t.intro}</p>
         </div>
         {/* key: con otros filtros (o al quitarlos) el formulario empieza de nuevo con lo de la URL. */}
         <BotFilterBar key={`${botHref(filters)}|${panelOpen}`} filters={filters} panelOpen={panelOpen} />
-        <ActiveFilters items={activeBotFilters(filters)} clearHref={BOT_PATH} locale="es" />
+        <ActiveFilters items={activeBotFilters(filters, locale)} clearHref={BOT_PATH} locale={locale} />
 
         <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Stat label="Mensajes" value={formatCount(activity.total)} />
-          <Stat label="Registraron movimientos" value={formatCount(only("registrado"))} />
-          <Stat label="Errores" value={formatCount(only("error"))} danger={only("error") > 0} />
-          <Stat label="Llamadas a Claude" value={formatCount(activity.claude.calls)} />
+          <Stat label={t.messages} value={count(activity.total)} />
+          <Stat label={t.recorded} value={count(only("registrado"))} />
+          <Stat label={t.errors} value={count(only("error"))} danger={only("error") > 0} />
+          <Stat label={t.calls} value={count(activity.claude.calls)} />
         </dl>
         {activity.response && (
           <p className="text-sm text-muted">
-            Responde en {formatSeconds(activity.response.median)} (la mitad de las veces); el 95 % en menos de{" "}
-            {formatSeconds(activity.response.p95)}.
+            {t.response(formatSeconds(activity.response.median, locale), formatSeconds(activity.response.p95, locale))}
           </p>
         )}
       </section>
@@ -105,21 +229,21 @@ async function Bot({ params }: { params: Record<string, string | string[] | unde
         claudePaused={settings.claudePaused}
         limits={settings.limits}
         monthlyTokenLimit={settings.monthlyTokenLimit}
-        month={{ ...settings.month, resetsOn: formatDayMonth(settings.month.resetsOn) }}
+        month={{ ...settings.month, resetsOn: formatDayMonth(settings.month.resetsOn, locale) }}
         averageTokensPerCall={settings.averageTokensPerCall}
-        lastChange={settings.updated && `${settings.updated.by ?? "Un admin"} · ${formatDateTime(settings.updated.at)}`}
+        lastChange={settings.updated && `${settings.updated.by ?? t.someAdmin} · ${formatDateTime(settings.updated.at, locale)}`}
       />
       <Connections />
 
       <section className="card space-y-3 p-4" aria-labelledby="resultados">
         <div className="space-y-1">
           <h2 id="resultados" className="font-semibold">
-            Qué pasó con los mensajes
+            {t.outcomesTitle}
           </h2>
-          {allMessages > 0 && <p className="text-sm text-muted">Toca uno para ver solo esos mensajes (otra vez, para quitarlo).</p>}
+          {allMessages > 0 && <p className="text-sm text-muted">{t.outcomesHint}</p>}
         </div>
         {allMessages === 0 ? (
-          <p className="text-sm text-muted">{filtered ? "No hay mensajes con estos filtros." : "Todavía no hay mensajes."}</p>
+          <p className="text-sm text-muted">{filtered ? t.noneFiltered : t.none}</p>
         ) : (
           <ul className="space-y-1">
             {shown.map((o) => {
@@ -137,11 +261,11 @@ async function Bot({ params }: { params: Record<string, string | string[] | unde
                   >
                     <span className="flex justify-between gap-2 text-sm">
                       <span className={problem ? "font-medium text-danger" : selected ? "font-medium" : ""}>
-                        {OUTCOME_LABELS[o]}
-                        {selected && <span className="font-normal text-muted"> · filtrando</span>}
+                        {OUTCOME_TEXTS[locale][o]}
+                        {selected && <span className="font-normal text-muted">{t.filtering}</span>}
                       </span>
                       <span className="shrink-0 tabular-nums text-muted">
-                        {formatCount(activity.outcomes[o])} · {formatShare(activity.outcomes[o], allMessages)}%
+                        {count(activity.outcomes[o])} · {formatShare(activity.outcomes[o], allMessages)}%
                       </span>
                     </span>
                     <span className="mt-1.5 block h-2 overflow-hidden rounded-full bg-background">
@@ -158,64 +282,58 @@ async function Bot({ params }: { params: Record<string, string | string[] | unde
         )}
       </section>
 
-      <Accounts filters={filters} today={today} rows={accounts.rows} hasMore={accounts.hasMore} />
+      <Accounts filters={filters} today={today} rows={accounts.rows} hasMore={accounts.hasMore} t={t} locale={locale} />
 
       <section className="card space-y-4 p-4" aria-labelledby="claude">
         <div className="space-y-1">
           <h2 id="claude" className="font-semibold">
-            Consumo de Claude
+            {t.claudeTitle}
           </h2>
-          <p className="text-sm text-muted">
-            Cada mensaje en texto libre usa una llamada; los comandos (balance, reporte, deshacer, ayuda) no. El costo es un estimado
-            en dólares con los precios públicos de Anthropic del {formatPriceDate(PRICES_CHECKED_ON)}; el cobro real lo ves en
-            la consola de Anthropic.
-          </p>
+          <p className="text-sm text-muted">{t.claudeIntro(formatPriceDate(PRICES_CHECKED_ON, locale))}</p>
         </div>
         {/* Las llamadas ya están arriba. Dos columnas desde 352 px: un total de cientos de millones de
             tokens no cabe en una más angosta (e2e/diseno-tactil.spec.ts); tres desde sm. */}
         <dl className="grid grid-cols-1 gap-3 min-[22rem]:grid-cols-2 sm:grid-cols-3">
-          <Stat label="Tokens de entrada" value={formatCount(activity.claude.inputTokens)} />
-          <Stat label="Tokens de salida" value={formatCount(activity.claude.outputTokens)} />
-          <Stat label="Costo estimado" value={formatCost(activity.claude.cost.usd)} />
+          <Stat label={t.inputTokens} value={count(activity.claude.inputTokens)} />
+          <Stat label={t.outputTokens} value={count(activity.claude.outputTokens)} />
+          <Stat label={t.cost} value={formatCost(activity.claude.cost.usd, locale)} />
         </dl>
         {activity.claude.cost.unpriced.length > 0 && (
-          <p className="text-sm text-muted">
-            Sin precio, no suman al costo: {activity.claude.cost.unpriced.join(", ")} (src/modules/bot/pricing.ts).
-          </p>
+          <p className="text-sm text-muted">{t.unpriced(activity.claude.cost.unpriced.join(", "))}</p>
         )}
 
         <div className="space-y-2">
           <h3 className="text-sm font-medium">
-            Llamadas por día
-            {filters.date === "todo" && <span className="font-normal text-muted"> · últimos 30 días</span>}
+            {t.perDay}
+            {filters.date === "todo" && <span className="font-normal text-muted">{t.last30}</span>}
           </h3>
           {/* Las barras son para ver la forma; la tabla, para leer los números (y para el lector de pantalla). */}
           <div aria-hidden className="flex h-20 items-end gap-px">
             {activity.claude.byDay.map((d) => (
               <div
                 key={d.day}
-                title={`${formatShortDay(d.day)}: ${d.calls}`}
+                title={`${formatShortDay(d.day, locale)}: ${d.calls}`}
                 className="flex-1 rounded-t-sm bg-brand/70"
                 style={{ height: `${d.calls === 0 ? 2 : Math.max((d.calls / maxCalls) * 100, 6)}%` }}
               />
             ))}
           </div>
           <div aria-hidden className="flex justify-between text-xs text-muted">
-            <span>{formatShortDay(activity.claude.byDay[0].day)}</span>
-            <span>{formatShortDay(activity.claude.byDay.at(-1)!.day)}</span>
+            <span>{formatShortDay(activity.claude.byDay[0].day, locale)}</span>
+            <span>{formatShortDay(activity.claude.byDay.at(-1)!.day, locale)}</span>
           </div>
           <table className="sr-only">
-            <caption>Llamadas a Claude por día</caption>
+            <caption>{t.tableCaption}</caption>
             <thead>
               <tr>
-                <th scope="col">Día</th>
-                <th scope="col">Llamadas</th>
+                <th scope="col">{t.day}</th>
+                <th scope="col">{t.callsColumn}</th>
               </tr>
             </thead>
             <tbody>
               {activity.claude.byDay.map((d) => (
                 <tr key={d.day}>
-                  <td>{formatShortDay(d.day)}</td>
+                  <td>{formatShortDay(d.day, locale)}</td>
                   <td>{d.calls}</td>
                 </tr>
               ))}
@@ -225,14 +343,13 @@ async function Bot({ params }: { params: Record<string, string | string[] | unde
 
         {activity.claude.byModel.length > 0 && (
           <div className="space-y-2">
-            <h3 className="text-sm font-medium">Por modelo</h3>
+            <h3 className="text-sm font-medium">{t.byModel}</h3>
             <ul className="divide-y divide-border text-sm">
               {activity.claude.byModel.map((m) => (
                 <li key={m.model} className="flex flex-wrap justify-between gap-x-3 py-2">
                   <span className="break-all font-mono text-xs">{m.model}</span>
                   <span className="tabular-nums text-muted">
-                    {formatCount(m.calls)} {m.calls === 1 ? "llamada" : "llamadas"} · {formatCount(m.inputTokens)} de entrada ·{" "}
-                    {formatCount(m.outputTokens)} de salida
+                    {t.modelLine(m.calls, count(m.calls), count(m.inputTokens), count(m.outputTokens))}
                   </span>
                 </li>
               ))}
@@ -242,13 +359,11 @@ async function Bot({ params }: { params: Record<string, string | string[] | unde
 
         <div className="space-y-2">
           <h3 className="text-sm font-medium">
-            Cuentas que llegaron al tope{" "}
-            <span className="font-normal text-muted">
-              ({formatCount(settings.limits.perHour)} por hora o {formatCount(settings.limits.perDay)} por día)
-            </span>
+            {t.capped}{" "}
+            <span className="font-normal text-muted">{t.cappedLimits(count(settings.limits.perHour), count(settings.limits.perDay))}</span>
           </h3>
           {activity.capped.length === 0 ? (
-            <p className="text-sm text-muted">Ninguna.</p>
+            <p className="text-sm text-muted">{t.noneCapped}</p>
           ) : (
             <ul className="divide-y divide-border text-sm">
               {activity.capped.map((account) => (
@@ -257,9 +372,7 @@ async function Bot({ params }: { params: Record<string, string | string[] | unde
                     <span className="block truncate font-medium">{account.name}</span>
                     <span className="block truncate text-xs text-muted">{account.email}</span>
                   </Link>
-                  <span className="shrink-0 tabular-nums text-muted">
-                    {formatCount(account.times)} {account.times === 1 ? "vez" : "veces"}
-                  </span>
+                  <span className="shrink-0 tabular-nums text-muted">{t.times(account.times, count(account.times))}</span>
                 </li>
               ))}
             </ul>
@@ -269,27 +382,26 @@ async function Bot({ params }: { params: Record<string, string | string[] | unde
 
       <section className="card space-y-3 p-4" aria-labelledby="errores">
         <h2 id="errores" className="font-semibold">
-          Errores
+          {t.errors}
         </h2>
         {/* Las de las últimas 24 horas, de todas las cuentas: no dependen de los filtros. */}
         <ResendReplies pending={resends} windowHours={RESEND_WINDOW_HOURS} />
         {activity.errors.length === 0 ? (
-          <p className="text-sm text-muted">Sin errores{filtered ? " con estos filtros" : ""}.</p>
+          <p className="text-sm text-muted">{t.noErrors(filtered)}</p>
         ) : (
           <ul className="divide-y divide-border text-sm">
             {activity.errors.map((e) => {
-              const { label, detail } = errorLabel(e.error);
+              const { label, detail } = errorLabel(e.error, locale);
               return (
                 <li key={e.error} className="space-y-0.5 py-2">
                   <p className="flex flex-wrap justify-between gap-x-3">
                     <span className="font-medium text-danger">{label}</span>
                     <span className="tabular-nums text-muted">
-                      {formatCount(e.times)} {e.times === 1 ? "vez" : "veces"} · {formatCount(e.numbers)}{" "}
-                      {e.numbers === 1 ? "número" : "números"}
+                      {t.times(e.times, count(e.times))} · {t.numbers(e.numbers, count(e.numbers))}
                     </span>
                   </p>
                   {detail && <p className="break-words text-xs text-muted">{detail}</p>}
-                  <p className="text-xs text-muted">La última: {formatDateTime(e.last)}</p>
+                  <p className="text-xs text-muted">{t.lastError(formatDateTime(e.last, locale))}</p>
                 </li>
               );
             })}
@@ -310,7 +422,22 @@ function Stat({ label, value, danger = false }: { label: string; value: string; 
 }
 
 /** "Por cuenta": una fila por cuenta (en celular, las cifras con su nombre; desde sm, en columnas). */
-function Accounts({ filters, today, rows, hasMore }: { filters: BotFilters; today: string; rows: AccountRow[]; hasMore: boolean }) {
+function Accounts({
+  filters,
+  today,
+  rows,
+  hasMore,
+  t,
+  locale,
+}: {
+  filters: BotFilters;
+  today: string;
+  rows: AccountRow[];
+  hasMore: boolean;
+  t: Texts;
+  locale: Locale;
+}) {
+  const count = (n: number) => formatCount(n, locale);
   // El nombre se queda con lo que sobra; las cifras, con lo justo para su encabezado. En columnas desde
   // md: con seis cifras, a 640 px al nombre le quedaban unos 56 px.
   const columns = "md:grid-cols-[minmax(0,1fr)_4.5rem_4.5rem_5.5rem_5rem_4rem_4.5rem]";
@@ -318,18 +445,16 @@ function Accounts({ filters, today, rows, hasMore }: { filters: BotFilters; toda
     <section className="card space-y-3 p-4" aria-labelledby="por-cuenta">
       <div className="space-y-1">
         <h2 id="por-cuenta" className="font-semibold">
-          Por cuenta
+          {t.byAccount}
         </h2>
-        <p className="text-sm text-muted">
-          Solo cantidades, con los filtros de arriba; el costo, estimado en dólares. Cada nombre lleva a su detalle en Usuarios.
-        </p>
+        <p className="text-sm text-muted">{t.byAccountIntro}</p>
       </div>
       {rows.length === 0 ? (
-        <p className="text-sm text-muted">Ninguna cuenta con estos filtros.</p>
+        <p className="text-sm text-muted">{t.noAccounts}</p>
       ) : (
         <>
-          <nav aria-label="Ordenar por" className="flex flex-wrap items-center gap-2 text-sm">
-            <span className="text-muted">Ordenar por</span>
+          <nav aria-label={t.sortBy} className="flex flex-wrap items-center gap-2 text-sm">
+            <span className="text-muted">{t.sortBy}</span>
             {ACCOUNT_SORTS.map((sort) => (
               <Link
                 key={sort}
@@ -340,21 +465,21 @@ function Accounts({ filters, today, rows, hasMore }: { filters: BotFilters; toda
                   filters.sort === sort ? "border-brand/50 bg-brand/10 font-medium" : "border-border text-muted hover:bg-background"
                 }`}
               >
-                {ACCOUNT_SORT_LABELS[sort]}
+                {ACCOUNT_SORT_TEXTS[locale][sort]}
               </Link>
             ))}
           </nav>
           {/* Encabezado solo para la vista: cada cifra ya dice qué es (para el lector de pantalla y en celular). */}
           <div aria-hidden className={`hidden gap-3 border-b border-border pb-2 text-xs text-muted md:grid ${columns}`}>
-            <span>Cuenta</span>
-            <span className="text-right">Mensajes</span>
-            <span className="text-right">Registró</span>
-            <span className="text-right">Tokens</span>
-            <span className="text-right">Costo</span>
-            <span className="text-right">Errores</span>
-            <span className="text-right">Último</span>
+            <span>{t.columns.account}</span>
+            <span className="text-right">{t.columns.messages}</span>
+            <span className="text-right">{t.columns.registered}</span>
+            <span className="text-right">{t.columns.tokens}</span>
+            <span className="text-right">{t.columns.cost}</span>
+            <span className="text-right">{t.columns.errors}</span>
+            <span className="text-right">{t.columns.last}</span>
           </div>
-          <ul aria-label="Cuentas" className="divide-y divide-border">
+          <ul aria-label={t.accounts} className="divide-y divide-border">
             {rows.map((row) => (
               <li key={row.id ?? "sin-cuenta"} className={`grid grid-cols-1 gap-x-3 gap-y-1 py-2.5 text-sm ${columns}`}>
                 <span className="min-w-0">
@@ -367,19 +492,19 @@ function Accounts({ filters, today, rows, hasMore }: { filters: BotFilters; toda
                       {row.name}
                     </Link>
                   ) : (
-                    <span className="block font-medium">Números sin cuenta</span>
+                    <span className="block font-medium">{t.noAccount}</span>
                   )}
                   <span className="block truncate text-xs text-muted" title={row.email ?? undefined}>
-                    {row.id ? row.email : row.phones === 1 ? "1 número" : `${formatCount(row.phones)} números`}
+                    {row.id ? row.email : t.phones(row.phones, count(row.phones))}
                   </span>
                 </span>
                 <span className="flex flex-wrap gap-x-3 gap-y-0.5 text-muted md:contents md:text-foreground">
-                  <Figure value={formatCount(row.messages)} label={row.messages === 1 ? "mensaje" : "mensajes"} />
-                  <Figure value={formatCount(row.registered)} label="registraron movimientos" />
-                  <Figure value={formatCount(row.tokens)} label="tokens" />
-                  <Figure value={formatCost(row.cost)} label="costo estimado" before />
-                  <Figure value={formatCount(row.errors)} label={row.errors === 1 ? "error" : "errores"} danger={row.errors > 0} />
-                  <Figure value={lastSeenLabel(row.last, today)} label="último mensaje" before />
+                  <Figure value={count(row.messages)} label={t.figures.messages(row.messages)} />
+                  <Figure value={count(row.registered)} label={t.figures.registered} />
+                  <Figure value={count(row.tokens)} label={t.figures.tokens} />
+                  <Figure value={formatCost(row.cost, locale)} label={t.figures.cost} before />
+                  <Figure value={count(row.errors)} label={t.figures.errors(row.errors)} danger={row.errors > 0} />
+                  <Figure value={lastSeenLabel(row.last, today, locale)} label={t.figures.last} before />
                 </span>
               </li>
             ))}
@@ -391,10 +516,10 @@ function Accounts({ filters, today, rows, hasMore }: { filters: BotFilters; toda
                 scroll={false}
                 className="block rounded-lg border border-border py-2 text-center text-sm font-medium hover:bg-background"
               >
-                Ver más cuentas
+                {t.moreAccounts}
               </Link>
             ) : (
-              <p className="text-center text-sm text-muted">Se muestran las {ADMIN_MAX_ROWS} primeras: usa los filtros para ver las demás.</p>
+              <p className="text-center text-sm text-muted">{t.maxAccounts(ADMIN_MAX_ROWS)}</p>
             ))}
         </>
       )}
@@ -403,7 +528,7 @@ function Accounts({ filters, today, rows, hasMore }: { filters: BotFilters; toda
 }
 
 /** El día en que se revisaron los precios ("2026-10-19"), como "19 de oct de 2026" (a mediodía en Colombia). */
-const formatPriceDate = (day: string) => formatDate(new Date(`${day}T12:00:00-05:00`));
+const formatPriceDate = (day: string, locale: Locale) => formatDate(new Date(`${day}T12:00:00-05:00`), locale);
 
 /** Una cifra de "Por cuenta": en celular, con su nombre a la vista ("14 mensajes"); desde md, solo para el lector. */
 function Figure({ value, label, danger = false, before = false }: { value: string; label: string; danger?: boolean; before?: boolean }) {

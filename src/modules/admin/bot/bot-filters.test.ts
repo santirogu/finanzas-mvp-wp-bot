@@ -4,12 +4,14 @@ import { describe, expect, it } from "vitest";
 import {
   ACCOUNT_SORTS,
   ACCOUNT_SORT_LABELS,
+  ACCOUNT_SORT_TEXTS,
   BOT_PATH,
   CLAUDE_DAYS_WHEN_ALL,
   NO_BOT_FILTERS,
   OUTCOMES,
   MAX_RESENDS,
   OUTCOME_LABELS,
+  OUTCOME_TEXTS,
   PROBLEM_OUTCOMES,
   RESEND_WINDOW_HOURS,
   activeBotFilters,
@@ -263,7 +265,16 @@ describe("connectionView", () => {
       detail: "Finanzas MVP · +1 555-662-5913",
       warning: null,
     });
-    expect(connectionView("claude", { status: "ok", detail: "Claude Haiku 5.5", warning: "Obsoleto" })).toMatchObject({ ok: true, warning: "Obsoleto" });
+    expect(connectionView("claude", { status: "ok", detail: "Claude Haiku 5.5", warning: { kind: "deprecated_model", since: "2027-03-01" } })).toMatchObject({
+      ok: true,
+      warning: "Anthropic marcó el modelo como obsoleto (2027-03-01): conviene cambiarlo.",
+    });
+    expect(connectionView("whatsapp", { status: "ok", detail: null, warning: { kind: "low_quality", quality: "YELLOW" } })).toEqual({
+      ok: true,
+      title: "Conectado",
+      detail: null,
+      warning: "Meta marca la calidad del número como YELLOW: podría limitar los envíos.",
+    });
   });
 
   it("sin configurar: qué variables faltan y dónde se configuran", () => {
@@ -318,5 +329,76 @@ describe("connectionView", () => {
 
   it("un 404 de Meta no es un modelo que falta", () => {
     expect(connectionView("whatsapp", { status: "error", error: "404 {}" }).title).toBe("El servicio respondió con un error");
+  });
+});
+
+describe("en inglés", () => {
+  it("los resultados y el orden, con las mismas claves", () => {
+    expect(Object.keys(OUTCOME_TEXTS.en)).toEqual(Object.keys(OUTCOME_TEXTS.es));
+    expect(OUTCOME_TEXTS.en.registrado).toBe("Recorded transactions");
+    expect(OUTCOME_TEXTS.en.tope_mensual).toBe("Monthly token limit reached (asked to use the web)");
+    expect(OUTCOME_LABELS).toBe(OUTCOME_TEXTS.es);
+    expect(ACCOUNT_SORTS.map((s) => ACCOUNT_SORT_TEXTS.en[s])).toEqual(["Tokens", "Messages", "Errors", "Last message"]);
+    expect(ACCOUNT_SORT_LABELS).toBe(ACCOUNT_SORT_TEXTS.es);
+  });
+
+  it("las etiquetas de los filtros activos", () => {
+    const filters = { ...NO_BOT_FILTERS, search: "ana", outcome: "error" as const, date: "7d" as const };
+    expect(activeBotFilters(filters, "en").map((f) => f.label)).toEqual(["“ana”", "Result: Error", "Last 7 days"]);
+    expect(activeBotFilters(filters).map((f) => f.label)).toEqual(["“ana”", "Resultado: Error", "Últimos 7 días"]);
+  });
+
+  it("los números, los segundos y las fechas con el formato de Estados Unidos", () => {
+    expect(formatCount(18_400, "en")).toBe("18,400");
+    expect(formatSeconds(0.84, "en")).toBe("0.8 s");
+    expect(formatSeconds(12, "en")).toBe("12 s");
+    expect(formatShortDay("2026-10-12", "en")).toBe("Oct 12");
+    expect(formatDayMonth("2026-11-01", "en")).toBe("November 1");
+    const today = "2026-10-15";
+    expect(lastSeenLabel(new Date("2026-10-15T15:00:00Z"), today, "en")).toBe("today");
+    expect(lastSeenLabel(new Date("2026-10-14T15:00:00Z"), today, "en")).toBe("yesterday");
+    expect(lastSeenLabel(new Date("2026-10-13T15:00:00Z"), today, "en")).toBe("Oct 13");
+  });
+
+  it.each([
+    ["envío: 400 {}", "The reply couldn't be sent over WhatsApp"],
+    ["not_configured", "Claude isn't set up (the API key is missing)"],
+    ["refusal: no", "Claude declined to answer"],
+    ["invalid_output: x", "Claude answered in a format that couldn't be read"],
+    ["api_error: 500 x", "Claude API error"],
+    [": algo", "Error with no detail"],
+    ["Could not resolve authentication method", "Claude isn't set up (the API key is missing)"],
+    ["TypeError: x", "Internal app error"],
+  ])("el error %j", (error, label) => {
+    expect(errorLabel(error, "en").label).toBe(label);
+  });
+
+  it("las conexiones", () => {
+    expect(connectionView("whatsapp", { status: "ok", detail: "Finanzas MVP", warning: { kind: "low_quality", quality: "RED" } }, "en")).toEqual({
+      ok: true,
+      title: "Connected",
+      detail: "Finanzas MVP",
+      warning: "Meta rates the number's quality as RED: it could limit sending.",
+    });
+    expect(connectionView("claude", { status: "ok", detail: null, warning: { kind: "deprecated_model", since: "2027-03-01" } }, "en").warning).toBe(
+      "Anthropic marked the model as deprecated (2027-03-01): it's worth changing it.",
+    );
+    expect(connectionView("whatsapp", { status: "sin_configurar", missing: ["A", "B"] }, "en")).toMatchObject({
+      title: "A and B aren't set up",
+      detail: "It's set up in Vercel → Settings → Environment Variables (and in .env locally).",
+    });
+    expect(connectionView("claude", { status: "sin_configurar", missing: ["ANTHROPIC_API_KEY"] }, "en").title).toBe("ANTHROPIC_API_KEY isn't set up");
+    const title = (service: "whatsapp" | "claude", error: string) => connectionView(service, { status: "error", error }, "en").title;
+    expect(title("claude", "TimeoutError (23)")).toBe("It didn't answer in time (8 s)");
+    expect(title("claude", "APIConnectionError")).toBe("Couldn't connect to the service");
+    expect(title("whatsapp", '400 {"error":{"message":"x","code":200}}')).toBe(
+      "The token isn't allowed to read the number (whatsapp_business_management); sending may still work",
+    );
+    expect(title("whatsapp", '401 {"error":{"message":"x","code":190}}')).toBe("The WhatsApp token doesn't work: expired, revoked or copied wrong");
+    expect(title("claude", "401 {}")).toBe("The Claude API key doesn't work: expired, revoked or copied wrong");
+    expect(title("claude", "404 {}")).toBe("The bot's model doesn't exist or the API key can't use it (BOT_MODEL)");
+    expect(title("whatsapp", "403 {}")).toBe("The WhatsApp token isn't allowed");
+    expect(title("claude", "403 {}")).toBe("The Claude API key isn't allowed");
+    expect(title("claude", "500 {}")).toBe("The service answered with an error");
   });
 });
