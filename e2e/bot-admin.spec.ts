@@ -186,6 +186,8 @@ test("los errores se leen: la explicación de Meta y cuántos números los tuvie
 });
 
 test("probar las conexiones: WhatsApp y Claude sin gastar nada, y un token vencido se explica", async ({ page, request }) => {
+  // El fallo simulado es de todo el servidor falso: si un intento anterior se cayó antes de usarlo, se limpia.
+  await request.post(`${FAKE_SERVICES_URL}/restablecer`);
   await newAdmin(page);
   await setUpTwoFactor(page);
   await page.goto("/admin/bot");

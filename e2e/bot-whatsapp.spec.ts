@@ -154,8 +154,11 @@ test("si Meta entrega el mismo mensaje dos veces, se procesa una sola vez", asyn
   await sendWhatsApp(request, phone, "balance", { id });
 
   await nthReply(request, phone, 1);
-  await new Promise((resolve) => setTimeout(resolve, 2_000));
-  expect(await sentTo(request, phone)).toHaveLength(1);
+  // En vez de esperar un tiempo fijo: otro mensaje (con otro id), después. Cuando llega su respuesta, el
+  // repetido (que llegó antes) ya se habría procesado: con él serían tres respuestas; tienen que ser dos.
+  await sendWhatsApp(request, phone, "balance", { id: `wamid.e2e.otro.${randomUUID()}` });
+  await nthReply(request, phone, 2);
+  expect(await sentTo(request, phone)).toHaveLength(2);
 });
 
 test("a un audio responde que por ahora solo entiende texto", async ({ request }) => {

@@ -145,7 +145,7 @@ test("en pantallas táctiles las páginas caben y los campos no hacen zoom @tact
   const fixedDescription = `Cuota del plan de telefonía móvil e internet del hogar ${id} `.repeat(3).slice(0, 140).trim();
 
   await test.step("páginas públicas", async () => {
-    for (const path of ["/login", "/registro", "/privacidad"]) {
+    for (const path of ["/", "/login", "/registro", "/privacidad", "/eliminar-datos", "/cuenta-eliminada"]) {
       await page.goto(path);
       await expectFitsOnScreens(page, path);
     }

@@ -120,9 +120,12 @@ for (const [colorScheme, scheme] of Object.entries(SCHEMES) as [keyof typeof SCH
       });
 
       test("el esqueleto de carga tampoco", async ({ page }) => {
-        // Demora la respuesta del servidor al cambiar de pestaña: mientras tanto se ve el esqueleto.
+        // Retiene la respuesta del servidor al cambiar de pestaña hasta que axe termina: mientras tanto se
+        // ve el esqueleto. (Con una demora fija, si axe tardaba más, el esqueleto se iba a mitad del análisis.)
+        let release = () => {};
+        const held = new Promise<void>((resolve) => (release = resolve));
         await page.route(/\/ingresos(\?|$)/, async (route) => {
-          if (route.request().headers()["rsc"]) await new Promise((r) => setTimeout(r, 2_000));
+          if (route.request().headers()["rsc"]) await held;
           await route.continue();
         });
         await page.getByRole("navigation").getByRole("link", { name: "Ingresos", exact: true }).click();
@@ -131,6 +134,7 @@ for (const [colorScheme, scheme] of Object.entries(SCHEMES) as [keyof typeof SCH
         // Solo el esqueleto: mientras la respuesta no llega, Next todavía no puso el <title> de la
         // página nueva (las demás pruebas revisan la página completa ya cargada).
         expect(await seriousViolations(page, { only: "[role=status]", waitForAnimations: false })).toEqual([]);
+        release();
       });
 
       test("la página 404 tampoco", async ({ page }) => {
