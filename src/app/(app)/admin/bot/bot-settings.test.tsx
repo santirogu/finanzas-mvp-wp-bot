@@ -75,8 +75,9 @@ describe("BotSettings", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
     const toast = await findToast();
     expect(toast).toHaveTextContent("Claude quedó en pausa.");
-    // Pausar es apagar algo: en rojo.
+    // Pausar es apagar algo: en rojo. La ventana se cerró: el foco va al aviso.
     expect(toast).toHaveAttribute("data-tone", "removal");
+    expect(toast).toHaveFocus();
   });
 
   it("reanudar usa su propia acción", async () => {
@@ -86,8 +87,11 @@ describe("BotSettings", () => {
     await userEvent.type(dialog().getByLabelText("Código de Google Authenticator"), "123456");
     await userEvent.click(dialog().getByRole("button", { name: "Reanudar" }));
     expect(actions.resumeClaudeAction).toHaveBeenCalledTimes(1);
+    expect((actions.resumeClaudeAction.mock.calls[0][1] as FormData).get("code")).toBe("123456");
     expect(actions.pauseClaudeAction).not.toHaveBeenCalled();
-    expect(await findToast()).toHaveAttribute("data-tone", "success");
+    const toast = await findToast();
+    expect(toast).toHaveAttribute("data-tone", "success");
+    expect(toast).toHaveFocus();
   });
 
   it("un código equivocado se muestra en su campo y la ventana sigue abierta", async () => {
@@ -120,7 +124,9 @@ describe("BotSettings", () => {
 
     const sent = actions.changeAiLimitsAction.mock.calls[0][1] as FormData;
     expect([sent.get("perHour"), sent.get("perDay"), sent.get("code")]).toEqual(["30", "150", "123456"]);
-    expect(await findToast()).toHaveTextContent("Los topes quedaron en 30 por hora y 150 por día");
+    const toast = await findToast();
+    expect(toast).toHaveTextContent("Los topes quedaron en 30 por hora y 150 por día");
+    expect(toast).toHaveFocus();
   });
 
   it("un tope fuera de rango se muestra debajo de su campo; uno que no cambia, en la ventana", async () => {
@@ -221,8 +227,11 @@ describe("BotSettings · tope mensual de tokens", () => {
     expect(field).toHaveValue("500000");
     expect(field).toHaveAccessibleDescription("Entre 10.000 y 100.000.000.");
     await userEvent.clear(field);
-    await userEvent.type(field, "500");
     await userEvent.type(dialog().getByLabelText("Código de Google Authenticator"), "123456");
+    // Vacío se envía (quita el tope): el campo no es obligatorio.
+    await userEvent.click(dialog().getByRole("button", { name: "Guardar tope" }));
+    expect((actions.changeMonthlyLimitAction.mock.calls[0][1] as FormData).get("monthlyLimit")).toBe("");
+    await userEvent.type(field, "500");
     await userEvent.click(dialog().getByRole("button", { name: "Guardar tope" }));
     expect(field).toHaveAccessibleDescription("Entre 10.000 y 100.000.000. El tope mensual va de 10.000 a 100.000.000 tokens.");
     expect(field).toHaveAttribute("aria-invalid", "true");

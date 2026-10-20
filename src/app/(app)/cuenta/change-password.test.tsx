@@ -85,6 +85,22 @@ describe("ChangePassword", () => {
     expect(section().queryByLabelText("Contraseña actual")).toBeNull();
   });
 
+  it("mientras guarda, el botón dice «Guardando…» y no deja enviar dos veces", async () => {
+    let finish: (state: ChangePasswordState) => void = () => {};
+    action.mockReturnValue(new Promise((resolve) => (finish = resolve)));
+    const user = userEvent.setup();
+    render(<ChangePassword needsCode={false} />);
+    await user.click(openButton());
+    await fill(user);
+    await user.click(save());
+    const busy = await section().findByRole("button", { name: "Guardando…" });
+    expect(busy).toBeDisabled();
+    await user.click(busy);
+    expect(action).toHaveBeenCalledTimes(1);
+    finish({ fieldErrors: { current: "Contraseña incorrecta." } });
+    expect(await section().findByRole("button", { name: "Guardar contraseña" })).toBeEnabled();
+  });
+
   it("los errores del servidor van debajo de su campo, y los generales en un aviso", async () => {
     action.mockResolvedValueOnce({ fieldErrors: { current: "Contraseña incorrecta." } });
     const user = userEvent.setup();
