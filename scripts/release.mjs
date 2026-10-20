@@ -84,8 +84,8 @@ export function releaseNotes({ version, previousTag, commits, repository }) {
   return `${parts.join("\n\n")}\n`;
 }
 
-/** git en el directorio actual; devuelve la salida sin espacios al final. */
-function defaultGit(args) {
+/** git en el directorio actual; devuelve la salida sin espacios al final (el tag sin su salto de línea). */
+export function defaultGit(args) {
   // stderr se captura: "no hay tags" es esperable la primera vez y no debe ensuciar el log.
   // Stryker disable next-line ArrayDeclaration,StringLiteral: solo cambia lo que se imprime en el log.
   const stdio = ["ignore", "pipe", "pipe"];

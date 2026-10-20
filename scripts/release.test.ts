@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { FIRST_VERSION, SECTIONS, nextVersion, parseCommit, releaseNotes, runCli } from "./release.mjs";
+import { FIRST_VERSION, SECTIONS, defaultGit, nextVersion, parseCommit, releaseNotes, runCli } from "./release.mjs";
 
 const commit = (subject: string) => parseCommit(subject);
 
@@ -168,6 +168,12 @@ describe("releaseNotes", () => {
       "🧰 Mantenimiento",
       "📦 Otros cambios",
     ]);
+  });
+});
+
+describe("defaultGit", () => {
+  it("devuelve la salida de git sin el salto de línea del final (si no, el tag rompería el rango de git log)", () => {
+    expect(defaultGit(["rev-parse", "--is-inside-work-tree"])).toBe("true");
   });
 });
 

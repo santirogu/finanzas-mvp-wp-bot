@@ -3,6 +3,20 @@ import { extractMessages } from "./payload";
 import { formatPhone, maskPhone } from "./phone";
 import { isValidSignature, signBody } from "./signature";
 
+describe("la firma de Meta, contra un valor calculado aparte", () => {
+  // Calculado con openssl, no con signBody: si alguien cambia el algoritmo o la codificación en
+  // signBody e isValidSignature a la vez, las demás pruebas (que firman con signBody) no lo notarían.
+  //   printf '%s' '{"texto":"gasté 20 mil en el café ☕"}' | openssl dgst -sha256 -hmac "secreto-de-prueba"
+  const body = '{"texto":"gasté 20 mil en el café ☕"}';
+  const header = "sha256=032aa00551cd2458ddb799da382b1706886a6569faa8fe4f4600107438d19ccd";
+
+  it("con tildes y emoji (el cuerpo va en UTF-8)", () => {
+    expect(signBody(body, "secreto-de-prueba")).toBe(header);
+    expect(isValidSignature(body, header, "secreto-de-prueba")).toBe(true);
+    expect(isValidSignature(body.replace("é", "e"), header, "secreto-de-prueba")).toBe(false);
+  });
+});
+
 describe("isValidSignature", () => {
   const body = JSON.stringify({ hola: "mundo" });
   const secret = "app-secret-de-prueba";

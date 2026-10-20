@@ -31,6 +31,13 @@ describe("suggestEmailCorrection", () => {
   });
 });
 
+describe("suggestEmailCorrection · empates", () => {
+  it("a la misma distancia de dos dominios, sugiere el primero de la lista (no el último)", () => {
+    // "hotmail.m" está a 2 de hotmail.com y de hotmail.es.
+    expect(suggestEmailCorrection("ana@hotmail.m")).toBe("ana@hotmail.com");
+  });
+});
+
 describe("suggestEmailCorrection · más casos", () => {
   it.each([
     ["ana@outlok.es", "ana@outlook.es"],
