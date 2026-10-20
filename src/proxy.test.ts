@@ -1,29 +1,35 @@
 import { NextRequest } from "next/server";
-import { getRedirectUrl, unstable_doesMiddlewareMatch } from "next/experimental/testing/server";
+import { getRedirectUrl, getRewrittenUrl, unstable_doesMiddlewareMatch } from "next/experimental/testing/server";
 import { describe, expect, it } from "vitest";
 import { config, proxy } from "./proxy";
 
 // El proxy es solo la primera barrera (mira si existe la cookie, no si es válida): la sesión real
-// se valida en src/lib/session.ts. Aquí se prueba que redirija a cada quien adonde corresponde.
+// se valida en src/lib/session.ts. Aquí se prueba que redirija a cada quien adonde corresponde y que
+// arme cada página en su idioma (src/app/[lang]/), sin cambiar la dirección.
 
 const ORIGIN = "https://finanzas.test";
 // En producción (https) Better Auth agrega el prefijo __Secure- al nombre de la cookie.
 const SESSION_COOKIES = ["better-auth.session_token", "__Secure-better-auth.session_token"];
 
-function visit(path: string, cookie?: string) {
+/** Adónde lo manda (la dirección de la redirección) o, si sigue, qué página arma ("sigue a …"). */
+function visit(path: string, cookie?: string, extra = "") {
   const headers = new Headers();
-  if (cookie) headers.set("cookie", `${cookie}=token-de-prueba`);
+  const cookies = [cookie && `${cookie}=token-de-prueba`, extra].filter(Boolean).join("; ");
+  if (cookies) headers.set("cookie", cookies);
   const response = proxy(new NextRequest(`${ORIGIN}${path}`, { headers }));
-  return getRedirectUrl(response) ?? "sigue";
+  return getRedirectUrl(response) ?? `sigue a ${getRewrittenUrl(response)}`;
 }
+
+/** La página en español de esa dirección, como la arma el proxy. */
+const inSpanish = (path: string) => `sigue a ${ORIGIN}/es${path === "/" ? "" : path}`;
 
 describe("proxy · sin sesión", () => {
   it.each(["/", "/login", "/registro"])("deja entrar a %s", (path) => {
-    expect(visit(path)).toBe("sigue");
+    expect(visit(path)).toBe(inSpanish(path));
   });
 
   it.each(["/privacidad", "/eliminar-datos", "/cuenta-eliminada"])("deja ver %s (página pública)", (path) => {
-    expect(visit(path)).toBe("sigue");
+    expect(visit(path)).toBe(inSpanish(path));
   });
 
   it.each(["/dashboard", "/ingresos", "/egresos", "/cuenta", "/simulador", "/una-ruta-nueva", "/dashboard/algo"])(
@@ -44,11 +50,29 @@ describe.each(SESSION_COOKIES)("proxy · con sesión (%s)", (cookie) => {
   });
 
   it.each(["/privacidad", "/eliminar-datos", "/cuenta-eliminada"])("deja ver %s", (path) => {
-    expect(visit(path, cookie)).toBe("sigue");
+    expect(visit(path, cookie)).toBe(inSpanish(path));
   });
 
   it.each(["/dashboard", "/ingresos", "/egresos", "/una-ruta-nueva"])("deja entrar a %s", (path) => {
-    expect(visit(path, cookie)).toBe("sigue");
+    expect(visit(path, cookie)).toBe(inSpanish(path));
+  });
+});
+
+describe("proxy · idioma", () => {
+  const cookie = SESSION_COOKIES[0];
+
+  it("arma la página en el idioma de la cookie, con los parámetros de la dirección", () => {
+    expect(visit("/ingresos?mes=2026-10", cookie, "idioma=es")).toBe(`sigue a ${ORIGIN}/es/ingresos?mes=2026-10`);
+    expect(visit("/", undefined, "idioma=es")).toBe(`sigue a ${ORIGIN}/es`);
+  });
+
+  it("sin la cookie, o con un idioma que la app no tiene, en español", () => {
+    expect(visit("/dashboard", cookie)).toBe(inSpanish("/dashboard"));
+    for (const value of ["fr", "", "ES", "es-CO"]) expect(visit("/dashboard", cookie, `idioma=${value}`), value).toBe(inSpanish("/dashboard"));
+  });
+
+  it("una dirección que ya trae el idioma no es una página: se arma como otra cualquiera (y da 404)", () => {
+    expect(visit("/es/dashboard", cookie)).toBe(inSpanish("/es/dashboard"));
   });
 });
 
@@ -73,13 +97,14 @@ describe("proxy · matcher", () => {
       "/sitemap.xml",
       "/_vercel/insights/script.js",
       "/_vercel/insights/view",
+      "/app-icon-1024.png",
     ]) {
       expect(runsOn(url), url).toBe(false);
     }
   });
 
   it("no se salta páginas que solo empiezan como una ruta excluida", () => {
-    for (const url of ["/apiario", "/api-docs", "/_next/staticos", "/_next/imagenes", "/favicon.icono", "/faviconXico", "/robots.txt.bak", "/robotsXtxt", "/sitemap.xml.bak", "/sitemapXxml", "/_vercelito", "/_vercel"]) {
+    for (const url of ["/apiario", "/api-docs", "/_next/staticos", "/_next/imagenes", "/favicon.icono", "/faviconXico", "/robots.txt.bak", "/robotsXtxt", "/sitemap.xml.bak", "/sitemapXxml", "/_vercelito", "/_vercel", "/app-icon-1024.pngx", "/app-icon-1024Xpng"]) {
       expect(runsOn(url), url).toBe(true);
     }
   });
@@ -98,7 +123,9 @@ describe("proxy · sesión vencida (cookie vieja)", () => {
   }
 
   it.each(SESSION_COOKIES)("con %s deja ver el login en vez de mandarlo al dashboard (sin círculo)", (cookie) => {
-    expect(getRedirectUrl(visitExpired("/login?sesion=vencida", cookie)) ?? "sigue").toBe("sigue");
+    const response = visitExpired("/login?sesion=vencida", cookie);
+    expect(getRedirectUrl(response)).toBeNull();
+    expect(getRewrittenUrl(response)).toBe(`${ORIGIN}/es/login?sesion=vencida`);
   });
 
   it("borra todas las cookies de sesión, con Secure en las de prefijo __Secure-", () => {

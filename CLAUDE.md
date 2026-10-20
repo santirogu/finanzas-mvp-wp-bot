@@ -128,7 +128,7 @@ de Vercel ni muevas las migraciones fuera del job `deploy`.
   usa `requireAdmin()` de `src/lib/session.ts` (rol + verificación en dos pasos) y se clasifica en
   `src/authorization-matrix.test.ts` (páginas: "requiere sesión de admin…"; acciones:
   "requireAdmin…"). `requireAdminRole()` (sin la verificación) es solo para `/admin/seguridad` y
-  el marco `src/app/(app)/admin/layout.tsx`.
+  el marco `src/app/[lang]/(app)/admin/layout.tsx`.
   El rol de admin lo dan y lo quitan solo el super admin desde Usuarios (`requireSuperAdmin()`, con su
   código y registrado en `account_event`) o la terminal (`pnpm admin:grant` / `admin:revoke`), las dos
   con `src/modules/account/admin-role.ts`. La marca de super admin (una sola cuenta) solo la pone la
@@ -144,12 +144,12 @@ de Vercel ni muevas las migraciones fuera del job `deploy`.
     que lo hagas.
 - **Agregar un módulo de administración** (README → Sección de administración):
   1. su entrada en `src/modules/admin/modules.ts` (`status: "activo"`);
-  2. su página en `src/app/(app)/admin/<id>/page.tsx`, que llama a `requireAdmin()` y se clasifica
+  2. su página en `src/app/[lang]/(app)/admin/<id>/page.tsx`, que llama a `requireAdmin()` y se clasifica
      en la matriz de autorización como "requiere sesión de admin…";
   3. sus consultas en `src/modules/admin/<id>/`: cada función exportada es `async` y llama a
      `requireAdmin()` antes de tocar la base (la matriz lo verifica). Si es un listado, reutiliza
      `src/modules/admin/shared/` (filtros de la URL, fechas, formatos) y `ChipFilterBar` y
-     `ActiveFilters` (`src/app/(app)/admin/`);
+     `ActiveFilters` (`src/app/[lang]/(app)/admin/`);
   4. si el módulo cambia datos (usuarios, categorías, configuración…), sus Server Actions con
      `requireAdmin()`, confirmadas con el código de Google Authenticator (`confirmAdminCode` de
      `src/modules/admin/shared/confirm-code.ts`; nunca `auth.api.verifyTOTP`, que no limita intentos
@@ -182,6 +182,10 @@ de Vercel ni muevas las migraciones fuera del job `deploy`.
   eso, un texto largo la ensancha más que la pantalla. Si agregas una página, súmala a
   `e2e/diseno-tactil.spec.ts` y a las vistas de la auditoría de diseño
   (`.claude/skills/auditoria-diseno/recorrido/vistas.ts`).
+- **Idiomas** (README → Idiomas): las páginas van en `src/app/[lang]/`; las direcciones no llevan el idioma
+  (lo agrega el proxy por dentro). En un componente de cliente, la ruta actual se lee con `useAppPathname()`
+  (`src/i18n/navigation.ts`), nunca con `usePathname()` (`src/i18n/guard.test.ts` lo revisa). Los textos de
+  una página que ya usa los diccionarios (`src/i18n/dictionaries/`) van ahí, nunca escritos en el componente.
 - **E2E que cambian algo de toda la app** (pausar Claude, los topes del bot, la configuración): van en
   `e2e/configuracion-*.spec.ts`, el proyecto "configuracion" de Playwright, que corre aparte (README →
   Pruebas y CI). En paralelo con las demás les cambiaría lo que responde el bot.

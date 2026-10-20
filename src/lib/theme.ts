@@ -18,7 +18,7 @@ export function parseTheme(value: unknown): Theme {
 }
 
 /**
- * El script en línea del <head> (src/app/layout.tsx): pone el tema guardado en <html data-theme>
+ * El script en línea del <head> (src/app/[lang]/layout.tsx): pone el tema guardado en <html data-theme>
  * antes de pintar la página (sin parpadeo) y lo sigue si cambia en otra pestaña. Va como texto
  * porque corre antes de React; la CSP permite scripts en línea. Si el navegador no deja leer
  * localStorage (modo privado estricto), queda el del sistema.

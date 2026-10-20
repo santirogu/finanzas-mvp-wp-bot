@@ -10,7 +10,7 @@ import {
   isCurrentAdminItem,
 } from "./modules";
 
-const ADMIN_APP = resolve(__dirname, "../../app/(app)/admin");
+const ADMIN_APP = resolve(__dirname, "../../app/[lang]/(app)/admin");
 const pageOf = (id: string) => join(ADMIN_APP, id, "page.tsx");
 
 describe("registro de módulos de administración", () => {

@@ -9,7 +9,7 @@ import type { Report } from "../queries";
 import { averageNote, savedNote } from "../summary";
 import { PDF_COLORS } from "./colors";
 
-// El "Reporte (PDF)" de Reportes: lo mismo que muestra la página (src/app/(app)/reportes/page.tsx) para
+// El "Reporte (PDF)" de Reportes: lo mismo que muestra la página (src/app/[lang]/(app)/reportes/page.tsx) para
 // el período elegido, con todos los textos ya armados. Como la página, sin los gastos fijos (tienen su
 // pestaña): solo salen de los gastos más grandes y del gasto por día. src/modules/reports/pdf/document.tsx solo los
 // acomoda en la hoja; así, lo que dice el PDF se prueba aquí, sin dibujarlo.

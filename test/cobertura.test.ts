@@ -22,7 +22,7 @@ const clientComponents = globSync("src/{app,components}/**/*.tsx", { cwd: root }
 describe("la cobertura de los componentes de cliente", () => {
   it("lee la configuración y los componentes", () => {
     expect(include).toContain("src/components/**");
-    expect(exclude).toContain("src/app/(app)/simulador/chat.tsx");
+    expect(exclude).toContain("src/app/[lang]/(app)/simulador/chat.tsx");
     expect(clientComponents.length).toBeGreaterThan(20);
   });
 

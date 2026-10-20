@@ -1,6 +1,7 @@
 "use client";
 
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useAppPathname } from "@/i18n/navigation";
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { TOAST_PARAM, type ToastTone, urlToast, withoutParams } from "@/lib/toasts";
 
@@ -205,7 +206,7 @@ function ToastItem({ toast, onDismiss }: { toast: Shown; onDismiss: (key: string
 export function UrlToasts() {
   const show = useToast();
   const router = useRouter();
-  const pathname = usePathname();
+  const pathname = useAppPathname();
   const params = useSearchParams();
   const code = params.get(TOAST_PARAM);
 

@@ -9,8 +9,8 @@ function Strip({ pathname, current = true }: { pathname: string; current?: boole
   const ref = useCurrentInView(pathname);
   return (
     <nav ref={ref} data-testid="franja">
-      <a href="/a">A</a>
-      <a href="/b" aria-current={current ? "page" : undefined}>
+      <a href="#a">A</a>
+      <a href="#b" aria-current={current ? "page" : undefined}>
         B
       </a>
     </nav>

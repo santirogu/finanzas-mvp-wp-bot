@@ -22,6 +22,7 @@ const PAGES = {
   "/privacidad": "pública siempre (la exige Meta)",
   "/eliminar-datos": "pública siempre (la exige Meta)",
   "/cuenta-eliminada": "pública siempre (se llega justo después de eliminar la cuenta)",
+  "/[...rest]": "la 404 de las direcciones que no existen: solo llama a notFound() (sin sesión, el proxy manda al login)",
   "/cuenta": "requiere sesión",
   "/ayuda": "requiere sesión; solo textos de ayuda (no lee datos de la persona)",
   "/dashboard": "requiere sesión",
@@ -120,11 +121,11 @@ const TERMINAL_MODULE = /from\s+["'](@\/modules\/account\/terminal|[./]+(modules
 // requireAdminRole no exige la verificación en dos pasos: solo lo usan la página donde se configura
 // y el marco de la sección (que solo dibuja el título y la subnavegación). Todo lo demás de
 // administración usa requireAdmin.
-const ADMIN_ROLE_ONLY_FILES = ["src/app/(app)/admin/layout.tsx", "src/app/(app)/admin/seguridad/page.tsx"];
+const ADMIN_ROLE_ONLY_FILES = ["src/app/[lang]/(app)/admin/layout.tsx", "src/app/[lang]/(app)/admin/seguridad/page.tsx"];
 // Donde se usa requireSuperAdmin (además de session.ts, donde se define): la capa de datos de las
 // acciones sobre una cuenta y sus Server Actions.
 const SUPER_ADMIN_FILES = [
-  "src/app/(app)/admin/usuarios/[id]/actions.ts",
+  "src/app/[lang]/(app)/admin/usuarios/[id]/actions.ts",
   "src/modules/admin/users/account-actions.ts",
 ];
 // Los únicos archivos que comparan roles; el resto usa requireAdmin() o hasRole().
@@ -144,12 +145,12 @@ const sourceFiles = walk(join(ROOT, "src")).filter(
 );
 const read = (file: string) => readFileSync(file, "utf8");
 
-/** Ruta pública de un archivo de src/app, sin los grupos "(...)". */
+/** Ruta pública de un archivo de src/app, sin los grupos "(...)" ni el idioma ([lang], que no va en la dirección). */
 const routeOf = (file: string) =>
   "/" +
   relative(APP, dirname(file))
     .split("/")
-    .filter((segment) => segment && !/^\(.*\)$/.test(segment))
+    .filter((segment) => segment && segment !== "[lang]" && !/^\(.*\)$/.test(segment))
     .join("/");
 
 const pageFiles = sourceFiles.filter((f) => f.startsWith(APP) && f.endsWith("/page.tsx"));
@@ -239,7 +240,8 @@ describe("páginas", () => {
   const privatePages = Object.entries(PAGES)
     .filter(([, rule]) => rule.startsWith("requiere sesión"))
     .map(([path]) => path);
-  const publicPages = Object.keys(PAGES).filter((p) => !privatePages.includes(p));
+  // La 404 ([...rest]) no es una dirección: la arma cualquier dirección que no sea una página.
+  const publicPages = Object.keys(PAGES).filter((p) => !privatePages.includes(p) && p !== "/[...rest]");
 
   const visitWithoutSession = (path: string) =>
     getRedirectUrl(proxy(new NextRequest(`https://finanzas.test${path}`))) ?? "sigue";
@@ -247,6 +249,8 @@ describe("páginas", () => {
   it("sin sesión, el proxy manda las privadas al login y deja ver las públicas", () => {
     for (const path of privatePages) expect(visitWithoutSession(path), path).toBe("https://finanzas.test/login");
     for (const path of publicPages) expect(visitWithoutSession(path), path).toBe("sigue");
+    // Una dirección que no existe tampoco muestra nada sin sesión.
+    expect(visitWithoutSession("/una-direccion-que-no-existe")).toBe("https://finanzas.test/login");
   });
 
   it("las privadas validan la sesión en el servidor (requireUser), no solo en el proxy", () => {
@@ -311,7 +315,7 @@ describe("administración", () => {
   });
 
   it("el marco de la sección valida el rol antes de dibujarse (a quien no es admin no le llega nada)", () => {
-    const layout = read(join(APP, "(app)/admin/layout.tsx"));
+    const layout = read(join(APP, "[lang]/(app)/admin/layout.tsx"));
     expect(layout).toMatch(callsTo("requireAdminRole"));
   });
 

@@ -4,9 +4,9 @@ Cada punto dice qué revisar, dónde y cómo. **[M]** = lo mide el recorrido (`r
 confírmalo en la captura y busca la causa. Lo demás se revisa en las capturas, en los flujos o en el
 código. Los archivos clave:
 - `src/app/globals.css`: colores (tokens), la clase `input`, `btn-primary` y `card`;
-- `src/app/(app)/layout.tsx`: encabezado y pestañas;
+- `src/app/[lang]/(app)/layout.tsx`: encabezado y pestañas;
 - `src/components/`: formulario y lista de movimientos;
-- `src/app/(app)/admin/`: la administración y sus ventanas (`admin-dialog.tsx`).
+- `src/app/[lang]/(app)/admin/`: la administración y sus ventanas (`admin-dialog.tsx`).
 
 ## 1. Responsividad y renderizado
 

@@ -18,7 +18,7 @@ Archivos:
 - `src/lib/auth.ts`, `src/lib/auth-client.ts`, `src/lib/auth-errors.ts`, `src/lib/expired-session.ts`;
 - `src/modules/auth/lockout.ts` (bloqueo por cuenta, tabla `login_failure`) y
   `src/modules/auth/two-factor-rules.ts`;
-- `src/app/(auth)/`, `src/app/api/auth/[...all]/route.ts`.
+- `src/app/[lang]/(auth)/`, `src/app/api/auth/[...all]/route.ts`.
 
 Puntos a revisar:
 - **Límites de intentos:**
@@ -65,8 +65,8 @@ Puntos a revisar:
 
 Archivos:
 - `src/lib/session.ts`, `src/lib/roles.ts`, `src/proxy.ts`, `src/authorization-matrix.test.ts`;
-- `src/app/(app)/admin/`, `src/modules/admin/`;
-- los archivos `"use server"`: `src/modules/*/actions.ts` y `src/app/(app)/**/actions.ts`.
+- `src/app/[lang]/(app)/admin/`, `src/modules/admin/`;
+- los archivos `"use server"`: `src/modules/*/actions.ts` y `src/app/[lang]/(app)/**/actions.ts`.
 
 Puntos a revisar:
 - **Matriz de autorización:** toda página, ruta de API y Server Action está clasificada, y la
@@ -147,7 +147,7 @@ Puntos a revisar:
 Archivos:
 - `src/modules/bot/` (en especial `prompt.ts`, `claude-extractor.ts`, `normalize.ts`,
   `handle-message.ts` y `commands.ts`);
-- `src/app/(app)/simulador/`.
+- `src/app/[lang]/(app)/simulador/`.
 
 Puntos a revisar:
 - **Inyección de instrucciones (prompt injection):**
@@ -174,7 +174,7 @@ Puntos a revisar:
 Archivos:
 - `src/modules/account/` (`delete-account.ts`, `suspension.ts`, `events.ts`);
 - `scripts/delete-data.ts`, `src/db/schema/`;
-- `src/app/privacidad/`.
+- `src/app/[lang]/privacidad/`.
 
 Puntos a revisar:
 - **Borrado completo de una cuenta:** `deleteAccountData` borra todo lo de la persona. Revisa cada

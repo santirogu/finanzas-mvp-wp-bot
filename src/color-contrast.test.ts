@@ -99,7 +99,7 @@ describe("contraste (WCAG)", () => {
 
   // El calendario de "¿Qué días gastas más?" (Reportes): el número de cada día sobre su tono, 4,5:1. Los
   // tonos son el naranja de los egresos con transparencia sobre la tarjeta (bg-expense/12…) o entero.
-  const calendar = readFileSync(path.join(__dirname, "app/(app)/reportes/daily-spending.tsx"), "utf8");
+  const calendar = readFileSync(path.join(__dirname, "app/[lang]/(app)/reportes/daily-spending.tsx"), "utf8");
   const heat = [...calendar.match(/const HEAT[^}]*\}/)![0].matchAll(/\d: "bg-([\w-]+)(?:\/(\d+))? text-([\w-]+)"/g)].map((m) => ({
     background: m[1],
     alpha: m[2] ? Number(m[2]) / 100 : 1,

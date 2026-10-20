@@ -14,7 +14,7 @@ const SKIPPED: [string, string[]][] = [
     "pruebas que no son E2E",
     [
       "src/lib/money.test.ts",
-      "src/app/(app)/admin/bot/filter-bar.test.tsx",
+      "src/app/[lang]/(app)/admin/bot/filter-bar.test.tsx",
       "src/modules/admin/bot/bot-activity.int.test.ts",
       "scripts/admin.test.ts",
       "test/e2e-en-ci.test.ts",
@@ -42,7 +42,7 @@ const SKIPPED: [string, string[]][] = [
 // Lo que las E2E ejercitan: la app, las propias E2E y lo que usan, y el workflow que las corre.
 const REQUIRED = [
   "src/modules/bot/interpret.ts",
-  "src/app/(app)/admin/bot/page.tsx",
+  "src/app/[lang]/(app)/admin/bot/page.tsx",
   "src/app/globals.css",
   "public/app-icon-1024.png",
   "drizzle/0002_nueva_tabla.sql",

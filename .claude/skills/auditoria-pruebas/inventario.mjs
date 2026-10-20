@@ -179,9 +179,9 @@ section(
     ),
 );
 
-/** La ruta de una página de src/app (sin los grupos "(app)"), con los segmentos dinámicos como "[id]". */
+/** La ruta de una página de src/app (sin los grupos "(app)" ni el idioma "[lang]"), con los segmentos dinámicos como "[id]". */
 const routeOf = (page) =>
-  `/${dirname(page).replace(/^src\/app\/?/, "").split("/").filter((s) => s && !/^\(.*\)$/.test(s)).join("/")}`;
+  `/${dirname(page).replace(/^src\/app\/?/, "").split("/").filter((s) => s && s !== "[lang]" && !/^\(.*\)$/.test(s)).join("/")}`;
 section(
   "Páginas sin revisión táctil o de diseño",
   "Cada página va en e2e/diseno-tactil.spec.ts y en las vistas de la auditoría de diseño (CLAUDE.md → Celular y tableta). Las dinámicas ([id]) se abren navegando: se verifican a mano. Las que solo existen en desarrollo se marcan.",
