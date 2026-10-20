@@ -36,7 +36,8 @@ describe("Connections", () => {
     await userEvent.click(section().getByRole("button", { name: "Probar conexiones" }));
 
     const status = section().getByRole("status");
-    const rows = within(status).getAllByRole("listitem");
+    // La acción es asíncrona: hay que esperar sus resultados (sin esperar, fallaba a veces en el CI).
+    const rows = await within(status).findAllByRole("listitem");
     expect(rows[0]).toHaveTextContent("WhatsApp: ConectadoFinanzas MVP · +1 555-662-5913");
     expect(rows[1]).toHaveTextContent("Claude: ConectadoClaude Haiku 5.5 (claude-haiku-5-5)");
     expect(status).toHaveTextContent("Último mensaje que llegó al webhook: 16 de oct de 2026, 6:00 p. m. Probado a las 6:05 p. m.");

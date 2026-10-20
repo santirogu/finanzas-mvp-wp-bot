@@ -185,6 +185,7 @@ describe("upcomingItems (los avisos listos para mostrar)", () => {
     expect(upcomingItems(upcomingPayments([rent], history, NONE, "2026-10-10"), "2026-10-10", "COP")).toEqual([
       {
         id: "arriendo 2026-10",
+        key: "arriendo",
         description: "Arriendo",
         emoji: "🏠",
         month: "2026-10",

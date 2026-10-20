@@ -5,6 +5,7 @@ import { hasRole } from "@/lib/roles";
 import { requireUser } from "@/lib/session";
 import { NavTabs, TabLinks } from "./nav-tabs";
 import { UserMenu } from "./user-menu";
+import { UserNotifications } from "./user-notifications";
 
 /** Las pestañas, con "Admin" solo para quien tiene el rol (lo decide el servidor). */
 async function UserNavTabs() {
@@ -17,14 +18,21 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <Toaster>
       <div className="flex flex-1 flex-col">
         <header className="border-b border-border bg-surface">
-          <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 pt-4">
+          {/* relative: la lista de la campana se abre, en pantallas angostas, a lo ancho de esta fila. */}
+          <div className="relative mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 pt-4">
             <Link href="/dashboard" className="font-semibold tracking-tight">
               Finanzas <span className="text-brand">MVP</span>
             </Link>
-            {/* La sesión se lee dentro de Suspense para no bloquear el resto del layout. */}
-            <Suspense fallback={<div className="h-11 w-16 animate-pulse rounded-full bg-border/60 pointer-fine:h-[2.625rem]" />}>
-              <UserMenu />
-            </Suspense>
+            <div className="flex items-center gap-2">
+              {/* La sesión se lee dentro de Suspense para no bloquear el resto del layout. La campana aparece
+                  cuando llega (y no aparece con los avisos apagados). */}
+              <Suspense fallback={null}>
+                <UserNotifications />
+              </Suspense>
+              <Suspense fallback={<div className="h-11 w-16 animate-pulse rounded-full bg-border/60 pointer-fine:h-[2.625rem]" />}>
+                <UserMenu />
+              </Suspense>
+            </div>
           </div>
           <div className="mx-auto max-w-5xl px-4">
             {/* La sesión (¿es admin?) y, en rutas con un id en la URL, la ruta actual se conocen

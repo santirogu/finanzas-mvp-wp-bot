@@ -94,6 +94,7 @@ const SERVER_ACTIONS = {
   skipFixedPaymentAction:
     "requireUser; solo marca 'ya no aplica' el pago de un mes de un gasto propio (un egreso propio con esa descripción)",
   saveUpcomingSettingsAction: "requireUser; solo la configuración propia de los avisos; días de 0 a 10",
+  markNotificationsReadAction: "requireUser; solo marca como leídas notificaciones propias (ids con su formato, hasta 50)",
   registerFixedPaymentAction:
     "requireUser; registra un egreso propio con la descripción y la categoría del último pago propio de ese gasto (las busca el servidor); fecha hasta hoy",
 } as const;

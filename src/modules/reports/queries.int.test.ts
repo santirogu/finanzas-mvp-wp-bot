@@ -423,9 +423,9 @@ describe("getUpcomingPayments (los avisos del Resumen)", () => {
     await db.insert(notificationSetting).values({ userId: beto.id, upcomingEnabled: true, upcomingDays: 10 });
     expect((await getUpcomingPayments(ana.id, october, "2026-10-03")).payments).toEqual([]);
     await db.insert(notificationSetting).values({ userId: ana.id, upcomingEnabled: true, upcomingDays: 7 });
-    expect(await getUpcomingPayments(ana.id, october, "2026-10-03")).toMatchObject({ days: 7, payments: [{ description: "Arriendo", days: 7 }] });
+    expect(await getUpcomingPayments(ana.id, october, "2026-10-03")).toMatchObject({ enabled: true, days: 7, payments: [{ description: "Arriendo", days: 7 }] });
     await db.update(notificationSetting).set({ upcomingEnabled: false }).where(eq(notificationSetting.userId, ana.id));
     // Apagados, tampoco los atrasados.
-    expect(await getUpcomingPayments(ana.id, october, "2026-10-20")).toEqual({ days: 7, payments: [] });
+    expect(await getUpcomingPayments(ana.id, october, "2026-10-20")).toEqual({ enabled: false, days: 7, payments: [] });
   });
 });

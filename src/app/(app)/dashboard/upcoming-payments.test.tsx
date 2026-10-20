@@ -13,6 +13,7 @@ const { UpcomingPayments } = await import("./upcoming-payments");
 
 const item = (description: string, when: string, overdue = false): UpcomingItem => ({
   id: `${description.toLowerCase()} 2026-10`,
+  key: description.toLowerCase(),
   description,
   emoji: "🏠",
   month: "2026-10",

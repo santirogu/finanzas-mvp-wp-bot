@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useId, useState } from "react";
+import { type ReactNode, useActionState, useId, useState } from "react";
 import { Buttons, Dialog, FormError } from "@/components/dialog";
 import { describedBy, FieldError } from "@/components/field-error";
 import { useToast } from "@/components/toaster";
@@ -51,7 +51,7 @@ export function UpcomingPayments({
       <p className="text-sm text-muted">Tus gastos fijos {span} y los que todavía no registras.</p>
       <ul className="mt-2 divide-y divide-border">
         {shown.map((item) => (
-          <Item key={item.id} item={item} today={today} />
+          <UpcomingPaymentItem key={item.id} item={item} today={today} />
         ))}
       </ul>
       {rest > 0 && (
@@ -68,7 +68,11 @@ export function UpcomingPayments({
   );
 }
 
-function Item({ item, today }: { item: UpcomingItem; today: string }) {
+/**
+ * Un aviso: el gasto, su fecha, el monto y cuándo, con "Registrar pago" y "Este pago ya no aplica" (y lo
+ * que agregue quien lo usa, `extra`: la campana suma "Marcar como leído"). Lo usan la tarjeta y la campana.
+ */
+export function UpcomingPaymentItem({ item, today, extra }: { item: UpcomingItem; today: string; extra?: ReactNode }) {
   const toast = useToast();
   const [state, formAction, busy] = useActionState<PaymentSkipState, FormData>(async (prev, formData) => {
     const result = await skipFixedPaymentAction(prev, formData);
@@ -97,6 +101,7 @@ function Item({ item, today }: { item: UpcomingItem; today: string }) {
               {busy ? "Ocultando…" : "Este pago ya no aplica"}
             </button>
           </form>
+          {extra}
         </div>
         {state.error && (
           <span role="alert" className="block text-xs text-danger">

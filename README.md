@@ -358,6 +358,13 @@ scripts/seed.ts                     Categorías por defecto
     el servidor entre los egresos de la persona (nunca las manda el navegador); si la categoría se archivó,
     va sin categoría. Se registra como cualquier egreso web, con las mismas validaciones, y el aviso
     desaparece (ese mes ya está pagado).
+  - **La campana** (`notification-bell.tsx`, `user-notifications.tsx`, `src/modules/notifications/`): arriba,
+    junto al menú de la cuenta, en todas las páginas. El número en rojo cuenta las notificaciones sin leer
+    (por ahora, los avisos de próximos pagos; cada una con su tipo en el id, `pago|YYYY-MM|<clave>`, para
+    sumar otros tipos). La lista trae los mismos avisos con "Registrar pago", "Este pago ya no aplica" y
+    "Marcar como leído" (o "Marcar todas como leídas"), que la saca de la campana (tabla
+    `notification_read`) pero el aviso sigue en el Resumen. Se cierra con Escape, al tocar fuera o al
+    salir con Tab, como el menú de la cuenta. Con los avisos apagados, no hay campana.
   - **Mi cuenta → Notificaciones** (`notification-settings.tsx`, `upcoming-settings.ts`, tabla
     `notification_setting`): prenderlos o apagarlos (apagados no se avisa nada, tampoco los atrasados) y
     con cuántos días de anticipación, de 0 (el mismo día) a 10, en un campo numérico con su error en
