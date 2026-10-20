@@ -1,6 +1,7 @@
 // Usuarios (/admin/usuarios): los filtros que vienen en la URL y las rutas. Sin base de datos (las
 // consultas están en src/modules/admin/users/users.ts).
 
+import { DEFAULT_LOCALE, type Locale } from "@/i18n/locales";
 import { ROLES, type Role } from "@/lib/roles";
 import {
   ADMIN_MAX_ROWS,
@@ -21,15 +22,35 @@ export const USERS_PATH = "/admin/usuarios";
 /** "Todos" en los grupos de una sola opción (rol y WhatsApp): sin filtro. */
 export const ANY = "todos";
 
+/** Los textos de los filtros de Usuarios en cada idioma (los valores de la URL no cambian). */
+export const USER_FILTER_TEXTS = {
+  es: {
+    role: { admin: "Admin", user: "Usuario" } as Record<Role, string>,
+    whatsapp: { si: "Vinculado", no: "Sin vincular" },
+    locked: "Inicio de sesión bloqueado",
+    suspended: "Suspendidas",
+    rolePrefix: "Rol",
+    registered: "Registro",
+  },
+  en: {
+    role: { admin: "Admin", user: "User" } as Record<Role, string>,
+    whatsapp: { si: "Linked", no: "Not linked" },
+    locked: "Sign-in locked",
+    suspended: "Suspended",
+    rolePrefix: "Role",
+    registered: "Signed up",
+  },
+} as const satisfies Record<Locale, unknown>;
+
 /** El filtro de rol: el valor de la URL (rol=admin) y su chip. */
-export const ROLE_FILTER_LABELS: Record<Role, string> = { admin: "Admin", user: "Usuario" };
+export const ROLE_FILTER_LABELS: Record<Role, string> = USER_FILTER_TEXTS.es.role;
 
 /** El filtro de WhatsApp: whatsapp=si / whatsapp=no. */
-export const WHATSAPP_FILTER_LABELS = { si: "Vinculado", no: "Sin vincular" } as const;
+export const WHATSAPP_FILTER_LABELS = USER_FILTER_TEXTS.es.whatsapp;
 
 /** Los chips de estado: cuentas con el inicio de sesión bloqueado por intentos fallidos y suspendidas. */
-export const LOCKED_FILTER = { value: "bloqueadas", label: "Inicio de sesión bloqueado" } as const;
-export const SUSPENDED_FILTER = { value: "suspendidas", label: "Suspendidas" } as const;
+export const LOCKED_FILTER = { value: "bloqueadas", label: USER_FILTER_TEXTS.es.locked } as const;
+export const SUSPENDED_FILTER = { value: "suspendidas", label: USER_FILTER_TEXTS.es.suspended } as const;
 
 export type UserFilters = {
   /** Nombre, correo o número de WhatsApp. */
@@ -113,16 +134,17 @@ export function withoutUserFilter(f: UserFilters, key: UserFilterKey): UserFilte
   }
 }
 
-/** Los filtros activos, en el orden de las etiquetas, con su texto. */
-export function activeUserFilters(f: UserFilters): { key: UserFilterKey; label: string }[] {
+/** Los filtros activos, en el orden de las etiquetas, con su texto (en el idioma de la página). */
+export function activeUserFilters(f: UserFilters, locale: Locale = DEFAULT_LOCALE): { key: UserFilterKey; label: string }[] {
+  const t = USER_FILTER_TEXTS[locale];
   const items: { key: UserFilterKey; label: string }[] = [];
-  if (f.role) items.push({ key: "role", label: `Rol: ${ROLE_FILTER_LABELS[f.role]}` });
+  if (f.role) items.push({ key: "role", label: `${t.rolePrefix}: ${t.role[f.role]}` });
   if (f.whatsapp !== null) {
-    items.push({ key: "whatsapp", label: `WhatsApp: ${WHATSAPP_FILTER_LABELS[f.whatsapp ? "si" : "no"].toLowerCase()}` });
+    items.push({ key: "whatsapp", label: `WhatsApp: ${t.whatsapp[f.whatsapp ? "si" : "no"].toLowerCase()}` });
   }
-  if (f.locked) items.push({ key: "locked", label: LOCKED_FILTER.label });
-  if (f.suspended) items.push({ key: "suspended", label: SUSPENDED_FILTER.label });
-  if (f.date !== "todo") items.push({ key: "date", label: `Registro: ${dateFilterLabel(f)}` });
+  if (f.locked) items.push({ key: "locked", label: t.locked });
+  if (f.suspended) items.push({ key: "suspended", label: t.suspended });
+  if (f.date !== "todo") items.push({ key: "date", label: `${t.registered}: ${dateFilterLabel(f, locale)}` });
   if (f.search) items.push({ key: "search", label: `“${f.search}”` });
   return items;
 }

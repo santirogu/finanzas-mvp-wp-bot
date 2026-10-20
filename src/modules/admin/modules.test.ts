@@ -6,7 +6,10 @@ import {
   ADMIN_MODULES,
   ADMIN_MODULE_IDS,
   activeAdminModules,
+  adminModuleLabel,
+  adminModules,
   adminNavItems,
+  adminTitle,
   isCurrentAdminItem,
 } from "./modules";
 
@@ -84,5 +87,31 @@ describe("subnavegación", () => {
     ["/admin/usuarios", "/admin/usuariosx", false],
   ])("isCurrentAdminItem(%s, %s) = %s", (href, pathname, expected) => {
     expect(isCurrentAdminItem(href, pathname)).toBe(expected);
+  });
+});
+
+describe("en inglés", () => {
+  it("los mismos módulos, rutas y estados, con su nombre y su frase en inglés", () => {
+    const en = adminModules("en");
+    expect(en.map(({ id, href, status }) => ({ id, href, status }))).toEqual(
+      ADMIN_MODULES.map(({ id, href, status }) => ({ id, href, status })),
+    );
+    expect(en.map((m) => m.label)).toEqual(["History", "Users", "WhatsApp bot", "Categories", "System health", "Settings", "Security"]);
+    expect(en.find((m) => m.id === "usuarios")?.description).toBe("Accounts, sessions and status");
+    expect(adminModules("es")).toBe(ADMIN_MODULES);
+  });
+
+  it("la subnavegación empieza en Home", () => {
+    expect(adminNavItems("en").map((i) => i.label)).toEqual(["Home", "History", "Users", "WhatsApp bot", "Categories", "Security"]);
+    expect(adminNavItems("en")[0].href).toBe("/admin");
+    expect(activeAdminModules("en").map((m) => m.id)).toEqual(activeAdminModules().map((m) => m.id));
+  });
+
+  it("el título de cada página", () => {
+    expect(adminTitle(null)).toBe("Administración");
+    expect(adminTitle("Usuarios")).toBe("Usuarios · Administración");
+    expect(adminTitle(null, "en")).toBe("Administration");
+    expect(adminTitle(adminModuleLabel("seguridad", "en"), "en")).toBe("Security · Administration");
+    expect(adminModuleLabel("seguridad")).toBe("Seguridad");
   });
 });

@@ -121,3 +121,13 @@ describe("formatIp", () => {
     expect(formatIp(ip)).toBe("desconocida");
   });
 });
+
+describe("en inglés", () => {
+  it("lo desconocido se dice en inglés; lo reconocido no cambia", () => {
+    expect(describeUserAgent(null, "en")).toBe("Unknown device");
+    expect(describeUserAgent("curl/8.7.1", "en")).toBe("Unknown browser");
+    expect(describeUserAgent(UA.safariIphone, "en")).toBe(describeUserAgent(UA.safariIphone));
+    expect(formatIp("", "en")).toBe("unknown");
+    expect(formatIp("181.50.12.3", "en")).toBe("181.50.12.3");
+  });
+});

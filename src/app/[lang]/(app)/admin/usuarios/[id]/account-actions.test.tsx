@@ -404,3 +404,98 @@ describe("dar y quitar el rol de admin (solo el super admin)", () => {
     expect(actions.revokeAdminAction).not.toHaveBeenCalled();
   });
 });
+
+describe("en inglés", () => {
+  const en = (overrides: Partial<ActionTarget> = {}) => target({ lockedUntil: "3:15 PM", ...overrides });
+  const section = (name: string) => within(screen.getByRole("region", { name }));
+  const titles = (name: string) => section(name).getAllByRole("listitem").map((row) => row.querySelector("p")?.textContent);
+  const enCodeField = () => within(dialog()).getByLabelText("Google Authenticator code");
+
+  it("las acciones y la zona de peligro, con su detalle", () => {
+    render(<AccountActions target={en()} canMakeAdmin />, { english: true });
+    expect(titles("Actions")).toEqual(["Unlock sign-in", "Sign out all their sessions", "Unlink their WhatsApp"]);
+    const rows = section("Actions").getAllByRole("listitem");
+    expect(rows[0]).toHaveTextContent("Locked after wrong passwords until 3:15 PM.");
+    expect(rows[1]).toHaveTextContent("2 open sessions. Their WhatsApp keeps working.");
+    expect(section("Actions").getByText("Each one asks for the Google Authenticator code.")).toBeInTheDocument();
+    expect(titles("Danger zone")).toEqual(["Suspend the account", "Delete the account", "Make them an admin"]);
+  });
+
+  it("suspendida, reactivarla con la fecha y el motivo; una sola sesión, en singular", () => {
+    render(
+      <AccountActions
+        target={en({ lockedUntil: null, openSessions: 1, phone: null, suspendedSince: "Oct 15, 2026, 3:00 PM", suspensionReason: "Spam" })}
+      />,
+      { english: true },
+    );
+    const rows = section("Actions").getAllByRole("listitem");
+    expect(rows[0]).toHaveTextContent("Reactivate the account");
+    expect(rows[0]).toHaveTextContent("Suspended since Oct 15, 2026, 3:00 PM. Reason: Spam");
+    expect(rows[1]).toHaveTextContent("1 open session. Their WhatsApp keeps working.");
+    expect(titles("Danger zone")).toEqual(["Delete the account"]);
+  });
+
+  it("sin nada que hacer, lo dice", () => {
+    render(<AccountActions target={en({ lockedUntil: null, openSessions: 0, phone: null })} />, { english: true });
+    expect(section("Actions").getByText("There's nothing to unlock, sign out or unlink.")).toBeInTheDocument();
+  });
+
+  it.each([
+    ["Unlock", {}, "Unlock Beto Ruiz's sign-in?", "They can try their password again right away"],
+    ["Sign out", {}, "Sign Beto Ruiz out of all their sessions?", "They'll have to sign in again on 2 devices. Their WhatsApp stays linked."],
+    ["Sign out", { openSessions: 1 }, "Sign Beto Ruiz out of all their sessions?", "They'll have to sign in again on their device."],
+    ["Unlink", {}, "Unlink Beto Ruiz's WhatsApp?", "The bot will stop recording what they write from +57 300 111 2233. They can link it again from My account."],
+    ["Suspend", {}, "Suspend Beto Ruiz's account?", "When they try to sign in, they'll see their account is suspended, without the reason."],
+    ["Reactivate", { suspendedSince: "today" }, "Reactivate Beto Ruiz's account?", "They'll be able to sign in and use the WhatsApp bot again."],
+    ["Make admin", {}, "Make Beto Ruiz an admin?", "Only you can remove the role."],
+  ] as const)("'%s' abre su ventana en inglés", async (button, overrides, title, description) => {
+    render(<AccountActions target={en(overrides)} canMakeAdmin />, { english: true });
+    await userEvent.click(screen.getByRole("button", { name: button }));
+    expect(dialog()).toHaveAccessibleName(title);
+    expect(dialog()).toHaveAccessibleDescription(expect.stringContaining(description));
+    expect(within(dialog()).getByRole("button", { name: button })).toHaveAttribute("type", "submit");
+    expect(within(dialog()).getByRole("button", { name: "Cancel" })).toBeInTheDocument();
+  });
+
+  it("el motivo de la suspensión", async () => {
+    render(<AccountActions target={en()} />, { english: true });
+    await userEvent.click(screen.getByRole("button", { name: "Suspend" }));
+    expect(within(dialog()).getByRole("textbox", { name: "Reason (optional, only you see it)" })).toBeInTheDocument();
+  });
+
+  it("los errores del código, antes de enviar", async () => {
+    render(<AccountActions target={en()} />, { english: true });
+    await userEvent.click(screen.getByRole("button", { name: "Unlock" }));
+    await userEvent.click(within(dialog()).getByRole("button", { name: "Unlock" }));
+    expect(enCodeField()).toHaveAccessibleDescription("Enter the 6-digit code from Google Authenticator.");
+    await userEvent.type(enCodeField(), "12a");
+    expect(enCodeField()).toHaveAccessibleDescription("The code has 6 digits, numbers only.");
+    expect(actions.unlockLoginAction).not.toHaveBeenCalled();
+  });
+
+  it("eliminar: explica qué se borra, pide el correo y el código, y lo dice mientras envía", async () => {
+    let finish: (state: object) => void = () => {};
+    actions.deleteAccountByAdminAction.mockReturnValue(new Promise((resolve) => (finish = resolve)));
+    render(<AccountActions target={en()} />, { english: true });
+    await userEvent.click(screen.getByRole("button", { name: "Delete account" }));
+    const box = within(dialog());
+    expect(dialog()).toHaveAccessibleName("Delete Beto Ruiz's account?");
+    expect(dialog()).toHaveAccessibleDescription(expect.stringContaining("The history only keeps “an account was deleted”."));
+    await userEvent.type(box.getByLabelText(/Type their email/), "beto@correo.com");
+    await userEvent.click(box.getByRole("button", { name: "Delete account" }));
+    expect(enCodeField()).toHaveAccessibleDescription("Enter the 6-digit code from Google Authenticator.");
+    await userEvent.type(enCodeField(), "654321");
+    await userEvent.click(box.getByRole("button", { name: "Delete account" }));
+    expect(await box.findByRole("button", { name: "Deleting…" })).toBeDisabled();
+    finish({ error: "This account no longer exists." });
+    expect(await box.findByRole("alert")).toHaveTextContent("This account no longer exists.");
+  });
+
+  it("en la cuenta de otro admin, quitarle el rol", async () => {
+    render(<RevokeAdminActions target={{ id: "admin-2", name: "Carla" }} />, { english: true });
+    expect(titles("Danger zone")).toEqual(["Remove their admin role"]);
+    await userEvent.click(screen.getByRole("button", { name: "Remove admin" }));
+    expect(dialog()).toHaveAccessibleName("Remove Carla's admin role?");
+    expect(dialog()).toHaveAccessibleDescription(expect.stringContaining("Their finances aren't touched."));
+  });
+});

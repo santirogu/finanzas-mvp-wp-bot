@@ -19,7 +19,7 @@ export function BotFilterBar({ filters, panelOpen }: { filters: BotFilters; pane
       searchPlaceholder="Nombre, correo o número"
       activeCount={filters.date === "todo" ? 0 : 1}
       panelOpen={panelOpen}
-      groups={[dateChipGroup("Fecha de los mensajes", filters)]}
+      groups={[dateChipGroup("Fecha de los mensajes", filters, "es")]}
     />
   );
 }

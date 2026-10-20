@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { InEnglish } from "../../../../../../test/locale";
 
 type Result = { data?: unknown; error: { code?: string; status?: number; message?: string } | null };
 const mocks = vi.hoisted(() => ({
@@ -176,3 +177,51 @@ describe("TwoFactorSetup · errores de los campos en español", () => {
   });
 });
 
+describe("TwoFactorSetup en inglés", () => {
+  it("los tres pasos", async () => {
+    render(<TwoFactorSetup onDone={mocks.done} />, { wrapper: InEnglish });
+    expect(screen.getByRole("heading", { name: "Step 1 of 3: confirm it's you" })).toBeVisible();
+    await userEvent.type(screen.getByLabelText("Your password"), "clave-segura-123");
+    await userEvent.click(screen.getByRole("button", { name: "Continue" }));
+
+    expect(await screen.findByRole("heading", { name: "Step 2 of 3: scan the code" })).toBeVisible();
+    expect(screen.getByRole("img", { name: "QR code to add Finanzas MVP to Google Authenticator" })).toBeInTheDocument();
+    expect(screen.getByText(/Can't scan it\?/)).toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText("6-digit code"), "123456");
+    await userEvent.click(screen.getByRole("button", { name: "Turn on verification" }));
+
+    expect(await screen.findByRole("heading", { name: "Step 3 of 3: save your backup codes" })).toBeVisible();
+    expect(screen.getByRole("list", { name: "Backup codes" })).toHaveTextContent(BACKUP_CODES[0]);
+    const go = screen.getByRole("button", { name: "Go to Administration" });
+    expect(go).toBeDisabled();
+    await userEvent.click(screen.getByLabelText("I saved my backup codes"));
+    await userEvent.click(go);
+    expect(mocks.done).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    [{ status: 400, code: "INVALID_PASSWORD" }, "Wrong password."],
+    [{ status: 403, code: "ADMIN_ONLY" }, "Two-step verification is only for administrators."],
+  ])("los errores del servidor (%j)", async (error, text) => {
+    mocks.enable.mockResolvedValue({ error });
+    render(<TwoFactorSetup onDone={mocks.done} />, { wrapper: InEnglish });
+    await userEvent.type(screen.getByLabelText("Your password"), "x");
+    await userEvent.click(screen.getByRole("button", { name: "Continue" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(text);
+  });
+
+  it("un código incorrecto, y los errores de los campos antes de enviar", async () => {
+    mocks.verifyTotp.mockResolvedValue({ error: { status: 401, code: "INVALID_CODE" } });
+    render(<TwoFactorSetup onDone={mocks.done} />, { wrapper: InEnglish });
+    await userEvent.click(screen.getByRole("button", { name: "Continue" }));
+    expect(screen.getByLabelText("Your password")).toHaveAccessibleDescription("Enter your password.");
+    await userEvent.type(screen.getByLabelText("Your password"), "clave-segura-123");
+    await userEvent.click(screen.getByRole("button", { name: "Continue" }));
+    const code = await screen.findByLabelText("6-digit code");
+    await userEvent.click(screen.getByRole("button", { name: "Turn on verification" }));
+    expect(code).toHaveAccessibleDescription("Enter the 6-digit code from Google Authenticator.");
+    await userEvent.type(code, "000000");
+    await userEvent.click(screen.getByRole("button", { name: "Turn on verification" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Wrong code. Enter the code Google Authenticator shows right now.");
+  });
+});

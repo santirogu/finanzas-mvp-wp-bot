@@ -1,6 +1,7 @@
 // Piezas comunes de los listados de administración (Historial, Usuarios y los que vengan): los
 // parámetros de la URL, los filtros de fecha, la búsqueda y los formatos. Sin base de datos.
 
+import { DEFAULT_LOCALE, INTL_LOCALES, type Locale } from "@/i18n/locales";
 import { todayInTimezone } from "@/lib/dates";
 import { withoutControlChars } from "@/lib/text";
 
@@ -40,13 +41,14 @@ export function parseLimit(params: Params): number {
 export const DATE_PRESETS = ["todo", "hoy", "7d", "30d", "personalizado"] as const;
 export type DatePreset = (typeof DATE_PRESETS)[number];
 
-export const DATE_PRESET_LABELS: Record<DatePreset, string> = {
-  todo: "Todo",
-  hoy: "Hoy",
-  "7d": "Últimos 7 días",
-  "30d": "Últimos 30 días",
-  personalizado: "Personalizado",
+/** Los nombres de los atajos de fecha, en cada idioma. */
+export const DATE_PRESET_TEXTS: Readonly<Record<Locale, Record<DatePreset, string>>> = {
+  es: { todo: "Todo", hoy: "Hoy", "7d": "Últimos 7 días", "30d": "Últimos 30 días", personalizado: "Personalizado" },
+  en: { todo: "All", hoy: "Today", "7d": "Last 7 days", "30d": "Last 30 days", personalizado: "Custom" },
 };
+
+/** En español (el de siempre). */
+export const DATE_PRESET_LABELS = DATE_PRESET_TEXTS.es;
 
 /** El filtro de fecha: un atajo o un rango personalizado (días YYYY-MM-DD en Colombia, incluidos). */
 export type DateFilter = { date: DatePreset; from: string | null; to: string | null };
@@ -106,16 +108,21 @@ export function dateRange(f: DateFilter, today: string): { from: string | null; 
   }
 }
 
-const shortDay = (day: string) =>
-  new Intl.DateTimeFormat("es-CO", { day: "numeric", month: "short", timeZone: "UTC" }).format(
+const shortDay = (day: string, locale: Locale) =>
+  new Intl.DateTimeFormat(INTL_LOCALES[locale], { day: "numeric", month: "short", timeZone: "UTC" }).format(
     new Date(`${day}T00:00:00Z`),
   );
 
-/** El texto de la etiqueta del filtro de fecha: "Hoy", "Últimos 7 días", "1 de oct – 15 de oct"… */
-export function dateFilterLabel(f: DateFilter): string {
-  if (f.date !== "personalizado") return DATE_PRESET_LABELS[f.date];
-  if (f.from && f.to) return f.from === f.to ? shortDay(f.from) : `${shortDay(f.from)} – ${shortDay(f.to)}`;
-  return f.from ? `Desde el ${shortDay(f.from)}` : `Hasta el ${shortDay(f.to!)}`;
+/**
+ * El texto de la etiqueta del filtro de fecha: "Hoy", "Últimos 7 días", "1 de oct – 15 de oct"… (en inglés,
+ * "Today", "Oct 1 – Oct 15", "From Oct 1").
+ */
+export function dateFilterLabel(f: DateFilter, locale: Locale = DEFAULT_LOCALE): string {
+  if (f.date !== "personalizado") return DATE_PRESET_TEXTS[locale][f.date];
+  const day = (value: string) => shortDay(value, locale);
+  if (f.from && f.to) return f.from === f.to ? day(f.from) : `${day(f.from)} – ${day(f.to)}`;
+  if (locale === "es") return f.from ? `Desde el ${day(f.from)}` : `Hasta el ${day(f.to!)}`;
+  return f.from ? `From ${day(f.from)}` : `Until ${day(f.to!)}`;
 }
 
 /** Para buscar con ILIKE sin que % o _ del texto funcionen como comodines. */
@@ -135,18 +142,18 @@ export { formatPhone } from "@/modules/whatsapp/phone";
  */
 export const normalizeSpaces = (text: string) => text.replace(/[\u00a0\u202f]/g, " ");
 
-const format = (date: Date, options: Intl.DateTimeFormatOptions) =>
-  normalizeSpaces(new Intl.DateTimeFormat("es-CO", { timeZone: ADMIN_TIMEZONE, ...options }).format(date));
+const format = (date: Date, options: Intl.DateTimeFormatOptions, locale: Locale) =>
+  normalizeSpaces(new Intl.DateTimeFormat(INTL_LOCALES[locale], { timeZone: ADMIN_TIMEZONE, ...options }).format(date));
 
-/** Fecha y hora completas en Colombia: "14 de oct de 2026, 9:41 p. m.". */
-export const formatDateTime = (date: Date) =>
-  format(date, { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" });
+/** Fecha y hora completas en Colombia: "14 de oct de 2026, 9:41 p. m." (en inglés, "Oct 14, 2026, 9:41 PM"). */
+export const formatDateTime = (date: Date, locale: Locale = DEFAULT_LOCALE) =>
+  format(date, { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" }, locale);
 
-/** Solo la fecha en Colombia: "14 de oct de 2026". */
-export const formatDate = (date: Date) => format(date, { day: "numeric", month: "short", year: "numeric" });
+/** Solo la fecha en Colombia: "14 de oct de 2026" (en inglés, "Oct 14, 2026"). */
+export const formatDate = (date: Date, locale: Locale = DEFAULT_LOCALE) => format(date, { day: "numeric", month: "short", year: "numeric" }, locale);
 
-/** Solo la hora en Colombia: "9:41 p. m.". */
-export const formatHour = (date: Date) => format(date, { hour: "numeric", minute: "2-digit" });
+/** Solo la hora en Colombia: "9:41 p. m." (en inglés, "9:41 PM"). */
+export const formatHour = (date: Date, locale: Locale = DEFAULT_LOCALE) => format(date, { hour: "numeric", minute: "2-digit" }, locale);
 
 /** El día (YYYY-MM-DD) de un instante, en Colombia. */
 export const dayInBogota = (date: Date) => todayInTimezone(ADMIN_TIMEZONE, date);

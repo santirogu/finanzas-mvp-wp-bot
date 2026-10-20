@@ -85,7 +85,7 @@ async function Bot({ params }: { params: Record<string, string | string[] | unde
         </div>
         {/* key: con otros filtros (o al quitarlos) el formulario empieza de nuevo con lo de la URL. */}
         <BotFilterBar key={`${botHref(filters)}|${panelOpen}`} filters={filters} panelOpen={panelOpen} />
-        <ActiveFilters items={activeBotFilters(filters)} clearHref={BOT_PATH} />
+        <ActiveFilters items={activeBotFilters(filters)} clearHref={BOT_PATH} locale="es" />
 
         <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Stat label="Mensajes" value={formatCount(activity.total)} />

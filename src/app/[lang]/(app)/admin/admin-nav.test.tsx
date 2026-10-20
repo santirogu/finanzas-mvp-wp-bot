@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { InEnglish } from "../../../../../test/locale";
 
 const navigation = vi.hoisted(() => ({ pathname: "/admin" }));
 vi.mock("next/navigation", () => ({ usePathname: () => navigation.pathname }));
@@ -39,5 +40,22 @@ describe("AdminNav", () => {
       if (link.textContent === current) expect(link).toHaveAttribute("aria-current", "page");
       else expect(link).not.toHaveAttribute("aria-current");
     }
+  });
+});
+
+describe("AdminNav en inglés", () => {
+  it("los chips y el nombre del menú, con las mismas rutas", () => {
+    navigation.pathname = "/admin/usuarios/abc123";
+    render(<AdminNav />, { wrapper: InEnglish });
+    expect(screen.getByRole("navigation", { name: "Administration sections" })).toBeInTheDocument();
+    expect(screen.getAllByRole("link").map((l) => [l.textContent, l.getAttribute("href")])).toEqual([
+      ["Home", "/admin"],
+      ["History", "/admin/historial"],
+      ["Users", "/admin/usuarios"],
+      ["WhatsApp bot", "/admin/bot"],
+      ["Categories", "/admin/categorias"],
+      ["Security", "/admin/seguridad"],
+    ]);
+    expect(screen.getByRole("link", { name: "Users" })).toHaveAttribute("aria-current", "page");
   });
 });

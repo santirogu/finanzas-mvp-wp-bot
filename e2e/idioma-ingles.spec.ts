@@ -2,7 +2,9 @@ import { readFileSync } from "node:fs";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page } from "@playwright/test";
 import { monthOf, monthParam, shiftMonth, todayInTimezone } from "../src/lib/dates";
-import { addTransaction, register, test, toast, visible } from "./helpers";
+import { totp } from "../test/totp";
+import { newAdmin, wrongCode } from "./admin";
+import { PASSWORD, addTransaction, newPerson, register, test, toast, uniqueEmail, visible } from "./helpers";
 
 // El inglés, con la cookie `idioma=en` (todavía no se elige desde la app): lo que ya está traducido —las
 // páginas públicas, la navegación, el menú de la cuenta, el selector de meses y la 404—, con la misma
@@ -168,4 +170,90 @@ test("en inglés: Mi cuenta, la Ayuda y las páginas legales (solo en español, 
   await expect(page.locator("main")).toHaveAttribute("lang", "es");
   await expect(page.getByText("This page is only available in Spanish.")).toHaveAttribute("lang", "en");
   expect(await seriousViolations(page)).toEqual([]);
+});
+
+test("en inglés: la administración (Seguridad, el inicio, Usuarios y una acción con su código) @principal", async ({ page, browser }) => {
+  const beto = await newPerson(browser);
+  const betoEmail = uniqueEmail();
+  await register(beto, "Beto Inglés", betoEmail);
+
+  await newAdmin(page);
+  await inEnglish(page);
+  const heading = (name: string | RegExp) => visible(page.getByRole("heading", { name }));
+  const field = (label: string) => visible(page.locator("dt", { hasText: new RegExp(`^${label}$`) }).locator("xpath=following-sibling::dd[1]"));
+  let secret = "";
+
+  await test.step("Seguridad: los tres pasos de la verificación", async () => {
+    await page.goto("/admin/seguridad");
+    await expect(page).toHaveTitle("Security · Administration · Finanzas");
+    await expect(heading("Two-step verification")).toBeVisible();
+    await page.getByLabel("Your password").fill(PASSWORD);
+    await page.getByRole("button", { name: "Continue" }).click();
+    await expect(heading("Step 2 of 3: scan the code")).toBeVisible();
+    expect(await seriousViolations(page)).toEqual([]);
+    secret = (await page.getByLabel("Setup key").textContent())!.replace(/\s/g, "");
+    await page.getByLabel("6-digit code").fill(totp(secret));
+    await page.getByRole("button", { name: "Turn on verification" }).click();
+    await expect(heading("Step 3 of 3: save your backup codes")).toBeVisible();
+    await page.getByLabel("I saved my backup codes").check();
+    await page.getByRole("button", { name: "Go to Administration" }).click();
+    await expect(page).toHaveURL(/\/admin$/);
+  });
+
+  await test.step("el inicio y la subnavegación", async () => {
+    await expect(page).toHaveTitle("Administration · Finanzas");
+    await expect(page.getByRole("heading", { level: 1, name: "Administration" })).toBeVisible();
+    const nav = visible(page.getByRole("navigation", { name: "Administration sections" }));
+    await expect(nav.getByRole("link")).toHaveText(["Home", "History", "Users", "WhatsApp bot", "Categories", "Security"]);
+    await expect(visible(page.getByText("Two-step verification on"))).toBeVisible();
+    expect(await seriousViolations(page)).toEqual([]);
+    await nav.getByRole("link", { name: "Users", exact: true }).click();
+    await expect(page).toHaveURL(/\/admin\/usuarios$/);
+  });
+
+  await test.step("Usuarios: la búsqueda, los filtros y la cuenta", async () => {
+    await expect(page).toHaveTitle("Users · Administration · Finanzas");
+    await expect(heading("Accounts")).toBeVisible();
+    const search = visible(page.getByRole("searchbox", { name: "Search" }));
+    await search.fill(betoEmail);
+    await search.press("Enter");
+    await expect(visible(page.getByText("1 account", { exact: true }))).toBeVisible();
+    await expect(visible(page.getByRole("list", { name: "Active filters" }))).toContainText(betoEmail);
+    const account = visible(page.getByRole("list", { name: "Accounts" })).getByRole("listitem").first();
+    await expect(account).toContainText("Beto Inglés");
+    await expect(account).toContainText(/No WhatsApp · Signed up: [A-Z][a-z]{2} \d{1,2}, \d{4}/);
+    const filters = visible(page.getByRole("button", { name: "Filters (active: 1)" }));
+    await filters.click();
+    await expect(visible(page.getByRole("group", { name: "Status" }))).toContainText("Sign-in locked");
+    expect(await seriousViolations(page)).toEqual([]);
+    // En el celular, el panel abierto queda encima de la lista.
+    await filters.click();
+    await expect(filters).toHaveAttribute("aria-expanded", "false");
+    await account.getByRole("link").click();
+    await expect(page).toHaveURL(/\/admin\/usuarios\/[\w-]+$/);
+  });
+
+  await test.step("el detalle y cerrar sus sesiones con el código (primero uno equivocado)", async () => {
+    await expect(page).toHaveTitle("Account · Administration · Finanzas");
+    await expect(heading(/Beto Inglés/)).toBeVisible();
+    await expect(field("Role")).toHaveText("User");
+    await expect(field("Status")).toHaveText("Active");
+    await expect(field("Lock")).toHaveText("Not locked");
+    await expect(visible(page.getByText("1 session · most recent first"))).toBeVisible();
+    expect(await seriousViolations(page)).toEqual([]);
+
+    await visible(page.getByRole("region", { name: "Actions" }).getByRole("button", { name: "Sign out" })).click();
+    const dialog = page.getByRole("dialog", { name: "Sign Beto Inglés out of all their sessions?" });
+    await dialog.getByLabel("Google Authenticator code").fill(wrongCode(secret));
+    await dialog.getByRole("button", { name: "Sign out" }).click();
+    await expect(dialog.getByText("The code isn't right. You have 4 attempts left.")).toBeVisible();
+    await dialog.getByLabel("Google Authenticator code").fill(totp(secret));
+    await dialog.getByRole("button", { name: "Sign out" }).click();
+    await expect(page.getByRole("region", { name: "Notices" }).getByText("Beto Inglés was signed out of 1 session.")).toBeVisible();
+    await expect(visible(page.getByText("It has no open sessions."))).toBeVisible();
+    await expect(visible(page.getByText("There's nothing to unlock, sign out or unlink."))).toBeVisible();
+    await expect(visible(page.getByRole("link", { name: "All accounts" }))).toHaveAttribute("href", "/admin/usuarios");
+  });
+
+  await beto.context().close();
 });

@@ -16,6 +16,7 @@ import {
   whatsappMessage,
 } from "@/db/schema";
 import { createUser } from "../../../../test/integration/factories";
+import { requestLocale } from "../../../../test/integration/locale";
 import { createAdminWithTwoFactor } from "../../../../test/integration/two-factor";
 
 // Las acciones del admin sobre una cuenta, con la base de verdad: qué cambian, qué registran en el
@@ -563,5 +564,88 @@ describe("revokeAdmin", () => {
     await expect(revokeAdmin({ userId: carla.id, code: codeAt(NOW) }, NOW)).rejects.toThrow("NEXT_NOT_FOUND");
     expect(await roleOf(carla.id)).toMatchObject({ role: "admin" });
     expect(await factorsOf(carla.id)).toHaveLength(1);
+  });
+});
+
+describe("en inglés (el idioma de quien hace el pedido)", () => {
+  type Run = (userId: string, code: string) => Promise<unknown>;
+  const later = (seconds: number) => new Date(NOW.getTime() + seconds * 1000);
+
+  beforeEach(() => {
+    requestLocale.value = "en";
+  });
+
+  it.each([
+    ["unlockLogin", (userId, code) => unlockLogin({ userId, code }, NOW), "Ana Pérez's sign-in was unlocked."],
+    ["revokeSessions", (userId, code) => revokeSessions({ userId, code }, NOW), "Ana Pérez was signed out of 2 sessions."],
+    ["unlinkWhatsApp", (userId, code) => unlinkWhatsApp({ userId, code }, NOW), "Ana Pérez's WhatsApp was unlinked."],
+    ["suspendAccount", (userId, code) => suspendAccount({ userId, code }, NOW), "Ana Pérez's account was suspended."],
+    ["deleteAccount", (userId, code) => deleteAccount({ userId, code, email: "ana@correo.com" }, NOW), "The account was deleted."],
+  ] satisfies [string, Run, string][])("%s avisa qué pasó", async (_, run, message) => {
+    const { codeAt, ana } = await seed();
+    expect(await run(ana.id, codeAt(NOW))).toEqual({ ok: true, message });
+  });
+
+  it("una sola sesión, reactivar, y dar y quitar el rol", async () => {
+    const { codeAt, ana, beto } = await seedSuper();
+    expect(await revokeSessions({ userId: beto.id, code: codeAt(NOW) }, NOW)).toEqual({
+      ok: true,
+      message: "Beto Ruiz was signed out of 1 session.",
+    });
+    await db.update(user).set({ suspendedAt: NOW }).where(eq(user.id, ana.id));
+    expect(await reactivateAccount({ userId: ana.id, code: codeAt(later(30)) }, later(30))).toEqual({
+      ok: true,
+      message: "Ana Pérez's account was reactivated.",
+    });
+    expect(await grantAdmin({ userId: ana.id, code: codeAt(later(60)) }, later(60))).toEqual({ ok: true, message: "Ana Pérez is now an admin." });
+    expect(await revokeAdmin({ userId: ana.id, code: codeAt(later(90)) }, later(90))).toEqual({
+      ok: true,
+      message: "Ana Pérez is no longer an admin.",
+    });
+  });
+
+  it("lo que no se puede, sin gastar el código", async () => {
+    const { admin, codeAt, ana } = await seedSuper();
+    const carla = await otherAdmin();
+    const code = codeAt(NOW);
+    expect(await unlockLogin({ userId: "no-existe", code }, NOW)).toEqual({ ok: false, error: "This account no longer exists." });
+    expect(await unlockLogin({ userId: admin.id, code }, NOW)).toEqual({ ok: false, error: "For your own account, use My account or Security." });
+    expect(await suspendAccount({ userId: carla.id, code }, NOW)).toEqual({ ok: false, error: "Admin accounts can't be changed from here." });
+    expect(await reactivateAccount({ userId: ana.id, code }, NOW)).toEqual({ ok: false, error: "The account isn't suspended." });
+    expect(await deleteAccount({ userId: ana.id, code, email: "otra@correo.com" }, NOW)).toEqual({
+      ok: false,
+      error: "The email doesn't match the account's.",
+      field: "email",
+    });
+    expect(await grantAdmin({ userId: carla.id, code }, NOW)).toEqual({ ok: false, error: "The account is already an admin." });
+    expect(await revokeAdmin({ userId: ana.id, code }, NOW)).toEqual({ ok: false, error: "The account isn't an admin." });
+    expect(await codeUses()).toBe(0);
+
+    await db.update(user).set({ suspendedAt: NOW }).where(eq(user.id, ana.id));
+    expect(await suspendAccount({ userId: ana.id, code }, NOW)).toEqual({ ok: false, error: "The account is already suspended." });
+    expect(await grantAdmin({ userId: ana.id, code }, NOW)).toEqual({ ok: false, error: "The account is suspended: reactivate it first." });
+    await db.delete(loginFailure);
+    await db.delete(session).where(eq(session.userId, ana.id));
+    await db.delete(whatsappLink).where(eq(whatsappLink.userId, ana.id));
+    expect(await unlockLogin({ userId: ana.id, code }, NOW)).toEqual({ ok: false, error: "The account's sign-in is no longer locked." });
+    expect(await revokeSessions({ userId: ana.id, code }, NOW)).toEqual({ ok: false, error: "The account no longer has open sessions." });
+    expect(await unlinkWhatsApp({ userId: ana.id, code }, NOW)).toEqual({ ok: false, error: "The account no longer has a linked WhatsApp." });
+    expect(await codeUses()).toBe(0);
+  });
+
+  it("al super admin no se le quita el rol; un código equivocado lo dice en inglés", async () => {
+    const { admin, codeAt, ana } = await seed();
+    const carla = await otherAdmin();
+    await db.update(user).set({ superAdmin: true }).where(eq(user.id, carla.id));
+    auth.requireSuperAdmin.mockResolvedValue({ id: admin.id, role: "admin", superAdmin: true, twoFactorEnabled: true });
+    expect(await revokeAdmin({ userId: carla.id, code: codeAt(NOW) }, NOW)).toEqual({
+      ok: false,
+      error: "The super admin's role can't be removed from the app.",
+    });
+    expect(await unlockLogin({ userId: ana.id, code: "000000" }, NOW)).toMatchObject({
+      ok: false,
+      field: "code",
+      error: expect.stringMatching(/^The code isn't right\. You have \d attempts left\.$/),
+    });
   });
 });

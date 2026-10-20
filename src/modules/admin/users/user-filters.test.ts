@@ -6,6 +6,7 @@ import {
   ROLE_FILTER_LABELS,
   SUSPENDED_FILTER,
   USERS_PATH,
+  USER_FILTER_TEXTS,
   WHATSAPP_FILTER_LABELS,
   activeUserFilters,
   isValidUserId,
@@ -176,6 +177,23 @@ describe("filtros activos", () => {
       "WhatsApp: vinculado",
       "Registro: Hoy",
     ]);
+  });
+
+  it("en inglés", () => {
+    expect(activeUserFilters(all, "en").map((i) => i.label)).toEqual([
+      "Role: Admin",
+      "WhatsApp: not linked",
+      "Sign-in locked",
+      "Suspended",
+      "Signed up: Oct 1 – Oct 15",
+      "“ana”",
+    ]);
+    expect(activeUserFilters(f({ role: "user", whatsapp: true, date: "hoy" }), "en").map((i) => i.label)).toEqual([
+      "Role: User",
+      "WhatsApp: linked",
+      "Signed up: Today",
+    ]);
+    expect(Object.keys(USER_FILTER_TEXTS.en)).toEqual(Object.keys(USER_FILTER_TEXTS.es));
   });
 
   it.each([

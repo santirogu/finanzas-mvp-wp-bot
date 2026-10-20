@@ -2,7 +2,15 @@
 
 import Form from "next/form";
 import { useId, useState, type ChangeEvent } from "react";
-import { DATE_PRESETS, DATE_PRESET_LABELS, type DateFilter } from "@/modules/admin/shared/filters";
+import { useTexts } from "@/i18n/client";
+import type { Locale } from "@/i18n/locales";
+import { texts } from "@/i18n/texts";
+import { DATE_PRESETS, DATE_PRESET_TEXTS, type DateFilter } from "@/modules/admin/shared/filters";
+
+const TEXTS = texts(
+  { search: "Buscar", filters: "Filtros", active: (n: number) => `Filtros (activos: ${n})`, from: "Desde", to: "Hasta", apply: "Aplicar" },
+  { en: { search: "Search", filters: "Filters", active: (n) => `Filters (active: ${n})`, from: "From", to: "To", apply: "Apply" } },
+);
 
 // La barra de filtros de los listados de administración: búsqueda y botón "Filtros", con un panel
 // de grupos de chips. Cada listado (Historial, Usuarios…) la arma con sus propios grupos. Los
@@ -23,13 +31,13 @@ export type ChipGroup = {
   customRange?: { value: string; from: string | null; to: string | null };
 };
 
-/** El grupo de fecha estándar: Todo, Hoy, 7 días, 30 días y Personalizado. */
-export function dateChipGroup(legend: string, filter: DateFilter): ChipGroup {
+/** El grupo de fecha estándar: Todo, Hoy, 7 días, 30 días y Personalizado (en el idioma de la página). */
+export function dateChipGroup(legend: string, filter: DateFilter, locale: Locale): ChipGroup {
   return {
     name: "fecha",
     legend,
     type: "radio",
-    options: DATE_PRESETS.map((preset) => ({ value: preset, label: DATE_PRESET_LABELS[preset] })),
+    options: DATE_PRESETS.map((preset) => ({ value: preset, label: DATE_PRESET_TEXTS[locale][preset] })),
     selected: [filter.date],
     customRange: { value: "personalizado", from: filter.from, to: filter.to },
   };
@@ -58,6 +66,7 @@ export function ChipFilterBar({
   /** Filtros que no están en la barra pero se conservan al buscar o tocar un chip (?resultado= del bot). */
   hidden?: Record<string, string>;
 }) {
+  const t = useTexts(TEXTS);
   const [open, setOpen] = useState(panelOpen);
   // Qué grupos tienen el rango personalizado elegido (muestran Desde y Hasta).
   const [customOpen, setCustomOpen] = useState(
@@ -86,7 +95,7 @@ export function ChipFilterBar({
       ))}
       <div className="flex gap-2">
         <label className="min-w-0 flex-1">
-          <span className="sr-only">Buscar</span>
+          <span className="sr-only">{t.search}</span>
           <input
             name="q"
             type="search"
@@ -99,20 +108,20 @@ export function ChipFilterBar({
         {/* Enter en la búsqueda envía el formulario. Fuera del orden de Tab: no se ve, así que el foco
             quedaría en un lugar invisible (WCAG 2.4.7). */}
         <button type="submit" tabIndex={-1} className="sr-only">
-          Buscar
+          {t.search}
         </button>
         <button
           type="button"
           aria-expanded={open}
           aria-controls={panelId}
-          aria-label={activeCount > 0 ? `Filtros (activos: ${activeCount})` : "Filtros"}
+          aria-label={activeCount > 0 ? t.active(activeCount) : t.filters}
           onClick={() => setOpen(!open)}
           className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-border px-3 text-sm font-medium hover:bg-background"
         >
           <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" className="size-4" aria-hidden>
             <path d="M3 5h14M6 10h8M8.5 15h3" />
           </svg>
-          Filtros
+          {t.filters}
           {activeCount > 0 && (
             <span aria-hidden className="rounded-full bg-brand px-1.5 text-xs leading-5 text-brand-foreground">
               {activeCount}
@@ -144,15 +153,15 @@ export function ChipFilterBar({
             {group.customRange && customOpen.has(group.name) && (
               <div className="flex flex-wrap items-end gap-2 pt-1">
                 <label className="min-w-0 flex-1 space-y-1">
-                  <span className="text-xs text-muted">Desde</span>
+                  <span className="text-xs text-muted">{t.from}</span>
                   <input name="desde" type="date" defaultValue={group.customRange.from ?? ""} className="input" />
                 </label>
                 <label className="min-w-0 flex-1 space-y-1">
-                  <span className="text-xs text-muted">Hasta</span>
+                  <span className="text-xs text-muted">{t.to}</span>
                   <input name="hasta" type="date" defaultValue={group.customRange.to ?? ""} className="input" />
                 </label>
                 <button type="submit" className="btn-primary">
-                  Aplicar
+                  {t.apply}
                 </button>
               </div>
             )}
