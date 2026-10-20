@@ -1109,8 +1109,10 @@ una migración rota llega a la base de producción.
 
 **Cada versión se prueba antes de recibir tráfico** (smoke tests, `scripts/smoke.mjs`):
 
-1. Se publica **sin dominio** (`vercel deploy --prebuilt --prod --skip-domain`): queda en su propia
-   URL y los usuarios siguen en la versión anterior.
+1. Se publica **sin dominio** (`vercel deploy --prebuilt --prod --skip-domain --archive=tgz`): queda
+   en su propia URL y los usuarios siguen en la versión anterior. El build sube comprimido: archivo
+   por archivo, unos pocos despliegues en un día pasan el límite de subidas del plan gratis de
+   Vercel (5000 en 24 horas).
 2. Smoke tests contra esa URL. Si fallan, el job se detiene: el dominio nunca cambió.
 3. Se le pasa el dominio (`vercel promote`, instantáneo, sin recompilar).
 4. Smoke tests contra el dominio real. Si fallan, **vuelve sola a la versión anterior**
