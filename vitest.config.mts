@@ -40,8 +40,10 @@ export default defineConfig({
         "src/app/(app)/simulador/chat.tsx",
       ],
       reporter: ["text", "json-summary", "html"],
-      // Piso actual: el CI falla si la cobertura baja. Súbelo a medida que agregues pruebas.
-      thresholds: { lines: 85, statements: 85, functions: 80, branches: 80 },
+      // Piso: el CI falla si la cobertura baja de aquí. Unos 2 a 3 puntos por debajo de la real (el
+      // 2026-10-20: líneas 97,7 %, ramas 96,7 %, funciones 95,7 %), así una baja grande (las pruebas de
+      // un módulo entero que se borran) hace fallar el CI. Súbelo cuando la real suba.
+      thresholds: { lines: 95, statements: 95, functions: 93, branches: 94 },
     },
     projects: [
       {
