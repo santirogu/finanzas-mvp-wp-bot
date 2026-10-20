@@ -229,15 +229,18 @@ describe("suspendAccount y reactivateAccount", () => {
     expect(await codeUses()).toBe(0);
   });
 
-  it("reactiva: borra la suspensión y su motivo, y lo registra", async () => {
-    const { admin, codeAt, ana } = await seed();
+  it("reactiva: borra la suspensión y su motivo, y lo registra; otra cuenta suspendida sigue suspendida", async () => {
+    const { admin, codeAt, ana, beto } = await seed();
     await db.update(user).set({ suspendedAt: NOW, suspensionReason: "Spam" }).where(eq(user.id, ana.id));
+    await db.update(user).set({ suspendedAt: NOW, suspensionReason: "Abuso" }).where(eq(user.id, beto.id));
     expect(await reactivateAccount({ userId: ana.id, code: codeAt(NOW) }, NOW)).toEqual({
       ok: true,
       message: "Se reactivó la cuenta de Ana Pérez.",
     });
     expect(await stateOf(ana.id)).toEqual({ suspendedAt: null, suspensionReason: null });
     expect(await eventsOf(ana.id)).toEqual([{ type: "account_reactivated", phone: null, details: {}, adminId: admin.id }]);
+    expect(await stateOf(beto.id)).toEqual({ suspendedAt: NOW, suspensionReason: "Abuso" });
+    expect(await eventsOf(beto.id)).toEqual([]);
   });
 
   it("una cuenta que no está suspendida no se reactiva (sin gastar el código)", async () => {
