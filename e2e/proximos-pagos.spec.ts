@@ -32,12 +32,15 @@ function expected(payments: string[], month: string) {
   return { date, when: whenLabel(daysBetween(today, date)) };
 }
 
-async function addPayments(email: string, payments: { description: string; amount: number; dates: string[] }[]) {
+async function addPayments(email: string, payments: { description: string; amount: number; dates: string[]; category?: string }[]) {
   const sql = postgres(e2eDatabaseUrl(), { max: 1, onnotice: () => {} });
   const [{ id }] = await sql<{ id: string }[]>`select id from "user" where email = ${email}`;
-  for (const { description, amount, dates } of payments) {
+  for (const { description, amount, dates, category } of payments) {
+    // Una categoría global, por su nombre (o ninguna).
+    const [found] = category ? await sql<{ id: string }[]>`select id from category where user_id is null and type = 'expense' and name = ${category}` : [];
     for (const date of dates) {
-      await sql`insert into transaction (user_id, type, amount, description, occurred_on) values (${id}, 'expense', ${amount}, ${description}, ${date})`;
+      await sql`insert into transaction (user_id, type, amount, description, occurred_on, category_id)
+                values (${id}, 'expense', ${amount}, ${description}, ${date}, ${found?.id ?? null})`;
     }
   }
   await sql.end();
@@ -183,5 +186,42 @@ test("Mi cuenta → Notificaciones: los días de anticipación cambian lo que av
     await expect(days()).toHaveValue("10");
     await openTab(page, "Resumen");
     await expect(card(page)).toHaveCount(0);
+  });
+});
+
+test("Registrar pago desde el aviso: con el monto y la fecha que se confirman, y la categoría del último pago", async ({ page }) => {
+  const { email } = await register(page);
+  await addPayments(email, [{ description: "Gimnasio", amount: 120000, dates: paymentsFor(shiftDay(-5)), category: "Salud" }]);
+  await page.reload();
+  const gym = card(page).getByRole("listitem").filter({ hasText: "Gimnasio" });
+  const opener = gym.getByRole("button", { name: "Registrar el pago de Gimnasio" });
+  const dialog = page.getByRole("dialog", { name: "Registrar el pago de Gimnasio" });
+
+  await test.step("la ventana: la categoría del último pago, su monto y la fecha de hoy; Esc la cierra y el foco vuelve", async () => {
+    await opener.click();
+    await expect(dialog).toHaveAccessibleDescription(/^Categoría: .*Salud · como el último pago\.$/);
+    await expect(dialog.getByLabel("Monto")).toHaveValue("120.000,00");
+    await expect(dialog.getByLabel("Monto")).toBeFocused();
+    await expect(dialog.getByLabel("Fecha")).toHaveValue(today);
+    expect(await seriousViolations(page)).toEqual([]);
+    await page.keyboard.press("Escape");
+    await expect(dialog).toBeHidden();
+    await expect(opener).toBeFocused();
+  });
+
+  await test.step("con otro monto: se registra, el aviso desaparece y el pago está en Egresos", async () => {
+    await opener.click();
+    await dialog.getByLabel("Monto").fill("125000");
+    await dialog.getByRole("button", { name: "Registrar pago" }).click();
+    await expect(toast(page, "Se registró el pago de «Gimnasio»: −$125.000,00")).toHaveAttribute("data-tone", "success");
+    await expect(dialog).toBeHidden();
+    await expect(card(page)).toHaveCount(0);
+    await closeToasts(page);
+    await openTab(page, "Egresos");
+    // En la lista del mes: el de hoy (los anteriores son de otros meses).
+    const row = visible(page.getByRole("listitem").filter({ hasText: "Gimnasio" }));
+    await expect(row).toHaveCount(1);
+    await expect(row).toContainText("−$125.000,00");
+    await expect(row).toContainText("Salud");
   });
 });

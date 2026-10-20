@@ -352,6 +352,12 @@ scripts/seed.ts                     Categorías por defecto
 - **Próximos pagos en el Resumen** (`src/modules/reports/upcoming.ts`, `upcoming-payments.tsx`): los gastos
   fijos que tocan en los próximos días (3 si la persona no lo cambió) y los atrasados, del más viejo al
   más próximo. Solo en el mes actual y solo si hay alguno; los primeros 5 y el resto con "Mostrar más".
+  - **Registrar pago** (`fixed-payments.ts`): cada aviso abre una ventana (`src/components/dialog.tsx`) con
+    el monto del último pago y la fecha de hoy, los dos editables (la fecha, nunca después de hoy: también
+    lo revisa el servidor). La descripción y la categoría son las del último pago de ese gasto, y las busca
+    el servidor entre los egresos de la persona (nunca las manda el navegador); si la categoría se archivó,
+    va sin categoría. Se registra como cualquier egreso web, con las mismas validaciones, y el aviso
+    desaparece (ese mes ya está pagado).
   - **Mi cuenta → Notificaciones** (`notification-settings.tsx`, `upcoming-settings.ts`, tabla
     `notification_setting`): prenderlos o apagarlos (apagados no se avisa nada, tampoco los atrasados) y
     con cuántos días de anticipación, de 0 (el mismo día) a 10, en un campo numérico con su error en
