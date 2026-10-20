@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { newTransactionSchema } from "./validation";
+import { newTransactionSchema, transactionSchema } from "./validation";
 
 const base = {
   type: "expense",
@@ -106,5 +106,29 @@ describe("newTransactionSchema · ingresos y mensajes", () => {
       "categoryId",
       "Selecciona una categoría",
     );
+  });
+});
+
+describe("transactionSchema · en inglés", () => {
+  const base = { type: "expense", amount: "1,250,000.50", description: "Shoes", categoryId: "", occurredOn: "2026-10-13" };
+
+  it("lee el monto con la coma de miles y el punto de centavos", () => {
+    expect(transactionSchema("en").parse(base).amount).toBe(1250000.5);
+    expect(transactionSchema("en").safeParse({ ...base, amount: "1.250.000,50" }).success).toBe(false);
+  });
+
+  it("los mensajes, en inglés", () => {
+    const result = transactionSchema("en").safeParse({ ...base, amount: "0", description: " ", categoryId: "x", occurredOn: "2026-13-01" });
+    expect(result.success).toBe(false);
+    expect(Object.fromEntries(result.error!.issues.map((issue) => [issue.path[0], issue.message]))).toEqual({
+      amount: "Enter an amount greater than zero",
+      description: "Add a description",
+      categoryId: "Pick a category",
+      occurredOn: "Invalid date",
+    });
+    expect(transactionSchema("en").safeParse({ ...base, amount: "100,000,000,000.01" }).error?.issues[0].message).toBe(
+      "The amount can't be more than $100,000,000,000.00",
+    );
+    expect(transactionSchema("en").safeParse({ ...base, description: "x".repeat(141) }).error?.issues[0].message).toBe("At most 140 characters");
   });
 });

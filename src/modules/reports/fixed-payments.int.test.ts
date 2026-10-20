@@ -148,3 +148,25 @@ describe("registerFixedPaymentAction", () => {
     expect(refresh).not.toHaveBeenCalled();
   });
 });
+
+describe("registerFixedPayment · en inglés", () => {
+  it("lee el monto con la coma de miles y responde en inglés", async () => {
+    const { id } = await createUser();
+    await addExpense(id, {});
+    expect(await registerFixedPayment({ id, currency: "COP" }, { description: "Gimnasio", amount: "125,000.50", occurredOn: TODAY }, TODAY, "en")).toEqual({
+      ok: true,
+      message: "The payment of “Gimnasio” was added: −$125,000.50",
+      tone: "success",
+    });
+    expect((await expensesOf(id, "Gimnasio")).map((e) => e.amount)).toContain(125000.5);
+    expect(await registerFixedPayment({ id, currency: "COP" }, { description: "Gimnasio", amount: "1,000", occurredOn: "2026-10-21" }, TODAY, "en")).toEqual({
+      ok: false,
+      error: "The date can't be after today.",
+      field: "occurredOn",
+    });
+    expect(await registerFixedPayment({ id, currency: "COP" }, { description: "Otro", amount: "1,000", occurredOn: TODAY }, TODAY, "en")).toEqual({
+      ok: false,
+      error: "We couldn't find that expense among yours.",
+    });
+  });
+});

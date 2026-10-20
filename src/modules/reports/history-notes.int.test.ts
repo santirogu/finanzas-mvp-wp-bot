@@ -230,3 +230,14 @@ describe("saveFixedNoteAction", () => {
     expect(refresh).not.toHaveBeenCalled();
   });
 });
+
+describe("saveFixedNote · en inglés", () => {
+  it("los avisos y los errores, en inglés", async () => {
+    const { id } = await createUser();
+    await addTx({ userId: id });
+    expect(await saveFixedNote(id, { description: "Netflix", month: "2026-10", note: "Subió" }, "en")).toEqual({ ok: true, message: "The note was saved", tone: "success" });
+    expect(await saveFixedNote(id, { description: "Netflix", month: "2026-10", note: "" }, "en")).toEqual({ ok: true, message: "The note was deleted", tone: "removal" });
+    expect(await saveFixedNote(id, { description: "Netflix", month: "2026-09", note: "x" }, "en")).toEqual({ ok: false, error: "The note couldn't be saved." });
+    expect(await saveFixedNote(id, { description: "Netflix", month: "2026-10", note: "x".repeat(1000) }, "en")).toMatchObject({ ok: false, field: "note", error: expect.stringMatching(/^At most \d+ characters\.$/) });
+  });
+});

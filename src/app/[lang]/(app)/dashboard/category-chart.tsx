@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { useLocale } from "@/i18n/client";
+import { texts } from "@/i18n/texts";
 import { formatMoney, formatShare } from "@/lib/money";
 import { type ChartSlice, donutArcs } from "@/modules/transactions/category-chart";
 
@@ -29,6 +31,11 @@ const GAP = 1.5;
  */
 const totalSize = (label: string) => Math.min(0.875, 11.4 / label.length);
 
+const TEXTS = texts(
+  { expenses: "Egresos", more: (n: number) => `${n} más` },
+  { en: { expenses: "Expenses", more: (n) => `${n} more` } },
+);
+
 /**
  * "Gastos por categoría" del Resumen: la dona con el total de egresos al centro y, debajo (o al lado,
  * si hay espacio), la lista con el color, el monto y el porcentaje de cada una. Tocar una categoría,
@@ -36,8 +43,10 @@ const totalSize = (label: string) => Math.min(0.875, 11.4 / label.length);
  * pantalla lee la lista (la dona es decorativa).
  */
 export function CategoryChart({ slices, total, currency }: { slices: ChartSlice[]; total: number; currency: string }) {
+  const locale = useLocale();
+  const t = TEXTS[locale];
   const [active, setActive] = useState<number | null>(null);
-  const money = (n: number) => formatMoney(n, currency);
+  const money = (n: number) => formatMoney(n, currency, locale);
   const toggle = (i: number) => setActive(active === i ? null : i);
   const arcs = donutArcs(slices);
   const totalLabel = money(total);
@@ -70,7 +79,7 @@ export function CategoryChart({ slices, total, currency }: { slices: ChartSlice[
         </svg>
         {/* El total, al centro. */}
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-xs text-muted">Egresos</span>
+          <span className="text-xs text-muted">{t.expenses}</span>
           <span className="whitespace-nowrap font-semibold tabular-nums" style={{ fontSize: `${totalSize(totalLabel)}rem` }}>
             {totalLabel}
           </span>
@@ -84,7 +93,7 @@ export function CategoryChart({ slices, total, currency }: { slices: ChartSlice[
               ? `${slice.category.emoji} ${slice.category.name}`
               : slice.categories.length === 1
                 ? `${slice.categories[0].emoji} ${slice.categories[0].name}`
-                : `${slice.categories.length} más`;
+                : t.more(slice.categories.length);
           const amount = slice.kind === "category" ? slice.category.total : slice.total;
           return (
             <li key={i}>

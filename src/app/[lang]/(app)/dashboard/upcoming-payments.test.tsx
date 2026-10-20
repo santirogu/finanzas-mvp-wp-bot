@@ -196,3 +196,38 @@ describe("UpcomingPayments · Registrar pago", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
 });
+
+describe("UpcomingPayments · en inglés", () => {
+  const english = { ...item("Rent", "Overdue", true), monthName: "October", amountInput: "1,800,000.00", category: "No category" };
+
+  it("la tarjeta, los botones y la ventana de Registrar pago, en inglés (el monto con la coma de miles)", async () => {
+    register.mockResolvedValue({ message: "The payment of “Rent” was added: −$1,800,000.00", tone: "success" });
+    render(<UpcomingPayments items={[...SEVEN.slice(0, 5), english, item("Gym", "In 2 days")]} span="for the next 3 days" today={TODAY} />, { english: true });
+    const upcoming = within(screen.getByRole("region", { name: "Upcoming payments" }));
+    expect(upcoming.getByText("Your bills for the next 3 days and the ones you haven't added yet.")).toBeVisible();
+    expect(upcoming.getByRole("link", { name: "See bills" })).toHaveAttribute("href", "/gastos-fijos");
+    await userEvent.click(upcoming.getByRole("button", { name: "Show 2 more" }));
+    expect(upcoming.getByRole("button", { name: "The October payment of Rent doesn't apply" })).toHaveTextContent("This payment doesn't apply");
+    await userEvent.click(upcoming.getByRole("button", { name: "Add the payment of Rent" }));
+    const dialog = within(screen.getByRole("dialog", { name: "Add the payment of Rent" }));
+    expect(dialog.getByText("Category: No category · same as the last payment.")).toBeVisible();
+    const amount = dialog.getByLabelText("Amount");
+    expect(amount).toHaveValue("1,800,000.00");
+    await userEvent.clear(amount);
+    await userEvent.type(amount, "1800000.5");
+    expect(amount).toHaveValue("1,800,000.5");
+    await userEvent.click(dialog.getByRole("button", { name: "Add payment" }));
+    expect(await findToast()).toHaveTextContent("The payment of “Rent” was added: −$1,800,000.00");
+    expect(register.mock.calls[0][1].get("amount")).toBe("1,800,000.50");
+  });
+
+  it("los mensajes de los campos de la ventana, en inglés", async () => {
+    render(<UpcomingPayments items={[english]} span="for today" today={TODAY} />, { english: true });
+    await userEvent.click(screen.getByRole("button", { name: "Add the payment of Rent" }));
+    const dialog = within(screen.getByRole("dialog"));
+    await userEvent.clear(dialog.getByLabelText("Amount"));
+    await userEvent.click(dialog.getByRole("button", { name: "Add payment" }));
+    expect(await dialog.findByText("Enter the amount.")).toBeVisible();
+    expect(dialog.getByRole("button", { name: "Cancel" })).toBeVisible();
+  });
+});

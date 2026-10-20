@@ -5,6 +5,7 @@ import { category, transaction, type TransactionType } from "@/db/schema";
 import type { MonthRange } from "@/lib/dates";
 import { roundToCents } from "@/lib/money";
 import { sortCategories } from "./default-categories";
+import { NO_CATEGORY } from "./search";
 
 // Todas las consultas reciben el userId ya validado por el Data Access Layer
 // (src/lib/session.ts) y siempre filtran por él.
@@ -33,10 +34,11 @@ export async function getMonthlySummary(userId: string, range: MonthRange) {
   return { income, expense, balance: roundToCents(income - expense), count: row.count };
 }
 
-export async function getTotalsByCategory(userId: string, type: TransactionType, range: MonthRange) {
+/** Cuánto suma cada categoría en el mes; los movimientos sin categoría van juntos, con el nombre `noCategory`. */
+export async function getTotalsByCategory(userId: string, type: TransactionType, range: MonthRange, noCategory = NO_CATEGORY) {
   const rows = await db
     .select({
-      name: sql<string>`coalesce(${category.name}, 'Sin categoría')`,
+      name: sql<string>`coalesce(${category.name}, ${noCategory})`,
       emoji: sql<string>`coalesce(${category.emoji}, '•')`,
       total: sql<string>`sum(${transaction.amount})`,
     })

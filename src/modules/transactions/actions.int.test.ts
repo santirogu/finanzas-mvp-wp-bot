@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { category, transaction } from "@/db/schema";
 import type { CurrentUser } from "@/lib/session";
 import { activeTransactions, createUser } from "../../../test/integration/factories";
+import { requestLocale } from "../../../test/integration/locale";
 
 // Las Server Actions leen la sesión y refrescan la página: se simulan ambas cosas.
 const session = vi.hoisted(() => ({ current: null as CurrentUser | null }));
@@ -14,6 +15,7 @@ vi.mock("@/lib/session", () => ({
   }),
 }));
 vi.mock("next/cache", () => ({ refresh: vi.fn() }));
+
 // redirect() de Next lanza un error especial para cortar la acción: aquí uno con la URL.
 vi.mock("next/navigation", () => ({
   redirect: vi.fn((url: string) => {
@@ -201,6 +203,32 @@ describe("createTransactionAction", () => {
         deletedAt: null,
       }),
     ]);
+  });
+});
+
+describe("createTransactionAction · en inglés", () => {
+  it("lee el monto con la coma de miles y el punto de centavos, y responde en inglés", async () => {
+    const user = await signIn();
+    requestLocale.value = "en";
+
+    const state = await createTransactionAction({ ok: false }, form({ ...validExpense, amount: "1,250,000.50" }));
+
+    expect(state).toEqual({ ok: true, message: "Expense added", occurredOn: "2026-10-13" });
+    expect((await activeTransactions(user.id)).map((t) => t.amount)).toEqual([1250000.5]);
+  });
+
+  it("los errores de los campos, en inglés", async () => {
+    await signIn();
+    requestLocale.value = "en";
+
+    const state = await createTransactionAction({ ok: false }, form({ ...validExpense, type: "income", amount: "0", description: " " }));
+    expect(state.fieldErrors).toEqual({ amount: "Enter an amount greater than zero", description: "Add a description" });
+    const tooMuch = await createTransactionAction({ ok: false }, form({ ...validExpense, amount: "100,000,000,000.01" }));
+    expect(tooMuch.fieldErrors).toEqual({ amount: "The amount can't be more than $100,000,000,000.00" });
+    // "500.000" en inglés serían 500 con tres decimales: no es un monto.
+    expect((await createTransactionAction({ ok: false }, form(validExpense))).fieldErrors).toEqual({ amount: "Enter an amount greater than zero" });
+    const income = await createTransactionAction({ ok: false }, form({ ...validExpense, type: "income", amount: "500,000" }));
+    expect(income).toMatchObject({ ok: true, message: "Income added" });
   });
 });
 

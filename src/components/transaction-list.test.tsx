@@ -2,6 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { TransactionRow } from "@/modules/transactions/queries";
 
+
 vi.mock("@/modules/transactions/actions", () => ({ deleteTransactionAction: vi.fn() }));
 
 const { TransactionList } = await import("./transaction-list");
@@ -90,5 +91,16 @@ describe("TransactionList", () => {
     const button = screen.getByRole("button", { name: "Eliminar Zapatos" });
     const form = button.closest("form")!;
     expect(form.querySelector('input[name="id"]')).toHaveValue("00000000-0000-4000-8000-000000000001");
+  });
+});
+
+describe("TransactionList · en inglés", () => {
+  it("la fecha, el monto, sin categoría, WhatsApp y los botones, en inglés", () => {
+    render(<TransactionList emptyMessage="—" items={[row({ amount: 45900.5, categoryName: null, source: "whatsapp" })]} allowDelete locale="en" />);
+    const item = screen.getByRole("listitem");
+    expect(item).toHaveTextContent("$45,900.50");
+    expect(item).toHaveTextContent("No category · via WhatsApp");
+    expect(within(item).getByRole("link", { name: /^Edit / })).toBeVisible();
+    expect(within(item).getByRole("button", { name: /^Delete / })).toBeVisible();
   });
 });

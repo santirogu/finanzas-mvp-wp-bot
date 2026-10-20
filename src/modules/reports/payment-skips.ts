@@ -3,6 +3,8 @@ import { and, eq, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import { fixedPaymentSkip, transaction } from "@/db/schema";
+import { DEFAULT_LOCALE, type Locale } from "@/i18n/locales";
+import { texts } from "@/i18n/texts";
 import { formatMonthName, monthOf } from "@/lib/dates";
 import { searchKey } from "@/lib/suggestions";
 import type { ToastTone } from "@/lib/toasts";
@@ -27,14 +29,32 @@ const input = z.object({
 
 export type PaymentSkipResult = { ok: true; message: string; tone: ToastTone } | { ok: false; error: string };
 
+const TEXTS = texts(
+  {
+    error: "No se pudo ocultar el aviso.",
+    skipped: (month: string, description: string) => `No se avisará del pago de ${month} de «${description}»`,
+  },
+  {
+    en: {
+      error: "The notice couldn't be hidden.",
+      skipped: (month, description) => `You won't be notified of the ${month} payment of “${description}”`,
+    },
+  },
+);
+
 /**
  * Marca el pago de un mes de un gasto fijo como "ya no aplica". Solo de un gasto que la persona tiene
  * (algún egreso con esa descripción): así nadie llena la tabla con lo que quiera. Marcarlo dos veces no
  * hace nada.
  */
-export async function skipFixedPayment(userId: string, raw: { description: unknown; month: unknown }): Promise<PaymentSkipResult> {
+export async function skipFixedPayment(
+  userId: string,
+  raw: { description: unknown; month: unknown },
+  locale: Locale = DEFAULT_LOCALE,
+): Promise<PaymentSkipResult> {
+  const t = TEXTS[locale];
   const parsed = input.safeParse(raw);
-  if (!parsed.success) return { ok: false, error: "No se pudo ocultar el aviso." };
+  if (!parsed.success) return { ok: false, error: t.error };
   const { description, month } = parsed.data;
   const [expense] = await db
     .select({ id: transaction.id })
@@ -48,7 +68,7 @@ export async function skipFixedPayment(userId: string, raw: { description: unkno
       ),
     )
     .limit(1);
-  if (!expense) return { ok: false, error: "No se pudo ocultar el aviso." };
+  if (!expense) return { ok: false, error: t.error };
   await db.insert(fixedPaymentSkip).values({ userId, descriptionKey: searchKey(description), month }).onConflictDoNothing();
-  return { ok: true, message: `No se avisará del pago de ${formatMonthName(monthOf(`${month}-01`))} de «${description}»`, tone: "removal" };
+  return { ok: true, message: t.skipped(formatMonthName(monthOf(`${month}-01`), { locale }), description), tone: "removal" };
 }

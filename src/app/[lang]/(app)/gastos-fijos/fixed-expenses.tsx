@@ -5,6 +5,8 @@ import { type Change, ChangeIcon } from "@/components/change-line";
 import { describedBy, FieldError } from "@/components/field-error";
 import { useToast } from "@/components/toaster";
 import { useFieldErrors } from "@/components/use-field-errors";
+import { useLocale, useTexts } from "@/i18n/client";
+import { texts } from "@/i18n/texts";
 import { formatShortDate } from "@/lib/dates";
 import { formatMoney, formatShare } from "@/lib/money";
 import { chooseFixedExpenseAction, type FixedExpenseState, type FixedNoteState, saveFixedNoteAction } from "@/modules/reports/actions";
@@ -14,8 +16,75 @@ import type { FixedOption, RecurringExpense } from "@/modules/reports/recurring"
 /** El historial del valor de un gasto fijo y, en una línea, su último cambio ("↗ 11% desde marzo"; null si nunca cambió). */
 export type FixedHistory = { entries: FixedHistoryEntry[]; summary: Change | null };
 
-// El error del selector antes de enviar, en español (en vez del globo del navegador).
-const MESSAGES = { description: { required: "Elige un egreso." } };
+const TEXTS = texts(
+  {
+    // El error del selector antes de enviar (en vez del globo del navegador).
+    messages: { description: { required: "Elige un egreso." } },
+    section: "Gastos fijos",
+    none: "Todavía no hay egresos que se repitan cada mes.",
+    total: "Total al mes",
+    share: (pct: string) => `Son el ${pct}% de tu gasto promedio por mes.`,
+    removed: (n: number) => `Quitados (${n})`,
+    restoreName: (description: string) => `Volver a poner ${description} en los gastos fijos`,
+    restore: "Volver a poner",
+    restoring: "Volviendo…",
+    historyOf: "Historial de",
+    inMonths: (months: number, of: number) => `En ${months} de ${of} ${of === 1 ? "mes" : "meses"}`,
+    addedByYou: " · Agregado por ti",
+    removeName: (description: string) => `Quitar ${description} de los gastos fijos`,
+    remove: "Quitar de los gastos fijos",
+    history: "Historial del valor",
+    firstPayment: "Primer pago",
+    editNote: "Editar nota",
+    addNote: "Agregar nota",
+    ofChange: (date: string) => `del cambio del ${date}`,
+    noteLabel: (date: string) => `Nota del cambio del ${date}`,
+    notePlaceholder: "Por qué cambió, por ejemplo",
+    deleteNote: "Borrar nota",
+    cancel: "Cancelar",
+    saving: "Guardando…",
+    saveNote: "Guardar nota",
+    add: "Agregar un gasto fijo",
+    expense: "Egreso",
+    pick: "Elige un egreso del período",
+    adding: "Agregando…",
+    addShort: "Agregar",
+  },
+  {
+    en: {
+      messages: { description: { required: "Pick an expense." } },
+      section: "Bills",
+      none: "There are no expenses that repeat every month yet.",
+      total: "Total per month",
+      share: (pct) => `They're ${pct}% of your average monthly spending.`,
+      removed: (n) => `Removed (${n})`,
+      restoreName: (description) => `Put ${description} back in your bills`,
+      restore: "Put back",
+      restoring: "Putting back…",
+      historyOf: "History of",
+      inMonths: (months, of) => `In ${months} of ${of} ${of === 1 ? "month" : "months"}`,
+      addedByYou: " · Added by you",
+      removeName: (description) => `Remove ${description} from your bills`,
+      remove: "Remove from your bills",
+      history: "Amount history",
+      firstPayment: "First payment",
+      editNote: "Edit note",
+      addNote: "Add note",
+      ofChange: (date) => `for the change on ${date}`,
+      noteLabel: (date) => `Note for the change on ${date}`,
+      notePlaceholder: "Why it changed, for example",
+      deleteNote: "Delete note",
+      cancel: "Cancel",
+      saving: "Saving…",
+      saveNote: "Save note",
+      add: "Add a bill",
+      expense: "Expense",
+      pick: "Pick an expense from the period",
+      adding: "Adding…",
+      addShort: "Add",
+    },
+  },
+);
 
 /**
  * La lista de "Gastos fijos" (/gastos-fijos, la pestaña Fijos; su título y qué cuenta como fijo los pone
@@ -48,11 +117,13 @@ export function FixedExpenses({
   averageExpense: number;
   currency: string;
 }) {
-  const money = (n: number) => formatMoney(n, currency);
+  const locale = useLocale();
+  const t = TEXTS[locale];
+  const money = (n: number) => formatMoney(n, currency, locale);
   return (
-    <section className="card p-4" aria-label="Gastos fijos">
+    <section className="card p-4" aria-label={t.section}>
       {items.length === 0 ? (
-        <p className="py-8 text-center text-sm text-muted">Todavía no hay egresos que se repitan cada mes.</p>
+        <p className="py-8 text-center text-sm text-muted">{t.none}</p>
       ) : (
         <>
           <ul className="divide-y divide-border">
@@ -62,17 +133,17 @@ export function FixedExpenses({
           </ul>
           {/* El total, alineado con los montos de arriba (deja el lugar del ✕: 44 px, o 32 con mouse, más el espacio). */}
           <div className="flex items-baseline justify-between gap-3 border-t border-border pt-3 pr-[3.25rem] text-sm font-semibold pointer-fine:pr-10">
-            <span>Total al mes</span>
+            <span>{t.total}</span>
             <span className="whitespace-nowrap tabular-nums">−{money(total)}</span>
           </div>
-          {averageExpense > 0 && <p className="mt-1 text-xs text-muted">Son el {formatShare(total, averageExpense)}% de tu gasto promedio por mes.</p>}
+          {averageExpense > 0 && <p className="mt-1 text-xs text-muted">{t.share(formatShare(total, averageExpense))}</p>}
         </>
       )}
       {candidates.length > 0 && <AddFixedExpense candidates={candidates} />}
       {removed.length > 0 && (
         <details className="mt-3 text-sm">
           <summary className="inline-flex min-h-11 cursor-pointer items-center font-medium text-brand pointer-fine:min-h-8">
-            Quitados ({removed.length})
+            {t.removed(removed.length)}
           </summary>
           <ul className="divide-y divide-border">
             {removed.map((option) => (
@@ -86,10 +157,10 @@ export function FixedExpenses({
                     <button
                       type="submit"
                       disabled={busy}
-                      aria-label={`Volver a poner ${option.description} en los gastos fijos`}
+                      aria-label={t.restoreName(option.description)}
                       className="inline-flex min-h-11 shrink-0 items-center rounded-lg border border-border px-3 text-sm font-medium transition hover:bg-background disabled:opacity-60 pointer-fine:min-h-8"
                     >
-                      {busy ? "Volviendo…" : "Volver a poner"}
+                      {busy ? t.restoring : t.restore}
                     </button>
                   )}
                 </ChoiceForm>
@@ -108,6 +179,7 @@ const signed = (n: number, money: Money) => (n > 0 ? `+${money(n)}` : money(n));
 
 /** Un gasto fijo: tocarlo abre el historial de su valor; el ✕ lo quita. */
 function FixedItem({ item, history, periodMonths, money }: { item: RecurringExpense; history?: FixedHistory; periodMonths: number; money: Money }) {
+  const t = useTexts(TEXTS);
   const [open, setOpen] = useState(false);
   const panelId = useId();
   return (
@@ -123,15 +195,15 @@ function FixedItem({ item, history, periodMonths, money }: { item: RecurringExpe
           {/* Con espacios entre las partes: el nombre del botón se lee "Historial de Arriendo En 4 de 12
               meses 5% desde marzo", no pegado. */}
           <span className="min-w-0 flex-1">
-            <span className="sr-only">Historial de</span>{" "}
+            <span className="sr-only">{t.historyOf}</span>{" "}
             {/* Cerrado se corta con "…" si no cabe; abierto se lee completo. */}
             <span className={`block ${open ? "break-words" : "truncate"}`}>
               <span aria-hidden>{item.emoji} </span>
               {item.description}
             </span>{" "}
             <span className="block text-xs text-muted">
-              En {item.months} de {periodMonths} {periodMonths === 1 ? "mes" : "meses"}
-              {item.origin === "manual" && " · Agregado por ti"}
+              {t.inMonths(item.months, periodMonths)}
+              {item.origin === "manual" && t.addedByYou}
             </span>
             {history?.summary && (
               <>
@@ -159,8 +231,8 @@ function FixedItem({ item, history, periodMonths, money }: { item: RecurringExpe
             <button
               type="submit"
               disabled={busy}
-              aria-label={`Quitar ${item.description} de los gastos fijos`}
-              title="Quitar de los gastos fijos"
+              aria-label={t.removeName(item.description)}
+              title={t.remove}
               className="inline-flex size-11 shrink-0 items-center justify-center rounded-lg text-muted transition hover:bg-danger/10 hover:text-danger disabled:opacity-60 pointer-fine:size-8"
             >
               <svg viewBox="0 0 20 20" fill="currentColor" className="size-4" aria-hidden>
@@ -171,7 +243,7 @@ function FixedItem({ item, history, periodMonths, money }: { item: RecurringExpe
         </ChoiceForm>
       </div>
       <div id={panelId} hidden={!open} className="mt-1 rounded-lg bg-background p-3">
-        <p className="text-xs font-medium text-muted">Historial del valor</p>
+        <p className="text-xs font-medium text-muted">{t.history}</p>
         <ol className="mt-1 divide-y divide-border">
           {(history?.entries ?? []).map((entry) => (
             <HistoryItem key={entry.month} description={item.description} entry={entry} money={money} />
@@ -184,6 +256,8 @@ function FixedItem({ item, history, periodMonths, money }: { item: RecurringExpe
 
 /** Un cambio del historial (o el primer pago), con su nota. */
 function HistoryItem({ description, entry, money }: { description: string; entry: FixedHistoryEntry; money: Money }) {
+  const locale = useLocale();
+  const t = TEXTS[locale];
   const [editing, setEditing] = useState(false);
   // Al cancelar, el foco vuelve al botón de la nota (si no, quedaría en la nada).
   const noteButton = useRef<HTMLButtonElement>(null);
@@ -193,14 +267,14 @@ function HistoryItem({ description, entry, money }: { description: string; entry
     refocus.current = false;
     noteButton.current?.focus();
   }, [editing]);
-  const date = formatShortDate(entry.date, { withYear: true });
+  const date = formatShortDate(entry.date, { withYear: true, locale });
   const isFirst = entry.previous === null || entry.diff === null || entry.pct === null;
   return (
     <li className="py-2">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3">
         <span className="font-medium">{date}</span>
         {isFirst ? (
-          <span className="text-xs text-muted">Primer pago</span>
+          <span className="text-xs text-muted">{t.firstPayment}</span>
         ) : (
           <span className="flex items-center gap-1 whitespace-nowrap text-xs text-muted">
             <ChangeIcon direction={changeDirection(entry.diff!)} />
@@ -238,8 +312,7 @@ function HistoryItem({ description, entry, money }: { description: string; entry
               className="mt-0.5 inline-flex min-h-11 items-center text-xs font-medium text-brand pointer-fine:min-h-6"
             >
               {!entry.note && <span aria-hidden>+&nbsp;</span>}
-              {entry.note ? "Editar nota" : "Agregar nota"}{" "}
-              <span className="sr-only">del cambio del {date}</span>
+              {entry.note ? t.editNote : t.addNote} <span className="sr-only">{t.ofChange(date)}</span>
             </button>
           </>
         ))}
@@ -263,6 +336,7 @@ function NoteForm({
   onSaved: () => void;
   onCancel: () => void;
 }) {
+  const t = useTexts(TEXTS);
   const toast = useToast();
   const fieldId = useId();
   const errorId = useId();
@@ -288,7 +362,7 @@ function NoteForm({
       <input type="hidden" name="description" value={description} />
       <input type="hidden" name="month" value={month} />
       <label htmlFor={fieldId} className="sr-only">
-        Nota del cambio del {date}
+        {t.noteLabel(date)}
       </label>
       {/* Con el foco al abrirse: es lo único que hay que escribir. */}
       <textarea
@@ -299,7 +373,7 @@ function NoteForm({
         maxLength={NOTE_MAX_LENGTH}
         defaultValue={note ?? ""}
         autoFocus
-        placeholder="Por qué cambió, por ejemplo"
+        placeholder={t.notePlaceholder}
         aria-invalid={state.error ? true : undefined}
         aria-describedby={describedBy(state.error && errorId)}
         className="input w-full"
@@ -316,7 +390,7 @@ function NoteForm({
             }}
             className="mr-auto inline-flex min-h-11 items-center rounded-lg px-2 text-sm font-medium text-danger hover:bg-danger/10 disabled:opacity-60 pointer-fine:min-h-8"
           >
-            Borrar nota
+            {t.deleteNote}
           </button>
         )}
         <button
@@ -324,10 +398,10 @@ function NoteForm({
           onClick={onCancel}
           className="inline-flex min-h-11 items-center rounded-lg border border-border px-3 text-sm font-medium transition hover:bg-background pointer-fine:min-h-8"
         >
-          Cancelar
+          {t.cancel}
         </button>
         <button type="submit" disabled={busy} className="btn-primary">
-          {busy ? "Guardando…" : "Guardar nota"}
+          {busy ? t.saving : t.saveNote}
         </button>
       </div>
     </form>
@@ -374,12 +448,13 @@ function ChoiceForm({
 
 /** "Agregar un gasto fijo": elegir uno de los egresos del período (uno que todavía lleva pocos meses). */
 function AddFixedExpense({ candidates }: { candidates: FixedOption[] }) {
+  const t = useTexts(TEXTS);
   const [open, setOpen] = useState(false);
   const opener = useRef<HTMLButtonElement>(null);
   const formId = useId();
   const fieldId = useId();
   const errorId = useId();
-  const { errors, formProps } = useFieldErrors(MESSAGES);
+  const { errors, formProps } = useFieldErrors(t.messages);
   const [state, formAction, busy] = useChoice(() => setOpen(false));
   const close = () => {
     setOpen(false);
@@ -401,7 +476,7 @@ function AddFixedExpense({ candidates }: { candidates: FixedOption[] }) {
         <svg viewBox="0 0 20 20" fill="currentColor" className="size-4" aria-hidden>
           <path d="M10.75 4.75a.75.75 0 0 0-1.5 0v4.5h-4.5a.75.75 0 0 0 0 1.5h4.5v4.5a.75.75 0 0 0 1.5 0v-4.5h4.5a.75.75 0 0 0 0-1.5h-4.5v-4.5Z" />
         </svg>
-        Agregar un gasto fijo
+        {t.add}
       </button>
     );
   }
@@ -410,7 +485,7 @@ function AddFixedExpense({ candidates }: { candidates: FixedOption[] }) {
     <form id={formId} action={formAction} {...formProps} className="mt-3 space-y-2 border-t border-border pt-3">
       <input type="hidden" name="action" value="include" />
       <label htmlFor={fieldId} className="block text-sm font-medium">
-        Egreso
+        {t.expense}
       </label>
       {/* Con el foco al abrirse: es lo único que hay que elegir. */}
       <select
@@ -424,7 +499,7 @@ function AddFixedExpense({ candidates }: { candidates: FixedOption[] }) {
         className="input w-full"
       >
         <option value="" disabled>
-          Elige un egreso del período
+          {t.pick}
         </option>
         {candidates.map((option) => (
           <option key={option.key} value={option.description}>
@@ -439,10 +514,10 @@ function AddFixedExpense({ candidates }: { candidates: FixedOption[] }) {
           onClick={close}
           className="inline-flex min-h-11 items-center rounded-lg border border-border px-3 text-sm font-medium transition hover:bg-background pointer-fine:min-h-8"
         >
-          Cancelar
+          {t.cancel}
         </button>
         <button type="submit" disabled={busy} className="btn-primary">
-          {busy ? "Agregando…" : "Agregar"}
+          {busy ? t.adding : t.addShort}
         </button>
       </div>
     </form>

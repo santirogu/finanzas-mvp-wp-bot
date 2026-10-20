@@ -344,3 +344,41 @@ describe("FixedExpenses · historial", () => {
   });
 });
 
+
+describe("FixedExpenses · en inglés", () => {
+  it("la lista, el total, el historial con sus notas y los quitados, en inglés", async () => {
+    render(<FixedExpenses {...props} />, { english: true });
+    const bills = within(screen.getByRole("region", { name: "Bills" }));
+    expect(bills.getByText("Total per month")).toBeVisible();
+    expect(bills.getByText("−$2,750,000.00")).toBeVisible();
+    expect(bills.getByText("They're 100% of your average monthly spending.")).toBeVisible();
+    expect(bills.getByRole("button", { name: "Remove Arriendo from your bills" })).toBeVisible();
+    const rent = bills.getByRole("button", { name: /^History of Arriendo In 4 of 12 months/ });
+    expect(bills.getByText(/· Added by you/)).toBeVisible();
+    await userEvent.click(rent);
+    // El historial que se abrió (el de cada gasto está en la página, oculto mientras está cerrado).
+    const history = within(document.getElementById(rent.getAttribute("aria-controls")!)!);
+    expect(history.getByText("Amount history")).toBeVisible();
+    expect(history.getByText("First payment")).toBeVisible();
+    expect(history.getByText("Mar 5, 2026")).toBeVisible();
+    await userEvent.click(bills.getByRole("button", { name: "Edit note for the change on Mar 5, 2026" }));
+    expect(bills.getByRole("textbox", { name: "Note for the change on Mar 5, 2026" })).toHaveAttribute("placeholder", "Why it changed, for example");
+    expect(bills.getByRole("button", { name: "Delete note" })).toBeVisible();
+    expect(bills.getByRole("button", { name: "Save note" })).toBeVisible();
+    await userEvent.click(bills.getByText("Removed (1)"));
+    expect(bills.getByRole("button", { name: "Put Netflix back in your bills" })).toHaveTextContent("Put back");
+  });
+
+  it("agregar un gasto fijo, con su mensaje en inglés", async () => {
+    render(<FixedExpenses {...props} />, { english: true });
+    await userEvent.click(screen.getByRole("button", { name: "Add a bill" }));
+    expect(screen.getByRole("option", { name: "Pick an expense from the period" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Add" }));
+    expect(await screen.findByText("Pick an expense.")).toBeVisible();
+  });
+
+  it("sin gastos fijos", () => {
+    render(<FixedExpenses {...props} items={[]} />, { english: true });
+    expect(screen.getByText("There are no expenses that repeat every month yet.")).toBeVisible();
+  });
+});

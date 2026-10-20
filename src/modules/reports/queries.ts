@@ -235,7 +235,7 @@ export async function getUpcomingPayments(
   userId: string,
   current: Month,
   today: string,
-): Promise<{ enabled: boolean; days: number; payments: (UpcomingPayment & { category: string })[] }> {
+): Promise<{ enabled: boolean; days: number; payments: (UpcomingPayment & { category: string | null })[] }> {
   const settings = await getUpcomingSettings(userId);
   if (!settings.enabled) return { ...settings, payments: [] };
   const period = reportPeriod(undefined, current);
@@ -247,10 +247,11 @@ export async function getUpcomingPayments(
     getLastPayments(userId),
   ]);
   const { items } = recurringExpenses(descriptions, period.months, choices);
-  // Con la categoría del último pago: la que lleva "Registrar pago".
+  // Con la categoría del último pago: la que lleva "Registrar pago" (null, sin categoría: el aviso lo dice
+  // en el idioma de la página).
   const payments = upcomingPayments(items, history, skipped, today, settings.days).map((payment) => ({
     ...payment,
-    category: lastPayments.get(payment.key)?.category ?? "Sin categoría",
+    category: lastPayments.get(payment.key)?.category ?? null,
   }));
   return { ...settings, payments };
 }

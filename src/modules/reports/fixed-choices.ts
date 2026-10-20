@@ -3,6 +3,8 @@ import { and, eq, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import { fixedExpenseChoice, transaction } from "@/db/schema";
+import { DEFAULT_LOCALE, type Locale } from "@/i18n/locales";
+import { texts } from "@/i18n/texts";
 import type { ToastTone } from "@/lib/toasts";
 import { searchKey } from "@/lib/suggestions";
 import type { FixedChoices } from "./recurring";
@@ -38,13 +40,33 @@ const input = z.object({
 
 export type FixedChoiceResult = { ok: true; message: string; tone: ToastTone } | { ok: false; error: string };
 
-/** El aviso de cada acción: verde si el gasto queda entre los fijos, rojo si sale. */
-const DONE: Record<(typeof FIXED_ACTIONS)[number], { tone: ToastTone; text: (name: string) => string }> = {
-  include: { tone: "success", text: (name) => `Se agregó «${name}» a los gastos fijos` },
-  exclude: { tone: "removal", text: (name) => `Se quitó «${name}» de los gastos fijos` },
-  restore: { tone: "success", text: (name) => `Volvió «${name}» a los gastos fijos` },
-  unadd: { tone: "removal", text: (name) => `Se quitó «${name}» de los gastos fijos` },
-};
+/** El color del aviso de cada acción: verde si el gasto queda entre los fijos, rojo si sale. */
+const TONES: Record<(typeof FIXED_ACTIONS)[number], ToastTone> = { include: "success", exclude: "removal", restore: "success", unadd: "removal" };
+
+const TEXTS = texts(
+  {
+    done: {
+      include: (name: string) => `Se agregó «${name}» a los gastos fijos`,
+      exclude: (name: string) => `Se quitó «${name}» de los gastos fijos`,
+      restore: (name: string) => `Volvió «${name}» a los gastos fijos`,
+      unadd: (name: string) => `Se quitó «${name}» de los gastos fijos`,
+    },
+    pick: "Elige un egreso.",
+    notYours: "Ese egreso no está entre tus movimientos.",
+  },
+  {
+    en: {
+      done: {
+        include: (name) => `“${name}” was added to your bills`,
+        exclude: (name) => `“${name}” was removed from your bills`,
+        restore: (name) => `“${name}” is back in your bills`,
+        unadd: (name) => `“${name}” was removed from your bills`,
+      },
+      pick: "Pick an expense.",
+      notYours: "That expense isn't among your transactions.",
+    },
+  },
+);
 
 /** ¿La persona tiene algún egreso (no eliminado) con esa descripción? */
 async function hasExpense(userId: string, description: string) {
@@ -64,9 +86,14 @@ async function hasExpense(userId: string, description: string) {
 }
 
 /** Marca o desmarca un gasto fijo de la persona. Solo se marca uno que esté entre sus egresos. */
-export async function chooseFixedExpense(userId: string, raw: { description: unknown; action: unknown }): Promise<FixedChoiceResult> {
+export async function chooseFixedExpense(
+  userId: string,
+  raw: { description: unknown; action: unknown },
+  locale: Locale = DEFAULT_LOCALE,
+): Promise<FixedChoiceResult> {
+  const t = TEXTS[locale];
   const parsed = input.safeParse(raw);
-  if (!parsed.success) return { ok: false, error: "Elige un egreso." };
+  if (!parsed.success) return { ok: false, error: t.pick };
   const { description, action } = parsed.data;
   const key = searchKey(description);
 
@@ -74,7 +101,7 @@ export async function chooseFixedExpense(userId: string, raw: { description: unk
     // Solo se marca lo que está entre sus egresos: así no se guardan textos inventados (las marcas no
     // crecen sin límite) y lo marcado siempre es algo que la persona registró.
     if (!(await hasExpense(userId, description))) {
-      return { ok: false, error: "Ese egreso no está entre tus movimientos." };
+      return { ok: false, error: t.notYours };
     }
     await db
       .insert(fixedExpenseChoice)
@@ -95,5 +122,5 @@ export async function chooseFixedExpense(userId: string, raw: { description: unk
         ),
       );
   }
-  return { ok: true, message: DONE[action].text(description), tone: DONE[action].tone };
+  return { ok: true, message: t.done[action](description), tone: TONES[action] };
 }

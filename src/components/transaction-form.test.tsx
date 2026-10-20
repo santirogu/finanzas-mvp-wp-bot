@@ -2,6 +2,7 @@ import { act, render as renderAlone, screen, waitFor, within } from "@testing-li
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { FormState } from "@/modules/transactions/actions";
+import { InEnglish } from "../../test/locale";
 
 // La Server Action se simula: aquí se prueba el formulario (lo que envía y cómo muestra la
 // respuesta). La acción tiene sus propias pruebas de integración.
@@ -585,3 +586,36 @@ describe("TransactionForm · errores de los campos en español", () => {
   });
 });
 
+
+describe("TransactionForm · en inglés", () => {
+  const renderInEnglish = (ui: React.ReactElement) => renderAlone(<Toaster>{ui}</Toaster>, { wrapper: InEnglish });
+
+  it("los textos, el monto con la coma de miles y el aviso en inglés (con el mes si quedó en otro)", async () => {
+    action.mockResolvedValue({ ok: true, message: "Expense added", occurredOn: "2026-09-30" });
+    renderInEnglish(<TransactionForm type="expense" categories={CATEGORIES} today="2026-10-14" listMonth={{ start: "2026-10-01", end: "2026-11-01" }} />);
+    expect(screen.getByRole("heading", { name: "New expense" })).toBeVisible();
+    expect(screen.getByRole("option", { name: "No category" })).toBeInTheDocument();
+    const amount = screen.getByLabelText(/Amount/);
+    expect(amount).toHaveAttribute("placeholder", "500,000.00");
+    await userEvent.type(amount, "1250000.5");
+    expect(amount).toHaveValue("1,250,000.5");
+    await userEvent.tab();
+    expect(amount).toHaveValue("1,250,000.50");
+    await userEvent.type(screen.getByLabelText(/Description/), "Shoes");
+    await userEvent.click(screen.getByRole("button", { name: "Add expense" }));
+    expect(await within(screen.getByRole("region", { name: "Notices" })).findByText("Expense added in September 2026", { exact: true })).toBeVisible();
+    expect(action.mock.calls[0][1].get("amount")).toBe("1,250,000.50");
+  });
+
+  it("los mensajes de los campos, y al editar el monto guardado con su formato", async () => {
+    renderInEnglish(
+      <TransactionForm type="income" categories={CATEGORIES} today="2026-10-14" transaction={{ id: "t1", amount: 45900.5, description: "Pay", categoryId: null, occurredOn: "2026-10-01" }} cancelHref="/ingresos" />,
+    );
+    expect(screen.getByRole("heading", { name: "Edit income" })).toBeVisible();
+    expect(screen.getByLabelText(/Amount/)).toHaveValue("45,900.50");
+    expect(screen.getByRole("link", { name: "Cancel" })).toHaveAttribute("href", "/ingresos");
+    await userEvent.clear(screen.getByLabelText(/Amount/));
+    await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    expect(await screen.findByText("Enter the amount.")).toBeVisible();
+  });
+});

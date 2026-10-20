@@ -1,6 +1,13 @@
 import Link from "next/link";
+import { getTexts } from "@/i18n/server";
+import { texts } from "@/i18n/texts";
 import { requireUser } from "@/lib/session";
 import { getLinkForUser } from "@/modules/whatsapp/link";
+
+const TEXTS = texts(
+  { title: "Registra tus gastos por WhatsApp", body: "Conecta tu número en Mi cuenta.", connect: "Conectar" },
+  { en: { title: "Track your expenses through WhatsApp", body: "Connect your number in My account.", connect: "Connect" } },
+);
 
 /** Donde se conecta y se desvincula el WhatsApp (src/app/[lang]/(app)/cuenta/whatsapp-card.tsx). */
 export const WHATSAPP_SECTION_HREF = "/cuenta#whatsapp";
@@ -13,6 +20,7 @@ export const WHATSAPP_SECTION_HREF = "/cuenta#whatsapp";
 export async function WhatsAppHint() {
   const user = await requireUser();
   if (await getLinkForUser(user.id)) return null;
+  const t = await getTexts(TEXTS);
 
   return (
     <Link href={WHATSAPP_SECTION_HREF} className="card flex items-center gap-3 p-4 transition hover:border-brand/40">
@@ -22,11 +30,11 @@ export async function WhatsAppHint() {
         <path d="M7 9.5h.01M10 9.5h.01M13 9.5h.01" strokeLinecap="round" strokeWidth="2" />
       </svg>
       <span className="min-w-0 flex-1">
-        <span className="block text-sm font-medium">Registra tus gastos por WhatsApp</span>
-        <span className="block text-sm text-muted">Conecta tu número en Mi cuenta.</span>
+        <span className="block text-sm font-medium">{t.title}</span>
+        <span className="block text-sm text-muted">{t.body}</span>
       </span>
       <span className="shrink-0 whitespace-nowrap text-sm font-medium text-brand">
-        Conectar <span aria-hidden>→</span>
+        {t.connect} <span aria-hidden>→</span>
       </span>
     </Link>
   );

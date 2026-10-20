@@ -1,6 +1,7 @@
 "use server";
 
 import { refresh } from "next/cache";
+import { getRequestLocale } from "@/i18n/request";
 import { todayInTimezone } from "@/lib/dates";
 import { requireUser } from "@/lib/session";
 import type { ToastTone } from "@/lib/toasts";
@@ -22,7 +23,7 @@ export type FixedExpenseState = { message?: string; tone?: ToastTone; error?: st
  */
 export async function chooseFixedExpenseAction(_prev: FixedExpenseState, formData: FormData): Promise<FixedExpenseState> {
   const user = await requireUser();
-  const result = await chooseFixedExpense(user.id, { description: formData.get("description"), action: formData.get("action") });
+  const result = await chooseFixedExpense(user.id, { description: formData.get("description"), action: formData.get("action") }, await getRequestLocale());
   if (!result.ok) return { error: result.error };
   refresh();
   return { message: result.message, tone: result.tone };
@@ -36,11 +37,11 @@ export type FixedNoteState = { message?: string; tone?: ToastTone; error?: strin
  */
 export async function saveFixedNoteAction(_prev: FixedNoteState, formData: FormData): Promise<FixedNoteState> {
   const user = await requireUser();
-  const result = await saveFixedNote(user.id, {
-    description: formData.get("description"),
-    month: formData.get("month"),
-    note: formData.get("note"),
-  });
+  const result = await saveFixedNote(
+    user.id,
+    { description: formData.get("description"), month: formData.get("month"), note: formData.get("note") },
+    await getRequestLocale(),
+  );
   if (!result.ok) return { error: result.error, field: result.field };
   refresh();
   return { message: result.message, tone: result.tone };
@@ -55,7 +56,7 @@ export type PaymentSkipState = { message?: string; tone?: ToastTone; error?: str
  */
 export async function skipFixedPaymentAction(_prev: PaymentSkipState, formData: FormData): Promise<PaymentSkipState> {
   const user = await requireUser();
-  const result = await skipFixedPayment(user.id, { description: formData.get("description"), month: formData.get("month") });
+  const result = await skipFixedPayment(user.id, { description: formData.get("description"), month: formData.get("month") }, await getRequestLocale());
   if (!result.ok) return { error: result.error };
   refresh();
   return { message: result.message, tone: result.tone };
@@ -88,6 +89,7 @@ export async function registerFixedPaymentAction(_prev: RegisterPaymentState, fo
     user,
     { description: formData.get("description"), amount: formData.get("amount"), occurredOn: formData.get("occurredOn") },
     todayInTimezone(user.timezone),
+    await getRequestLocale(),
   );
   if (!result.ok) return { error: result.error, field: result.field };
   refresh();

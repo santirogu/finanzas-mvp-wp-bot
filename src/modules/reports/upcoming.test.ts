@@ -7,6 +7,7 @@ import {
   daysAheadPhrase,
   daysBetween,
   MAX_DAYS_AHEAD,
+  ordinal,
   upcomingItems,
   upcomingPayments,
   usualDay,
@@ -244,5 +245,54 @@ describe("los días de anticipación (Mi cuenta → Notificaciones)", () => {
   ])("con %d: la tarjeta dice %j y el aviso al guardar, %j", (daysAhead, window, ahead) => {
     expect(windowPhrase(daysAhead)).toBe(window);
     expect(daysAheadPhrase(daysAhead)).toBe(ahead);
+  });
+});
+
+describe("los textos de los avisos en inglés", () => {
+  it.each([
+    [1, "1st"],
+    [2, "2nd"],
+    [3, "3rd"],
+    [4, "4th"],
+    [11, "11th"],
+    [12, "12th"],
+    [13, "13th"],
+    [21, "21st"],
+    [22, "22nd"],
+    [23, "23rd"],
+    [30, "30th"],
+    [31, "31st"],
+  ])("ordinal(%d) → %s", (day, text) => {
+    expect(ordinal(day)).toBe(text);
+  });
+
+  it("cuándo, los días de la tarjeta y la anticipación", () => {
+    expect([-2, 0, 1, 3].map((days) => whenLabel(days, "en"))).toEqual(["Overdue", "Today", "Tomorrow", "In 3 days"]);
+    expect([0, 1, 3].map((days) => windowPhrase(days, "en"))).toEqual(["for today", "for today and tomorrow", "for the next 3 days"]);
+    expect([0, 1, 5].map((days) => daysAheadPhrase(days, "en"))).toEqual(["the same day", "1 day before", "5 days before"]);
+  });
+
+  it("la fecha y el día de siempre", () => {
+    const [payment] = upcomingPayments([rent], paid("Arriendo", "2026-08-04", "2026-09-06"), NONE, "2026-10-04");
+    expect(dateLine(payment, "2026-10-04", "en")).toBe("Oct 5 · you usually pay it on the 5th (approx.)");
+    expect(dateLine({ ...payment, approximate: false, date: "2027-01-22", usualDay: 22 }, "2026-12-30", "en")).toBe(
+      "Jan 22, 2027 · you usually pay it on the 22nd",
+    );
+  });
+
+  it("el aviso listo para mostrar: el mes, el monto y el campo con el formato de EE. UU., y sin categoría", () => {
+    const history = paid("Arriendo", "2026-07-05", "2026-08-04", "2026-09-06");
+    const [item] = upcomingItems(upcomingPayments([rent], history, NONE, "2026-10-10"), "2026-10-10", "COP", "en");
+    expect(item).toMatchObject({
+      monthName: "October",
+      amount: "≈ −$1,800,000.00",
+      when: "Overdue",
+      dateLine: "Oct 5 · you usually pay it on the 5th",
+      category: "No category",
+      amountInput: "1,800,000.00",
+    });
+    // Con categoría (null también es "sin categoría").
+    const [withCategory] = upcomingItems([{ ...upcomingPayments([rent], history, NONE, "2026-10-10")[0], category: null }], "2026-10-10", "COP", "en");
+    expect(withCategory.category).toBe("No category");
   });
 });

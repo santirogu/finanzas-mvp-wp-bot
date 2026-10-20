@@ -3,9 +3,38 @@
 import Link from "next/link";
 import { useActionState, useEffect, useId, useRef, useState } from "react";
 import { useToast } from "@/components/toaster";
+import { useTexts } from "@/i18n/client";
+import { texts } from "@/i18n/texts";
 import { type MarkReadState, markNotificationsReadAction } from "@/modules/notifications/actions";
 import type { BellNotification } from "@/modules/notifications/notifications";
 import { UpcomingPaymentItem } from "./dashboard/upcoming-payments";
+
+const TEXTS = texts(
+  {
+    title: "Notificaciones",
+    unread: (n: number) => `Notificaciones: ${n} sin leer`,
+    markAll: "Marcar todas como leídas",
+    markOne: "Marcar como leído",
+    markOneName: (month: string, description: string) => `Marcar como leído el pago de ${month} de ${description}`,
+    marking: "Marcando…",
+    none: "No tienes notificaciones nuevas.",
+    upcoming: "Próximos pagos de tus gastos fijos.",
+    seeAll: "Ver los próximos pagos en el Resumen",
+  },
+  {
+    en: {
+      title: "Notifications",
+      unread: (n) => `Notifications: ${n} unread`,
+      markAll: "Mark all as read",
+      markOne: "Mark as read",
+      markOneName: (month, description) => `Mark the ${month} payment of ${description} as read`,
+      marking: "Marking…",
+      none: "You don't have new notifications.",
+      upcoming: "Upcoming payments of your bills.",
+      seeAll: "See upcoming payments in the Overview",
+    },
+  },
+);
 
 /**
  * La campana de notificaciones, arriba a la derecha (junto al menú de la cuenta), en todas las páginas: el
@@ -16,6 +45,7 @@ import { UpcomingPaymentItem } from "./dashboard/upcoming-payments";
  * solo la ventana.
  */
 export function NotificationBell({ notifications, today }: { notifications: BellNotification[]; today: string }) {
+  const t = useTexts(TEXTS);
   const [open, setOpen] = useState(false);
   const panelId = useId();
   const wrapper = useRef<HTMLDivElement>(null);
@@ -57,7 +87,7 @@ export function NotificationBell({ notifications, today }: { notifications: Bell
         type="button"
         aria-expanded={open}
         aria-controls={panelId}
-        aria-label={count > 0 ? `Notificaciones: ${count} sin leer` : "Notificaciones"}
+        aria-label={count > 0 ? t.unread(count) : t.title}
         onClick={() => setOpen(!open)}
         className={`relative inline-flex size-11 items-center justify-center rounded-full border transition hover:bg-background pointer-fine:size-10 ${open ? "border-brand" : "border-border"}`}
       >
@@ -81,19 +111,19 @@ export function NotificationBell({ notifications, today }: { notifications: Bell
       <div
         id={panelId}
         role="group"
-        aria-label="Notificaciones"
+        aria-label={t.title}
         hidden={!open}
         className="card absolute inset-x-4 top-full z-30 mt-2 p-3 shadow-lg sm:inset-x-auto sm:right-0 sm:w-[22rem]"
       >
         <div className="flex flex-wrap items-baseline justify-between gap-x-3">
-          <p className="font-semibold">Notificaciones</p>
-          {count > 1 && <MarkRead ids={notifications.map((n) => n.id)} label="Marcar todas como leídas" busyLabel="Marcando…" />}
+          <p className="font-semibold">{t.title}</p>
+          {count > 1 && <MarkRead ids={notifications.map((n) => n.id)} label={t.markAll} busyLabel={t.marking} />}
         </div>
         {count === 0 ? (
-          <p className="py-6 text-center text-sm text-muted">No tienes notificaciones nuevas.</p>
+          <p className="py-6 text-center text-sm text-muted">{t.none}</p>
         ) : (
           <>
-            <p className="text-xs text-muted">Próximos pagos de tus gastos fijos.</p>
+            <p className="text-xs text-muted">{t.upcoming}</p>
             {/* Sin desplazamiento propio: con muchos avisos, la lista crece y se recorre con la página. */}
             <ul className="mt-1 divide-y divide-border">
               {notifications.map(({ id, item }) => (
@@ -101,7 +131,7 @@ export function NotificationBell({ notifications, today }: { notifications: Bell
                   key={id}
                   item={item}
                   today={today}
-                  extra={<MarkRead ids={[id]} label="Marcar como leído" busyLabel="Marcando…" name={`Marcar como leído el pago de ${item.monthName} de ${item.description}`} />}
+                  extra={<MarkRead ids={[id]} label={t.markOne} busyLabel={t.marking} name={t.markOneName(item.monthName, item.description)} />}
                 />
               ))}
             </ul>
@@ -112,7 +142,7 @@ export function NotificationBell({ notifications, today }: { notifications: Bell
           onClick={() => setOpen(false)}
           className="mt-1 flex min-h-11 w-full items-center border-t border-border pt-1 text-sm font-medium text-brand pointer-fine:min-h-8"
         >
-          Ver los próximos pagos en el Resumen
+          {t.seeAll}
         </Link>
       </div>
     </div>

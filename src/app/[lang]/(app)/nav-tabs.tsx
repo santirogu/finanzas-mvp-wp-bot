@@ -4,18 +4,14 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useTexts } from "@/i18n/client";
 import { useAppPathname } from "@/i18n/navigation";
-import { texts } from "@/i18n/texts";
 import { ShieldIcon } from "@/components/shield-icon";
 import { useCurrentInView } from "@/components/use-current-in-view";
 import { parseMonthParam } from "@/lib/dates";
+import { TAB_TEXTS } from "./tab-texts";
 
 const TABS = ["/dashboard", "/ingresos", "/egresos", "/gastos-fijos", "/reportes"] as const;
 
-/** El nombre de cada pestaña. */
-export const TAB_TEXTS = texts(
-  { "/dashboard": "Resumen", "/ingresos": "Ingresos", "/egresos": "Egresos", "/gastos-fijos": "Fijos", "/reportes": "Reportes", "/admin": "Admin" },
-  { en: { "/dashboard": "Overview", "/ingresos": "Income", "/egresos": "Expenses", "/gastos-fijos": "Bills", "/reportes": "Reports", "/admin": "Admin" } },
-);
+
 
 // Las que muestran un mes (y lo siguen al pasar de una a otra). Fijos mira los últimos meses y Reportes
 // tiene su propio período.

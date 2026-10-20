@@ -2,6 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { chartSlices } from "@/modules/transactions/category-chart";
+import { InEnglish } from "../../../../../test/locale";
 import { CategoryChart } from "./category-chart";
 
 const cat = (name: string, emoji: string, total: number) => ({ name, emoji, total });
@@ -136,5 +137,15 @@ describe("CategoryChart", () => {
     renderChart([cat("Casa", "🏠", amount)], amount);
     const total = screen.getByText(label, { selector: "span.font-semibold" });
     expect(parseFloat(total.style.fontSize)).toBeCloseTo(rem, 5);
+  });
+});
+
+describe("CategoryChart · en inglés", () => {
+  it("el total al centro, los montos y las chicas juntas, en inglés", () => {
+    const small = [cat("Vivienda", "🏠", 900_000), cat("Café", "☕", 10_000), cat("Parqueadero", "🚗", 10_000)];
+    render(<CategoryChart slices={chartSlices(small, 920_000)} total={920_000} currency="COP" />, { wrapper: InEnglish });
+    expect(screen.getByText("Expenses")).toBeVisible();
+    expect(screen.getByText("$920,000.00")).toBeVisible();
+    expect(screen.getByRole("button", { name: /^2 more/ })).toHaveTextContent("$20,000.00 · 2%");
   });
 });

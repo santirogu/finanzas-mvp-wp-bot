@@ -5,6 +5,7 @@ import { db } from "@/db";
 import { fixedPaymentSkip, transaction } from "@/db/schema";
 import type { CurrentUser } from "@/lib/session";
 import { createUser } from "../../../test/integration/factories";
+import { requestLocale } from "../../../test/integration/locale";
 
 // "Este pago ya no aplica" (los avisos de próximos pagos): la capa de datos y su Server Action, contra la
 // base de pruebas, con dos usuarios. La sesión y el refresco de la página se simulan.
@@ -116,5 +117,18 @@ describe("skipFixedPaymentAction", () => {
     expect(await skipFixedPaymentAction({}, form({ description: "Inventado", month: "2026-10" }))).toEqual({ error: "No se pudo ocultar el aviso." });
     expect(await skipsOf(user.id)).toEqual([]);
     expect(refresh).not.toHaveBeenCalled();
+  });
+});
+
+describe("skipFixedPaymentAction · en inglés", () => {
+  it("el aviso y el error, en el idioma de la página", async () => {
+    const user = await signIn();
+    await addExpense(user.id, "Arriendo");
+    requestLocale.value = "en";
+    expect(await skipFixedPaymentAction({}, form({ description: "Arriendo", month: "2026-10" }))).toEqual({
+      message: "You won't be notified of the October payment of “Arriendo”",
+      tone: "removal",
+    });
+    expect(await skipFixedPaymentAction({}, form({ description: "Otro", month: "2026-10" }))).toEqual({ error: "The notice couldn't be hidden." });
   });
 });
