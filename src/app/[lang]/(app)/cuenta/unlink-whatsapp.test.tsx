@@ -43,3 +43,11 @@ describe("UnlinkWhatsApp", () => {
     expect(await findToast()).toHaveTextContent("Se desvinculó tu WhatsApp");
   });
 });
+
+describe("UnlinkWhatsApp · en inglés", () => {
+  it("el botón y el aviso, en inglés", async () => {
+    render(<UnlinkWhatsApp />, { english: true });
+    await userEvent.click(screen.getByRole("button", { name: "Unlink number" }));
+    expect(await findToast()).toHaveTextContent("Your WhatsApp was unlinked");
+  });
+});

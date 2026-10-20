@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { CONTACT_EMAIL, DataDeletionSteps, LEGAL_UPDATED_AT, legalProseClass } from "./legal";
+import { SpanishOnlyNote } from "./spanish-only";
 
 export const metadata: Metadata = {
   title: "Política de privacidad",
@@ -9,10 +10,11 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
   return (
-    <main className="mx-auto w-full max-w-3xl px-6 py-12">
+    <main lang="es" className="mx-auto w-full max-w-3xl px-6 py-12">
       <Link href="/" className="text-sm font-medium text-brand">
         ← Finanzas MVP
       </Link>
+      <SpanishOnlyNote />
       <h1 className="mt-4 text-3xl font-semibold tracking-tight">Política de privacidad</h1>
       <p className="mt-2 text-sm text-muted">Última actualización: {LEGAL_UPDATED_AT}</p>
 

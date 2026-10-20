@@ -6,6 +6,7 @@ import {
   LEGAL_UPDATED_AT,
   legalProseClass,
 } from "../privacidad/legal";
+import { SpanishOnlyNote } from "../privacidad/spanish-only";
 
 export const metadata: Metadata = {
   title: "Eliminar tus datos",
@@ -14,10 +15,11 @@ export const metadata: Metadata = {
 
 export default function DataDeletionPage() {
   return (
-    <main className="mx-auto w-full max-w-3xl px-6 py-12">
+    <main lang="es" className="mx-auto w-full max-w-3xl px-6 py-12">
       <Link href="/" className="text-sm font-medium text-brand">
         ← Finanzas MVP
       </Link>
+      <SpanishOnlyNote />
       <h1 className="mt-4 text-3xl font-semibold tracking-tight">Eliminar tus datos</h1>
       <p className="mt-2 text-sm text-muted">Última actualización: {LEGAL_UPDATED_AT}</p>
 

@@ -3,8 +3,44 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
+import { useTexts } from "@/i18n/client";
+import { texts } from "@/i18n/texts";
 import { generateLinkCodeAction } from "@/modules/whatsapp/actions";
 import { formatPhone } from "@/modules/whatsapp/phone";
+
+// Los ejemplos y el mensaje para el bot ("VINCULAR …") van en español: el bot todavía responde en español.
+const TEXTS = texts(
+  {
+    intro: "Conecta tu número y registra gastos escribiendo, por ejemplo,",
+    expired: "El código venció. Genera uno nuevo.",
+    generating: "Generando…",
+    connect: "Conectar WhatsApp",
+    send: "Envía este mensaje",
+    to: "al",
+    toBot: "al número del bot",
+    fromYours: "desde tu WhatsApp:",
+    open: "Abrir WhatsApp",
+    expires: (n: number) => `Vence en ${n} ${n === 1 ? "minuto" : "minutos"}. Esta tarjeta se actualiza sola cuando quede vinculado.`,
+    noWhatsApp: "¿Sin WhatsApp configurado aún?",
+    simulator: "Pruébalo en el simulador",
+  },
+  {
+    en: {
+      intro: "Connect your number and add expenses by writing, for example,",
+      expired: "The code expired. Get a new one.",
+      generating: "Generating…",
+      connect: "Connect WhatsApp",
+      send: "Send this message",
+      to: "to",
+      toBot: "to the bot's number",
+      fromYours: "from your WhatsApp:",
+      open: "Open WhatsApp",
+      expires: (n) => `It expires in ${n} ${n === 1 ? "minute" : "minutes"}. This card updates by itself once it's linked.`,
+      noWhatsApp: "No WhatsApp set up yet?",
+      simulator: "Try it in the simulator",
+    },
+  },
+);
 
 export function WhatsAppConnect({
   botNumber,
@@ -13,6 +49,7 @@ export function WhatsAppConnect({
   botNumber: string | null;
   showSimulator: boolean;
 }) {
+  const t = useTexts(TEXTS);
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [link, setLink] = useState<{ code: string; expiresAt: string } | null>(null);
@@ -44,17 +81,16 @@ export function WhatsAppConnect({
     return (
       <div className="mt-3 space-y-3 text-sm">
         <p className="text-muted">
-          Conecta tu número y registra gastos escribiendo, por ejemplo,{" "}
-          <em>“me compré unos zapatos de $500.000”</em>.
+          {t.intro} <em>“me compré unos zapatos de $500.000”</em>.
         </p>
-        {expired && <p className="text-danger">El código venció. Genera uno nuevo.</p>}
+        {expired && <p className="text-danger">{t.expired}</p>}
         {error && (
           <p role="alert" className="text-danger">
             {error}
           </p>
         )}
         <button type="button" onClick={generate} disabled={pending} className="btn-primary w-full">
-          {pending ? "Generando…" : "Conectar WhatsApp"}
+          {pending ? t.generating : t.connect}
         </button>
       </div>
     );
@@ -66,15 +102,15 @@ export function WhatsAppConnect({
   return (
     <div className="mt-3 space-y-3 text-sm">
       <p className="text-muted">
-        Envía este mensaje{" "}
+        {t.send}{" "}
         {botNumber ? (
           <>
-            al <span className="whitespace-nowrap font-medium text-foreground">{formatPhone(botNumber)}</span>
+            {t.to} <span className="whitespace-nowrap font-medium text-foreground">{formatPhone(botNumber)}</span>
           </>
         ) : (
-          "al número del bot"
+          t.toBot
         )}{" "}
-        desde tu WhatsApp:
+        {t.fromYours}
       </p>
       <p className="rounded-lg bg-background py-3 text-center font-mono text-lg font-semibold tracking-widest">
         {message}
@@ -86,18 +122,15 @@ export function WhatsAppConnect({
           rel="noreferrer"
           className="btn-primary w-full"
         >
-          Abrir WhatsApp
+          {t.open}
         </a>
       )}
-      <p className="text-xs text-muted">
-        Vence en {minutesLeft} {minutesLeft === 1 ? "minuto" : "minutos"}. Esta tarjeta se actualiza
-        sola cuando quede vinculado.
-      </p>
+      <p className="text-xs text-muted">{t.expires(minutesLeft)}</p>
       {showSimulator && (
         <p className="text-xs text-muted">
-          ¿Sin WhatsApp configurado aún?{" "}
+          {t.noWhatsApp}{" "}
           <Link href="/simulador" target="_blank" className="font-medium text-brand">
-            Pruébalo en el simulador
+            {t.simulator}
           </Link>
           .
         </p>

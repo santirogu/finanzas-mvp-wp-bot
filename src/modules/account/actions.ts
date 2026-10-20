@@ -3,16 +3,28 @@
 import { isAPIError } from "better-auth/api";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { getRequestLocale } from "@/i18n/request";
+import { texts } from "@/i18n/texts";
 import { auth } from "@/lib/auth";
-import { ACCOUNT_LOCKED } from "@/lib/auth-errors";
+import { AUTH_ERROR_TEXTS } from "@/lib/auth-errors";
 import { hasRole } from "@/lib/roles";
 import { requireUser } from "@/lib/session";
 import { confirmAdminCode } from "@/modules/admin/shared/confirm-code";
 import { normalizeEmail, releaseAttempt, reserveAttempt } from "@/modules/auth/lockout";
-import { CONFIRMATION_WORD } from "./confirmation";
+import { CONFIRMATION_WORDS } from "./confirmation";
 import { deleteAccountData } from "./delete-account";
 import { recordEvent } from "./events";
-import { checkPasswordChange, type PasswordChangeField } from "./password-change";
+import { checkPasswordChange, PASSWORD_TEXTS, type PasswordChangeField } from "./password-change";
+
+// Los mensajes de eliminar la cuenta, en el idioma de quien usa la página (la cookie: src/i18n/request.ts).
+const DELETE_TEXTS = texts(
+  {
+    password: "Escribe tu contraseña",
+    confirm: (word: string) => `Escribe ${word} para confirmar`,
+    wrong: "Contraseña incorrecta",
+  },
+  { en: { password: "Enter your password", confirm: (word) => `Type ${word} to confirm`, wrong: "Wrong password" } },
+);
 
 export type DeleteAccountState = {
   error?: string;
@@ -29,31 +41,34 @@ export async function deleteAccountAction(
   formData: FormData,
 ): Promise<DeleteAccountState> {
   const user = await requireUser();
+  const locale = await getRequestLocale();
+  const t = DELETE_TEXTS[locale];
+  const word = CONFIRMATION_WORDS[locale];
   const password = String(formData.get("password") ?? "");
   const confirmation = String(formData.get("confirmation") ?? "").trim().toUpperCase();
 
   const fieldErrors: DeleteAccountState["fieldErrors"] = {};
-  if (!password) fieldErrors.password = "Escribe tu contraseña";
-  if (confirmation !== CONFIRMATION_WORD) {
-    fieldErrors.confirmation = `Escribe ${CONFIRMATION_WORD} para confirmar`;
+  if (!password) fieldErrors.password = t.password;
+  if (confirmation !== word) {
+    fieldErrors.confirmation = t.confirm(word);
   }
   if (fieldErrors.password || fieldErrors.confirmation) return { fieldErrors };
 
   // El intento se reserva antes de verificar (como en el login): si la contraseña es equivocada,
   // queda como fallo; si no, se devuelve.
   const email = normalizeEmail(user.email);
-  if (!(await reserveAttempt(email)).ok) return { error: ACCOUNT_LOCKED };
+  if (!(await reserveAttempt(email)).ok) return { error: AUTH_ERROR_TEXTS[locale].accountLocked };
 
   const requestHeaders = await headers();
   try {
     await auth.api.verifyPassword({ body: { password }, headers: requestHeaders });
   } catch (error) {
     if (isAPIError(error) && error.body?.code === "INVALID_PASSWORD") {
-      return { fieldErrors: { password: "Contraseña incorrecta" } };
+      return { fieldErrors: { password: t.wrong } };
     }
     await releaseAttempt(email);
     if (!isAPIError(error)) throw error;
-    return { error: "No pudimos verificar tu contraseña. Cierra sesión y vuelve a entrar." };
+    return { error: PASSWORD_TEXTS[locale].unverified };
   }
   await releaseAttempt(email);
 
@@ -77,26 +92,28 @@ export type ChangePasswordState = {
  */
 export async function changePasswordAction(_prev: ChangePasswordState, formData: FormData): Promise<ChangePasswordState> {
   const user = await requireUser();
+  const locale = await getRequestLocale();
+  const t = PASSWORD_TEXTS[locale];
   const current = String(formData.get("current") ?? "");
   const next = String(formData.get("next") ?? "");
   const repeat = String(formData.get("repeat") ?? "");
-  const fieldErrors = checkPasswordChange({ current, next, repeat });
+  const fieldErrors = checkPasswordChange({ current, next, repeat }, locale);
   if (Object.keys(fieldErrors).length > 0) return { fieldErrors };
 
   // El intento se reserva antes de verificar (como en el login): si la contraseña es equivocada,
   // queda como fallo; si no, se devuelve.
   const email = normalizeEmail(user.email);
-  if (!(await reserveAttempt(email)).ok) return { error: ACCOUNT_LOCKED };
+  if (!(await reserveAttempt(email)).ok) return { error: AUTH_ERROR_TEXTS[locale].accountLocked };
   const requestHeaders = await headers();
   try {
     await auth.api.verifyPassword({ body: { password: current }, headers: requestHeaders });
   } catch (error) {
     if (isAPIError(error) && error.body?.code === "INVALID_PASSWORD") {
-      return { fieldErrors: { current: "Contraseña incorrecta." } };
+      return { fieldErrors: { current: t.wrong } };
     }
     await releaseAttempt(email);
     if (!isAPIError(error)) throw error;
-    return { error: "No pudimos verificar tu contraseña. Cierra sesión y vuelve a entrar." };
+    return { error: t.unverified };
   }
   await releaseAttempt(email);
 

@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { InEnglish } from "../../../../../test/locale";
 
 // La Server Action y el router se simulan; el reloj también, para probar la cuenta regresiva.
 const mocks = vi.hoisted(() => ({ generate: vi.fn(), refresh: vi.fn() }));
@@ -116,5 +117,19 @@ describe("WhatsAppConnect", () => {
 
     await act(async () => finish({ ok: true, code: "111222", expiresAt: inMinutes(10) }));
     expect(screen.getByText("VINCULAR 111222")).toBeVisible();
+  });
+});
+
+describe("WhatsAppConnect · en inglés", () => {
+  it("los textos en inglés; el mensaje para el bot sigue en español (VINCULAR)", async () => {
+    render(<WhatsAppConnect botNumber="573001112233" showSimulator />, { wrapper: InEnglish });
+    expect(screen.getByText(/Connect your number and add expenses by writing/)).toBeVisible();
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Connect WhatsApp" }));
+    });
+    expect(screen.getByText("VINCULAR 482913")).toBeVisible();
+    expect(screen.getByRole("link", { name: "Open WhatsApp" })).toHaveAttribute("href", "https://wa.me/573001112233?text=VINCULAR%20482913");
+    expect(screen.getByText(/It expires in 10 minutes/)).toBeVisible();
+    expect(screen.getByRole("link", { name: "Try it in the simulator" })).toHaveAttribute("href", "/simulador");
   });
 });

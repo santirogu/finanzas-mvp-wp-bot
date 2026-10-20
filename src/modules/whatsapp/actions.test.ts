@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   createLinkCode: vi.fn(),
   unlinkUser: vi.fn(),
   refresh: vi.fn(),
+  locale: "es" as "es" | "en",
 }));
 vi.mock("@/lib/session", () => ({ requireUser: mocks.requireUser }));
 vi.mock("./link", () => ({
@@ -13,11 +14,13 @@ vi.mock("./link", () => ({
   LinkCodeLimitError: class LinkCodeLimitError extends Error {},
 }));
 vi.mock("next/cache", () => ({ refresh: mocks.refresh }));
+vi.mock("@/i18n/request", () => ({ getRequestLocale: async () => mocks.locale }));
 
 const { generateLinkCodeAction, unlinkWhatsAppAction } = await import("./actions");
 
 beforeEach(() => {
-  for (const mock of Object.values(mocks)) mock.mockReset();
+  for (const mock of [mocks.requireUser, mocks.createLinkCode, mocks.unlinkUser, mocks.refresh]) mock.mockReset();
+  mocks.locale = "es";
   mocks.requireUser.mockResolvedValue({ id: "u1" });
 });
 
@@ -40,6 +43,16 @@ describe("acciones de WhatsApp", () => {
     const { LinkCodeLimitError } = await import("./link");
     mocks.createLinkCode.mockRejectedValue(Object.assign(new LinkCodeLimitError(), { message: "Ya generaste varios códigos." }));
     expect(await generateLinkCodeAction()).toEqual({ ok: false, error: "Ya generaste varios códigos." });
+  });
+
+  it("en inglés, el mensaje propio (el del error va en español)", async () => {
+    const { LinkCodeLimitError } = await import("./link");
+    mocks.locale = "en";
+    mocks.createLinkCode.mockRejectedValue(Object.assign(new LinkCodeLimitError(), { message: "Ya generaste varios códigos." }));
+    expect(await generateLinkCodeAction()).toEqual({
+      ok: false,
+      error: "You already got several codes in the last hour. Use the last one or wait a while to get another.",
+    });
   });
 
   it("cualquier otro error sigue su curso", async () => {

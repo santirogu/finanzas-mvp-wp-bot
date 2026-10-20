@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { DeleteAccountState } from "@/modules/account/actions";
+import { InEnglish } from "../../../../../test/locale";
 
 const action = vi.hoisted(() => vi.fn<(prev: DeleteAccountState, data: FormData) => Promise<DeleteAccountState>>());
 vi.mock("@/modules/account/actions", () => ({ deleteAccountAction: action }));
@@ -95,3 +96,17 @@ describe("DeleteAccountForm · errores de los campos en español", () => {
   });
 });
 
+
+describe("DeleteAccountForm · en inglés", () => {
+  it("pide la palabra en inglés (DELETE) para habilitar el botón", async () => {
+    render(<DeleteAccountForm />, { wrapper: InEnglish });
+    const deleteButton = screen.getByRole("button", { name: "Delete my account forever" });
+    expect(screen.getByLabelText("Your password")).toBeVisible();
+    const confirmation = screen.getByLabelText("Type DELETE to confirm");
+    await userEvent.type(confirmation, "eliminar");
+    expect(deleteButton).toBeDisabled();
+    await userEvent.clear(confirmation);
+    await userEvent.type(confirmation, " delete ");
+    expect(deleteButton).toBeEnabled();
+  });
+});

@@ -23,8 +23,14 @@ export const DAYS_AHEAD = 3;
 /** Lo más que se puede pedir (el mismo límite que pone la base: UPCOMING_DAYS_MAX); 0 es el mismo día. */
 export const MAX_DAYS_AHEAD = 10;
 
-/** El error del campo de los días de anticipación (en el navegador y en el servidor). */
-export const DAYS_AHEAD_MESSAGE = `Escribe un número entre 0 y ${MAX_DAYS_AHEAD}.`;
+/** El error del campo de los días de anticipación (en el navegador y en el servidor), en cada idioma. */
+export const DAYS_AHEAD_MESSAGES: Readonly<Record<Locale, string>> = {
+  es: `Escribe un número entre 0 y ${MAX_DAYS_AHEAD}.`,
+  en: `Enter a number between 0 and ${MAX_DAYS_AHEAD}.`,
+};
+
+/** En español (el de siempre). */
+export const DAYS_AHEAD_MESSAGE = DAYS_AHEAD_MESSAGES.es;
 
 /** Hasta cuántos meses atrás se sigue avisando de un pago atrasado. */
 export const MONTHS_BACK = 3;

@@ -7,6 +7,7 @@ import { ACCOUNT_LOCKED } from "@/lib/auth-errors";
 import type { CurrentUser } from "@/lib/session";
 import { LOCKOUT } from "@/modules/auth/lockout";
 import { createUser } from "../../../test/integration/factories";
+import { requestLocale } from "../../../test/integration/locale";
 
 // La sesión, las cabeceras, el redirect y la verificación de contraseña de Better Auth se
 // simulan (la verificación real la prueba la E2E); el borrado corre contra la base de pruebas.
@@ -170,5 +171,24 @@ describe("deleteAccountAction", () => {
 
     expect(await userExists(ana.id)).toBe(false);
     expect(await userExists(beto.id)).toBe(true);
+  });
+});
+
+describe("deleteAccountAction · en inglés", () => {
+  it("pide la palabra en inglés (DELETE): con ELIMINAR no borra, y los mensajes van en inglés", async () => {
+    const ana = await signIn();
+    requestLocale.value = "en";
+
+    expect(await deleteAccountAction({}, form({ password: "", confirmation: "ELIMINAR" }))).toEqual({
+      fieldErrors: { password: "Enter your password", confirmation: "Type DELETE to confirm" },
+    });
+    mocks.verifyPassword.mockRejectedValueOnce(new APIError("BAD_REQUEST", { code: "INVALID_PASSWORD", message: "Invalid password" }));
+    expect(await deleteAccountAction({}, form({ password: "mala", confirmation: "delete" }))).toEqual({
+      fieldErrors: { password: "Wrong password" },
+    });
+    expect(await userExists(ana.id)).toBe(true);
+
+    await expect(deleteAccountAction({}, form({ password: "clave", confirmation: " Delete " }))).rejects.toThrow("NEXT_REDIRECT /cuenta-eliminada");
+    expect(await userExists(ana.id)).toBe(false);
   });
 });

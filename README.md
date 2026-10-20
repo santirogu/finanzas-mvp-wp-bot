@@ -254,8 +254,8 @@ scripts/seed.ts                     Categorías por defecto
 
 La app tiene español (el de siempre) e inglés, que se pasa por partes: todavía no se puede elegir, pero
 con la cookie `idioma=en` ya se ve lo que está traducido (la navegación, el login y el registro, el
-Resumen con la campana y los próximos pagos, Ingresos, Egresos, Fijos, Reportes con sus descargas y la
-404).
+Resumen con la campana y los próximos pagos, Ingresos, Egresos, Fijos, Reportes con sus descargas, Mi
+cuenta, la Ayuda y la 404). Falta la administración.
 
 - **Las direcciones no llevan el idioma.** Las páginas están en `src/app/[lang]/` y el proxy
   (`src/proxy.ts`) arma cada una, por dentro, en el idioma de la cookie `idioma`: `/dashboard` se arma
@@ -284,6 +284,12 @@ Resumen con la campana y los próximos pagos, Ingresos, Egresos, Fijos, Reportes
   abre el Excel en inglés: separado por "," y con el punto de los centavos (en español, ";" y la coma), y
   los archivos se llaman `transactions-…csv` y `report-…pdf`. Los textos fijos del PDF van en la vista
   (`view.labels`, `src/modules/reports/pdf/view.ts`), así se prueban sin dibujarlo.
+- **Solo en español:** la política de privacidad y "Eliminar tus datos" (decisión del dueño). Sus páginas
+  van con `lang="es"` y, con la app en inglés, una nota arriba lo dice (`privacidad/spanish-only.tsx`).
+  También el bot: el mensaje para vincular WhatsApp sigue siendo `VINCULAR <código>` y la Ayuda en
+  inglés lo aclara.
+- **Eliminar la cuenta** pide la palabra del idioma de la página: `ELIMINAR` o, en inglés, `DELETE`
+  (`src/modules/account/confirmation.ts`).
 - **En un componente de cliente**, la ruta actual se lee con `useAppPathname()` (`src/i18n/navigation.ts`),
   nunca con `usePathname()`: con la reescritura del proxy, el servidor y el navegador pueden ver
   `/es/ayuda` o `/ayuda`, y eso marcaba mal la pestaña o volvía a una dirección con el idioma.

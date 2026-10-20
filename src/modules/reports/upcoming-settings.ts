@@ -2,8 +2,15 @@ import "server-only";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { notificationSetting } from "@/db/schema";
+import { DEFAULT_LOCALE, type Locale } from "@/i18n/locales";
+import { texts } from "@/i18n/texts";
 import type { ToastTone } from "@/lib/toasts";
-import { DAYS_AHEAD, DAYS_AHEAD_MESSAGE, daysAheadPhrase, MAX_DAYS_AHEAD } from "./upcoming";
+import { DAYS_AHEAD, DAYS_AHEAD_MESSAGES, daysAheadPhrase, MAX_DAYS_AHEAD } from "./upcoming";
+
+const TEXTS = texts(
+  { saved: (when: string) => `Se guardó: te avisaremos ${when} de cada pago fijo`, off: "Se apagaron los avisos de próximos pagos" },
+  { en: { saved: (when) => `Saved: we'll notify you ${when} each bill is due`, off: "Upcoming payment notices were turned off" } },
+);
 
 // La configuración de los avisos de próximos pagos (Mi cuenta → Notificaciones; la tabla
 // notification_setting): si están prendidos y con cuántos días de anticipación. Sin fila, los valores por
@@ -35,15 +42,19 @@ function parseDays(raw: unknown): number | null {
  * Guarda la configuración. `enabled` es el interruptor ("on" si está prendido); `days`, el campo de los
  * días de anticipación. Apagados, el campo no llega (está inactivo) y se conservan los días que había.
  */
-export async function saveUpcomingSettings(userId: string, raw: { enabled: unknown; days: unknown }): Promise<UpcomingSettingsResult> {
+export async function saveUpcomingSettings(
+  userId: string,
+  raw: { enabled: unknown; days: unknown },
+  locale: Locale = DEFAULT_LOCALE,
+): Promise<UpcomingSettingsResult> {
   const enabled = raw.enabled === "on";
   let days: number;
   if (raw.days === null || raw.days === undefined) {
-    if (enabled) return { ok: false, error: DAYS_AHEAD_MESSAGE, field: "days" };
+    if (enabled) return { ok: false, error: DAYS_AHEAD_MESSAGES[locale], field: "days" };
     days = (await getUpcomingSettings(userId)).days;
   } else {
     const parsed = parseDays(raw.days);
-    if (parsed === null) return { ok: false, error: DAYS_AHEAD_MESSAGE, field: "days" };
+    if (parsed === null) return { ok: false, error: DAYS_AHEAD_MESSAGES[locale], field: "days" };
     days = parsed;
   }
   await db
@@ -51,6 +62,6 @@ export async function saveUpcomingSettings(userId: string, raw: { enabled: unkno
     .values({ userId, upcomingEnabled: enabled, upcomingDays: days })
     .onConflictDoUpdate({ target: notificationSetting.userId, set: { upcomingEnabled: enabled, upcomingDays: days, updatedAt: new Date() } });
   return enabled
-    ? { ok: true, message: `Se guardó: te avisaremos ${daysAheadPhrase(days)} de cada pago fijo`, tone: "success" }
-    : { ok: true, message: "Se apagaron los avisos de próximos pagos", tone: "removal" };
+    ? { ok: true, message: TEXTS[locale].saved(daysAheadPhrase(days, locale)), tone: "success" }
+    : { ok: true, message: TEXTS[locale].off, tone: "removal" };
 }
