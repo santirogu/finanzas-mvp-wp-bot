@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { db } from "@/db";
-import { fixedExpenseChoice, fixedExpenseNote, transaction } from "@/db/schema";
+import { fixedExpenseChoice, fixedExpenseNote, fixedPaymentSkip, transaction } from "@/db/schema";
 import { listCategories } from "@/modules/transactions/queries";
 import { createUser } from "../../../test/integration/factories";
 import { reportPeriod } from "./period";
@@ -13,6 +13,7 @@ import {
   getMonthExpenses,
   getMonthlyTotals,
   getReport,
+  getUpcomingPayments,
   listPeriodMovements,
 } from "./queries";
 
@@ -370,5 +371,42 @@ describe("getFixedExpenses (la pestaña Fijos)", () => {
       histories: {},
       averageExpense: null,
     });
+  });
+});
+
+describe("getUpcomingPayments (los avisos del Resumen)", () => {
+  it("los gastos fijos propios que tocan pronto o están atrasados, sin los marcados 'ya no aplica'", async () => {
+    const ana = await createUser();
+    const beto = await createUser();
+    for (const month of ["07", "08", "09"]) {
+      await addTx({ userId: ana.id, description: "Arriendo", amount: 1800000, occurredOn: `2026-${month}-05` });
+      await addTx({ userId: ana.id, description: "Gimnasio", amount: 120000, occurredOn: `2026-${month}-01` });
+      // El de Beto no le aparece a Ana.
+      await addTx({ userId: beto.id, description: "Colegio", amount: 900000, occurredOn: `2026-${month}-04` });
+    }
+    // El gimnasio de octubre ya se pagó; el de septiembre de Beto no cuenta para Ana.
+    await addTx({ userId: ana.id, description: "Gimnasio", amount: 120000, occurredOn: "2026-10-02" });
+    await addTx({ userId: ana.id, description: "Borrado", amount: 1, occurredOn: "2026-10-01", deletedAt: new Date() });
+
+    const upcoming = await getUpcomingPayments(ana.id, october, "2026-10-03");
+    expect(upcoming.map((p) => [p.description, p.month, p.date, p.days, p.amount])).toEqual([["Arriendo", "2026-10", "2026-10-05", 2, 1800000]]);
+
+    // Atrasado (el 10, sin pago) hasta que lo marca; la marca de Beto no le cambia nada.
+    await db.insert(fixedPaymentSkip).values({ userId: beto.id, descriptionKey: "arriendo", month: "2026-10" });
+    expect((await getUpcomingPayments(ana.id, october, "2026-10-10")).map((p) => p.days)).toEqual([-5]);
+    await db.insert(fixedPaymentSkip).values({ userId: ana.id, descriptionKey: "arriendo", month: "2026-10" });
+    expect(await getUpcomingPayments(ana.id, october, "2026-10-10")).toEqual([]);
+  });
+
+  it("uno quitado de los gastos fijos no avisa; uno agregado a mano, sí", async () => {
+    const ana = await createUser();
+    for (const month of ["08", "09"]) await addTx({ userId: ana.id, description: "Netflix", amount: 44900, occurredOn: `2026-${month}-14` });
+    for (const month of ["07", "08", "09"]) await addTx({ userId: ana.id, description: "Arriendo", amount: 1800000, occurredOn: `2026-${month}-15` });
+    await db.insert(fixedExpenseChoice).values([
+      { userId: ana.id, descriptionKey: "netflix", choice: "include" },
+      { userId: ana.id, descriptionKey: "arriendo", choice: "exclude" },
+    ]);
+    const upcoming = await getUpcomingPayments(ana.id, october, "2026-10-12");
+    expect(upcoming.map((p) => [p.description, p.days, p.approximate])).toEqual([["Netflix", 2, true]]);
   });
 });

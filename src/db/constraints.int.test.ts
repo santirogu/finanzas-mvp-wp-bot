@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { db } from "@/db";
-import { botSetting, category, transaction, whatsappLink, whatsappLinkCode } from "@/db/schema";
+import { botSetting, category, fixedPaymentSkip, transaction, whatsappLink, whatsappLinkCode } from "@/db/schema";
 import { createUser } from "../../test/integration/factories";
 
 // Las restricciones de la base (src/db/schema/) son la última defensa si el código falla: un monto
@@ -103,5 +103,25 @@ describe("categorías", () => {
     expect(await rejectedBy(db.insert(category).values({ userId: null, type: "expense", name: "Mercado", emoji: "🛒" }))).toBe(
       "category_global_type_name_uq",
     );
+  });
+});
+
+describe("pagos que ya no aplican (avisos de próximos pagos)", () => {
+  const skip = (userId: string, month: string) => db.insert(fixedPaymentSkip).values({ userId, descriptionKey: "arriendo", month });
+
+  it("el mes es YYYY-MM (fixed_payment_skip_month)", async () => {
+    const user = await createUser();
+    expect(await rejectedBy(skip(user.id, "2026-13"))).toBe("fixed_payment_skip_month");
+    expect(await rejectedBy(skip(user.id, "octubre"))).toBe("fixed_payment_skip_month");
+    expect(await rejectedBy(skip(user.id, "2026-10"))).toBeNull();
+  });
+
+  it("una marca por gasto y mes de cada cuenta (fixed_payment_skip_user_key_month_uq)", async () => {
+    const ana = await createUser();
+    const beto = await createUser();
+    expect(await rejectedBy(skip(ana.id, "2026-10"))).toBeNull();
+    expect(await rejectedBy(skip(ana.id, "2026-10"))).toBe("fixed_payment_skip_user_key_month_uq");
+    expect(await rejectedBy(skip(ana.id, "2026-09"))).toBeNull();
+    expect(await rejectedBy(skip(beto.id, "2026-10"))).toBeNull();
   });
 });

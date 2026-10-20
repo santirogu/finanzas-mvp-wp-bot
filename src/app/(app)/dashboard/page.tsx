@@ -3,10 +3,12 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { ChangeLine } from "@/components/change-line";
 import { TransactionList } from "@/components/transaction-list";
-import { compareMonths, currentMonthRange, formatMonthName, monthRange, shiftMonth } from "@/lib/dates";
+import { compareMonths, currentMonthRange, formatMonthName, monthRange, shiftMonth, todayInTimezone } from "@/lib/dates";
 import { formatMoney } from "@/lib/money";
 import { inMonthPhrase, monthHref, monthNav, selectedMonth } from "@/lib/month-nav";
 import { requireUser } from "@/lib/session";
+import { getUpcomingPayments } from "@/modules/reports/queries";
+import { DAYS_AHEAD, upcomingItems } from "@/modules/reports/upcoming";
 import { chartSlices } from "@/modules/transactions/category-chart";
 import { balanceChange, totalChange } from "@/modules/transactions/month-comparison";
 import {
@@ -18,6 +20,7 @@ import {
 import { MonthNav } from "../month-nav";
 import { PageSkeleton } from "../page-skeleton";
 import { CategoryChart } from "./category-chart";
+import { UpcomingPayments } from "./upcoming-payments";
 import { WhatsAppHint } from "./whatsapp-hint";
 
 export const metadata: Metadata = { title: "Resumen" };
@@ -38,16 +41,19 @@ async function Dashboard({ month }: { month: string | string[] | undefined }) {
   const current = currentMonthRange(user.timezone);
   const range = selectedMonth(month, current);
   const previous = shiftMonth(range, -1);
-  const [summary, before, byCategory, recent, activeMonths] = await Promise.all([
+  const isCurrent = compareMonths(range, current) === 0;
+  const today = todayInTimezone(user.timezone);
+  const [summary, before, byCategory, recent, activeMonths, upcoming] = await Promise.all([
     getMonthlySummary(user.id, range),
     getMonthlySummary(user.id, monthRange(previous.year, previous.month)),
     getTotalsByCategory(user.id, "expense", range),
     listTransactions(user.id, range, { limit: 6 }),
     listActiveMonths(user.id),
+    // Los avisos de próximos pagos son de ahora: solo en el mes actual.
+    isCurrent ? getUpcomingPayments(user.id, current, today) : [],
   ]);
   const money = (n: number) => formatMoney(n, user.currency);
   const firstName = user.name.split(" ")[0];
-  const isCurrent = compareMonths(range, current) === 0;
   const inMonth = inMonthPhrase(range, current);
   // Frente al mes anterior, solo si en ese mes hubo movimientos (si no, todo sería "más que agosto").
   const previousName = formatMonthName(previous);
@@ -95,6 +101,8 @@ async function Dashboard({ month }: { month: string | string[] | undefined }) {
           {changes && <ChangeLine change={changes.expense} />}
         </Link>
       </section>
+
+      {upcoming.length > 0 && <UpcomingPayments items={upcomingItems(upcoming, today, user.currency)} daysAhead={DAYS_AHEAD} />}
 
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-5">
         <section className="card lg:col-span-3">

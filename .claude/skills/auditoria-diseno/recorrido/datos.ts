@@ -34,6 +34,17 @@ export const MES_ANTERIOR = monthParam(shiftMonth(monthOf(todayInTimezone("Ameri
 /** Dos y tres meses atrás: con ellos, Reportes muestra gastos fijos y compara las categorías con su promedio. */
 const HACE_DOS_MESES = monthParam(shiftMonth(monthOf(todayInTimezone("America/Bogota")), -2));
 const HACE_TRES_MESES = monthParam(shiftMonth(monthOf(todayInTimezone("America/Bogota")), -3));
+/** El día del mes dentro de `n` días (o antes, si es negativo), hasta el 28: está en todos los meses. */
+const diaEn = (n: number) => {
+  const fecha = new Date(`${todayInTimezone("America/Bogota")}T12:00:00Z`);
+  fecha.setUTCDate(fecha.getUTCDate() + n);
+  return String(Math.min(fecha.getUTCDate(), 28)).padStart(2, "0");
+};
+// Los avisos de próximos pagos del Resumen: la suscripción de música toca en unos días y el gimnasio está
+// atrasado (los dos, pagados los tres meses anteriores y no este). Sin "Servicios": la categoría larga del
+// admin ("…servicios digitales…") también la contiene y el selector encontraría dos.
+const DIA_MUSICA = diaEn(2);
+const DIA_GIMNASIO = diaEn(-5);
 
 export const opcionesBase = (baseURL: string) => ({
   baseURL,
@@ -57,6 +68,10 @@ const ANTERIORES: { ruta: "/ingresos" | "/egresos"; movimiento: Movimiento }[] =
   { ruta: "/egresos", movimiento: { amount: "1800000", description: "Arriendo del apartamento", category: "Vivienda", date: `${HACE_DOS_MESES}-05` } },
   { ruta: "/egresos", movimiento: { amount: "1800000", description: "Arriendo del apartamento", category: "Vivienda", date: `${HACE_TRES_MESES}-05` } },
   { ruta: "/egresos", movimiento: { amount: "698400", description: "Mercado del mes", category: "Mercado", date: `${HACE_DOS_MESES}-18` } },
+  ...[MES_ANTERIOR, HACE_DOS_MESES, HACE_TRES_MESES].flatMap((mes) => [
+    { ruta: "/egresos" as const, movimiento: { amount: "26900", description: "Suscripción de música", category: "Entretenimiento", date: `${mes}-${DIA_MUSICA}` } },
+    { ruta: "/egresos" as const, movimiento: { amount: "120000", description: "Gimnasio", category: "Salud", date: `${mes}-${DIA_GIMNASIO}` } },
+  ]),
 ];
 
 const EGRESOS: Movimiento[] = [

@@ -11,9 +11,11 @@ import type { DayDescriptionTotal } from "./daily";
 import { getFixedChoices } from "./fixed-choices";
 import { type FixedHistoryEntry, fixedHistories } from "./history";
 import { getExpenseHistoryMonths, getFixedNotes, noteKey } from "./history-notes";
-import type { ReportPeriod } from "./period";
+import { getPaymentSkips } from "./payment-skips";
+import { type ReportPeriod, reportPeriod } from "./period";
 import { type DescriptionMonthTotal, recurringExpenses, recurringFrom } from "./recurring";
 import { monthSeries, type MonthTotals, periodSummary } from "./summary";
+import { type UpcomingPayment, upcomingPayments } from "./upcoming";
 
 // Las consultas de Reportes. Reciben el userId ya validado por el Data Access Layer
 // (src/lib/session.ts) y siempre filtran por él. Agrupan por mes en la base; lo demás (promedios,
@@ -220,3 +222,20 @@ export async function getFixedExpenses(userId: string, period: ReportPeriod, cur
 export type FixedExpensesReport = Awaited<ReturnType<typeof getFixedExpenses>>;
 
 export type Report = Awaited<ReturnType<typeof getReport>>;
+
+/**
+ * Los avisos de próximos pagos del Resumen: los gastos fijos de los últimos 12 meses (con lo que la
+ * persona marcó a mano) cuyo pago toca pronto o está atrasado, sin los que marcó "ya no aplica".
+ * `current` y `today` (YYYY-MM-DD), en la zona de la persona.
+ */
+export async function getUpcomingPayments(userId: string, current: Month, today: string): Promise<UpcomingPayment[]> {
+  const period = reportPeriod(undefined, current);
+  const [descriptions, choices, history, skipped] = await Promise.all([
+    getExpenseDescriptionsByMonth(userId, recurringFrom(period.months), period.months[period.months.length - 1]),
+    getFixedChoices(userId),
+    getExpenseHistoryMonths(userId),
+    getPaymentSkips(userId),
+  ]);
+  const { items } = recurringExpenses(descriptions, period.months, choices);
+  return upcomingPayments(items, history, skipped, today);
+}

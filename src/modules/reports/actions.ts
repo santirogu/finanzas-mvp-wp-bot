@@ -5,9 +5,10 @@ import { requireUser } from "@/lib/session";
 import type { ToastTone } from "@/lib/toasts";
 import { chooseFixedExpense } from "./fixed-choices";
 import { saveFixedNote } from "./history-notes";
+import { skipFixedPayment } from "./payment-skips";
 
-// Las acciones de los gastos fijos (la pestaña Fijos, /gastos-fijos). Cada una valida la sesión antes que
-// nada: el dueño sale de la sesión, nunca del formulario.
+// Las acciones de los gastos fijos (la pestaña Fijos, /gastos-fijos, y los avisos de próximos pagos del
+// Resumen). Cada una valida la sesión antes que nada: el dueño sale de la sesión, nunca del formulario.
 
 export type FixedExpenseState = { message?: string; tone?: ToastTone; error?: string };
 
@@ -41,3 +42,17 @@ export async function saveFixedNoteAction(_prev: FixedNoteState, formData: FormD
   return { message: result.message, tone: result.tone };
 }
 
+
+export type PaymentSkipState = { message?: string; tone?: ToastTone; error?: string };
+
+/**
+ * "Este pago ya no aplica" en un aviso de próximos pagos: oculta el de ese mes de ese gasto fijo (ver
+ * src/modules/reports/payment-skips.ts). Con éxito, vuelve a dibujar el Resumen y avisa.
+ */
+export async function skipFixedPaymentAction(_prev: PaymentSkipState, formData: FormData): Promise<PaymentSkipState> {
+  const user = await requireUser();
+  const result = await skipFixedPayment(user.id, { description: formData.get("description"), month: formData.get("month") });
+  if (!result.ok) return { error: result.error };
+  refresh();
+  return { message: result.message, tone: result.tone };
+}

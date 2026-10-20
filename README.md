@@ -349,6 +349,17 @@ scripts/seed.ts                     Categorías por defecto
     Cerrado, cada gasto dice su último cambio ("11% desde marzo"). A cada cambio se le puede escribir
     una nota (hasta 280 caracteres; tabla `fixed_expense_note`), solo de un mes en que la persona pagó
     ese gasto; vaciarla la borra.
+- **Próximos pagos en el Resumen** (`src/modules/reports/upcoming.ts`, `upcoming-payments.tsx`): los gastos
+  fijos que tocan en los próximos 3 días (`DAYS_AHEAD`; por ahora fijo) y los atrasados, del más viejo al
+  más próximo. Solo en el mes actual y solo si hay alguno; los primeros 5 y el resto con "Mostrar más".
+  - **La fecha esperada:** la mediana de los días del mes de los últimos 3 pagos (resiste uno fuera de lo
+    normal: el 5, el 5 y el 20 dan el 5); con menos pagos, con los que haya y "aprox.". Un 31 en un mes
+    más corto es su último día, y los pagos alrededor del cambio de mes (el 30, el 31, el 1) van juntos.
+  - **Pagado o no:** cada pago cuenta para la fecha esperada más cercana (a menos de medio mes), así que
+    el arriendo de octubre pagado el 2 de noviembre cuenta para octubre. El monto es el del último mes.
+  - **Atrasados:** los que no tienen pago, hasta 3 meses atrás (`MONTHS_BACK`), en rojo. "Este pago ya no
+    aplica" oculta solo el de ese mes (tabla `fixed_payment_skip`); para no avisar más de un gasto, se
+    quita en Fijos.
 - **Reportes** (`/reportes`, la quinta pestaña; `src/modules/reports/`).
   - **El período, en la URL:** sin parámetro, los últimos 12 meses contando el actual; con
     `?periodo=2025`, ese año (el año en curso llega hasta el mes actual). Hay un chip por cada año con
