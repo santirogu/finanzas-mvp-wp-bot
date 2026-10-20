@@ -23,6 +23,7 @@ const PAGES = {
   "/eliminar-datos": "pública siempre (la exige Meta)",
   "/cuenta-eliminada": "pública siempre (se llega justo después de eliminar la cuenta)",
   "/cuenta": "requiere sesión",
+  "/ayuda": "requiere sesión; solo textos de ayuda (no lee datos de la persona)",
   "/dashboard": "requiere sesión",
   "/ingresos": "requiere sesión",
   "/egresos": "requiere sesión",

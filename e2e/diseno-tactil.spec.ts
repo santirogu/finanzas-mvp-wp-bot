@@ -199,7 +199,7 @@ test("en pantallas táctiles las páginas caben y los campos no hacen zoom @tact
   });
 
   await test.step("las páginas de la persona", async () => {
-    for (const path of ["/dashboard", "/ingresos", "/egresos", "/gastos-fijos", "/reportes", "/cuenta", `/dashboard?mes=${previousMonth}`, `/egresos?mes=${previousMonth}`]) {
+    for (const path of ["/dashboard", "/ingresos", "/egresos", "/gastos-fijos", "/reportes", "/cuenta", "/ayuda", `/dashboard?mes=${previousMonth}`, `/egresos?mes=${previousMonth}`]) {
       await open(page, path);
       await expectFitsOnScreens(page, path);
     }

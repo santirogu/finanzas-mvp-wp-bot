@@ -14,6 +14,7 @@ export const PRIVATE_PATHS = [
   "/reportes",
   "/movimientos/",
   "/cuenta",
+  "/ayuda",
   "/admin",
   "/simulador",
   "/api/",
