@@ -82,6 +82,14 @@ describe("validateDescription", () => {
 });
 
 describe("parseSections", () => {
+  it("cada sección con sus líneas, separadas por saltos de línea (sin las vacías de los extremos)", () => {
+    expect(parseSections("## What\n\n- a\n- b\n\n").get("what")).toBe("- a\n- b");
+  });
+
+  it("el título sin los espacios ni los # de los extremos, en minúsculas", () => {
+    expect([...parseSections("##   Why   ##\nUno\n##  Additional Notes \nDos").keys()]).toEqual(["why", "additional notes"]);
+  });
+
   it("ignora los comentarios HTML de la plantilla", () => {
     expect(parseSections("## Why\n<!-- pista -->\nReal").get("why")).toBe("Real");
   });

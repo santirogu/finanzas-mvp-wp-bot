@@ -16,6 +16,7 @@ export function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
   const token = envVar("WHATSAPP_VERIFY_TOKEN");
   if (token && params.get("hub.mode") === "subscribe" && params.get("hub.verify_token") === token) {
+    // Stryker disable next-line ObjectLiteral: 200 es el estado por defecto de una Response
     return new Response(params.get("hub.challenge") ?? "", { status: 200 });
   }
   return new Response("Forbidden", { status: 403 });
@@ -65,5 +66,6 @@ export async function POST(request: NextRequest) {
     });
   }
 
+  // Stryker disable next-line ObjectLiteral: ídem
   return new Response("OK", { status: 200 });
 }

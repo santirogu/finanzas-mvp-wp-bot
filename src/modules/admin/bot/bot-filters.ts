@@ -153,10 +153,12 @@ export const CLAUDE_DAYS_WHEN_ALL = 30;
 /** Los días del gráfico de llamadas a Claude (YYYY-MM-DD, del más viejo al más nuevo). */
 export function claudeDays(filters: BotFilters, today: string): string[] {
   const range = dateRange(filters, today);
+  // Stryker disable next-line EqualityOperator: si son el mismo día, da lo mismo cuál se toma
   const to = range.to && range.to < today ? range.to : today;
   const from = range.from ?? addDays(to, -(CLAUDE_DAYS_WHEN_ALL - 1));
   const days: string[] = [];
   // Tope por si un rango personalizado es enorme: el gráfico solo muestra los últimos 90 días.
+  // Stryker disable next-line EqualityOperator: ídem
   for (let day = from > addDays(to, -89) ? from : addDays(to, -89); day <= to; day = addDays(day, 1)) days.push(day);
   return days;
 }
@@ -177,6 +179,7 @@ type ApiErrorBody = { error?: { message?: string; code?: number; error_data?: { 
  */
 export function readableApiError(detail: string): string {
   const match = detail.match(/^(\d{3}) (\{[\s\S]*\})$/);
+  // Stryker disable next-line ConditionalExpression: sin match, match[2] lanza dentro del try y el catch devuelve detail igual
   if (!match) return detail;
   let body: ApiErrorBody;
   try {
@@ -186,6 +189,7 @@ export function readableApiError(detail: string): string {
   }
   const text = body.error?.error_data?.details ?? body.error?.message;
   if (!text) return detail;
+  // Stryker disable next-line OptionalChaining: si hay texto (arriba), body.error existe
   const code = body.error?.code && !text.includes(`#${body.error.code}`) ? `(#${body.error.code}) ` : "";
   return `HTTP ${match[1]} · ${code}${text}`;
 }

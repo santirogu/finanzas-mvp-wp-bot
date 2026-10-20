@@ -39,6 +39,7 @@ export function wordStartMatch(text: string, query: string): { start: number; en
   }
   from.push(text.length);
   let at = letters.indexOf(query);
+  // Stryker disable next-line EqualityOperator: en la posición 0 siempre empieza una palabra, así que el bucle termina igual
   while (at >= 0 && !startsWord(letters, at)) at = letters.indexOf(query, at + 1);
   return at < 0 ? null : { start: from[at], end: from[at + query.length] };
 }

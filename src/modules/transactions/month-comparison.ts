@@ -11,7 +11,9 @@ export function balanceChange(current: number, previous: number, previousMonth: 
   const diff = roundToCents(current - previous);
   if (diff === 0) return { direction: "same", text: `Igual que ${previousMonth}` };
   return {
+    // Stryker disable next-line EqualityOperator: una diferencia de 0 ya volvió arriba ("Igual que…")
     direction: diff > 0 ? "up" : "down",
+    // Stryker disable next-line EqualityOperator: ídem
     text: `${formatMoney(Math.abs(diff), currency)} ${diff > 0 ? "más" : "menos"} que ${previousMonth}`,
   };
 }
@@ -28,9 +30,11 @@ export function totalChange(
 ): MonthChange {
   const diff = roundToCents(current - previous);
   if (diff === 0) return { direction: "same", text: `Igual que ${previousMonth}` };
+  // Stryker disable next-line EqualityOperator: ídem
   const direction = diff > 0 ? "up" : "down";
   if (previous === 0) return { direction, text: `Sin ${kind} en ${previousMonth}` };
   const pct = Math.round((Math.abs(diff) / previous) * 100);
   if (pct === 0) return { direction, text: `Casi igual que ${previousMonth}` };
+  // Stryker disable next-line EqualityOperator: ídem
   return { direction, text: `${percent.format(pct)}% ${diff > 0 ? "más" : "menos"} que ${previousMonth}` };
 }

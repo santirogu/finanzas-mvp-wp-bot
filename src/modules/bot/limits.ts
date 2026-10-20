@@ -71,6 +71,7 @@ const LIMIT_NAMES = { perHour: "por hora", perDay: "por día" } as const;
  * el del día (no podría alcanzarse). Acepta "1.000" o espacios; el error dice qué campo y por qué.
  */
 export function parseAiLimits(raw: { perHour: string; perDay: string }): AiLimitsInput {
+  // Stryker disable next-line ObjectLiteral: los dos campos se llenan antes de usarse (o la función vuelve antes)
   const limits = { perHour: 0, perDay: 0 };
   for (const field of ["perHour", "perDay"] as const) {
     const text = raw[field].replace(/[\s.]/g, "");

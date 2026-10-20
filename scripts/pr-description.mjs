@@ -28,13 +28,15 @@ export function stripHtmlComments(text) {
 
 /** Separa el markdown en secciones de nivel 2 ("## Título") con su contenido. */
 export function parseSections(body) {
+  // Stryker disable next-line StringLiteral: un texto sin "##" da las mismas secciones que uno vacío
   const text = stripHtmlComments((body ?? "").replace(/\r\n/g, "\n"));
   const sections = new Map();
   let current = null;
   for (const line of text.split("\n")) {
     const heading = line.match(/^##\s+(.+?)\s*#*\s*$/);
     if (heading) {
-      current = heading[1].trim().toLowerCase();
+      // Sin espacios alrededor: los deja afuera la expresión (\s+ al comienzo, \s* al final).
+      current = heading[1].toLowerCase();
       if (!sections.has(current)) sections.set(current, []);
     } else if (current) {
       sections.get(current).push(line);
@@ -51,6 +53,7 @@ export function validateDescription(body) {
     const content = sections.get(name.toLowerCase());
     if (content === undefined) {
       errors.push(`Falta la sección "## ${name}".`);
+    // Stryker disable next-line Regex: con "g", quitar los espacios de a uno o de a varios da lo mismo
     } else if (content.replace(/\s+/g, "").length < MIN_CONTENT_LENGTH) {
       errors.push(`La sección "## ${name}" está vacía o es demasiado corta.`);
     }

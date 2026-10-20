@@ -11,6 +11,7 @@ export function isValidSignature(
   appSecret: string,
 ): boolean {
   if (!header?.startsWith("sha256=") || !appSecret) return false;
+  // Stryker disable next-line StringLiteral: sin codificación, Node usa utf8 igual (lo prueba el valor fijo con tildes de whatsapp.test.ts)
   const expected = createHmac("sha256", appSecret).update(rawBody, "utf8").digest();
   // Un hex inválido produce un buffer más corto, que falla la comparación de longitud.
   const received = Buffer.from(header.slice("sha256=".length), "hex");
@@ -18,5 +19,6 @@ export function isValidSignature(
 }
 
 export function signBody(rawBody: string, appSecret: string): string {
+  // Stryker disable next-line StringLiteral: ídem
   return `sha256=${createHmac("sha256", appSecret).update(rawBody, "utf8").digest("hex")}`;
 }
