@@ -27,12 +27,16 @@ describe("UnlinkWhatsApp", () => {
     expect(actions.unlinkWhatsAppAction).toHaveBeenCalledOnce();
   });
 
-  it("el aviso sale recién cuando terminó de desvincular", async () => {
+  it("mientras desvincula, el botón lo dice y no deja enviar dos veces; el aviso sale al terminar", async () => {
     let finish!: () => void;
     actions.unlinkWhatsAppAction.mockReturnValue(new Promise<void>((resolve) => (finish = resolve)));
     const user = userEvent.setup();
     render(<UnlinkWhatsApp />);
     await user.click(screen.getByRole("button", { name: "Desvincular número" }));
+    const busy = await screen.findByRole("button", { name: "Desvinculando…" });
+    expect(busy).toBeDisabled();
+    await user.click(busy);
+    expect(actions.unlinkWhatsAppAction).toHaveBeenCalledOnce();
     expect(screen.queryByText("Se desvinculó tu WhatsApp")).toBeNull();
 
     finish();
