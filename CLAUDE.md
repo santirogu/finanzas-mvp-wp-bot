@@ -184,8 +184,9 @@ de Vercel ni muevas las migraciones fuera del job `deploy`.
   (`.claude/skills/auditoria-diseno/recorrido/vistas.ts`).
 - **Idiomas** (README → Idiomas): las páginas van en `src/app/[lang]/`; las direcciones no llevan el idioma
   (lo agrega el proxy por dentro). En un componente de cliente, la ruta actual se lee con `useAppPathname()`
-  (`src/i18n/navigation.ts`), nunca con `usePathname()` (`src/i18n/guard.test.ts` lo revisa). Los textos de
-  una página que ya usa los diccionarios (`src/i18n/dictionaries/`) van ahí, nunca escritos en el componente.
+  (`src/i18n/navigation.ts`), nunca con `usePathname()` (`src/i18n/guard.test.ts` lo revisa). Un texto nuevo en una página que ya tiene
+  inglés va con `texts()` en los dos idiomas, nunca escrito solo en español; los montos y las fechas, con el
+  idioma de la página (`formatMoney(…, locale)`).
 - **E2E que cambian algo de toda la app** (pausar Claude, los topes del bot, la configuración): van en
   `e2e/configuracion-*.spec.ts`, el proyecto "configuracion" de Playwright, que corre aparte (README →
   Pruebas y CI). En paralelo con las demás les cambiaría lo que responde el bot.

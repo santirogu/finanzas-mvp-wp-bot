@@ -36,3 +36,11 @@ describe("withoutParams", () => {
     expect(withoutParams("/dashboard", "", ["aviso"])).toBe("/dashboard");
   });
 });
+
+describe("urlToast · en inglés", () => {
+  it("el mismo aviso, con su texto en inglés", () => {
+    expect(urlToast("guardado", "/egresos", "en")).toEqual({ tone: "success", message: "Changes saved" });
+    expect(urlToast("cuenta-eliminada", "/admin/usuarios", "en")).toEqual({ tone: "removal", message: "The account was deleted" });
+    expect(urlToast("guardado", "/egresos")).toEqual({ tone: "success", message: "Cambios guardados" });
+  });
+});

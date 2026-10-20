@@ -1,9 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useAppPathname } from "@/i18n/navigation";
 import { useEffect, useId, useRef, useState } from "react";
+import { useTexts } from "@/i18n/client";
+import { useAppPathname } from "@/i18n/navigation";
+import { texts } from "@/i18n/texts";
 import { initialsOf } from "@/lib/text";
+
+const TEXTS = texts(
+  { account: "Tu cuenta", myAccount: "Mi cuenta", help: "Ayuda", signOut: "Salir" },
+  { en: { account: "Your account", myAccount: "My account", help: "Help", signOut: "Sign out" } },
+);
 
 /**
  * El menú de la cuenta, arriba a la derecha: un círculo con las iniciales (y el escudo de admin, si lo
@@ -37,6 +44,7 @@ export function AccountMenu({
   const wrapper = useRef<HTMLDivElement>(null);
   const button = useRef<HTMLButtonElement>(null);
   const pathname = useAppPathname();
+  const t = useTexts(TEXTS);
 
   useEffect(() => {
     if (!open) return;
@@ -72,7 +80,7 @@ export function AccountMenu({
         type="button"
         aria-expanded={open}
         aria-controls={cardId}
-        aria-label={`Tu cuenta: ${name || email}${roleName ? `, ${roleName}` : ""}`}
+        aria-label={`${t.account}: ${name || email}${roleName ? `, ${roleName}` : ""}`}
         onClick={() => setOpen(!open)}
         className={`inline-flex min-h-11 items-center gap-1 rounded-full border py-1 pl-1 pr-2 transition hover:bg-background pointer-fine:min-h-0 ${open ? "border-brand" : "border-border"}`}
       >
@@ -101,7 +109,7 @@ export function AccountMenu({
       <div
         id={cardId}
         role="group"
-        aria-label="Tu cuenta"
+        aria-label={t.account}
         hidden={!open}
         className="card absolute right-0 top-full z-30 mt-2 w-72 max-w-[calc(100vw-2rem)] p-1.5 shadow-lg"
       >
@@ -128,7 +136,7 @@ export function AccountMenu({
                   clipRule="evenodd"
                 />
               </svg>
-              Mi cuenta
+              {t.myAccount}
             </Link>
           </li>
           <li>
@@ -145,7 +153,7 @@ export function AccountMenu({
                   clipRule="evenodd"
                 />
               </svg>
-              Ayuda
+              {t.help}
             </Link>
           </li>
         </ul>
@@ -164,7 +172,7 @@ export function AccountMenu({
                 clipRule="evenodd"
               />
             </svg>
-            Salir
+            {t.signOut}
           </button>
         </form>
       </div>

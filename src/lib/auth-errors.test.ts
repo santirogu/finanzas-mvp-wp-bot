@@ -90,3 +90,26 @@ describe("authErrorMessage", () => {
     expect(authErrorMessage({})).toBe("Algo salió mal.");
   });
 });
+
+describe("authErrorMessage · en inglés", () => {
+  it("los códigos conocidos, en inglés", () => {
+    expect(authErrorMessage({ code: "INVALID_EMAIL_OR_PASSWORD" }, "en")).toBe("Wrong email or password.");
+    expect(authErrorMessage({ code: "ACCOUNT_TEMPORARILY_LOCKED", status: 429 }, "en")).toBe("Too many wrong codes. For security, verification is locked for 15 minutes.");
+    expect(authErrorMessage({ status: 429, message: "Too many requests." }, "en")).toBe("Too many attempts. Wait a few seconds and try again.");
+    expect(authErrorMessage({ code: "ACCOUNT_SUSPENDED" }, "en")).toMatch(/^Your account is suspended\./);
+  });
+
+  it("los mensajes que arma el servidor en español no se muestran: el propio en inglés", () => {
+    const locked = { status: 429, code: "ACCOUNT_LOCKED", message: "Por seguridad, la cuenta quedó bloqueada… 9 minutos." };
+    expect(authErrorMessage(locked, "en")).toBe("For security, the account was locked after several failed attempts. Try again later.");
+    expect(authErrorMessage(locked)).toBe(locked.message);
+    const name = { code: "INVALID_NAME", message: "El nombre tiene caracteres que no se permiten." };
+    expect(authErrorMessage(name, "en")).toBe("Check your name: it has characters that aren't allowed, or it's too long.");
+    expect(authErrorMessage(name)).toBe(name.message);
+  });
+
+  it("sin código conocido: el mensaje que venga o el de respaldo, en inglés", () => {
+    expect(authErrorMessage({ code: "OTRO", message: "Some error" }, "en")).toBe("Some error");
+    expect(authErrorMessage({}, "en")).toBe("Something went wrong.");
+  });
+});

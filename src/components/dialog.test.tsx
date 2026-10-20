@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { Buttons, Dialog, FormError, openAsModal } from "./dialog";
+import { InEnglish } from "../../test/locale";
 
 // Las ventanas modales de la app (la administración, "Registrar pago" del Resumen).
 
@@ -76,5 +77,12 @@ describe("FormError", () => {
     expect(container).toBeEmptyDOMElement();
     rerender(<FormError state={{}} />);
     expect(container).toBeEmptyDOMElement();
+  });
+});
+
+describe("Buttons · en inglés", () => {
+  it("Cancel", () => {
+    render(<Buttons submit="Save" pending="Saving…" busy={false} />, { wrapper: InEnglish });
+    expect(screen.getByRole("button", { name: "Cancel" })).toBeVisible();
   });
 });

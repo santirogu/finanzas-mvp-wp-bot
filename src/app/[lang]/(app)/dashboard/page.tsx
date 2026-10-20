@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { ChangeLine } from "@/components/change-line";
+import { getLocale } from "@/i18n/server";
 import { TransactionList } from "@/components/transaction-list";
 import { compareMonths, currentMonthRange, formatMonthName, monthRange, shiftMonth, todayInTimezone } from "@/lib/dates";
 import { formatMoney } from "@/lib/money";
@@ -67,7 +68,7 @@ async function Dashboard({ month }: { month: string | string[] | undefined }) {
     <div className="space-y-6">
       <div>
         <p className="text-sm text-muted">Hola, {firstName}</p>
-        <MonthNav nav={monthNav("/dashboard", range, current, activeMonths)} heading />
+        <MonthNav nav={monthNav("/dashboard", range, current, activeMonths, await getLocale())} heading />
       </div>
 
       {/* Tres columnas recién desde lg: en un iPad vertical (768-1023 px), con tres, un monto de

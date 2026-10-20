@@ -1,9 +1,13 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useAppPathname } from "@/i18n/navigation";
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { useLocale, useTexts } from "@/i18n/client";
+import { useAppPathname } from "@/i18n/navigation";
+import { texts } from "@/i18n/texts";
 import { TOAST_PARAM, type ToastTone, urlToast, withoutParams } from "@/lib/toasts";
+
+const TEXTS = texts({ region: "Avisos", dismiss: "Cerrar el aviso" }, { en: { region: "Notices", dismiss: "Dismiss the notice" } });
 
 export type { ToastTone };
 
@@ -44,6 +48,7 @@ const ToastContext = createContext<(toast: Toast) => void>(() => {});
 export const useToast = () => useContext(ToastContext);
 
 export function Toaster({ children }: { children: React.ReactNode }) {
+  const t = useTexts(TEXTS);
   const [toasts, setToasts] = useState<Shown[]>([]);
   const counter = useRef(0);
 
@@ -73,7 +78,7 @@ export function Toaster({ children }: { children: React.ReactNode }) {
       {/* La región existe siempre (vacía si no hay avisos): así el lector de pantalla anuncia cada
           aviso que entra. data-toaster: la auditoría de diseño no cuenta como "tapado" lo de abajo. */}
       <section
-        aria-label="Avisos"
+        aria-label={t.region}
         data-toaster
         className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center px-4 pb-[max(1rem,env(safe-area-inset-bottom))] lg:justify-end"
       >
@@ -112,6 +117,7 @@ const TONES: Record<ToastTone, { box: string; icon: string; bar: string; button:
 let usingKeyboard = false;
 
 function ToastItem({ toast, onDismiss }: { toast: Shown; onDismiss: (key: string) => void }) {
+  const t = useTexts(TEXTS);
   const duration = toast.action ? TOAST_WITH_ACTION_MS : TOAST_MS;
   const ref = useRef<HTMLLIElement>(null);
   // Se pausa con el mouse encima (o el dedo, al tocarlo) y con el foco del teclado adentro.
@@ -182,7 +188,7 @@ function ToastItem({ toast, onDismiss }: { toast: Shown; onDismiss: (key: string
       <button
         type="button"
         onClick={close}
-        aria-label="Cerrar el aviso"
+        aria-label={t.dismiss}
         className="inline-flex size-11 shrink-0 items-center justify-center rounded-lg text-muted hover:bg-border/60 hover:text-foreground pointer-fine:size-8"
       >
         <svg viewBox="0 0 20 20" fill="currentColor" className="size-4" aria-hidden>
@@ -208,14 +214,15 @@ export function UrlToasts() {
   const router = useRouter();
   const pathname = useAppPathname();
   const params = useSearchParams();
+  const locale = useLocale();
   const code = params.get(TOAST_PARAM);
 
   useEffect(() => {
-    const toast = urlToast(code, pathname);
+    const toast = urlToast(code, pathname, locale);
     if (!toast) return;
     show({ id: `url:${code}`, ...toast });
     router.replace(withoutParams(pathname, params.toString(), [TOAST_PARAM]), { scroll: false });
-  }, [code, show, router, pathname, params]);
+  }, [code, show, router, pathname, params, locale]);
   return null;
 }
 

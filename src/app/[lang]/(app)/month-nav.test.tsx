@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { monthNav } from "@/lib/month-nav";
 import { MonthNav } from "./month-nav";
+import { InEnglish } from "../../../../test/locale";
 
 // Viendo septiembre de 2026 en Egresos, con movimientos en octubre (el actual), agosto y marzo de 2025.
 const OCTOBER = { year: 2026, month: 10 };
@@ -162,5 +163,20 @@ describe("MonthNav", () => {
     await userEvent.click(toggle());
     await userEvent.click(within(card()).getByText("2026"));
     expect(card()).toBeVisible();
+  });
+});
+
+describe("MonthNav · en inglés", () => {
+  it("los meses y las etiquetas en inglés", async () => {
+    render(<MonthNav nav={monthNav("/egresos", { year: 2026, month: 9 }, OCTOBER, ["2026-10"], "en")} />, { wrapper: InEnglish });
+    expect(screen.getByRole("link", { name: "Previous month: August 2026" })).toBeVisible();
+    expect(screen.getByRole("link", { name: "Next month: October 2026" })).toBeVisible();
+    expect(screen.getByRole("link", { name: "Back to this month" })).toHaveAttribute("href", "/egresos");
+    const button = screen.getByRole("button", { name: "September 2026" });
+    await userEvent.click(button);
+    const picker = screen.getByRole("group", { name: "Pick a month" });
+    expect(within(picker).getByRole("button", { name: "Previous year: 2025" })).toBeEnabled();
+    expect(within(picker).getByRole("link", { name: "October 2026 (this month), with transactions" })).toBeVisible();
+    expect(within(picker).getByText("Sep")).toBeVisible();
   });
 });

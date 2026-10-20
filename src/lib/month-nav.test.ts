@@ -42,6 +42,12 @@ describe("inMonthPhrase", () => {
     expect(inMonthPhrase(september, october)).toBe("en septiembre");
     expect(inMonthPhrase({ year: 2025, month: 10 }, october)).toBe("en octubre de 2025");
   });
+
+  it("en inglés", () => {
+    expect(inMonthPhrase(october, october, "en")).toBe("this month");
+    expect(inMonthPhrase(september, october, "en")).toBe("in September");
+    expect(inMonthPhrase({ year: 2025, month: 10 }, october, "en")).toBe("in October 2025");
+  });
 });
 
 describe("monthNav", () => {
@@ -57,7 +63,16 @@ describe("monthNav", () => {
       next: null,
       backToCurrent: null,
       activeMonths: active,
+      locale: "es",
     });
+  });
+
+  it("en inglés, los nombres de los meses", () => {
+    const nav = monthNav("/dashboard", september, october, active, "en");
+    expect(nav.label).toBe("September 2026");
+    expect(nav.prev?.name).toBe("August 2026");
+    expect(nav.next?.name).toBe("October 2026");
+    expect(nav.locale).toBe("en");
   });
 
   it("en uno anterior: las dos flechas y 'Volver al mes actual'", () => {
@@ -103,6 +118,12 @@ describe("yearGrid", () => {
       "ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sept", "oct", "nov", "dic",
     ]);
     expect(grid[8].name).toBe("septiembre de 2026");
+  });
+
+  it("en inglés", () => {
+    const grid = yearGrid(monthNav("/egresos", september, october, [], "en"), 2026);
+    expect(grid.map((c) => c.short)).toEqual(["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]);
+    expect(grid[8].name).toBe("September 2026");
   });
 
   it("cada mes lleva a su página; el actual sin ?mes= y los futuros a ninguna parte", () => {

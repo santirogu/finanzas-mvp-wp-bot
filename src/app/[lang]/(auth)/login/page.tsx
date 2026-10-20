@@ -1,9 +1,15 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { getTexts } from "@/i18n/server";
+import { texts } from "@/i18n/texts";
 import { AuthForm } from "../auth-form";
 import { ExpiredSessionNotice } from "./expired-session-notice";
 
-export const metadata: Metadata = { title: "Iniciar sesión" };
+const TEXTS = texts({ title: "Iniciar sesión" }, { en: { title: "Sign in" } });
+
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getTexts(TEXTS)).title };
+}
 
 export default function LoginPage() {
   return (

@@ -62,13 +62,15 @@ describe("proxy · idioma", () => {
   const cookie = SESSION_COOKIES[0];
 
   it("arma la página en el idioma de la cookie, con los parámetros de la dirección", () => {
+    expect(visit("/ingresos?mes=2026-10", cookie, "idioma=en")).toBe(`sigue a ${ORIGIN}/en/ingresos?mes=2026-10`);
     expect(visit("/ingresos?mes=2026-10", cookie, "idioma=es")).toBe(`sigue a ${ORIGIN}/es/ingresos?mes=2026-10`);
-    expect(visit("/", undefined, "idioma=es")).toBe(`sigue a ${ORIGIN}/es`);
+    expect(visit("/", undefined, "idioma=en")).toBe(`sigue a ${ORIGIN}/en`);
+    expect(visit("/login", undefined, "idioma=en")).toBe(`sigue a ${ORIGIN}/en/login`);
   });
 
   it("sin la cookie, o con un idioma que la app no tiene, en español", () => {
     expect(visit("/dashboard", cookie)).toBe(inSpanish("/dashboard"));
-    for (const value of ["fr", "", "ES", "es-CO"]) expect(visit("/dashboard", cookie, `idioma=${value}`), value).toBe(inSpanish("/dashboard"));
+    for (const value of ["fr", "", "ES", "EN", "es-CO", "en-US"]) expect(visit("/dashboard", cookie, `idioma=${value}`), value).toBe(inSpanish("/dashboard"));
   });
 
   it("una dirección que ya trae el idioma no es una página: se arma como otra cualquiera (y da 404)", () => {

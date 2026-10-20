@@ -2,7 +2,34 @@
 
 import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
+import { useTexts } from "@/i18n/client";
+import { texts } from "@/i18n/texts";
 import { type MonthNavData, yearArrows, yearGrid } from "@/lib/month-nav";
+
+const TEXTS = texts(
+  {
+    prevMonth: "Mes anterior",
+    nextMonth: "Mes siguiente",
+    pickMonth: "Elegir un mes",
+    prevYear: "Año anterior",
+    nextYear: "Año siguiente",
+    thisMonth: "este mes",
+    withTransactions: "con movimientos",
+    backToCurrent: "Volver al mes actual",
+  },
+  {
+    en: {
+      prevMonth: "Previous month",
+      nextMonth: "Next month",
+      pickMonth: "Pick a month",
+      prevYear: "Previous year",
+      nextYear: "Next year",
+      thisMonth: "this month",
+      withTransactions: "with transactions",
+      backToCurrent: "Back to this month",
+    },
+  },
+);
 
 // Flechas: 44 px en pantallas táctiles (lo que recomienda Apple); con mouse, más chicas.
 const ARROW = "inline-flex shrink-0 items-center justify-center rounded-lg";
@@ -18,6 +45,7 @@ const CHEVRON_RIGHT =
  * chico, arriba del título.
  */
 export function MonthNav({ nav, heading = false }: { nav: MonthNavData; heading?: boolean }) {
+  const t = useTexts(TEXTS);
   const [open, setOpen] = useState(false);
   // El año que muestra la tarjeta: al abrirla, el del mes que se ve; sus flechas solo lo cambian aquí.
   const [year, setYear] = useState(nav.selected.year);
@@ -76,7 +104,7 @@ export function MonthNav({ nav, heading = false }: { nav: MonthNavData; heading?
 
   return (
     <div className="flex flex-wrap items-center gap-x-1 gap-y-1">
-      <Arrow link={nav.prev} label="Mes anterior" className={arrowSize} path={CHEVRON_LEFT} />
+      <Arrow link={nav.prev} label={t.prevMonth} className={arrowSize} path={CHEVRON_LEFT} />
       {/* La tarjeta se cierra si el foco sale de aquí (con Tab) o al elegir un mes. */}
       <div
         ref={wrapper}
@@ -92,21 +120,21 @@ export function MonthNav({ nav, heading = false }: { nav: MonthNavData; heading?
         <div
           id={cardId}
           role="group"
-          aria-label="Elegir un mes"
+          aria-label={t.pickMonth}
           hidden={!open}
           className="card absolute left-0 top-full z-20 mt-1 w-64 max-w-[calc(100vw-2rem)] p-3 shadow-lg"
         >
           <div className="mb-2 flex items-center justify-between">
-            <YearButton year={arrows.prev} label="Año anterior" path={CHEVRON_LEFT} onSelect={setYear} />
+            <YearButton year={arrows.prev} label={t.prevYear} path={CHEVRON_LEFT} onSelect={setYear} />
             {/* Al cambiar de año con las flechas, el lector de pantalla lo dice. */}
             <p aria-live="polite" className="text-sm font-semibold tabular-nums">
               {year}
             </p>
-            <YearButton year={arrows.next} label="Año siguiente" path={CHEVRON_RIGHT} onSelect={setYear} />
+            <YearButton year={arrows.next} label={t.nextYear} path={CHEVRON_RIGHT} onSelect={setYear} />
           </div>
           <ul className="grid grid-cols-3 gap-1.5">
             {yearGrid(nav, year).map((cell) => {
-              const label = `${cell.name}${cell.current ? " (este mes)" : ""}${cell.active ? ", con movimientos" : ""}`;
+              const label = `${cell.name}${cell.current ? ` (${t.thisMonth})` : ""}${cell.active ? `, ${t.withTransactions}` : ""}`;
               const look = cell.selected
                 ? "bg-brand font-semibold text-brand-foreground"
                 : `${cell.current ? "ring-1 ring-inset ring-control" : ""} ${cell.href ? "hover:bg-border/60" : "text-control"}`;
@@ -146,13 +174,13 @@ export function MonthNav({ nav, heading = false }: { nav: MonthNavData; heading?
           </ul>
         </div>
       </div>
-      <Arrow link={nav.next} label="Mes siguiente" className={arrowSize} path={CHEVRON_RIGHT} />
+      <Arrow link={nav.next} label={t.nextMonth} className={arrowSize} path={CHEVRON_RIGHT} />
       {nav.backToCurrent && (
         <Link
           href={nav.backToCurrent}
           className={`inline-flex min-h-11 items-center rounded-lg px-2 text-sm font-medium text-brand hover:bg-brand/10 pointer-fine:min-h-8 ${heading ? "sm:ml-auto" : ""}`}
         >
-          Volver al mes actual
+          {t.backToCurrent}
         </Link>
       )}
     </div>

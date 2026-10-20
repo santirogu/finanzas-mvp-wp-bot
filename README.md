@@ -252,25 +252,29 @@ scripts/seed.ts                     Categorías por defecto
 
 ### Idiomas
 
-La app se prepara para tener más de un idioma (por ahora, solo español; el inglés llega por partes y
-recién se podrá elegir al final).
+La app tiene español (el de siempre) e inglés, que se pasa por partes: todavía no se puede elegir, pero
+con la cookie `idioma=en` ya se ve lo que está traducido (la navegación, el login y el registro, la 404).
 
 - **Las direcciones no llevan el idioma.** Las páginas están en `src/app/[lang]/` y el proxy
   (`src/proxy.ts`) arma cada una, por dentro, en el idioma de la cookie `idioma`: `/dashboard` se arma
-  como `/es/dashboard`, y el navegador sigue viendo `/dashboard`. Sin la cookie, o con un valor que no
-  es un idioma de la app, en español (`src/i18n/locales.ts`).
+  como `/es/dashboard` (o `/en/dashboard`), y el navegador sigue viendo `/dashboard`. Sin la cookie, o
+  con un valor que no es un idioma de la app, en español (`src/i18n/locales.ts`).
 - **Por qué así:** el `<html lang>` y los textos salen del segmento (`next/root-params`), sin leer
   cookies al armar la página. Las páginas públicas (inicio, login, registro, privacidad) siguen
   prearmadas, una vez por idioma.
-- **En el servidor**, `getLocale()` y `getDictionary()` (`src/i18n/server.ts`) dan el idioma y los textos
-  de la página, desde cualquier componente.
+- **Los textos** van junto a quien los usa, con `texts({ …español }, { en: { …inglés } })`
+  (`src/i18n/texts.ts`): el español manda y TypeScript exige las mismas claves en el inglés. Un texto con
+  datos es una función. Se leen con `getTexts()` en el servidor (`src/i18n/server.ts`, que también da
+  `getLocale()`) y con `useTexts()` en el cliente (`src/i18n/client.tsx`: el layout raíz pone el idioma).
+  En las pruebas de componentes, `render(ui, { wrapper: InEnglish })` (`test/locale.tsx`).
+- **Montos y fechas:** `formatMoney`, `parseAmountInput`, `formatAmountTyping`, `formatMonthName`,
+  `formatShortDate`… reciben el idioma (por defecto, español). En inglés, con el formato de EE. UU.:
+  "$1,000,000.00" (en el campo de monto, la coma separa los miles) y "Oct 13". El bot, el PDF y el CSV
+  siguen en español.
 - **En un componente de cliente**, la ruta actual se lee con `useAppPathname()` (`src/i18n/navigation.ts`),
   nunca con `usePathname()`: con la reescritura del proxy, el servidor y el navegador pueden ver
   `/es/ayuda` o `/ayuda`, y eso marcaba mal la pestaña o volvía a una dirección con el idioma.
   `src/i18n/guard.test.ts` lo exige.
-- **Los textos** van en `src/i18n/dictionaries/` (el español es el de referencia; el tipo `Dictionary`
-  obliga a que los demás idiomas tengan las mismas claves). Por ahora solo los usan el título de la app
-  y la 404; los demás se pasan de a poco.
 - **La 404:** una dirección que no es una página la atiende `src/app/[lang]/[...rest]` (con el título) y
   `not-found.tsx`, en el idioma de la página. Lo que no es una página (una ruta de la API que no existe)
   va a `src/app/global-not-found.tsx` (en español), con `experimental.globalNotFound` en `next.config.ts`.

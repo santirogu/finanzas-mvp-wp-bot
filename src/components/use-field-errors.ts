@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState, type FormEvent } from "react";
+import { useLocale } from "@/i18n/client";
 import { fieldErrorMessage, type FieldMessages } from "@/lib/field-errors";
 
 type Field = HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
@@ -15,14 +16,15 @@ const stateOf = (field: Field) => ({
 });
 
 /**
- * Los errores de los campos de un formulario, en español y debajo de cada campo, en vez del globo
- * del navegador. Uso: `<form {...formProps}>` y `errors.nombre` junto a cada campo (con
+ * Los errores de los campos de un formulario, en el idioma de la página y debajo de cada campo, en vez
+ * del globo del navegador (`messages`, los propios de cada campo, ya en ese idioma). Uso: `<form {...formProps}>` y `errors.nombre` junto a cada campo (con
  * aria-invalid y aria-describedby). Se marcan todos los campos con problemas a la vez, el cursor va
  * al primero y el mensaje se borra apenas se corrige. Es solo el aviso: el servidor valida igual.
  *
  * La prueba src/forms.test.ts exige que todo formulario con campos validados lo use.
  */
 export function useFieldErrors(messages: Record<string, FieldMessages> = {}) {
+  const locale = useLocale();
   const [errors, setErrors] = useState<Record<string, string>>({});
   // El primero de cada intento de envío recibe el cursor (el navegador avisa campo por campo).
   const focusedThisTry = useRef(false);
@@ -32,7 +34,7 @@ export function useFieldErrors(messages: Record<string, FieldMessages> = {}) {
       const field = event.target as Field;
       // Sin el globo del navegador (que sale en su idioma).
       event.preventDefault();
-      const message = fieldErrorMessage(stateOf(field), messages[field.name]);
+      const message = fieldErrorMessage(stateOf(field), messages[field.name], locale);
       if (message) setErrors((current) => ({ ...current, [field.name]: message }));
       if (!focusedThisTry.current) {
         focusedThisTry.current = true;
@@ -40,7 +42,7 @@ export function useFieldErrors(messages: Record<string, FieldMessages> = {}) {
         setTimeout(() => (focusedThisTry.current = false));
       }
     },
-    [messages],
+    [messages, locale],
   );
 
   // Apenas el campo queda bien, se va su mensaje (y si cambia de problema, se actualiza).
@@ -51,7 +53,7 @@ export function useFieldErrors(messages: Record<string, FieldMessages> = {}) {
       if (!field.name) return;
       setErrors((current) => {
         if (!(field.name in current)) return current;
-        const message = fieldErrorMessage(stateOf(field), messages[field.name]);
+        const message = fieldErrorMessage(stateOf(field), messages[field.name], locale);
         if (message === current[field.name]) return current;
         const next = { ...current };
         if (message) next[field.name] = message;
@@ -59,7 +61,7 @@ export function useFieldErrors(messages: Record<string, FieldMessages> = {}) {
         return next;
       });
     },
-    [messages],
+    [messages, locale],
   );
 
   /** Borra todos los mensajes (p. ej. al cambiar lo que pide el formulario). */
