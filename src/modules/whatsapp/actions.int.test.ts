@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "@/db";
-import { whatsappLink, whatsappLinkCode } from "@/db/schema";
+import { accountEvent, whatsappLink, whatsappLinkCode } from "@/db/schema";
 import type { CurrentUser } from "@/lib/session";
 import { createUser } from "../../../test/integration/factories";
 import { consumeLinkCode, createLinkCode, getLinkForUser } from "./link";
@@ -52,11 +52,15 @@ describe("generateLinkCodeAction", () => {
     const ana = await createUser({ name: "Ana" });
     await signIn(ana);
     for (let i = 0; i < 5; i++) expect(await generateLinkCodeAction()).toMatchObject({ ok: true });
+    const pending = await db.select().from(whatsappLinkCode);
 
     expect(await generateLinkCodeAction()).toEqual({
       ok: false,
       error: "Ya generaste varios códigos en la última hora. Usa el último que generaste o espera un rato para pedir otro.",
     });
+    // El último código sigue sirviendo (no se reemplazó) y el intento no cuenta como un código más.
+    expect(await db.select().from(whatsappLinkCode)).toEqual(pending);
+    expect(await db.$count(accountEvent, eq(accountEvent.type, "whatsapp_code_created"))).toBe(5);
   });
 
   it("el código queda a nombre del usuario de la sesión y vincula el número a esa cuenta", async () => {

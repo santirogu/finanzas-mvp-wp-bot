@@ -125,6 +125,9 @@ describe("changePasswordAction", () => {
       const wrong = String((Number(totp(secret)) + 500_000) % 1_000_000).padStart(6, "0");
       const result = await change({ ...valid, code: wrong });
       expect(result.fieldErrors?.code).toMatch(/^El código no es correcto/);
+      // La contraseña sigue siendo la de antes y no queda en el historial como cambiada.
+      expect(await eventsOf(await userIdOf(jar))).not.toContainEqual({ type: "password_changed" });
+      expect(await loginWorks("ana@test.local", NEW_PASSWORD)).toBe(false);
     });
 
     it("con su código, sí", async () => {

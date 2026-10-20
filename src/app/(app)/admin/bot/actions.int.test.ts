@@ -89,7 +89,9 @@ describe("pausar y reanudar Claude", () => {
     const unused = code();
     expect(await resumeClaudeAction({}, form({ code: unused }))).toEqual({ error: "Claude ya está activo." });
     // El mismo código sigue sirviendo para lo que sí cambia.
-    expect((await pauseClaudeAction({}, form({ code: unused }))).message).toBeDefined();
+    expect(await pauseClaudeAction({}, form({ code: unused }))).toMatchObject({
+      message: "Claude quedó en pausa: el bot responde los comandos y pide registrar lo demás en la web.",
+    });
     expect(await pauseClaudeAction({}, form({ code: code() }))).toEqual({ error: "Claude ya está en pausa." });
   });
 
@@ -134,7 +136,11 @@ describe("cambiar los topes por cuenta", () => {
     expect(await changeAiLimitsAction({}, form({ perHour: "20", perDay: "100", code: unused }))).toEqual({
       error: "Los topes ya son esos: cambia alguno.",
     });
-    expect((await changeAiLimitsAction({}, form({ perHour: "25", perDay: "100", code: unused }))).message).toBeDefined();
+    // Los errores no cambiaron los topes.
+    expect(await getBotSettings()).toMatchObject({ limits: { perHour: 20, perDay: 100 } });
+    expect(await changeAiLimitsAction({}, form({ perHour: "25", perDay: "100", code: unused }))).toMatchObject({
+      message: "Los topes quedaron en 25 por hora y 100 por día, por cuenta.",
+    });
     expect(await events()).toHaveLength(1);
   });
 
