@@ -47,6 +47,16 @@ describe("parseAmountInput", () => {
     // El signo menos tipográfico (U+2212) que muestra la app: copiado de una lista o del balance.
     "−5.000",
     "−$5.000,00",
+    // Cualquier otra raya o guion también es un negativo: la raya y el guion largo (el iPhone cambia
+    // "--" por "—"), el de ancho completo de los teclados chino y japonés, y los guiones Unicode.
+    "–5.000",
+    "—5.000",
+    "－5.000",
+    "‐5.000",
+    "‑5.000",
+    "‒5.000",
+    "﹣5.000",
+    "$–5.000,00",
     // Más de dos decimales: "1,500" puede ser mil quinientos (en inglés) o 1,5: mejor no adivinar.
     "1,500",
     "45.900,505",

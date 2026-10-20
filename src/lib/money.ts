@@ -22,6 +22,7 @@ export function formatMoney(amount: number, currency = "COP"): string {
     formatters.set(currency, fmt);
   }
   // Intl pone un espacio duro entre el símbolo y el número ("$ 1.000,00"); se quita.
+  // Stryker disable next-line Regex: sin el "^" da lo mismo (Intl pone un solo guion, el del negativo, al comienzo)
   return fmt.format(amount).replace(/\s/g, "").replace(/^-/, "−");
 }
 
@@ -31,12 +32,15 @@ export function formatMoney(amount: number, currency = "COP"): string {
  * Sin coma, un punto final seguido de 1 o 2 dígitos también son centavos ("45900.5", del teclado en
  * inglés): un punto de miles siempre va seguido de 3 dígitos, así que no hay confusión.
  * Devuelve null si no hay un monto válido mayor que cero, si tiene más de dos decimales ("1,500"
- * sería ambiguo) o si es negativo (el tipo ingreso/egreso ya indica el signo: "-5.000" o "−5.000" no
- * deben guardarse como 5.000).
+ * sería ambiguo) o si es negativo (el tipo ingreso/egreso ya indica el signo: "-5.000", "−5.000" o
+ * "–5.000" no deben guardarse como 5.000).
  */
 export function parseAmountInput(raw: string): number | null {
-  // El guion o el signo menos tipográfico (U+2212) que muestra la app, si se copia un monto de ella.
-  if (/[-−]/.test(raw)) return null;
+  // Cualquier guion o raya (\p{Pd}: el guion, la raya "–" y "—", que el iPhone pone en vez de "--", el
+  // de ancho completo "－"…) y el signo menos tipográfico (U+2212) que muestra la app, si se copia un
+  // monto de ella. Con JavaScript, el campo ya los quita al escribir (formatAmountTyping); esto cubre el
+  // formulario enviado sin él.
+  if (/[\p{Pd}\u2212]/u.test(raw)) return null;
   // Solo cuentan los dígitos y los separadores: "$", espacios y letras se ignoran.
   const text = raw.replace(/[^\d.,]/g, "");
   // Stryker disable next-line Regex: sin el "^" del segundo patrón el resultado es el mismo (solo hay dígitos y puntos, y el grupo perezoso arranca en 0)
