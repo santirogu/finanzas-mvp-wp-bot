@@ -50,12 +50,16 @@ test("los avisos se van solos: 4 segundos los de confirmación, 10 los que tiene
   await expect(toast(page, /^Egreso registrado$/)).toBeVisible();
   await expect(toast(page, /^Egreso registrado$/)).toBeHidden({ timeout: 6_000 });
 
+  // Con el reloj simulado: el tiempo avanza a mano y la prueba no espera 10 segundos de verdad.
+  await page.clock.install();
   await visible(page.getByRole("button", { name: "Eliminar Café" })).click();
   const deleted = toast(page, "Se borró «Café»");
   await expect(deleted).toBeVisible();
-  await page.waitForTimeout(6_000);
+  // A los 6 segundos sigue (un aviso común ya se habría ido); a los 10, se va.
+  await page.clock.runFor(6_000);
   await expect(deleted).toBeVisible();
-  await expect(deleted).toBeHidden({ timeout: 6_000 });
+  await page.clock.runFor(4_100);
+  await expect(deleted).toBeHidden();
 });
 
 test("el aviso de otra persona no se muestra ni se puede deshacer", async ({ page, browser }) => {

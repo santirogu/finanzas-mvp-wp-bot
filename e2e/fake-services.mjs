@@ -11,6 +11,8 @@
 //   GET  /anthropic/v1/models/<modelo>         → el modelo del bot (Probar conexiones)
 //   POST /fallar?servicio=whatsapp|claude      → la próxima consulta de ese servicio responde 401
 //   POST /fallar?servicio=envio&to=<número>     → el próximo mensaje a ese número no sale (400 de Meta)
+//   POST /restablecer                           → sin fallos pendientes de whatsapp ni claude (al empezar
+//                                                 la prueba que los usa: un intento anterior caído pudo dejar uno)
 //   GET  /salud                                → para saber que ya arrancó
 
 import { createServer } from "node:http";
@@ -105,6 +107,12 @@ const server = createServer(async (request, response) => {
     }
 
     if (request.method === "GET" && url.pathname === "/claude") return json(response, 200, claudeRequests);
+
+    if (request.method === "POST" && url.pathname === "/restablecer") {
+      failNext.delete("whatsapp");
+      failNext.delete("claude");
+      return json(response, 200, { ok: true });
+    }
 
     if (request.method === "POST" && url.pathname === "/fallar") {
       const service = url.searchParams.get("servicio");
