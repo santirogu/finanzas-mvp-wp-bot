@@ -11,8 +11,8 @@
 // actualiza este script en el mismo PR.
 
 import { execFileSync } from "node:child_process";
-import { existsSync, globSync, readFileSync, statSync } from "node:fs";
-import { basename, dirname, join, matchesGlob, relative } from "node:path";
+import { existsSync, globSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { dirname, join, matchesGlob, relative } from "node:path";
 
 const ROOT = process.cwd();
 const mode = process.argv[2] === "cambios" ? "cambios" : "completa";
@@ -164,12 +164,27 @@ section(
     ),
 );
 
+/** ¿El texto nombra esa ruta? ("/" se busca sola: si no, cualquier ruta la contendría). */
+const mentions = (text, route) =>
+  route === "/" ? /["'`]\/["'`?]/.test(text) : text.includes(`"${route}`) || text.includes(`\`${route}`) || text.includes(`'${route}`);
+
+section(
+  "Pruebas con datos al azar",
+  "Pruebas que usan Math.random o randomInt: revisa que ninguna aserción dependa de lo que sale (una búsqueda de \"100%_nadie\" fallaba cuando el número al azar tenía \"100\", 1 de cada 200 corridas).",
+  () =>
+    tests.filter(inScope).flatMap((file) =>
+      read(file)
+        .split("\n")
+        .flatMap((line, i) => (/Math\.random\(|\brandomInt\(/.test(line) ? [`${file}:${i + 1}: ${line.trim().slice(0, 100)}`] : [])),
+    ),
+);
+
 /** La ruta de una página de src/app (sin los grupos "(app)"), con los segmentos dinámicos como "[id]". */
 const routeOf = (page) =>
   `/${dirname(page).replace(/^src\/app\/?/, "").split("/").filter((s) => s && !/^\(.*\)$/.test(s)).join("/")}`;
 section(
   "Páginas sin revisión táctil o de diseño",
-  "Cada página va en e2e/diseno-tactil.spec.ts y en las vistas de la auditoría de diseño (CLAUDE.md → Celular y tableta). Las dinámicas ([id]) se abren navegando: se verifican a mano.",
+  "Cada página va en e2e/diseno-tactil.spec.ts y en las vistas de la auditoría de diseño (CLAUDE.md → Celular y tableta). Las dinámicas ([id]) se abren navegando: se verifican a mano. Las que solo existen en desarrollo se marcan.",
   () => {
     const tactil = read("e2e/diseno-tactil.spec.ts");
     const vistas = read(".claude/skills/auditoria-diseno/recorrido/vistas.ts");
@@ -179,12 +194,33 @@ section(
         const route = routeOf(page);
         // Las dinámicas se abren navegando (tocando un movimiento), no por su dirección: se revisan a mano.
         if (route.includes("[")) return [`${route} (${page}) · dinámica: verifica a mano que se abra en las dos`];
-        const fixed = route;
-        const missing = [!tactil.includes(`"${fixed}`) && !tactil.includes(`\`${fixed}`) && "diseno-tactil", !vistas.includes(fixed) && "vistas de diseño"].filter(Boolean);
+        // Las que dan 404 en producción (como el simulador del bot) no se pueden abrir en las E2E.
+        if (/NODE_ENV === "production"\)\s*notFound\(\)/.test(read(page))) return [`${route} (${page}) · solo en desarrollo: no se revisa`];
+        const missing = [!mentions(tactil, route) && "diseno-tactil", !mentions(vistas, route) && "vistas de diseño"].filter(Boolean);
         return missing.length ? [`${route} (${page}) · falta en: ${missing.join(" y ")}`] : [];
       });
   },
 );
+
+/**
+ * Las tablas de un archivo del esquema: su nombre en el código, en la base y su definición completa
+ * (de "pgTable(" a su paréntesis de cierre). Con una expresión regular que cortaba en el primer ");",
+ * una tabla que cerraba con "});" se tragaba la siguiente y no se revisaba.
+ */
+function tablesIn(source) {
+  return [...source.matchAll(/export const (\w+) = pgTable\(\s*"(\w+)"/g)].map((match) => {
+    let depth = 0;
+    let end = source.length;
+    for (let i = source.indexOf("(", match.index); i < source.length; i++) {
+      if (source[i] === "(") depth++;
+      else if (source[i] === ")" && --depth === 0) {
+        end = i + 1;
+        break;
+      }
+    }
+    return { name: match[1], table: match[2], body: source.slice(match.index, end) };
+  });
+}
 
 section(
   "Tablas de la persona fuera de la prueba del borrado de la cuenta",
@@ -194,10 +230,10 @@ section(
     return glob("src/db/schema/*.ts")
       .filter(inScope)
       .flatMap((file) =>
-        [...read(file).matchAll(/export const (\w+) = pgTable\(\s*"(\w+)"([\s\S]*?)\n\);?\n/g)]
-          .filter(([, , , body]) => /references\(\(\) => user\.id, \{ onDelete: "cascade" \}\)/.test(body))
-          .filter(([, name]) => !new RegExp(`\\b${name}\\b`).test(deletion))
-          .map(([, name, table]) => `${name} (${table}, ${file})`),
+        tablesIn(read(file))
+          .filter(({ body }) => /references\(\(\) => user\.id, \{ onDelete: "cascade" \}\)/.test(body))
+          .filter(({ name }) => !new RegExp(`\\b${name}\\b`).test(deletion))
+          .map(({ name, table }) => `${name} (${table}, ${file})`),
       );
   },
 );
@@ -206,7 +242,9 @@ section(
   "Server Actions y rutas sin prueba de integración",
   "Cada Server Action y ruta de API se prueba en integración (con dos usuarios, CLAUDE.md). Aquí, las que ningún *.int.test.ts nombra; la matriz de autorización ya exige que estén clasificadas.",
   () => {
-    const integration = glob("src/**/*.int.test.ts").map(read).join("\n");
+    const integrationFiles = glob("src/**/*.int.test.ts");
+    const integration = integrationFiles.map(read).join("\n");
+    const importedByIntegration = new Set(integrationFiles.flatMap(importsOf));
     const actions = glob("src/**/*.ts")
       .filter((file) => !isTest(file) && inScope(file) && /^["']use server["']/.test(read(file)))
       .flatMap((file) => [...read(file).matchAll(/export async function (\w+)/g)].map(([, name]) => ({ file, name })))
@@ -214,7 +252,9 @@ section(
       .map(({ file, name }) => `${name} (${file})`);
     const routes = glob("src/app/**/route.ts")
       .filter(inScope)
-      .filter((file) => !integration.includes(basename(dirname(file))) && !glob(`${dirname(file)}/*.int.test.ts`).length)
+      // Probada si una prueba de integración la importa o está en su misma carpeta (no basta con que el
+      // nombre de la carpeta, como "webhook", aparezca en otra prueba).
+      .filter((file) => !importedByIntegration.has(file) && !readdirSync(join(ROOT, dirname(file))).some((f) => f.endsWith(".int.test.ts")))
       .map((file) => `${routeOf(file)} (${file})`);
     return [...actions, ...routes];
   },
