@@ -1,4 +1,5 @@
 import { AdminBadge } from "@/components/admin-badge";
+import { DEFAULT_LOCALE, type Locale } from "@/i18n/locales";
 import { hasRole, isSuperAdmin, type Role } from "@/lib/roles";
 import { formatHour } from "@/modules/admin/shared/filters";
 
@@ -8,24 +9,27 @@ export function AccountBadges({
   superAdmin = false,
   lockedUntil,
   suspended,
+  locale = DEFAULT_LOCALE,
 }: {
   role: Role;
   /** La marca de super admin: su etiqueta va en dorado. */
   superAdmin?: boolean;
   lockedUntil: Date | null;
   suspended: boolean;
+  locale?: Locale;
 }) {
+  const es = locale === "es";
   return (
     <>
       {hasRole(role, "admin") && <AdminBadge superAdmin={isSuperAdmin(role, superAdmin)} />}
       {suspended && (
         <span className="rounded-full border border-foreground/30 bg-foreground/10 px-2 py-0.5 text-xs font-medium text-foreground">
-          Suspendida
+          {es ? "Suspendida" : "Suspended"}
         </span>
       )}
       {lockedUntil && (
         <span className="rounded-full border border-danger/40 bg-danger/10 px-2 py-0.5 text-xs font-medium text-danger">
-          Bloqueada hasta las {formatHour(lockedUntil)}
+          {es ? `Bloqueada hasta las ${formatHour(lockedUntil, locale)}` : `Locked until ${formatHour(lockedUntil, locale)}`}
         </span>
       )}
     </>

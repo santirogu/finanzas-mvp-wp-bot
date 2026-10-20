@@ -255,7 +255,8 @@ scripts/seed.ts                     Categorías por defecto
 La app tiene español (el de siempre) e inglés, que se pasa por partes: todavía no se puede elegir, pero
 con la cookie `idioma=en` ya se ve lo que está traducido (la navegación, el login y el registro, el
 Resumen con la campana y los próximos pagos, Ingresos, Egresos, Fijos, Reportes con sus descargas, Mi
-cuenta, la Ayuda y la 404). Falta la administración.
+cuenta, la Ayuda, la 404 y, de la administración, el inicio, Seguridad y Usuarios). Faltan el Historial,
+el Bot y Categorías.
 
 - **Las direcciones no llevan el idioma.** Las páginas están en `src/app/[lang]/` y el proxy
   (`src/proxy.ts`) arma cada una, por dentro, en el idioma de la cookie `idioma`: `/dashboard` se arma
@@ -272,7 +273,9 @@ cuenta, la Ayuda y la 404). Falta la administración.
 - **En las Server Actions** no hay segmento `[lang]`: el idioma sale de la cookie con
   `getRequestLocale()` (`src/i18n/request.ts`) y se pasa a la función del módulo que arma el mensaje
   (`skipFixedPayment(…, locale)`). El monto del formulario se lee con los separadores de ese idioma
-  (`transactionSchema(locale)`).
+  (`transactionSchema(locale)`). Las acciones del admin leen la cookie dentro del módulo
+  (`confirmAdminCode` y las de `src/modules/admin/users/account-actions.ts`): las Server Actions de la
+  página no lo pasan.
 - **En las pruebas:** los componentes, `render(ui, { wrapper: InEnglish })` (`test/locale.tsx`) o
   `renderWithToaster(ui, { english: true })`; las acciones en integración, `requestLocale.value = "en"`
   (`test/integration/locale.ts`). `next/root-params` y `getRequestLocale` se simulan en los archivos de

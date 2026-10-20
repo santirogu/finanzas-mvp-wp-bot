@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useLocale } from "@/i18n/client";
 import { useAppPathname } from "@/i18n/navigation";
 import { useCurrentInView } from "@/components/use-current-in-view";
 import { adminNavItems, isCurrentAdminItem } from "@/modules/admin/modules";
@@ -12,11 +13,12 @@ import { adminNavItems, isCurrentAdminItem } from "@/modules/admin/modules";
  */
 export function AdminNav() {
   const pathname = useAppPathname();
+  const locale = useLocale();
   const nav = useCurrentInView(pathname);
   return (
-    <nav ref={nav} aria-label="Secciones de administración" className="-mx-4 overflow-x-auto px-4">
+    <nav ref={nav} aria-label={locale === "es" ? "Secciones de administración" : "Administration sections"} className="-mx-4 overflow-x-auto px-4">
       <ul className="flex w-max gap-2 py-1">
-        {adminNavItems().map((item) => {
+        {adminNavItems(locale).map((item) => {
           const current = isCurrentAdminItem(item.href, pathname);
           return (
             <li key={item.href}>

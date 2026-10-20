@@ -1,6 +1,8 @@
 // Las sesiones de una cuenta, legibles: el navegador y el sistema ("Chrome · Android") y la IP. Solo
 // para mostrar en el detalle de una cuenta (el texto completo del navegador va en un title).
 
+import { DEFAULT_LOCALE, type Locale } from "@/i18n/locales";
+
 const BROWSERS: [RegExp, string][] = [
   // Antes que Chrome: Edge, Opera y Samsung Internet también dicen "Chrome".
   [/\bEdg(e|A|iOS)?\//, "Edge"],
@@ -23,10 +25,11 @@ const SYSTEMS: [RegExp, string][] = [
 
 const match = (rules: [RegExp, string][], text: string) => rules.find(([pattern]) => pattern.test(text))?.[1] ?? null;
 
-/** "Chrome · Android", "Safari · iOS"… o lo que se pueda reconocer. */
-export function describeUserAgent(userAgent: string | null | undefined): string {
-  if (!userAgent?.trim()) return "Dispositivo desconocido";
-  const browser = match(BROWSERS, userAgent) ?? "Navegador desconocido";
+/** "Chrome · Android", "Safari · iOS"… o lo que se pueda reconocer (lo desconocido, en el idioma de la página). */
+export function describeUserAgent(userAgent: string | null | undefined, locale: Locale = DEFAULT_LOCALE): string {
+  const es = locale === "es";
+  if (!userAgent?.trim()) return es ? "Dispositivo desconocido" : "Unknown device";
+  const browser = match(BROWSERS, userAgent) ?? (es ? "Navegador desconocido" : "Unknown browser");
   const system = match(SYSTEMS, userAgent);
   return system ? `${browser} · ${system}` : browser;
 }
@@ -48,9 +51,9 @@ function ipv6Groups(ip: string): number[] | null {
  * Better Auth guarda las IPv6 recortadas a su red (/64, como las agrupa el límite de intentos): en ese
  * caso se muestra la red, "2800:e2:4a::/64".
  */
-export function formatIp(ip: string | null | undefined): string {
+export function formatIp(ip: string | null | undefined, locale: Locale = DEFAULT_LOCALE): string {
   const text = ip?.trim() ?? "";
-  if (!text) return "desconocida";
+  if (!text) return locale === "es" ? "desconocida" : "unknown";
   // Una IPv4 (o cualquier otra cosa) no tiene los grupos de una IPv6: va tal cual.
   const groups = ipv6Groups(text);
   if (!groups) return text;

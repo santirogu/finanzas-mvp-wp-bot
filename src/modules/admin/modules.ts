@@ -5,6 +5,8 @@
 // Agregar un módulo (ver CLAUDE.md): su entrada aquí, su carpeta en src/app/[lang]/(app)/admin/<id>/ y en
 // src/modules/admin/<id>/ (consultas que llaman a requireAdmin), y sus pruebas.
 
+import { DEFAULT_LOCALE, type Locale } from "@/i18n/locales";
+
 export const ADMIN_MODULE_IDS = [
   "historial",
   "usuarios",
@@ -82,10 +84,38 @@ export const ADMIN_MODULES: readonly AdminModule[] = [
   },
 ];
 
-export const activeAdminModules = () => ADMIN_MODULES.filter((m) => m.status === "activo");
+/** El nombre y la frase de cada módulo en inglés (en ADMIN_MODULES van en español). */
+const ENGLISH: Readonly<Record<AdminModuleId, Pick<AdminModule, "label" | "description">>> = {
+  historial: { label: "History", description: "Sign-ups and WhatsApp linking of each account" },
+  usuarios: { label: "Users", description: "Accounts, sessions and status" },
+  bot: { label: "WhatsApp bot", description: "Messages, errors and Claude usage" },
+  categorias: { label: "Categories", description: "The income and expense categories" },
+  salud: { label: "System health", description: "Database, deployments and services" },
+  configuracion: { label: "Settings", description: "Global app settings" },
+  seguridad: { label: "Security", description: "Your two-step verification" },
+};
+
+/** Los módulos, con su nombre y su frase en el idioma de la página. */
+export const adminModules = (locale: Locale = DEFAULT_LOCALE): readonly AdminModule[] =>
+  locale === "es" ? ADMIN_MODULES : ADMIN_MODULES.map((m) => ({ ...m, ...ENGLISH[m.id] }));
+
+export const activeAdminModules = (locale: Locale = DEFAULT_LOCALE) => adminModules(locale).filter((m) => m.status === "activo");
 
 /** Los chips de la subnavegación: Inicio y los módulos activos. */
-export const adminNavItems = () => [ADMIN_HOME, ...activeAdminModules()];
+export const adminNavItems = (locale: Locale = DEFAULT_LOCALE) => [
+  { ...ADMIN_HOME, label: locale === "es" ? ADMIN_HOME.label : "Home" },
+  ...activeAdminModules(locale),
+];
+
+/** El título de una página de la administración: "Usuarios · Administración" (sin sección, "Administración"). */
+export function adminTitle(section: string | null, locale: Locale = DEFAULT_LOCALE): string {
+  const admin = locale === "es" ? "Administración" : "Administration";
+  return section ? `${section} · ${admin}` : admin;
+}
+
+/** El nombre de un módulo en el idioma de la página (para el título de su página). */
+export const adminModuleLabel = (id: AdminModuleId, locale: Locale = DEFAULT_LOCALE) =>
+  adminModules(locale).find((m) => m.id === id)!.label;
 
 /** ¿La página actual es de ese chip? Inicio solo en /admin; un módulo, en toda su ruta. */
 export function isCurrentAdminItem(href: string, pathname: string | null): boolean {
