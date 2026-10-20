@@ -10,13 +10,14 @@ vi.mock("next/navigation", () => ({
 const { NavTabs, TabLinks } = await import("./nav-tabs");
 
 describe("NavTabs", () => {
-  it("muestra las cuatro pestañas con sus enlaces", () => {
+  it("muestra las cinco pestañas con sus enlaces", () => {
     render(<NavTabs />);
     const links = screen.getAllByRole("link");
     expect(links.map((l) => [l.textContent, l.getAttribute("href")])).toEqual([
       ["Resumen", "/dashboard"],
       ["Ingresos", "/ingresos"],
       ["Egresos", "/egresos"],
+      ["Fijos", "/gastos-fijos"],
       ["Reportes", "/reportes"],
     ]);
   });
@@ -25,6 +26,7 @@ describe("NavTabs", () => {
     ["/dashboard", "Resumen"],
     ["/ingresos", "Ingresos"],
     ["/egresos", "Egresos"],
+    ["/gastos-fijos", "Fijos"],
     ["/reportes", "Reportes"],
   ])("en %s marca %s como la página actual (y solo esa)", (pathname, active) => {
     navigation.pathname = pathname;
@@ -47,7 +49,7 @@ describe("NavTabs · el mes que se está viendo", () => {
     navigation.search = "";
   });
 
-  it("de septiembre en el Resumen se pasa a los ingresos y egresos de septiembre (no a Reportes ni al admin)", () => {
+  it("de septiembre en el Resumen se pasa a los ingresos y egresos de septiembre (no a Fijos, Reportes ni al admin)", () => {
     navigation.pathname = "/dashboard";
     navigation.search = "mes=2026-09&otro=1";
     render(<NavTabs showAdmin />);
@@ -55,6 +57,7 @@ describe("NavTabs · el mes que se está viendo", () => {
       "/dashboard?mes=2026-09",
       "/ingresos?mes=2026-09",
       "/egresos?mes=2026-09",
+      "/gastos-fijos",
       "/reportes",
       "/admin",
     ]);
@@ -69,6 +72,7 @@ describe("NavTabs · el mes que se está viendo", () => {
         "/dashboard",
         "/ingresos",
         "/egresos",
+        "/gastos-fijos",
         "/reportes",
       ]);
     },
@@ -86,7 +90,7 @@ describe("NavTabs · pestaña Admin", () => {
     navigation.pathname = "/dashboard";
     render(<NavTabs showAdmin />);
     const links = screen.getAllByRole("link");
-    expect(links.map((l) => l.textContent)).toEqual(["Resumen", "Ingresos", "Egresos", "Reportes", "Admin"]);
+    expect(links.map((l) => l.textContent)).toEqual(["Resumen", "Ingresos", "Egresos", "Fijos", "Reportes", "Admin"]);
     expect(screen.getByRole("link", { name: "Admin" })).toHaveAttribute("href", "/admin");
   });
 
@@ -137,7 +141,7 @@ describe("TabLinks", () => {
   it("sin ruta (mientras se resuelve) muestra las pestañas sin marcar ninguna", () => {
     render(<TabLinks pathname={null} />);
     const links = screen.getAllByRole("link");
-    expect(links.map((l) => l.textContent)).toEqual(["Resumen", "Ingresos", "Egresos", "Reportes"]);
+    expect(links.map((l) => l.textContent)).toEqual(["Resumen", "Ingresos", "Egresos", "Fijos", "Reportes"]);
     for (const link of links) expect(link).not.toHaveAttribute("aria-current");
   });
 });

@@ -33,7 +33,6 @@ import {
   weekdayName,
   weekdayOf,
 } from "@/modules/reports/daily";
-import { lastChangeSummary } from "@/modules/reports/history";
 import { periodHref, periodOptions, type ReportPeriod, reportPeriod } from "@/modules/reports/period";
 import { getExpensesByDay, getMonthExpenses, getReport, type Report } from "@/modules/reports/queries";
 import { averageNote, type PeriodSummary, savedNote } from "@/modules/reports/summary";
@@ -41,7 +40,6 @@ import { NO_CATEGORY } from "@/modules/transactions/search";
 import { PageSkeleton } from "../page-skeleton";
 import { DailySpending, type DailySpendingProps } from "./daily-spending";
 import { DownloadMenu } from "./download-menu";
-import { type FixedHistory, FixedExpenses } from "./fixed-expenses";
 import { type TrendPoint, TrendChart } from "./trend-chart";
 
 export const metadata: Metadata = { title: "Reportes" };
@@ -116,22 +114,12 @@ async function Reports({ period: param, calendar: calendarParam }: { period: Par
             <MonthTable report={report} current={current} money={money} />
           </section>
 
-          {/* Lado a lado recién en un computador: en un iPad, cada una necesita el ancho para sus montos. */}
+          {/* Lado a lado recién en un computador: en un iPad, cada una necesita el ancho para sus montos. Los
+              gastos fijos tienen su pestaña (/gastos-fijos): aquí solo salen de los gastos más grandes y del
+              gasto por día. */}
           <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
             <Categories categories={report.categories} money={money} />
-            <div className="space-y-6">
-              <FixedExpenses
-                items={report.recurring.items}
-                histories={fixedHistoriesView(report, current)}
-                removed={report.recurring.removed}
-                candidates={report.recurring.candidates}
-                total={report.recurring.total}
-                periodMonths={period.months.length}
-                averageExpense={report.summary.averageExpense?.amount ?? 0}
-                currency={user.currency}
-              />
-              <Biggest biggest={report.biggest} hadExpenses={report.summary.expense > 0} current={current} money={money} />
-            </div>
+            <Biggest biggest={report.biggest} hadExpenses={report.summary.expense > 0} current={current} money={money} />
           </div>
 
           {/* Una por mes: al cambiar de mes, el día elegido vuelve a ser el de más gasto. */}
@@ -193,16 +181,6 @@ function dailyView({
     halves: halves(days),
     empty: days.size > 0 ? null : report.summary.expense > 0 ? "Todos los egresos del período son gastos fijos." : "Sin egresos en el período.",
   };
-}
-
-/**
- * El historial de cada gasto fijo, con su último cambio en una línea ("11% desde marzo"; con el año si no
- * es el actual). Armado aquí: el nombre del mes sale de Intl, en el servidor.
- */
-function fixedHistoriesView(report: Report, current: Month): Record<string, FixedHistory> {
-  const view: Record<string, FixedHistory> = {};
-  for (const [key, entries] of Object.entries(report.histories)) view[key] = { entries, summary: lastChangeSummary(entries, current) };
-  return view;
 }
 
 /** Las barras: con sus textos ya armados (el gráfico se dibuja también en el navegador). */

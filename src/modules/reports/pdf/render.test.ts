@@ -47,6 +47,10 @@ describe("ReportDocument", () => {
     for (const t of texts) expect(text, t).toContain(t);
   });
 
+  it("sin la sección de gastos fijos (tienen su pestaña)", () => {
+    expect(textOf(ReportDocument({ view }))).not.toContain("Gastos fijos");
+  });
+
   it("sin movimientos, solo el encabezado y el aviso", () => {
     const text = textOf(ReportDocument({ view: empty }));
     expect(text).toContain("Reporte de tus finanzas");
@@ -59,12 +63,11 @@ describe("ReportDocument", () => {
     const sections: ReportPdfView = {
       ...view,
       categories: { ...view.categories, rows: [], empty: "Sin egresos en el período." },
-      fixed: { ...view.fixed, rows: [], empty: "Todavía no hay egresos que se repitan cada mes." },
       biggest: { rows: [], empty: "Todos los egresos del período son gastos fijos." },
       daily: { ...view.daily, empty: "Sin egresos en el período." },
     };
     const text = textOf(ReportDocument({ view: sections }));
-    for (const t of ["Sin egresos en el período.", "Todavía no hay egresos que se repitan cada mes.", "Todos los egresos del período son gastos fijos."]) {
+    for (const t of ["Sin egresos en el período.", "Todos los egresos del período son gastos fijos."]) {
       expect(text).toContain(t);
     }
     expect(text).not.toContain(view.daily.halves[0].amount);
@@ -83,9 +86,8 @@ describe("renderReportPdf", () => {
   }, 20_000);
 
   it("si el detalle no cabe en la segunda hoja, sigue en las siguientes", async () => {
-    const many = Array.from({ length: 20 }, (_, i) => ({ ...view.categories.rows[0], name: `Categoría ${i + 1}`, change: "↗ En septiembre, 5% más que su promedio" }));
-    const fixed = Array.from({ length: 15 }, (_, i) => ({ ...view.fixed.rows[0], description: `Gasto fijo ${i + 1}` }));
-    const long: ReportPdfView = { ...view, categories: { ...view.categories, rows: many }, fixed: { ...view.fixed, rows: fixed } };
+    const many = Array.from({ length: 30 }, (_, i) => ({ ...view.categories.rows[0], name: `Categoría ${i + 1}`, change: "↗ En septiembre, 5% más que su promedio" }));
+    const long: ReportPdfView = { ...view, categories: { ...view.categories, rows: many } };
     expect(pagesOf(await renderReportPdf(long))).toBeGreaterThan(2);
   }, 20_000);
 });

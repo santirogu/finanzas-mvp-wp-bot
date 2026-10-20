@@ -6,8 +6,8 @@ import type { ToastTone } from "@/lib/toasts";
 import { chooseFixedExpense } from "./fixed-choices";
 import { saveFixedNote } from "./history-notes";
 
-// Las acciones de Reportes. Cada una valida la sesión antes que nada: el dueño sale de la sesión, nunca
-// del formulario.
+// Las acciones de los gastos fijos (la pestaña Fijos, /gastos-fijos). Cada una valida la sesión antes que
+// nada: el dueño sale de la sesión, nunca del formulario.
 
 export type FixedExpenseState = { message?: string; tone?: ToastTone; error?: string };
 

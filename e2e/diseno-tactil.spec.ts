@@ -134,6 +134,20 @@ test("en pantallas de menos de 360 px, la categoría y la fecha van una debajo d
   expect(besideDate.x).toBeGreaterThan(besideCategory.x + besideCategory.width);
 });
 
+test("las cinco pestañas de una persona caben en 375 px sin deslizar la franja; en 320, se desliza @tactil", async ({ page }) => {
+  await register(page);
+  const nav = visible(page.getByRole("navigation").filter({ has: page.getByRole("link", { name: "Fijos", exact: true }) }));
+  const hidden = () => nav.evaluate((el) => el.scrollWidth - el.clientWidth);
+  for (const width of [375, 393]) {
+    await page.setViewportSize({ width, height: 700 });
+    expect(await hidden(), `${width} px`).toBeLessThanOrEqual(0);
+  }
+  // En 320 px (WCAG 1.4.10) no caben: la franja se desliza, sin mover la página.
+  await page.setViewportSize({ width: 320, height: 700 });
+  expect(await hidden()).toBeGreaterThan(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0);
+});
+
 test("en pantallas táctiles las páginas caben y los campos no hacen zoom @tactil", async ({ page }) => {
   test.slow();
   const previousMonth = monthParam(shiftMonth(monthOf(todayInTimezone("America/Bogota")), -1));
@@ -185,7 +199,7 @@ test("en pantallas táctiles las páginas caben y los campos no hacen zoom @tact
   });
 
   await test.step("las páginas de la persona", async () => {
-    for (const path of ["/dashboard", "/ingresos", "/egresos", "/reportes", "/cuenta", `/dashboard?mes=${previousMonth}`, `/egresos?mes=${previousMonth}`]) {
+    for (const path of ["/dashboard", "/ingresos", "/egresos", "/gastos-fijos", "/reportes", "/cuenta", `/dashboard?mes=${previousMonth}`, `/egresos?mes=${previousMonth}`]) {
       await open(page, path);
       await expectFitsOnScreens(page, path);
     }
@@ -218,11 +232,12 @@ test("en pantallas táctiles las páginas caben y los campos no hacen zoom @tact
     expect(options.x, "la lista de descargas en 320 px").toBeGreaterThanOrEqual(0);
     expect(options.x + options.width, "la lista de descargas en 320 px").toBeLessThanOrEqual(320);
     await page.keyboard.press("Escape");
-    // "Agregar un gasto fijo" abierto: el selector, con la descripción más larga, cabe y no hace zoom.
+    // "Agregar un gasto fijo" abierto (en Fijos): el selector, con la descripción más larga, cabe y no hace zoom.
+    await open(page, "/gastos-fijos");
     const fixed = visible(page.getByRole("region", { name: "Gastos fijos" }));
     await fixed.getByRole("button", { name: "Agregar un gasto fijo" }).click();
     await expect(fixed.getByLabel("Egreso", { exact: true })).toBeFocused();
-    await expectFitsOnScreens(page, "Reportes con el formulario de gastos fijos abierto");
+    await expectFitsOnScreens(page, "Fijos con el formulario para agregar abierto");
     // Agregar el que subió de $1 al máximo y abrir su historial, con una nota de 280 caracteres sin espacios.
     await fixed.getByLabel("Egreso", { exact: true }).selectOption(fixedDescription);
     await fixed.getByRole("button", { name: "Agregar", exact: true }).click();
@@ -234,12 +249,12 @@ test("en pantallas táctiles las páginas caben y los campos no hacen zoom @tact
     expect(await name.evaluate((el) => el.scrollWidth <= el.clientWidth && getComputedStyle(el).textOverflow !== "ellipsis")).toBe(true);
     await fixed.getByRole("button", { name: /^Agregar nota del cambio/ }).click();
     await fixed.getByLabel(/^Nota del cambio/).fill(`Subió${"x".repeat(275)}`);
-    await expectFitsOnScreens(page, "Reportes con la nota de un cambio abierta");
+    await expectFitsOnScreens(page, "Fijos con la nota de un cambio abierta");
     await fixed.getByRole("button", { name: "Guardar nota" }).click();
     await expect(toast(page, "Se guardó la nota")).toBeVisible();
     await closeToasts(page);
     await expect(fixed.getByText(`“Subió${"x".repeat(275)}”`)).toBeVisible();
-    await expectFitsOnScreens(page, "Reportes con el historial de un gasto fijo abierto");
+    await expectFitsOnScreens(page, "Fijos con el historial de un gasto fijo abierto");
     await open(page, "/egresos");
     await visible(page.getByRole("link", { name: `Editar ${description}` })).click();
     await expect(heading(page, "Editar movimiento")).toBeVisible();

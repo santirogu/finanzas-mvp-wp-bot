@@ -1,8 +1,9 @@
 # Finanzas MVP + Bot de WhatsApp
 
 App web para registrar ingresos y egresos y ver el balance del mes actual. Cada usuario tiene
-su propia sesión y su dashboard con cuatro pestañas: **Resumen**, **Ingresos** y **Egresos**, donde
-cada movimiento se puede editar o eliminar, y **Reportes**, con cómo le va mes a mes. Los movimientos también se registran escribiéndole a un bot de
+su propia sesión y su dashboard con cinco pestañas: **Resumen**, **Ingresos** y **Egresos**, donde
+cada movimiento se puede editar o eliminar, **Fijos**, con los gastos que se repiten cada mes, y
+**Reportes**, con cómo le va mes a mes. Los movimientos también se registran escribiéndole a un bot de
 WhatsApp ("me compré unos zapatos de $500.000"), que entiende el mensaje con Claude. En **Mi
 cuenta**, cada persona cambia su contraseña, conecta o desvincula su WhatsApp, elige la apariencia y puede eliminar su cuenta
 y todos sus datos (confirmando con su contraseña).
@@ -328,7 +329,27 @@ scripts/seed.ts                     Categorías por defecto
     en los dos modos (`src/color-contrast.test.ts`).
   - **Tocar** una fila de la lista o una tajada la resalta (más gruesa, y las demás apagadas); otra vez,
     lo quita. La dona es decorativa: el lector de pantalla lee la lista, que dice lo mismo.
-- **Reportes** (`/reportes`, la cuarta pestaña; `src/modules/reports/`).
+- **Fijos** (`/gastos-fijos`, la pestaña entre Egresos y Reportes; `src/app/(app)/gastos-fijos/`,
+  con la lógica en `src/modules/reports/`): los gastos que se repiten cada mes, con los últimos 12
+  meses (sin elegir período: los gastos fijos son de ahora; "En 4 de 12 meses"). Antes eran una
+  sección de Reportes; ahí ya no se muestran (tampoco en el PDF), pero se siguen descontando de los
+  gastos más grandes y del gasto por día.
+  - **Qué cuenta como fijo** (`src/modules/reports/recurring.ts`): los egresos con la misma
+    descripción (sin importar mayúsculas, tildes ni espacios) en al menos 3 de los últimos 4 meses, y no más de 2 veces en ninguno de ellos:
+    "Almuerzo" o "Taxi" se repiten todos los meses, pero muchas veces, y no son fijos. Cada uno con lo
+    que sumó el último de esos meses en que apareció, el total al mes y qué parte del gasto promedio
+    es. Se detectan solos, y también se marcan a mano (`fixed-choices.ts`, tabla `fixed_expense_choice`):
+    ✕ quita uno detectado (queda en "Quitados", de donde vuelve con "Volver a poner") o saca uno
+    agregado, y "Agregar un gasto fijo" suma uno de los egresos de los últimos 12 meses. Cada marca
+    vale también para lo que Reportes descuenta.
+  - **Historial de cada gasto fijo** (`history.ts`, `history-notes.ts`): al tocar uno se abre su
+    historial de todo el tiempo, que sale de los movimientos. Cada mes en que su total fue distinto al
+    del último mes en que apareció es un cambio: el valor anterior, el nuevo, la diferencia en plata y
+    en porcentaje y la fecha del primer pago con el valor nuevo; el primer pago es el punto de partida.
+    Cerrado, cada gasto dice su último cambio ("11% desde marzo"). A cada cambio se le puede escribir
+    una nota (hasta 280 caracteres; tabla `fixed_expense_note`), solo de un mes en que la persona pagó
+    ese gasto; vaciarla la borra.
+- **Reportes** (`/reportes`, la quinta pestaña; `src/modules/reports/`).
   - **El período, en la URL:** sin parámetro, los últimos 12 meses contando el actual; con
     `?periodo=2025`, ese año (el año en curso llega hasta el mes actual). Hay un chip por cada año con
     movimientos. Un período mal escrito o futuro muestra los 12 meses. La pestaña no lleva el `?mes=`
@@ -346,21 +367,6 @@ scripts/seed.ts                     Categorías por defecto
     por puesto. Y cómo le fue en el **último mes completo** frente a su promedio de los 3 anteriores
     con movimientos ("En septiembre, 40% más que su promedio"; "Nueva en…" o "Sin gastos en…" si en
     uno de los dos no hubo). Esos meses pueden quedar antes del período.
-  - **Gastos fijos** (`recurring.ts`): los egresos con la misma descripción (sin importar mayúsculas,
-    tildes ni espacios) en al menos 3 de los últimos 4 meses, y no más de 2 veces en ninguno de ellos:
-    "Almuerzo" o "Taxi" se repiten todos los meses, pero muchas veces, y no son fijos. Cada uno con lo
-    que sumó el último de esos meses en que apareció, el total al mes y qué parte del gasto promedio
-    es. Se detectan solos, y también se marcan a mano (`fixed-choices.ts`, tabla `fixed_expense_choice`):
-    ✕ quita uno detectado (queda en "Quitados", de donde vuelve con "Volver a poner") o saca uno
-    agregado, y "Agregar un gasto fijo" suma uno de los egresos del período. Cada marca vale para
-    todos los períodos.
-  - **Historial de cada gasto fijo** (`history.ts`, `history-notes.ts`): al tocar uno se abre su
-    historial de todo el tiempo, que sale de los movimientos. Cada mes en que su total fue distinto al
-    del último mes en que apareció es un cambio: el valor anterior, el nuevo, la diferencia en plata y
-    en porcentaje y la fecha del primer pago con el valor nuevo; el primer pago es el punto de partida.
-    Cerrado, cada gasto dice su último cambio ("11% desde marzo"). A cada cambio se le puede escribir
-    una nota (hasta 280 caracteres; tabla `fixed_expense_note`), solo de un mes en que la persona pagó
-    ese gasto; vaciarla la borra.
   - **Los gastos más grandes** (`biggest.ts`): los 10 egresos más altos del período (con "Ver los N
     siguientes", hasta 25), **sin los gastos fijos**: si no, el arriendo llenaría la lista todos los
     meses y taparía lo que sorprende. Cada uno con su fecha (con el año si no es el actual), su
@@ -390,8 +396,8 @@ scripts/seed.ts                     Categorías por defecto
     muestra la página para el período (el mismo `?periodo=`), en un PDF tamaño carta para guardar o
     imprimir, siempre en el modo claro.
     - **Hoja 1:** las cinco cifras, el gráfico de ingresos y egresos y la tabla mes a mes. **Hoja 2:** las
-      categorías y los gastos fijos a la izquierda; los 10 gastos más grandes y los promedios por día de
-      la semana y por quincena a la derecha. Sin el calendario (en papel serían 12) ni la lista de
+      categorías a la izquierda; los 10 gastos más grandes y los promedios por día de la semana y por
+      quincena a la derecha. Como la página, sin los gastos fijos (tienen su pestaña). Sin el calendario (en papel serían 12) ni la lista de
       movimientos (para eso está el CSV). Si el detalle no cabe, sigue en otra hoja.
     - **Cómo se arma:** `view.ts` arma todos los textos (con las mismas funciones que la página) y
       `document.tsx` los acomoda con `@react-pdf/renderer`, en el servidor. Las categorías van con un
@@ -611,7 +617,7 @@ Hay dos roles (`src/lib/roles.ts`), guardados en la columna `user.role`, y un ad
 
 | Rol | Quién | Qué ve |
 |---|---|---|
-| `user` | Toda cuenta al registrarse | Resumen, Ingresos, Egresos, Reportes y Mi cuenta |
+| `user` | Toda cuenta al registrarse | Resumen, Ingresos, Egresos, Fijos, Reportes y Mi cuenta |
 | `admin` | Quien recibe el rol del super admin (en Usuarios) o desde la terminal | Todo lo de `user` y la sección de administración (pestaña **Admin**), con verificación en dos pasos obligatoria. Su etiqueta va en violeta |
 | super admin | Un admin con la marca `user.super_admin`: uno solo, puesto solo desde la terminal (`pnpm admin:super`) | Todo lo de `admin` y, además, dar y quitar el rol de admin en Usuarios. Su etiqueta ("Super admin") y su escudo van en dorado |
 
