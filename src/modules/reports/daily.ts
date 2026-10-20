@@ -1,3 +1,5 @@
+import { DEFAULT_LOCALE, type Locale } from "@/i18n/locales";
+import { texts } from "@/i18n/texts";
 import { compareMonths, formatShortDate, type Month, monthParam, monthRange, parseMonthParam } from "@/lib/dates";
 import { roundToCents, sumAmounts } from "@/lib/money";
 import { searchKey } from "@/lib/suggestions";
@@ -98,13 +100,31 @@ export function averagedRange(months: Month[], firstActive: string | null, today
   return { from, to: today < end ? today : end };
 }
 
+const TEXTS = texts(
+  {
+    weekdays: ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"],
+    most: (days: string) => `Gastas más ${days}.`,
+    even: "Gastas parecido todos los días de la semana.",
+    mostBy: (days: string, pct: number) => `Gastas más ${days}: ${pct}% más que el promedio de los otros días.`,
+  },
+  {
+    en: {
+      weekdays: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+      most: (days) => `You spend the most ${days}.`,
+      even: "You spend about the same every day of the week.",
+      mostBy: (days, pct) => `You spend the most ${days}: ${pct}% more than the average of the other days.`,
+    },
+  },
+);
+
 /** La frase del día de la semana de más gasto ("Gastas más los sábados: 85% más que …"); null sin gastos. */
-export function insightPhrase(insight: ReturnType<typeof weekdayInsight>): string | null {
+export function insightPhrase(insight: ReturnType<typeof weekdayInsight>, locale: Locale = DEFAULT_LOCALE): string | null {
   if (!insight) return null;
-  const days = weekdayPlural(insight.weekday);
-  if (insight.pct === null) return `Gastas más ${days}.`;
-  if (insight.pct === 0) return "Gastas parecido todos los días de la semana.";
-  return `Gastas más ${days}: ${insight.pct}% más que el promedio de los otros días.`;
+  const t = TEXTS[locale];
+  const days = weekdayPlural(insight.weekday, locale);
+  if (insight.pct === null) return t.most(days);
+  if (insight.pct === 0) return t.even;
+  return t.mostBy(days, insight.pct);
 }
 
 /** Lo que se gastó del 1 al 15 de cada mes y del 16 al fin de mes. */
@@ -131,19 +151,20 @@ export function calendarHref(period: ReportPeriod, month: Month): string {
   return query ? `/reportes?${query}` : "/reportes";
 }
 
-const WEEKDAYS = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"];
+/** "lunes", …, "domingo" (0 es el lunes; en inglés, "Monday", …). */
+export const weekdayName = (weekday: number, locale: Locale = DEFAULT_LOCALE) => TEXTS[locale].weekdays[weekday];
 
-/** "lunes", …, "domingo" (0 es el lunes). */
-export const weekdayName = (weekday: number) => WEEKDAYS[weekday];
-
-/** "lunes" → "los lunes"; "sábado" → "los sábados". */
-export const weekdayPlural = (weekday: number) => `los ${WEEKDAYS[weekday]}${WEEKDAYS[weekday].endsWith("s") ? "" : "s"}`;
+/** "lunes" → "los lunes"; "sábado" → "los sábados" (en inglés, "on Mondays", "on Saturdays"). */
+export function weekdayPlural(weekday: number, locale: Locale = DEFAULT_LOCALE): string {
+  const name = weekdayName(weekday, locale);
+  return locale === "es" ? `los ${name}${name.endsWith("s") ? "" : "s"}` : `on ${name}s`;
+}
 
 /** Un día del calendario, con sus textos ya armados (iguales en el servidor y en el navegador). */
 export type CalendarDay = {
   date: string;
   day: number;
-  /** "Sábado 10 de oct": el título del detalle. */
+  /** "Sábado 10 de oct" (en inglés, "Saturday, Oct 10"): el título del detalle. */
   title: string;
   total: number;
   count: number;
@@ -163,16 +184,17 @@ export function calendarDays(
   levelOf: (total: number) => HeatLevel,
   expenses: ExpenseRow[],
   today: string,
+  locale: Locale = DEFAULT_LOCALE,
 ): CalendarDay[] {
   const lastDay = Number(lastDayOf(month).slice(8));
   return Array.from({ length: lastDay }, (_, i) => {
     const date = `${monthParam(month)}-${String(i + 1).padStart(2, "0")}`;
-    const name = weekdayName(weekdayOf(date));
+    const name = weekdayName(weekdayOf(date), locale);
     const { total, count } = days.get(date) ?? { total: 0, count: 0 };
     return {
       date,
       day: i + 1,
-      title: `${name.charAt(0).toUpperCase()}${name.slice(1)} ${formatShortDate(date)}`,
+      title: `${name.charAt(0).toUpperCase()}${name.slice(1)}${locale === "es" ? "" : ","} ${formatShortDate(date, { locale })}`,
       total,
       count,
       level: levelOf(total),

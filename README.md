@@ -254,7 +254,8 @@ scripts/seed.ts                     Categorías por defecto
 
 La app tiene español (el de siempre) e inglés, que se pasa por partes: todavía no se puede elegir, pero
 con la cookie `idioma=en` ya se ve lo que está traducido (la navegación, el login y el registro, el
-Resumen con la campana y los próximos pagos, Ingresos, Egresos, Fijos y la 404).
+Resumen con la campana y los próximos pagos, Ingresos, Egresos, Fijos, Reportes con sus descargas y la
+404).
 
 - **Las direcciones no llevan el idioma.** Las páginas están en `src/app/[lang]/` y el proxy
   (`src/proxy.ts`) arma cada una, por dentro, en el idioma de la cookie `idioma`: `/dashboard` se arma
@@ -278,8 +279,11 @@ Resumen con la campana y los próximos pagos, Ingresos, Egresos, Fijos y la 404)
   configuración de cada proyecto de Vitest (español por defecto).
 - **Montos y fechas:** `formatMoney`, `parseAmountInput`, `formatAmountTyping`, `formatMonthName`,
   `formatShortDate`… reciben el idioma (por defecto, español). En inglés, con el formato de EE. UU.:
-  "$1,000,000.00" (en el campo de monto, la coma separa los miles) y "Oct 13". El bot, el PDF y el CSV
-  siguen en español.
+  "$1,000,000.00" (en el campo de monto, la coma separa los miles) y "Oct 13". El bot sigue en español.
+- **Las descargas de Reportes** salen en el idioma de la página (la cookie). El CSV en inglés va como lo
+  abre el Excel en inglés: separado por "," y con el punto de los centavos (en español, ";" y la coma), y
+  los archivos se llaman `transactions-…csv` y `report-…pdf`. Los textos fijos del PDF van en la vista
+  (`view.labels`, `src/modules/reports/pdf/view.ts`), así se prueban sin dibujarlo.
 - **En un componente de cliente**, la ruta actual se lee con `useAppPathname()` (`src/i18n/navigation.ts`),
   nunca con `usePathname()`: con la reescritura del proxy, el servidor y el navegador pueden ver
   `/es/ayuda` o `/ayuda`, y eso marcaba mal la pestaña o volvía a una dirección con el idioma.

@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { DownloadMenu } from "./download-menu";
+import { InEnglish } from "../../../../../test/locale";
 
 const HREFS = { csvHref: "/reportes/exportar", pdfHref: "/reportes/pdf" };
 const toggle = () => screen.getByRole("button", { name: "Descargar" });
@@ -111,5 +112,17 @@ describe("DownloadMenu", () => {
     await user.click(toggle());
     fireEvent.blur(toggle(), { relatedTarget: null });
     expect(list()).not.toBeNull();
+  });
+});
+
+describe("DownloadMenu · en inglés", () => {
+  it("el botón y las opciones, en inglés", async () => {
+    render(<DownloadMenu {...HREFS} />, { wrapper: InEnglish });
+    await userEvent.click(screen.getByRole("button", { name: "Download" }));
+    const options = screen.getByRole("group", { name: "Download options" });
+    expect(options).toHaveTextContent("Transactions (CSV)");
+    expect(options).toHaveTextContent("For Excel or Google Sheets");
+    expect(options).toHaveTextContent("Report (PDF)");
+    expect(options).toHaveTextContent("To save or print");
   });
 });

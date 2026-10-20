@@ -121,3 +121,14 @@ describe("savedNote y averageNote (las notas de las cifras, en la página y en e
     expect(averageNote(null, october)).toBe("Se calcula cuando termine tu primer mes");
   });
 });
+
+describe("las notas en inglés", () => {
+  it("el balance y el gasto promedio", () => {
+    expect(savedNote("28", "en")).toBe("You saved 28% of your income");
+    expect(savedNote("overspent", "en")).toBe("You spent more than you earned");
+    expect(savedNote(null, "en")).toBeUndefined();
+    expect(averageNote(null, { year: 2026, month: 10 }, "en")).toBe("It's calculated when your first month ends");
+    expect(averageNote({ amount: 1, months: 3, withoutCurrent: true }, { year: 2026, month: 10 }, "en")).toBe("Over 3 months, without October (in progress)");
+    expect(averageNote({ amount: 1, months: 1, withoutCurrent: false }, { year: 2026, month: 10 }, "en")).toBe("Over 1 month");
+  });
+});

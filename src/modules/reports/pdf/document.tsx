@@ -73,7 +73,7 @@ function Header({ view }: { view: ReportPdfView }) {
       <View style={{ flexDirection: "row", alignItems: "center" }}>
         <Text style={s.logo}>F</Text>
         <View style={{ marginLeft: 8 }}>
-          <Text style={s.title}>Reporte de tus finanzas</Text>
+          <Text style={s.title}>{view.labels.title}</Text>
           <Text style={s.muted}>{view.range}</Text>
         </View>
       </View>
@@ -112,13 +112,13 @@ function Legend({ color, label }: { color: string; label: string }) {
 }
 
 /** Dos barras por mes (ingresos en verde y egresos en naranja) sobre las marcas del eje. */
-function Chart({ chart }: { chart: ReportPdfView["chart"] }) {
+function Chart({ chart, labels }: { chart: ReportPdfView["chart"]; labels: ReportPdfView["labels"] }) {
   const height = (amount: number) => (amount > 0 ? Math.max((amount / chart.max) * CHART_HEIGHT, 1) : 0);
   return (
     <View wrap={false}>
       <View style={{ flexDirection: "row", marginBottom: 6 }}>
-        <Legend color={C.income} label="Ingresos" />
-        <Legend color={C.expense} label="Egresos" />
+        <Legend color={C.income} label={labels.income} />
+        <Legend color={C.expense} label={labels.expenses} />
       </View>
       <View style={{ flexDirection: "row" }}>
         <View style={{ width: 44, height: CHART_HEIGHT, position: "relative" }}>
@@ -159,20 +159,20 @@ function Chart({ chart }: { chart: ReportPdfView["chart"] }) {
   );
 }
 
-function MonthTable({ months }: { months: ReportPdfView["months"] }) {
+function MonthTable({ months, labels }: { months: ReportPdfView["months"]; labels: ReportPdfView["labels"] }) {
   return (
     <View>
       <View style={[s.row, s.muted]} wrap={false}>
-        <Text style={{ flex: 1 }}>Mes</Text>
-        <Text style={s.cell}>Ingresos</Text>
-        <Text style={s.cell}>Egresos</Text>
-        <Text style={s.cell}>Balance</Text>
+        <Text style={{ flex: 1 }}>{labels.month}</Text>
+        <Text style={s.cell}>{labels.income}</Text>
+        <Text style={s.cell}>{labels.expenses}</Text>
+        <Text style={s.cell}>{labels.balance}</Text>
       </View>
       {months.map((month) => (
         <View key={month.label} style={s.row} wrap={false}>
           <Text style={{ flex: 1 }}>
             {month.label}
-            {month.inProgress && <Text style={s.muted}> (en curso)</Text>}
+            {month.inProgress && <Text style={s.muted}>{labels.inProgress}</Text>}
           </Text>
           <Text style={[s.cell, { color: C.income }]}>{month.income}</Text>
           <Text style={[s.cell, { color: C.expense }]}>{month.expense}</Text>
@@ -196,9 +196,9 @@ function Line({ title, detail, amount, tone = C.foreground }: { title: string; d
   );
 }
 
-function Categories({ categories }: { categories: ReportPdfView["categories"] }) {
+function Categories({ categories, labels }: { categories: ReportPdfView["categories"]; labels: ReportPdfView["labels"] }) {
   return (
-    <Section title="Gastos por categoría" intro={categories.intro}>
+    <Section title={labels.categories} intro={categories.intro}>
       {categories.empty ? (
         <Empty text={categories.empty} />
       ) : (
@@ -227,9 +227,9 @@ function Categories({ categories }: { categories: ReportPdfView["categories"] })
   );
 }
 
-function Biggest({ biggest }: { biggest: ReportPdfView["biggest"] }) {
+function Biggest({ biggest, labels }: { biggest: ReportPdfView["biggest"]; labels: ReportPdfView["labels"] }) {
   return (
-    <Section title="Los gastos más grandes" intro="Los egresos más altos del período, sin contar los gastos fijos.">
+    <Section title={labels.biggest} intro={labels.biggestIntro}>
       {biggest.empty ? (
         <Empty text={biggest.empty} />
       ) : (
@@ -239,9 +239,9 @@ function Biggest({ biggest }: { biggest: ReportPdfView["biggest"] }) {
   );
 }
 
-function Daily({ daily }: { daily: ReportPdfView["daily"] }) {
+function Daily({ daily, labels }: { daily: ReportPdfView["daily"]; labels: ReportPdfView["labels"] }) {
   return (
-    <Section title="¿Qué días gastas más?" intro="El gasto promedio de cada día de la semana, sin los gastos fijos y contando los días sin gastos.">
+    <Section title={labels.daily} intro={labels.dailyIntro}>
       {daily.empty ? (
         <Empty text={daily.empty} />
       ) : (
@@ -273,7 +273,7 @@ function Daily({ daily }: { daily: ReportPdfView["daily"] }) {
 
 export function ReportDocument({ view }: { view: ReportPdfView }) {
   return (
-    <Document title={`Reporte de tus finanzas · ${view.range}`} author={view.name} creator="Finanzas" producer="Finanzas" language="es-CO">
+    <Document title={`${view.labels.title} · ${view.range}`} author={view.name} creator="Finanzas" producer="Finanzas" language={view.labels.language}>
       <Page size="LETTER" style={s.page}>
         <Header view={view} />
         {view.empty ? (
@@ -281,24 +281,26 @@ export function ReportDocument({ view }: { view: ReportPdfView }) {
         ) : (
           <>
             <Stats view={view} />
-            <Section title="Ingresos y egresos por mes">
-              <Chart chart={view.chart} />
+            <Section title={view.labels.byMonth}>
+              <Chart chart={view.chart} labels={view.labels} />
             </Section>
-            <Section title="Mes a mes">
-              <MonthTable months={view.months} />
+            <Section title={view.labels.monthByMonth}>
+              <MonthTable months={view.months} labels={view.labels} />
             </Section>
 
             <View break style={[s.row, s.muted, { paddingTop: 0, paddingBottom: 8 }]}>
-              <Text>Reporte de tus finanzas · {view.range}</Text>
+              <Text>
+                {view.labels.title} · {view.range}
+              </Text>
               <Text>{view.name}</Text>
             </View>
             <View style={{ flexDirection: "row" }}>
               <View style={{ flex: 1, marginRight: 11 }}>
-                <Categories categories={view.categories} />
+                <Categories categories={view.categories} labels={view.labels} />
               </View>
               <View style={{ flex: 1, marginLeft: 11 }}>
-                <Biggest biggest={view.biggest} />
-                <Daily daily={view.daily} />
+                <Biggest biggest={view.biggest} labels={view.labels} />
+                <Daily daily={view.daily} labels={view.labels} />
               </View>
             </View>
           </>
@@ -306,7 +308,7 @@ export function ReportDocument({ view }: { view: ReportPdfView }) {
         {/* El pie, en cada hoja. */}
         <View style={s.footer} fixed>
           <Text>Finanzas · {view.currency}</Text>
-          <Text render={({ pageNumber, totalPages }) => `Página ${pageNumber} de ${totalPages}`} />
+          <Text render={({ pageNumber, totalPages }) => view.labels.page(pageNumber, totalPages)} />
         </View>
       </Page>
     </Document>

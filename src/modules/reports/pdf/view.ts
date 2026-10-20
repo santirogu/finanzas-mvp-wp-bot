@@ -1,6 +1,8 @@
+import { DEFAULT_LOCALE, INTL_LOCALES, type Locale } from "@/i18n/locales";
+import { texts } from "@/i18n/texts";
 import { compareMonths, formatMonthLabel, formatMonthName, formatShortDate, formatShortMonth, type Month, monthOf } from "@/lib/dates";
 import { formatMoney, formatShare } from "@/lib/money";
-import { NO_CATEGORY } from "@/modules/transactions/search";
+import { NO_CATEGORIES } from "@/modules/transactions/search";
 import { BIGGEST_SHOWN } from "../biggest";
 import { averagedPhrase } from "../categories";
 import { averagedRange, type DayDescriptionTotal, dayTotals, halves, insightPhrase, weekdayAverages, weekdayInsight, weekdayName } from "../daily";
@@ -17,11 +19,86 @@ import { PDF_COLORS } from "./colors";
 /** Las flechas de una comparación (las de la app son íconos; en el PDF, letras de la fuente). */
 const ARROWS = { up: "↗", down: "↘", same: "=" } as const;
 
-const CURRENCY_NAMES: Record<string, string> = { COP: "pesos colombianos (COP)" };
+const TEXTS = texts(
+  {
+    labels: {
+      title: "Reporte de tus finanzas",
+      income: "Ingresos",
+      expenses: "Egresos",
+      byMonth: "Ingresos y egresos por mes",
+      monthByMonth: "Mes a mes",
+      month: "Mes",
+      balance: "Balance",
+      inProgress: " (en curso)",
+      categories: "Gastos por categoría",
+      biggest: "Los gastos más grandes",
+      biggestIntro: "Los egresos más altos del período, sin contar los gastos fijos.",
+      daily: "¿Qué días gastas más?",
+      dailyIntro: "El gasto promedio de cada día de la semana, sin los gastos fijos y contando los días sin gastos.",
+      page: (page: number, total: number) => `Página ${page} de ${total}`,
+      language: INTL_LOCALES.es,
+    },
+    generated: (day: number, month: string, year: number) => `Generado el ${day} de ${month} de ${year}`,
+    currency: (name: string) => `Montos en ${name}`,
+    currencies: { COP: "pesos colombianos (COP)" } as Record<string, string>,
+    empty: "Aún no tienes movimientos.",
+    allFixed: "Todos los egresos del período son gastos fijos.",
+    noExpenses: "Sin egresos en el período.",
+    noExpensesNote: "Sin egresos en el período",
+    balance: "Balance del período",
+    average: "Gasto promedio por mes",
+    topMonth: "El mes de más gasto",
+    categoriesIntro: "Lo que sumó cada una en el período",
+    categoriesCompared: (month: string, averaged: string) => `, y cómo te fue en ${month} frente a su promedio de ${averaged}.`,
+    firstHalf: "Del 1 al 15",
+    secondHalf: "Del 16 a fin de mes",
+    halfShare: (pct: string) => `${pct}% del gasto`,
+    thousand: "mil",
+  },
+  {
+    en: {
+      labels: {
+        title: "Your finances report",
+        income: "Income",
+        expenses: "Expenses",
+        byMonth: "Income and expenses by month",
+        monthByMonth: "Month by month",
+        month: "Month",
+        balance: "Balance",
+        inProgress: " (in progress)",
+        categories: "Spending by category",
+        biggest: "The biggest expenses",
+        biggestIntro: "The highest expenses in the period, not counting your bills.",
+        daily: "Which days do you spend the most?",
+        dailyIntro: "The average spending for each day of the week, without your bills and counting the days without spending.",
+        page: (page, total) => `Page ${page} of ${total}`,
+        language: INTL_LOCALES.en,
+      },
+      generated: (day, month, year) => `Generated on ${month} ${day}, ${year}`,
+      currency: (name) => `Amounts in ${name}`,
+      currencies: { COP: "Colombian pesos (COP)" },
+      empty: "You don't have transactions yet.",
+      allFixed: "All the expenses in the period are bills.",
+      noExpenses: "No expenses in the period.",
+      noExpensesNote: "No expenses in the period",
+      balance: "Balance for the period",
+      average: "Average spending per month",
+      topMonth: "The month with the most spending",
+      categoriesIntro: "What each one added up to in the period",
+      categoriesCompared: (month, averaged) => `, and how you did in ${month} compared with its average for ${averaged}.`,
+      firstHalf: "1st to 15th",
+      secondHalf: "16th to month end",
+      halfShare: (pct) => `${pct}% of spending`,
+      thousand: "K",
+    },
+  },
+);
 
 type Tone = "income" | "expense" | "default";
 
 export type ReportPdfView = {
+  /** Los textos fijos de la hoja (títulos, encabezados, el pie), en el idioma del reporte. */
+  labels: (typeof TEXTS)["es"]["labels"];
   /** "De noviembre de 2025 a octubre de 2026". */
   range: string;
   name: string;
@@ -63,12 +140,16 @@ export function chartScale(top: number): { max: number; step: number } {
   return { max: Math.ceil(top / step) * step, step };
 }
 
-const compact = new Intl.NumberFormat("es-CO", { maximumFractionDigits: 1 });
+const compacts: Readonly<Record<Locale, Intl.NumberFormat>> = {
+  es: new Intl.NumberFormat(INTL_LOCALES.es, { maximumFractionDigits: 1 }),
+  en: new Intl.NumberFormat(INTL_LOCALES.en, { maximumFractionDigits: 1 }),
+};
 
-/** El texto de una marca del eje: "$0", "$500", "$250 mil", "$2,5 M". */
-export function axisLabel(value: number): string {
+/** El texto de una marca del eje: "$0", "$500", "$250 mil", "$2,5 M" (en inglés, "$250 K" y "$2.5 M"). */
+export function axisLabel(value: number, locale: Locale = DEFAULT_LOCALE): string {
+  const compact = compacts[locale];
   if (value >= 1_000_000) return `$${compact.format(value / 1_000_000)} M`;
-  if (value >= 1_000) return `$${compact.format(value / 1_000)} mil`;
+  if (value >= 1_000) return `$${compact.format(value / 1_000)} ${TEXTS[locale].thousand}`;
   return `$${compact.format(value)}`;
 }
 
@@ -82,6 +163,7 @@ export function reportPdfView({
   today,
   name,
   currency,
+  locale = DEFAULT_LOCALE,
 }: {
   report: Report;
   period: ReportPeriod;
@@ -92,10 +174,13 @@ export function reportPdfView({
   today: string;
   name: string;
   currency: string;
+  /** El idioma del reporte (el de la página desde la que se descargó). */
+  locale?: Locale;
 }): ReportPdfView {
-  const money = (n: number) => formatMoney(n, currency);
+  const t = TEXTS[locale];
+  const money = (n: number) => formatMoney(n, currency, locale);
   const { summary, categories, recurring } = report;
-  const noExpenses = summary.expense > 0 ? "Todos los egresos del período son gastos fijos." : "Sin egresos en el período.";
+  const noExpenses = summary.expense > 0 ? t.allFixed : t.noExpenses;
 
   const top = Math.max(0, ...report.series.flatMap((point) => [point.income, point.expense]));
   const { max, step } = chartScale(top);
@@ -109,41 +194,42 @@ export function reportPdfView({
   const half = halves(days);
 
   return {
+    labels: t.labels,
     range: period.range,
     name,
-    generated: `Generado el ${Number(today.slice(8, 10))} de ${formatMonthName(monthOf(today), { withYear: true })}`,
-    currency: `Montos en ${CURRENCY_NAMES[currency] ?? currency}`,
-    empty: report.activeMonths.length === 0 ? "Aún no tienes movimientos." : null,
+    generated: t.generated(Number(today.slice(8, 10)), formatMonthName(monthOf(today), { locale }), Number(today.slice(0, 4))),
+    currency: t.currency(t.currencies[currency] ?? currency),
+    empty: report.activeMonths.length === 0 ? t.empty : null,
     stats: [
-      { label: "Ingresos", value: money(summary.income), note: null, tone: "income" },
-      { label: "Egresos", value: money(summary.expense), note: null, tone: "expense" },
-      { label: "Balance del período", value: money(summary.balance), note: savedNote(summary.saved) ?? null, tone: summary.balance < 0 ? "expense" : "default" },
+      { label: t.labels.income, value: money(summary.income), note: null, tone: "income" },
+      { label: t.labels.expenses, value: money(summary.expense), note: null, tone: "expense" },
+      { label: t.balance, value: money(summary.balance), note: savedNote(summary.saved, locale) ?? null, tone: summary.balance < 0 ? "expense" : "default" },
       {
-        label: "Gasto promedio por mes",
+        label: t.average,
         value: summary.averageExpense ? money(summary.averageExpense.amount) : "—",
-        note: averageNote(summary.averageExpense, current),
+        note: averageNote(summary.averageExpense, current, locale),
         tone: "default",
       },
       {
-        label: "El mes de más gasto",
-        value: summary.topMonth ? formatMonthLabel(summary.topMonth.month) : "—",
-        note: summary.topMonth ? money(summary.topMonth.expense) : "Sin egresos en el período",
+        label: t.topMonth,
+        value: summary.topMonth ? formatMonthLabel(summary.topMonth.month, locale) : "—",
+        note: summary.topMonth ? money(summary.topMonth.expense) : t.noExpensesNote,
         tone: "default",
       },
     ],
     chart: {
       bars: report.series.map((point, i) => ({
-        short: formatShortMonth(point.month),
+        short: formatShortMonth(point.month, locale),
         year: i === 0 || point.month.month === 1 ? String(point.month.year) : null,
         income: point.income,
         expense: point.expense,
         inProgress: compareMonths(point.month, current) === 0,
       })),
       max,
-      ticks: Array.from({ length: Math.round(max / step) + 1 }, (_, i) => ({ value: i * step, label: axisLabel(i * step) })),
+      ticks: Array.from({ length: Math.round(max / step) + 1 }, (_, i) => ({ value: i * step, label: axisLabel(i * step, locale) })),
     },
     months: [...report.series].reverse().map((point) => ({
-      label: formatMonthLabel(point.month),
+      label: formatMonthLabel(point.month, locale),
       inProgress: compareMonths(point.month, current) === 0,
       income: money(point.income),
       expense: money(point.expense),
@@ -151,9 +237,9 @@ export function reportPdfView({
       negative: point.balance < 0,
     })),
     categories: {
-      intro: `Lo que sumó cada una en el período${
+      intro: `${t.categoriesIntro}${
         categories.compared && categories.averaged.length > 0
-          ? `, y cómo te fue en ${formatMonthName(categories.compared)} frente a su promedio de ${averagedPhrase(categories.averaged)}.`
+          ? t.categoriesCompared(formatMonthName(categories.compared, { locale }), averagedPhrase(categories.averaged, locale))
           : "."
       }`,
       rows: categories.rows.map((row) => ({
@@ -164,26 +250,26 @@ export function reportPdfView({
         color: row.color === null ? PDF_COLORS.chartRest : PDF_COLORS.chart[row.color],
         change: row.change && `${ARROWS[row.change.direction]} ${row.change.text}`,
       })),
-      empty: categories.rows.length === 0 ? "Sin egresos en el período." : null,
+      empty: categories.rows.length === 0 ? t.noExpenses : null,
     },
     biggest: {
       rows: report.biggest.slice(0, BIGGEST_SHOWN).map((expense) => ({
         description: expense.description,
-        detail: `${formatShortDate(expense.occurredOn, { withYear: Number(expense.occurredOn.slice(0, 4)) !== current.year })} · ${expense.categoryName ?? NO_CATEGORY}`,
+        detail: `${formatShortDate(expense.occurredOn, { withYear: Number(expense.occurredOn.slice(0, 4)) !== current.year, locale })} · ${expense.categoryName ?? NO_CATEGORIES[locale]}`,
         amount: `−${money(expense.amount)}`,
       })),
       empty: report.biggest.length === 0 ? noExpenses : null,
     },
     daily: {
       weekdays: averages.map((average, weekday) => ({
-        label: capitalize(weekdayName(weekday)),
+        label: capitalize(weekdayName(weekday, locale)),
         amount: money(average),
         width: topWeekday > 0 ? average / topWeekday : 0,
       })),
-      insight: insightPhrase(weekdayInsight(averages)),
+      insight: insightPhrase(weekdayInsight(averages), locale),
       halves: [
-        { label: "Del 1 al 15", amount: money(half.first), share: `${formatShare(half.first, half.first + half.second)}% del gasto` },
-        { label: "Del 16 a fin de mes", amount: money(half.second), share: `${formatShare(half.second, half.first + half.second)}% del gasto` },
+        { label: t.firstHalf, amount: money(half.first), share: t.halfShare(formatShare(half.first, half.first + half.second)) },
+        { label: t.secondHalf, amount: money(half.second), share: t.halfShare(formatShare(half.second, half.first + half.second)) },
       ],
       empty: days.size === 0 ? noExpenses : null,
     },

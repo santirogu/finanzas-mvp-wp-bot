@@ -4,6 +4,7 @@ import { transaction, user as userTable } from "@/db/schema";
 import { currentMonthRange, monthParam, shiftMonth } from "@/lib/dates";
 import { eq } from "drizzle-orm";
 import { register, sessionOf, type Jar } from "../../../../../../test/integration/auth-http";
+import { requestLocale } from "../../../../../../test/integration/locale";
 
 // "Descargar movimientos" de Reportes con Better Auth y sesiones de verdad: solo los movimientos propios
 // del período, como archivo, y sin sesión, al login.
@@ -93,5 +94,23 @@ describe("GET /reportes/exportar", () => {
     await db.update(userTable).set({ suspendedAt: new Date() }).where(eq(userTable.id, await userIdOf(ana)));
     as(ana);
     await expect(download()).rejects.toThrow("NEXT_REDIRECT:/login");
+  });
+});
+
+describe("GET /reportes/exportar · en inglés", () => {
+  it("el archivo para el Excel en inglés: separado por comas, con el punto de los centavos y su nombre", async () => {
+    const ana = await register("ana@test.local");
+    await add(await userIdOf(ana), { description: "Rent, Oct", amount: 1800000.5, occurredOn: `${monthParam(current)}-05` });
+    as(ana);
+    requestLocale.value = "en";
+
+    const response = await download();
+    const from = monthParam(shiftMonth(current, -11));
+    expect(response.headers.get("content-disposition")).toBe(`attachment; filename="transactions-${from}-to-${monthParam(current)}.csv"`);
+    expect(new TextDecoder().decode(await response.arrayBuffer()).split("\r\n")).toEqual([
+      "Date,Type,Description,Category,Amount,Source",
+      `${monthParam(current)}-05,Expense,"Rent, Oct",No category,-1800000.50,Web`,
+      "",
+    ]);
   });
 });

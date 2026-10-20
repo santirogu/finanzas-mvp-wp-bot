@@ -2,8 +2,10 @@ import "server-only";
 import { and, asc, desc, eq, gte, isNull, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { category, transaction } from "@/db/schema";
+import { DEFAULT_LOCALE, type Locale } from "@/i18n/locales";
 import { compareMonths, type Month, monthOf, monthRange, shiftMonth } from "@/lib/dates";
 import { listActiveMonths } from "@/modules/transactions/queries";
+import { NO_CATEGORIES, NO_CATEGORY } from "@/modules/transactions/search";
 import { BIGGEST_CANDIDATES, biggestExpenses, type ExpenseRow } from "./biggest";
 import { AVERAGE_MONTHS, type CategoryMonthTotal, categoryReport } from "./categories";
 import type { CsvMovement } from "./csv";
@@ -55,12 +57,12 @@ export async function getMonthlyTotals(userId: string, first: Month, last: Month
   return rows.map((row) => ({ month: row.month, income: Number(row.income), expense: Number(row.expense) }));
 }
 
-/** Los egresos de cada categoría en cada mes, de `first` a `last`. */
-export async function getCategoryMonthlyTotals(userId: string, first: Month, last: Month): Promise<CategoryMonthTotal[]> {
+/** Los egresos de cada categoría en cada mes, de `first` a `last`; los sin categoría, con el nombre `noCategory`. */
+export async function getCategoryMonthlyTotals(userId: string, first: Month, last: Month, noCategory = NO_CATEGORY): Promise<CategoryMonthTotal[]> {
   const rows = await db
     .select({
       month: monthOfTransaction,
-      name: sql<string>`coalesce(${category.name}, 'Sin categoría')`,
+      name: sql<string>`coalesce(${category.name}, ${noCategory})`,
       emoji: sql<string>`coalesce(${category.emoji}, '•')`,
       total: sql<string>`sum(${transaction.amount})`,
     })
@@ -163,8 +165,11 @@ export async function listPeriodMovements(userId: string, first: Month, last: Mo
     .orderBy(asc(transaction.occurredOn), asc(transaction.createdAt));
 }
 
-/** Todo lo que muestra Reportes en un período (`current` es el mes en curso, en la zona de la persona). */
-export async function getReport(userId: string, period: ReportPeriod, current: Month) {
+/**
+ * Todo lo que muestra Reportes en un período (`current` es el mes en curso, en la zona de la persona), con
+ * los textos en el idioma de la página (`locale`).
+ */
+export async function getReport(userId: string, period: ReportPeriod, current: Month, locale: Locale = DEFAULT_LOCALE) {
   const first = period.months[0];
   const last = period.months[period.months.length - 1];
   // Las categorías se comparan con los meses anteriores (pueden quedar fuera del período) y los gastos
@@ -173,7 +178,7 @@ export async function getReport(userId: string, period: ReportPeriod, current: M
   const [activeMonths, monthly, categories, descriptions, largest, choices] = await Promise.all([
     listActiveMonths(userId),
     getMonthlyTotals(userId, first, last),
-    getCategoryMonthlyTotals(userId, compareMonths(categoriesFrom, first) < 0 ? categoriesFrom : first, last),
+    getCategoryMonthlyTotals(userId, compareMonths(categoriesFrom, first) < 0 ? categoriesFrom : first, last, NO_CATEGORIES[locale]),
     getExpenseDescriptionsByMonth(userId, recurringFrom(period.months), last),
     getLargestExpenses(userId, first, last),
     getFixedChoices(userId),
@@ -186,7 +191,7 @@ export async function getReport(userId: string, period: ReportPeriod, current: M
     activeMonths,
     series,
     summary: periodSummary(series, current, firstActiveOf(activeMonths)),
-    categories: categoryReport(categories, period.months, current, new Set(activeMonths)),
+    categories: categoryReport(categories, period.months, current, new Set(activeMonths), locale),
     recurring,
     biggest: biggestExpenses(largest, recurring.items),
   };

@@ -1,3 +1,5 @@
+import { DEFAULT_LOCALE, type Locale } from "@/i18n/locales";
+import { texts } from "@/i18n/texts";
 import { compareMonths, formatMonthName, type Month, monthParam } from "@/lib/dates";
 import { formatShare, roundToCents, sumAmounts } from "@/lib/money";
 
@@ -73,14 +75,35 @@ export function periodSummary(series: MonthPoint[], current: Month, firstActive:
   return { income, expense, balance, saved, averageExpense, topMonth };
 }
 
+const TEXTS = texts(
+  {
+    overspent: "Gastaste más de lo que ganaste",
+    saved: (pct: string) => `Ahorraste el ${pct}% de tus ingresos`,
+    noAverage: "Se calcula cuando termine tu primer mes",
+    average: (months: number) => `En ${months} ${months === 1 ? "mes" : "meses"}`,
+    withoutCurrent: (month: string) => `, sin ${month} (va en curso)`,
+  },
+  {
+    en: {
+      overspent: "You spent more than you earned",
+      saved: (pct) => `You saved ${pct}% of your income`,
+      noAverage: "It's calculated when your first month ends",
+      average: (months) => `Over ${months} ${months === 1 ? "month" : "months"}`,
+      withoutCurrent: (month) => `, without ${month} (in progress)`,
+    },
+  },
+);
+
 /** La nota del balance: "Ahorraste el 28% de tus ingresos", "Gastaste más de lo que ganaste" o nada. */
-export function savedNote(saved: PeriodSummary["saved"]): string | undefined {
-  if (saved === "overspent") return "Gastaste más de lo que ganaste";
-  return saved ? `Ahorraste el ${saved}% de tus ingresos` : undefined;
+export function savedNote(saved: PeriodSummary["saved"], locale: Locale = DEFAULT_LOCALE): string | undefined {
+  const t = TEXTS[locale];
+  if (saved === "overspent") return t.overspent;
+  return saved ? t.saved(saved) : undefined;
 }
 
 /** La nota del gasto promedio: "En 3 meses, sin octubre (va en curso)" o, sin meses completos, cuándo se calcula. */
-export function averageNote(average: PeriodSummary["averageExpense"], current: Month): string {
-  if (!average) return "Se calcula cuando termine tu primer mes";
-  return `En ${average.months} ${average.months === 1 ? "mes" : "meses"}${average.withoutCurrent ? `, sin ${formatMonthName(current)} (va en curso)` : ""}`;
+export function averageNote(average: PeriodSummary["averageExpense"], current: Month, locale: Locale = DEFAULT_LOCALE): string {
+  const t = TEXTS[locale];
+  if (!average) return t.noAverage;
+  return `${t.average(average.months)}${average.withoutCurrent ? t.withoutCurrent(formatMonthName(current, { locale })) : ""}`;
 }

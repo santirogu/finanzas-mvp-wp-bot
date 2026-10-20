@@ -30,7 +30,7 @@ function textOf(node: ReactNode): string {
 
 /** Los textos de la vista que se leen en la hoja (no los colores, los tonos ni las medidas). */
 function textsIn(value: unknown, key = ""): string[] {
-  if (typeof value === "string") return ["color", "tone"].includes(key) ? [] : [value];
+  if (typeof value === "string") return ["color", "tone", "language"].includes(key) ? [] : [value];
   if (Array.isArray(value)) return value.flatMap((item) => textsIn(item));
   if (value && typeof value === "object") return Object.entries(value).flatMap(([k, v]) => textsIn(v, k));
   return [];
@@ -45,6 +45,17 @@ describe("ReportDocument", () => {
     const texts = textsIn(view);
     expect(texts.length).toBeGreaterThan(150);
     for (const t of texts) expect(text, t).toContain(t);
+  });
+
+  it("en inglés, también todos los textos de la vista (y el idioma del documento)", () => {
+    const english = sampleReport(sampleMovements(current, today), current, "en");
+    const enView = reportPdfView({ ...english, current, today, name: "Ana", currency: "COP", locale: "en" });
+    const document = ReportDocument({ view: enView });
+    const text = textOf(document);
+    for (const t of textsIn(enView)) expect(text, t).toContain(t);
+    expect(text).toContain("Your finances report");
+    expect(text).not.toContain("Reporte de tus finanzas");
+    expect((document.props as { language?: string }).language).toBe("en-US");
   });
 
   it("sin la sección de gastos fijos (tienen su pestaña)", () => {

@@ -92,3 +92,18 @@ describe("csvFileName", () => {
     expect(csvFileName(reportPeriod(undefined, october))).toBe("movimientos-2025-11-a-2026-10.csv");
   });
 });
+
+describe("el CSV en inglés", () => {
+  it("separado por comas, con el punto de los centavos, y las comas del texto entre comillas", () => {
+    expect(csvText("Rent, October", ",")).toBe('"Rent, October"');
+    expect(csvText("Rent; October", ",")).toBe("Rent; October");
+    expect(csvAmount(1800000.5, "expense", ".")).toBe("-1800000.50");
+    const csv = movementsCsv([movement({ categoryName: null, type: "income", source: "whatsapp" })], "en");
+    expect(csv.startsWith("\uFEFFDate,Type,Description,Category,Amount,Source\r\n")).toBe(true);
+    expect(csv).toContain(",Income,");
+    expect(csv).toContain(",No category,");
+    expect(csv).toContain(",WhatsApp\r\n");
+    expect(csvFileName(reportPeriod("2025", october), "en")).toBe("transactions-2025.csv");
+    expect(csvFileName(reportPeriod(undefined, october), "en")).toBe("transactions-2025-11-to-2026-10.csv");
+  });
+});

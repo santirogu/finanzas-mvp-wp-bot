@@ -78,8 +78,10 @@ describe("heatLevels", () => {
 describe("weekdayOf, weekdayName y weekdayPlural", () => {
   it("la semana empieza el lunes", () => {
     expect(["2026-10-05", "2026-10-01", "2026-10-10", "2026-10-04", "2024-02-29"].map(weekdayOf)).toEqual([0, 3, 5, 6, 3]);
-    expect([0, 1, 2, 3, 4, 5, 6].map(weekdayName)).toEqual(["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]);
-    expect([0, 2, 5, 6].map(weekdayPlural)).toEqual(["los lunes", "los miércoles", "los sábados", "los domingos"]);
+    expect([0, 1, 2, 3, 4, 5, 6].map((d) => weekdayName(d))).toEqual(["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]);
+    expect([0, 2, 5, 6].map((d) => weekdayPlural(d))).toEqual(["los lunes", "los miércoles", "los sábados", "los domingos"]);
+    expect([0, 5].map((d) => weekdayName(d, "en"))).toEqual(["Monday", "Saturday"]);
+    expect([0, 2, 6].map((d) => weekdayPlural(d, "en"))).toEqual(["on Mondays", "on Wednesdays", "on Sundays"]);
   });
 });
 
@@ -191,5 +193,20 @@ describe("calendarDays", () => {
     expect(calendarDays({ year: 2026, month: 2 }, new Map(), heatLevels([]), [], "2026-10-19")).toHaveLength(28);
     expect(calendarDays({ year: 2024, month: 2 }, new Map(), heatLevels([]), [], "2026-10-19").at(-1)?.date).toBe("2024-02-29");
     expect(calendarDays({ year: 2026, month: 9 }, new Map(), heatLevels([]), [], "2026-10-19")).toHaveLength(30);
+  });
+});
+
+describe("los textos del gasto por día en inglés", () => {
+  it("la frase del día de más gasto", () => {
+    expect(insightPhrase({ weekday: 5, pct: 85 }, "en")).toBe("You spend the most on Saturdays: 85% more than the average of the other days.");
+    expect(insightPhrase({ weekday: 5, pct: null }, "en")).toBe("You spend the most on Saturdays.");
+    expect(insightPhrase({ weekday: 5, pct: 0 }, "en")).toBe("You spend about the same every day of the week.");
+    expect(insightPhrase(null, "en")).toBeNull();
+  });
+
+  it("el título de cada día del calendario", () => {
+    const [first] = calendarDays({ year: 2026, month: 10 }, new Map(), () => 0, [], "2026-10-20", "en");
+    expect(first.title).toBe("Thursday, Oct 1");
+    expect(calendarDays({ year: 2026, month: 10 }, new Map(), () => 0, [], "2026-10-20")[0].title).toBe("Jueves 1 de oct");
   });
 });

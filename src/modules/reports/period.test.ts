@@ -104,3 +104,19 @@ describe("periodFileName", () => {
     expect(periodFileName("reporte", reportPeriod(undefined, october), "pdf")).toBe("reporte-2025-11-a-2026-10.pdf");
   });
 });
+
+describe("el período en inglés", () => {
+  const october = { year: 2026, month: 10 };
+
+  it("los últimos 12 meses y un año, con su rango", () => {
+    expect(reportPeriod(undefined, october, "en")).toMatchObject({ label: "Last 12 months", range: "November 2025 to October 2026" });
+    expect(reportPeriod("2026", october, "en")).toMatchObject({ label: "2026", range: "January to October 2026" });
+    expect(rangePhrase([october], "en")).toBe("October 2026");
+  });
+
+  it("los chips y el nombre del archivo", () => {
+    expect(periodOptions(reportPeriod(undefined, october, "en"), ["2026-10"], "en").map((o) => o.label)).toEqual(["Last 12 months", "2026"]);
+    expect(periodFileName("transactions", reportPeriod(undefined, october), "csv", "en")).toBe("transactions-2025-11-to-2026-10.csv");
+    expect(periodFileName("transactions", reportPeriod("2025", october), "csv", "en")).toBe("transactions-2025.csv");
+  });
+});

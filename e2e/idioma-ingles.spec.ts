@@ -1,6 +1,8 @@
+import { readFileSync } from "node:fs";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page } from "@playwright/test";
-import { register, test, visible } from "./helpers";
+import { monthOf, monthParam, shiftMonth, todayInTimezone } from "../src/lib/dates";
+import { addTransaction, register, test, toast, visible } from "./helpers";
 
 // El inglés, con la cookie `idioma=en` (todavía no se elige desde la app): lo que ya está traducido —las
 // páginas públicas, la navegación, el menú de la cuenta, el selector de meses y la 404—, con la misma
@@ -111,4 +113,30 @@ test("en inglés: registrar un egreso con el formato de EE. UU. y verlo en la li
   await expect(visible(page.getByRole("heading", { level: 1, name: "Bills" }))).toBeVisible();
   await expect(visible(page.getByText("There are no expenses that repeat every month yet."))).toBeVisible();
   expect(await seriousViolations(page)).toEqual([]);
+});
+
+test("en inglés: Reportes, con la descarga del CSV para el Excel en inglés @principal", async ({ page }) => {
+  await register(page);
+  await page.goto("/egresos");
+  await addTransaction(page, { amount: "1.250,50", description: "Almuerzo" });
+  // Que se haya guardado antes de salir de la página (si no, la navegación corta la acción).
+  await expect(toast(page, "Egreso registrado")).toBeVisible();
+  await inEnglish(page);
+  await page.goto("/reportes");
+  await expect(page).toHaveTitle("Reports · Finanzas");
+  await expect(visible(page.getByRole("heading", { level: 1, name: "Reports" }))).toBeVisible();
+  await expect(visible(page.getByRole("navigation", { name: "Period" }).getByRole("link", { name: "Last 12 months" }))).toHaveAttribute("aria-current", "page");
+  await expect(visible(page.getByRole("region", { name: "Period summary" }))).toContainText("$1,250.50");
+  await expect(visible(page.getByRole("heading", { name: "Spending by category" }))).toBeVisible();
+  await expect(visible(page.getByRole("heading", { name: "Which days do you spend the most?" }))).toBeVisible();
+  expect(await seriousViolations(page)).toEqual([]);
+
+  await visible(page.getByRole("button", { name: "Download" })).click();
+  const options = visible(page.getByRole("group", { name: "Download options" }));
+  const [download] = await Promise.all([page.waitForEvent("download"), options.getByRole("link", { name: /Transactions \(CSV\)/ }).click()]);
+  const current = monthOf(todayInTimezone("America/Bogota"));
+  expect(download.suggestedFilename()).toBe(`transactions-${monthParam(shiftMonth(current, -11))}-to-${monthParam(current)}.csv`);
+  const lines = readFileSync(await download.path(), "utf8").slice(1).split("\r\n");
+  expect(lines[0]).toBe("Date,Type,Description,Category,Amount,Source");
+  expect(lines[1]).toMatch(/^\d{4}-\d{2}-\d{2},Expense,Almuerzo,No category,-1250\.50,Web$/);
 });

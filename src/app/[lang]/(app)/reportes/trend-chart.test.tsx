@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { type TrendPoint, TrendChart } from "./trend-chart";
+import { InEnglish } from "../../../../../test/locale";
 
 const point = (key: string, short: string, name: string, income: number, expense: number, year: string | null = null): TrendPoint => ({
   key,
@@ -89,5 +90,14 @@ describe("TrendChart", () => {
     render(<TrendChart points={POINTS} currency="COP" />);
     expect(screen.getByText(/^Pasa el mouse por un mes/)).toHaveClass("hidden", "pointer-fine:inline");
     expect(screen.getByText("Toca un mes para ver su Resumen.")).toHaveClass("pointer-fine:hidden");
+  });
+});
+
+describe("TrendChart · en inglés", () => {
+  it("la leyenda y el detalle de cada mes, en inglés", () => {
+    render(<TrendChart points={[point("2026-02", "Feb", "February 2026", 1_000, 2_000_000)]} currency="COP" />, { wrapper: InEnglish });
+    expect(screen.getByRole("link", { name: "February 2026: income $1,000.00, expenses $2,000,000.00, balance −$1,999,000.00" })).toBeVisible();
+    expect(screen.getByText("Income")).toBeVisible();
+    expect(screen.getByText("Expenses")).toBeVisible();
   });
 });

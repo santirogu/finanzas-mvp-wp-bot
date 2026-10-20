@@ -45,3 +45,15 @@ describe("reportPdfData", () => {
     expect(view.months).toHaveLength(12);
   });
 });
+
+describe("reportPdfData · en inglés", () => {
+  it("el período, las cifras y las categorías (también sin categoría) en inglés", async () => {
+    const ana = await createUser({ name: "Ana Pérez" });
+    await add(ana.id, { description: "Groceries", amount: 50000, occurredOn: "2026-10-01" });
+    const { period, view } = await reportPdfData(owner(ana), null, now, "en");
+    expect(period.label).toBe("Last 12 months");
+    expect(view.range).toBe("November 2025 to October 2026");
+    expect(view.labels.title).toBe("Your finances report");
+    expect(view.categories.rows.map((row) => [row.name, row.amount])).toEqual([["No category", "$50,000.00"]]);
+  });
+});

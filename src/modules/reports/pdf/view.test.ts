@@ -194,3 +194,40 @@ describe("reportPdfView", () => {
     expect(view.daily.halves.map((half) => half.share)).toEqual(["0% del gasto", "0% del gasto"]);
   });
 });
+
+describe("reportPdfView · en inglés", () => {
+  const { report, period, byDay } = sampleReport(sampleMovements(current, today), current, "en");
+  const view = reportPdfView({ report, period, byDay, current, today, name: "Ana", currency: "COP", locale: "en" });
+
+  it("el encabezado, las cifras y los textos fijos de la hoja", () => {
+    expect(view.labels.title).toBe("Your finances report");
+    expect(view.labels.page(1, 2)).toBe("Page 1 of 2");
+    expect(view.labels.language).toBe("en-US");
+    expect(view.range).toBe("November 2025 to October 2026");
+    expect(view.generated).toBe("Generated on October 20, 2026");
+    expect(view.currency).toBe("Amounts in Colombian pesos (COP)");
+    expect(view.stats.map((s) => s.label)).toEqual(["Income", "Expenses", "Balance for the period", "Average spending per month", "The month with the most spending"]);
+    expect(view.stats[0].value).toMatch(/^\$[\d,]+\.\d{2}$/);
+  });
+
+  it("el gráfico, la tabla, las categorías y el gasto por día", () => {
+    expect(view.chart.bars.at(-1)?.short).toBe("Oct");
+    expect(view.chart.ticks.at(-1)?.label).toMatch(/^\$[\d.]+ (M|K)$/);
+    expect(view.months[0].label).toBe("October 2026");
+    expect(view.categories.intro).toMatch(/^What each one added up to in the period/);
+    expect(view.daily.weekdays.map((d) => d.label)).toEqual(["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]);
+    expect(view.daily.halves.map((h) => h.label)).toEqual(["1st to 15th", "16th to month end"]);
+    expect(view.daily.halves[0].share).toMatch(/% of spending$/);
+  });
+
+  it("el eje en inglés", () => {
+    expect(axisLabel(250_000, "en")).toBe("$250 K");
+    expect(axisLabel(2_500_000, "en")).toBe("$2.5 M");
+    expect(axisLabel(500, "en")).toBe("$500");
+  });
+
+  it("sin movimientos", () => {
+    const none = sampleReport([], current, "en");
+    expect(reportPdfView({ ...none, current, today, name: "Ana", currency: "COP", locale: "en" }).empty).toBe("You don't have transactions yet.");
+  });
+});

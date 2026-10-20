@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { transaction, user as userTable } from "@/db/schema";
 import { currentMonthRange, monthParam, shiftMonth } from "@/lib/dates";
 import { register, sessionOf, type Jar } from "../../../../../../test/integration/auth-http";
+import { requestLocale } from "../../../../../../test/integration/locale";
 
 // "Reporte (PDF)" de Reportes con Better Auth y sesiones de verdad: un PDF del período, como archivo y
 // sin caché; sin sesión, al login. Lo que dice el PDF (solo lo propio) se prueba en
@@ -67,4 +68,18 @@ describe("GET /reportes/pdf", () => {
     as(ana);
     await expect(download()).rejects.toThrow("NEXT_REDIRECT:/login");
   });
+});
+
+describe("GET /reportes/pdf · en inglés", () => {
+  it("el nombre del archivo en inglés", async () => {
+    const ana = await register("ana@test.local");
+    await db.insert(transaction).values({ userId: await userIdOf(ana), type: "expense", amount: 50000, description: "Groceries", occurredOn: `${monthParam(current)}-01` });
+    as(ana);
+    requestLocale.value = "en";
+
+    const response = await download();
+    const from = monthParam(shiftMonth(current, -11));
+    expect(response.headers.get("content-disposition")).toBe(`attachment; filename="report-${from}-to-${monthParam(current)}.pdf"`);
+    expect(Buffer.from(await response.arrayBuffer()).subarray(0, 5).toString()).toBe("%PDF-");
+  }, 20_000);
 });
