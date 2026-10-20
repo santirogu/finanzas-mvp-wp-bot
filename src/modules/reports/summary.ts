@@ -1,4 +1,4 @@
-import { compareMonths, type Month, monthParam } from "@/lib/dates";
+import { compareMonths, formatMonthName, type Month, monthParam } from "@/lib/dates";
 import { formatShare, roundToCents, sumAmounts } from "@/lib/money";
 
 // El resumen de un período en Reportes: los totales de cada mes (las barras) y los del período (las
@@ -71,4 +71,16 @@ export function periodSummary(series: MonthPoint[], current: Month, firstActive:
   }
 
   return { income, expense, balance, saved, averageExpense, topMonth };
+}
+
+/** La nota del balance: "Ahorraste el 28% de tus ingresos", "Gastaste más de lo que ganaste" o nada. */
+export function savedNote(saved: PeriodSummary["saved"]): string | undefined {
+  if (saved === "overspent") return "Gastaste más de lo que ganaste";
+  return saved ? `Ahorraste el ${saved}% de tus ingresos` : undefined;
+}
+
+/** La nota del gasto promedio: "En 3 meses, sin octubre (va en curso)" o, sin meses completos, cuándo se calcula. */
+export function averageNote(average: PeriodSummary["averageExpense"], current: Month): string {
+  if (!average) return "Se calcula cuando termine tu primer mes";
+  return `En ${average.months} ${average.months === 1 ? "mes" : "meses"}${average.withoutCurrent ? `, sin ${formatMonthName(current)} (va en curso)` : ""}`;
 }

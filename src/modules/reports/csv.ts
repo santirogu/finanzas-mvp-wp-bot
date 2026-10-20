@@ -1,6 +1,5 @@
-import { monthParam } from "@/lib/dates";
 import { NO_CATEGORY } from "@/modules/transactions/search";
-import { LAST_12_MONTHS, type ReportPeriod } from "./period";
+import { periodFileName, type ReportPeriod } from "./period";
 
 // El archivo que se descarga desde Reportes ("Descargar movimientos"): los movimientos del período en
 // CSV, armado para que el Excel en español lo abra bien con doble clic (y Google Sheets también):
@@ -55,7 +54,4 @@ export function movementsCsv(rows: CsvMovement[]): string {
 }
 
 /** El nombre del archivo: "movimientos-2025.csv" o, los últimos 12 meses, "movimientos-2025-11-a-2026-10.csv". */
-export function csvFileName(period: ReportPeriod): string {
-  if (period.id !== LAST_12_MONTHS) return `movimientos-${period.id}.csv`;
-  return `movimientos-${monthParam(period.months[0])}-a-${monthParam(period.months[period.months.length - 1])}.csv`;
-}
+export const csvFileName = (period: ReportPeriod) => periodFileName("movimientos", period, "csv");

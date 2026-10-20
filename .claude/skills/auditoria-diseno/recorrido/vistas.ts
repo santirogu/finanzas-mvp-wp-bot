@@ -253,7 +253,7 @@ export const VISTAS: Vista[] = [
   },
   {
     id: "reportes-descargas",
-    titulo: "Reportes: la lista de descargas abierta (CSV, y PDF con Pronto)",
+    titulo: "Reportes: la lista de descargas abierta (CSV y PDF)",
     persona: "datos",
     ruta: fija("/reportes"),
     preparar: async (page) => {

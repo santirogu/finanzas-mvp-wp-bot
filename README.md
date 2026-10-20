@@ -386,6 +386,21 @@ scripts/seed.ts                     Categorías por defecto
     - **Seguridad:** un texto que empieza con `=`, `+`, `-` o `@` lleva un apóstrofo adelante, para que
       Excel no lo ejecute como fórmula. Va con `Cache-Control: no-store`. El enlace aparece solo si el
       período tiene movimientos. Sin sesión, al login.
+  - **Reporte (PDF)** (`src/app/(app)/reportes/pdf/route.ts`, `src/modules/reports/pdf/`): lo mismo que
+    muestra la página para el período (el mismo `?periodo=`), en un PDF tamaño carta para guardar o
+    imprimir, siempre en el modo claro.
+    - **Hoja 1:** las cinco cifras, el gráfico de ingresos y egresos y la tabla mes a mes. **Hoja 2:** las
+      categorías y los gastos fijos a la izquierda; los 10 gastos más grandes y los promedios por día de
+      la semana y por quincena a la derecha. Sin el calendario (en papel serían 12) ni la lista de
+      movimientos (para eso está el CSV). Si el detalle no cabe, sigue en otra hoja.
+    - **Cómo se arma:** `view.ts` arma todos los textos (con las mismas funciones que la página) y
+      `document.tsx` los acomoda con `@react-pdf/renderer`, en el servidor. Las categorías van con un
+      punto de su color en vez del emoji, y los colores están copiados del modo claro de `globals.css`
+      (`colors.test.ts` revisa que coincidan).
+    - **Fuente:** Geist (la de la app; `fonts/`, licencia OFL), incrustada porque la estándar de los PDF
+      no tiene el signo menos (−) ni las flechas. Se lee del disco: `next.config.ts` la incluye en la
+      función de la ruta en Vercel (`outputFileTracingIncludes`).
+    - Va con `Cache-Control: no-store` y el nombre de la persona (no su correo). Sin sesión, al login.
   - **Privacidad:** solo los movimientos propios y no eliminados (pruebas de integración con dos
     usuarios). No guarda nada nuevo: todo se calcula al abrir la página o al descargar.
 - **Todas las consultas filtran por `userId`** obtenido de la sesión en el servidor; cada Server

@@ -22,6 +22,8 @@ export default defineConfig({
         "src/db/**",
         "src/app/api/**",
         "src/app/**/actions.ts",
+        // Las descargas de Reportes (CSV y PDF): rutas fuera de src/app/api, probadas en integración.
+        "src/app/**/reportes/*/route.ts",
         "src/proxy.ts",
         "src/app/{robots,sitemap}.ts",
         "src/components/**",
@@ -35,6 +37,8 @@ export default defineConfig({
         "**/*.test.ts",
         "**/*.test.tsx",
         "src/modules/bot/eval/**",
+        // La fuente del PDF (archivos .ttf y su licencia): no es código.
+        "src/modules/reports/pdf/fonts/**",
         "src/lib/auth-client.ts",
         // El chat del simulador del bot solo existe en desarrollo (en producción la página da 404).
         "src/app/(app)/simulador/chat.tsx",

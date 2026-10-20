@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { LAST_12_MONTHS, periodHref, periodOptions, rangePhrase, reportPeriod } from "./period";
+import { LAST_12_MONTHS, periodFileName, periodHref, periodOptions, rangePhrase, reportPeriod } from "./period";
 
 const october = { year: 2026, month: 10 };
 const keys = (months: { year: number; month: number }[]) => months.map((m) => `${m.year}-${m.month}`);
@@ -95,5 +95,12 @@ describe("periodOptions", () => {
 
   it("sin movimientos, solo los últimos 12 meses", () => {
     expect(periodOptions(reportPeriod(undefined, october), []).map((o) => o.id)).toEqual([LAST_12_MONTHS]);
+  });
+});
+
+describe("periodFileName", () => {
+  it("un año, con su número; los últimos 12 meses, del primero al último", () => {
+    expect(periodFileName("reporte", reportPeriod("2025", october), "pdf")).toBe("reporte-2025.pdf");
+    expect(periodFileName("reporte", reportPeriod(undefined, october), "pdf")).toBe("reporte-2025-11-a-2026-10.pdf");
   });
 });

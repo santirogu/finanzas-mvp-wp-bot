@@ -91,10 +91,9 @@ test("Reportes: las cifras del período, el gráfico, las categorías y los gast
     await expect(fixed).toContainText("Son el 98% de tu gasto promedio por mes.");
   });
 
-  await test.step("descargar los movimientos del período en CSV (el PDF dice Pronto), para Excel", async () => {
+  await test.step("descargar los movimientos del período en CSV, para Excel", async () => {
     await visible(page.getByRole("button", { name: "Descargar" })).click();
     const options = visible(page.getByRole("group", { name: "Opciones de descarga" }));
-    await expect(options.getByText("Reporte (PDF)").locator("..")).toHaveAttribute("aria-disabled", "true");
     const [download] = await Promise.all([page.waitForEvent("download"), options.getByRole("link", { name: /Movimientos \(CSV\)/ }).click()]);
     await expect(options).toBeHidden();
     expect(download.suggestedFilename()).toBe(`movimientos-${monthParam(shiftMonth(current, -11))}-a-${monthParam(current)}.csv`);
@@ -107,6 +106,18 @@ test("Reportes: las cifras del período, el gráfico, las categorías y los gast
     expect(lines).toContain(`${dayOf(m1, 15)};Ingreso;Salario;Salario;4000000,00;Web`);
     // Los 7 movimientos (2 ingresos y 5 egresos), el encabezado y la línea vacía del final.
     expect(lines).toHaveLength(9);
+  });
+
+  await test.step("descargar el reporte del período en PDF, para guardar o imprimir", async () => {
+    await visible(page.getByRole("button", { name: "Descargar" })).click();
+    const options = visible(page.getByRole("group", { name: "Opciones de descarga" }));
+    const [download] = await Promise.all([page.waitForEvent("download"), options.getByRole("link", { name: /Reporte \(PDF\)/ }).click()]);
+    await expect(options).toBeHidden();
+    expect(download.suggestedFilename()).toBe(`reporte-${monthParam(shiftMonth(current, -11))}-a-${monthParam(current)}.pdf`);
+    const pdf = readFileSync(await download.path());
+    expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
+    // Lo que dice cada hoja se prueba en src/modules/reports/pdf/: aquí, que sean las dos (el resumen y el detalle).
+    expect(pdf.toString("latin1").match(/\/Type \/Page\b(?!s)/g)).toHaveLength(2);
   });
 
   await test.step("los gastos más grandes, sin el arriendo (es fijo); tocar uno lleva a editarlo", async () => {
@@ -366,7 +377,7 @@ for (const colorScheme of ["light", "dark"] as const) {
     // Con el mouse en un mes: el detalle de abajo, en sus colores.
     await visible(page.getByRole("link", { name: new RegExp(`^${formatMonthLabel(m1)}:`) })).hover();
     expect(await seriousViolations(page)).toEqual([]);
-    // Y con la lista de descargas abierta (el "Pronto" del PDF, apagado, también se lee).
+    // Y con la lista de descargas abierta (sus textos chicos también se leen).
     await visible(page.getByRole("button", { name: "Descargar" })).click();
     await expect(visible(page.getByRole("group", { name: "Opciones de descarga" }))).toBeVisible();
     expect(await seriousViolations(page)).toEqual([]);

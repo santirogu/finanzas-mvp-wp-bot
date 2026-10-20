@@ -24,6 +24,11 @@ const nextConfig: NextConfig = {
     ];
   },
   partialPrefetching: true,
+  // La fuente del "Reporte (PDF)" se lee del disco (src/modules/reports/pdf/render.tsx): sin esto, no
+  // viaja con la función de la ruta en Vercel.
+  outputFileTracingIncludes: {
+    "/reportes/pdf": ["./src/modules/reports/pdf/fonts/*.ttf"],
+  },
   turbopack: {
     rules: {
       "*.css": {

@@ -1,4 +1,4 @@
-import { compareMonths, FIRST_MONTH, formatMonthLabel, formatMonthName, type Month, shiftMonth } from "@/lib/dates";
+import { compareMonths, FIRST_MONTH, formatMonthLabel, formatMonthName, type Month, monthParam, shiftMonth } from "@/lib/dates";
 
 // El período de Reportes va en la URL (`/reportes?periodo=2025`): así funcionan el botón de atrás y los
 // enlaces. Sin `?periodo=` (o con uno inválido o futuro), los últimos 12 meses, contando el actual.
@@ -76,4 +76,13 @@ export function periodOptions(selected: ReportPeriod, activeMonths: string[]): P
     href: periodHref(id),
     selected: id === selected.id,
   }));
+}
+
+/**
+ * El nombre de un archivo del período: "movimientos-2025.csv" o, los últimos 12 meses,
+ * "movimientos-2025-11-a-2026-10.csv".
+ */
+export function periodFileName(prefix: string, period: ReportPeriod, extension: string): string {
+  if (period.id !== LAST_12_MONTHS) return `${prefix}-${period.id}.${extension}`;
+  return `${prefix}-${monthParam(period.months[0])}-a-${monthParam(period.months[period.months.length - 1])}.${extension}`;
 }

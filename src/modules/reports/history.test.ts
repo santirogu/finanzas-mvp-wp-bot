@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { FIXED_NOTE_MAX_LENGTH } from "@/db/schema";
-import { changeDirection, fixedHistories, type HistoryMonth, lastChange, NOTE_MAX_LENGTH, pctLabel } from "./history";
+import { changeDirection, fixedHistories, type HistoryMonth, lastChange, lastChangeSummary, NOTE_MAX_LENGTH, pctLabel } from "./history";
 
 const row = (month: string, description: string, total: number, first = `${month}-05`): HistoryMonth => ({ month, description, total, first });
 
@@ -94,4 +94,24 @@ describe("lastChange", () => {
 
 it("el largo máximo de una nota es el mismo de la base", () => {
   expect(NOTE_MAX_LENGTH).toBe(FIXED_NOTE_MAX_LENGTH);
+});
+
+describe("lastChangeSummary (el último cambio en una línea, en la página y en el PDF)", () => {
+  const october = { year: 2026, month: 10 };
+  const entries = (rows: HistoryMonth[]) => fixedHistories(rows, ["arriendo"]).get("arriendo")!;
+
+  it("cuánto cambió y desde qué mes; con el año si no es el actual", () => {
+    expect(lastChangeSummary(entries([row("2026-01", "Arriendo", 1000), row("2026-03", "Arriendo", 1100)]), october)).toEqual({
+      direction: "up",
+      text: "10% desde marzo",
+    });
+    expect(lastChangeSummary(entries([row("2025-01", "Arriendo", 1000), row("2025-11", "Arriendo", 900)]), october)).toEqual({
+      direction: "down",
+      text: "10% desde noviembre de 2025",
+    });
+  });
+
+  it("si nunca cambió, null", () => {
+    expect(lastChangeSummary(entries([row("2026-01", "Arriendo", 1000), row("2026-02", "Arriendo", 1000)]), october)).toBeNull();
+  });
 });

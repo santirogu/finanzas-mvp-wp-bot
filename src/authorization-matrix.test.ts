@@ -48,6 +48,7 @@ const API_ROUTES = {
   "/api/health GET": "pública: no devuelve datos ni detalles de configuración",
   "/api/cron/limpieza GET": "solo Vercel Cron, con el secreto CRON_SECRET (src/lib/cron-auth.ts); devuelve solo cantidades",
   "/reportes/exportar GET": "requiere sesión (requireUser); solo los movimientos propios del período, sin los eliminados",
+  "/reportes/pdf GET": "requiere sesión (requireUser); solo los datos propios del período, sin los movimientos eliminados",
 } as const;
 
 const SERVER_ACTIONS = {

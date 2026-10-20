@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { type MonthPoint, monthSeries, periodSummary } from "./summary";
+import { averageNote, type MonthPoint, monthSeries, periodSummary, savedNote } from "./summary";
 
 const m = (month: number, year = 2026) => ({ year, month });
 const october = m(10);
@@ -105,5 +105,19 @@ describe("periodSummary", () => {
     it("sin egresos, ninguno", () => {
       expect(periodSummary([point(9, 500, 0), point(10, 0, 0)], october, m(9)).topMonth).toBeNull();
     });
+  });
+});
+
+describe("savedNote y averageNote (las notas de las cifras, en la página y en el PDF)", () => {
+  it("cuánto ahorró, o que gastó más de lo que ganó; sin balance, nada", () => {
+    expect(savedNote("28")).toBe("Ahorraste el 28% de tus ingresos");
+    expect(savedNote("overspent")).toBe("Gastaste más de lo que ganaste");
+    expect(savedNote(null)).toBeUndefined();
+  });
+
+  it("con cuántos meses se calculó el promedio y si dejó fuera el actual", () => {
+    expect(averageNote({ amount: 1, months: 3, withoutCurrent: true }, october)).toBe("En 3 meses, sin octubre (va en curso)");
+    expect(averageNote({ amount: 1, months: 1, withoutCurrent: false }, october)).toBe("En 1 mes");
+    expect(averageNote(null, october)).toBe("Se calcula cuando termine tu primer mes");
   });
 });
