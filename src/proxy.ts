@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getSessionCookie } from "better-auth/cookies";
+import { LOCALE_COOKIE, localeOf } from "./i18n/locales";
 import { EXPIRED_SESSION_PARAM, SESSION_COOKIE_NAMES } from "./lib/expired-session";
 
 const PUBLIC_ONLY = ["/", "/login", "/registro"];
@@ -7,17 +8,28 @@ const PUBLIC_ONLY = ["/", "/login", "/registro"];
 // /cuenta-eliminada se llega justo después de borrar la cuenta).
 const ALWAYS_PUBLIC = ["/privacidad", "/eliminar-datos", "/cuenta-eliminada"];
 
+/**
+ * La página en el idioma de la cookie: por dentro, /dashboard se arma como /es/dashboard (src/app/[lang]/,
+ * src/i18n/locales.ts), y el navegador sigue viendo /dashboard.
+ */
+function localized(request: NextRequest) {
+  const url = request.nextUrl.clone();
+  const locale = localeOf(request.cookies.get(LOCALE_COOKIE)?.value);
+  url.pathname = `/${locale}${url.pathname === "/" ? "" : url.pathname}`;
+  return NextResponse.rewrite(url);
+}
+
 // Chequeo optimista (solo mira si existe la cookie) para redirigir rápido.
 // La validación real de la sesión ocurre en src/lib/session.ts.
 export function proxy(request: NextRequest) {
   const hasSession = Boolean(getSessionCookie(request));
   const { pathname } = request.nextUrl;
 
-  if (ALWAYS_PUBLIC.includes(pathname)) return NextResponse.next();
+  if (ALWAYS_PUBLIC.includes(pathname)) return localized(request);
   // La sesión ya no sirve (la validó requireUser): se borra la cookie y se muestra el login, en vez
   // de mandarlo al dashboard por la cookie vieja (ver src/lib/expired-session.ts).
   if (pathname === "/login" && request.nextUrl.searchParams.get(EXPIRED_SESSION_PARAM.name) === EXPIRED_SESSION_PARAM.value) {
-    const response = NextResponse.next();
+    const response = localized(request);
     for (const name of SESSION_COOKIE_NAMES) {
       response.cookies.set(name, "", {
         path: "/",
@@ -35,13 +47,13 @@ export function proxy(request: NextRequest) {
   if (!hasSession && !PUBLIC_ONLY.includes(pathname)) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
-  return NextResponse.next();
+  return localized(request);
 }
 
 export const config = {
-  // Todo menos la API (cada ruta tiene su propia protección), los archivos estáticos,
-  // robots.txt y sitemap.xml (públicos, para los buscadores) y las rutas de Vercel (/_vercel/,
-  // p. ej. la analítica). Cada exclusión termina en "/" o en el fin de la ruta: sin eso, "api"
-  // también excluiría "/apiario".
-  matcher: ["/((?!api(?:/|$)|_next/static/|_next/image(?:/|$)|_vercel/|favicon\\.ico$|robots\\.txt$|sitemap\\.xml$).*)"],
+  // Todo menos la API (cada ruta tiene su propia protección), los archivos estáticos (también los de
+  // public/, que no tienen idioma), robots.txt y sitemap.xml (públicos, para los buscadores) y las rutas
+  // de Vercel (/_vercel/, p. ej. la analítica). Cada exclusión termina en "/" o en el fin de la ruta: sin
+  // eso, "api" también excluiría "/apiario".
+  matcher: ["/((?!api(?:/|$)|_next/static/|_next/image(?:/|$)|_vercel/|favicon\\.ico$|robots\\.txt$|sitemap\\.xml$|app-icon-1024\\.png$).*)"],
 };

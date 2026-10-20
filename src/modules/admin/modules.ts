@@ -1,8 +1,8 @@
-// Los módulos de la sección de administración: de aquí salen la subnavegación (src/app/(app)/admin/
+// Los módulos de la sección de administración: de aquí salen la subnavegación (src/app/[lang]/(app)/admin/
 // layout.tsx) y las tarjetas de Inicio. Una prueba exige que cada módulo activo tenga su página bajo
 // /admin y que no haya páginas de admin sin módulo (src/modules/admin/modules.test.ts).
 //
-// Agregar un módulo (ver CLAUDE.md): su entrada aquí, su carpeta en src/app/(app)/admin/<id>/ y en
+// Agregar un módulo (ver CLAUDE.md): su entrada aquí, su carpeta en src/app/[lang]/(app)/admin/<id>/ y en
 // src/modules/admin/<id>/ (consultas que llaman a requireAdmin), y sus pruebas.
 
 export const ADMIN_MODULE_IDS = [

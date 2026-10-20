@@ -34,7 +34,7 @@ export {
   type DatePreset,
 } from "../shared/filters";
 
-/** La página del historial (src/app/(app)/admin/historial). */
+/** La página del historial (src/app/[lang]/(app)/admin/historial). */
 export const HISTORY_PATH = "/admin/historial";
 
 /** Cuántos eventos se muestran al principio y cuántos suma "Ver más antiguos". */

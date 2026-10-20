@@ -10,7 +10,7 @@ const COLORS = {
 /**
  * Etiqueta "Admin" (o "Super admin", en dorado) del menú de la cuenta, junto al nombre y al correo, y
  * de las cuentas en Usuarios. La dibuja el servidor solo para quien tiene el rol
- * (src/app/(app)/user-menu.tsx): a los demás ni siquiera les llega en el HTML.
+ * (src/app/[lang]/(app)/user-menu.tsx): a los demás ni siquiera les llega en el HTML.
  */
 export function AdminBadge({ superAdmin = false }: { superAdmin?: boolean }) {
   return (

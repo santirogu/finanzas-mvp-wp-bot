@@ -1,5 +1,5 @@
 // Lo que el bot de WhatsApp sabe hacer, en un solo lugar: lo usan su respuesta a "ayuda"
-// (src/modules/bot/replies.ts) y la página Ayuda de la web (src/app/(app)/ayuda/page.tsx). Si cambia un
+// (src/modules/bot/replies.ts) y la página Ayuda de la web (src/app/[lang]/(app)/ayuda/page.tsx). Si cambia un
 // comando, cambia en los dos.
 
 /** Ejemplos de mensajes que el bot entiende (texto libre, con Claude). */

@@ -95,7 +95,7 @@ describe("renderReportPdf", () => {
 describe("la fuente en Vercel", () => {
   // render.tsx la lee del disco: si no viaja con la función de la ruta, el PDF falla solo en producción.
   it("next.config.ts incluye en la ruta del PDF los archivos de la fuente", () => {
-    expect(nextConfig.outputFileTracingIncludes?.["/reportes/pdf"]).toEqual(["./src/modules/reports/pdf/fonts/*.ttf"]);
+    expect(nextConfig.outputFileTracingIncludes?.["/[lang]/reportes/pdf"]).toEqual(["./src/modules/reports/pdf/fonts/*.ttf"]);
     expect(FONTS_DIR.endsWith("src/modules/reports/pdf/fonts")).toBe(true);
     expect(readdirSync(FONTS_DIR).filter((file) => file.endsWith(".ttf")).sort()).toEqual(["Geist-Regular.ttf", "Geist-SemiBold.ttf"]);
   });

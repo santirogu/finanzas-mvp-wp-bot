@@ -1,7 +1,7 @@
 import { expect } from "@playwright/test";
 import { register, test, visible } from "./helpers";
 
-// La 404 propia (src/app/not-found.tsx) en lugar de la de Next en inglés.
+// La 404 propia (src/app/[lang]/not-found.tsx) en lugar de la de Next en inglés.
 const heading = { name: "No encontramos esta página" } as const;
 
 test("con sesión, una dirección que no existe muestra la 404 en español y vuelve al dashboard", async ({ page }) => {

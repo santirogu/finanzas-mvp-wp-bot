@@ -39,7 +39,7 @@ describe("filesRequiringDeploy", () => {
 
   it.each([
     "src/modules/bot/interpret.ts",
-    "src/app/(app)/dashboard/page.tsx",
+    "src/app/[lang]/(app)/dashboard/page.tsx",
     "public/app-icon-1024.png",
     "drizzle/0002_nueva_tabla.sql",
     "scripts/seed.ts",

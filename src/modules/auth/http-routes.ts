@@ -13,12 +13,12 @@ export const AUTH_BASE_PATH = "/api/auth";
 
 /** "MÉTODO /ruta" (sin /api/auth) → quién la usa desde el navegador. */
 export const AUTH_HTTP_ROUTES = {
-  "POST /sign-up/email": "Registro (src/app/(auth)/auth-form.tsx)",
-  "POST /sign-in/email": "Inicio de sesión (src/app/(auth)/auth-form.tsx)",
-  "POST /two-factor/enable": "Configurar la verificación en dos pasos (src/app/(app)/admin/seguridad/)",
+  "POST /sign-up/email": "Registro (src/app/[lang]/(auth)/auth-form.tsx)",
+  "POST /sign-in/email": "Inicio de sesión (src/app/[lang]/(auth)/auth-form.tsx)",
+  "POST /two-factor/enable": "Configurar la verificación en dos pasos (src/app/[lang]/(app)/admin/seguridad/)",
   "POST /two-factor/verify-totp":
     "Código de Google Authenticator: al configurarla y al entrar (two-factor-setup.tsx, two-factor-login.tsx)",
-  "POST /two-factor/verify-backup-code": "Código de respaldo al entrar (src/app/(auth)/two-factor-login.tsx)",
+  "POST /two-factor/verify-backup-code": "Código de respaldo al entrar (src/app/[lang]/(auth)/two-factor-login.tsx)",
 } as const;
 
 /**

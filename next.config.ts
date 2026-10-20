@@ -24,10 +24,16 @@ const nextConfig: NextConfig = {
     ];
   },
   partialPrefetching: true,
+  experimental: {
+    // La 404 de lo que no es una página (una ruta de la API que no existe): src/app/global-not-found.tsx.
+    // Las páginas están en src/app/[lang]/ (el layout raíz depende del idioma), así que no hay un layout
+    // común con el que armarla.
+    globalNotFound: true,
+  },
   // La fuente del "Reporte (PDF)" se lee del disco (src/modules/reports/pdf/render.tsx): sin esto, no
   // viaja con la función de la ruta en Vercel.
   outputFileTracingIncludes: {
-    "/reportes/pdf": ["./src/modules/reports/pdf/fonts/*.ttf"],
+    "/[lang]/reportes/pdf": ["./src/modules/reports/pdf/fonts/*.ttf"],
   },
   turbopack: {
     rules: {

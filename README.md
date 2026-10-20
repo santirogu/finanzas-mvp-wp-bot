@@ -225,7 +225,7 @@ Automatically start at login*).
 
 ```
 src/
-  app/
+  app/[lang]/                       Las páginas, una vez por idioma (el proxy agrega el idioma por dentro: ver Idiomas)
     (auth)/login, (auth)/registro   Páginas públicas de acceso
     (app)/dashboard                 Resumen: balance del mes (y frente al anterior), últimos movimientos, gastos por categoría (dona)
     (app)/cuenta                    Mi cuenta: tus datos, seguridad (cambiar la contraseña), WhatsApp, apariencia y eliminar la cuenta
@@ -233,7 +233,8 @@ src/
     (app)/reportes                  Reportes: 12 meses (o un año), barras por mes, categorías frente a su promedio, gastos fijos, los más grandes y qué días gastas más
     (app)/month-nav.tsx             Navegador de meses (flechas y tarjeta del año) del Resumen, Ingresos y Egresos
     (app)/account-menu.tsx          Menú de la cuenta del encabezado (iniciales, escudo de admin, Mi cuenta y Salir)
-    api/auth/[...all]               Endpoints de Better Auth
+  app/api/auth/[...all]             Endpoints de Better Auth
+  i18n/                             Idiomas: la lista, los textos de cada uno (dictionaries/) y la ruta sin el idioma
   db/schema/                        Tablas: auth (user, session…) y finanzas (category, transaction)
   lib/
     auth.ts, session.ts             Config de auth y Data Access Layer (único lugar que lee la sesión)
@@ -245,9 +246,34 @@ src/
   modules/whatsapp/                 Webhook: firma, payload, envío de mensajes y vinculación de números
   app/api/whatsapp/webhook          Endpoint que recibe los mensajes de Meta
   app/(app)/simulador               Chat de prueba del bot (solo en desarrollo)
-  proxy.ts                          Redirecciones rápidas según haya cookie de sesión
+  proxy.ts                          Redirecciones rápidas según haya cookie de sesión, y el idioma de cada página
 scripts/seed.ts                     Categorías por defecto
 ```
+
+### Idiomas
+
+La app se prepara para tener más de un idioma (por ahora, solo español; el inglés llega por partes y
+recién se podrá elegir al final).
+
+- **Las direcciones no llevan el idioma.** Las páginas están en `src/app/[lang]/` y el proxy
+  (`src/proxy.ts`) arma cada una, por dentro, en el idioma de la cookie `idioma`: `/dashboard` se arma
+  como `/es/dashboard`, y el navegador sigue viendo `/dashboard`. Sin la cookie, o con un valor que no
+  es un idioma de la app, en español (`src/i18n/locales.ts`).
+- **Por qué así:** el `<html lang>` y los textos salen del segmento (`next/root-params`), sin leer
+  cookies al armar la página. Las páginas públicas (inicio, login, registro, privacidad) siguen
+  prearmadas, una vez por idioma.
+- **En el servidor**, `getLocale()` y `getDictionary()` (`src/i18n/server.ts`) dan el idioma y los textos
+  de la página, desde cualquier componente.
+- **En un componente de cliente**, la ruta actual se lee con `useAppPathname()` (`src/i18n/navigation.ts`),
+  nunca con `usePathname()`: con la reescritura del proxy, el servidor y el navegador pueden ver
+  `/es/ayuda` o `/ayuda`, y eso marcaba mal la pestaña o volvía a una dirección con el idioma.
+  `src/i18n/guard.test.ts` lo exige.
+- **Los textos** van en `src/i18n/dictionaries/` (el español es el de referencia; el tipo `Dictionary`
+  obliga a que los demás idiomas tengan las mismas claves). Por ahora solo los usan el título de la app
+  y la 404; los demás se pasan de a poco.
+- **La 404:** una dirección que no es una página la atiende `src/app/[lang]/[...rest]` (con el título) y
+  `not-found.tsx`, en el idioma de la página. Lo que no es una página (una ruta de la API que no existe)
+  va a `src/app/global-not-found.tsx` (en español), con `experimental.globalNotFound` en `next.config.ts`.
 
 ### Decisiones importantes
 
@@ -323,7 +349,7 @@ scripts/seed.ts                     Categorías por defecto
     página vuelve a empezar, y sigue al borrar un movimiento.
 - **Gastos por categoría en el Resumen:** una dona con el total de egresos del mes al centro y, al
   lado o debajo, la lista con el color, el monto y el porcentaje de cada categoría
-  (`src/app/(app)/dashboard/category-chart.tsx`).
+  (`src/app/[lang]/(app)/dashboard/category-chart.tsx`).
   - **Las tajadas** (`src/modules/transactions/category-chart.ts`): de la más grande a la más chica,
     hasta 7 con su color. Las de menos del 3% (y las que no alcanzaron color) van juntas en una gris,
     "3 más", con cada una listada debajo. Si solo quedaría una junta, va sola con su color.
@@ -332,7 +358,7 @@ scripts/seed.ts                     Categorías por defecto
     en los dos modos (`src/color-contrast.test.ts`).
   - **Tocar** una fila de la lista o una tajada la resalta (más gruesa, y las demás apagadas); otra vez,
     lo quita. La dona es decorativa: el lector de pantalla lee la lista, que dice lo mismo.
-- **Fijos** (`/gastos-fijos`, la pestaña entre Egresos y Reportes; `src/app/(app)/gastos-fijos/`,
+- **Fijos** (`/gastos-fijos`, la pestaña entre Egresos y Reportes; `src/app/[lang]/(app)/gastos-fijos/`,
   con la lógica en `src/modules/reports/`): los gastos que se repiten cada mes, con los últimos 12
   meses (sin elegir período: los gastos fijos son de ahora; "En 4 de 12 meses"). Antes eran una
   sección de Reportes; ahí ya no se muestran (tampoco en el PDF), pero se siguen descontando de los
@@ -419,7 +445,7 @@ scripts/seed.ts                     Categorías por defecto
     - **Por día de la semana:** el promedio de cada uno, contando los días sin gastos (desde el comienzo
       del período o el primer mes con movimientos hasta hoy), con el de más gasto en una frase.
     - **Por quincena:** qué parte cae del 1 al 15 y del 16 al fin de mes.
-  - **Descargar movimientos (CSV)** (`src/app/(app)/reportes/exportar/route.ts`, `csv.ts`): los
+  - **Descargar movimientos (CSV)** (`src/app/[lang]/(app)/reportes/exportar/route.ts`, `csv.ts`): los
     movimientos del período (el mismo `?periodo=`), en orden de fecha, para abrir con doble clic en el
     Excel en español (y en Google Sheets).
     - **Columnas:** Fecha (`AAAA-MM-DD`), Tipo, Descripción, Categoría, Monto y Origen (Web o WhatsApp).
@@ -429,7 +455,7 @@ scripts/seed.ts                     Categorías por defecto
     - **Seguridad:** un texto que empieza con `=`, `+`, `-` o `@` lleva un apóstrofo adelante, para que
       Excel no lo ejecute como fórmula. Va con `Cache-Control: no-store`. El enlace aparece solo si el
       período tiene movimientos. Sin sesión, al login.
-  - **Reporte (PDF)** (`src/app/(app)/reportes/pdf/route.ts`, `src/modules/reports/pdf/`): lo mismo que
+  - **Reporte (PDF)** (`src/app/[lang]/(app)/reportes/pdf/route.ts`, `src/modules/reports/pdf/`): lo mismo que
     muestra la página para el período (el mismo `?periodo=`), en un PDF tamaño carta para guardar o
     imprimir, siempre en el modo claro.
     - **Hoja 1:** las cinco cifras, el gráfico de ingresos y egresos y la tabla mes a mes. **Hoja 2:** las
@@ -472,7 +498,7 @@ scripts/seed.ts                     Categorías por defecto
 1. En **Mi cuenta**, la tarjeta **WhatsApp → Conectar WhatsApp** genera un código de 6 dígitos
    (vence en 10 minutos). El usuario lo envía al bot como `VINCULAR 123456` y su número queda
    asociado a su cuenta. Mientras no lo tenga vinculado, el Resumen muestra un aviso corto que lleva
-   ahí (`/cuenta#whatsapp`, `src/app/(app)/dashboard/whatsapp-hint.tsx`); ya vinculado, el Resumen no
+   ahí (`/cuenta#whatsapp`, `src/app/[lang]/(app)/dashboard/whatsapp-hint.tsx`); ya vinculado, el Resumen no
    muestra nada de WhatsApp. A un número sin vincular, el bot le responde con ese mismo enlace.
 2. Cada mensaje llega a `POST /api/whatsapp/webhook`. Se verifica la firma `X-Hub-Signature-256`,
    se responde 200 de inmediato y el mensaje se procesa después (`after()`).
@@ -588,7 +614,7 @@ justifica.
 
 **Analítica y velocidad:** [Vercel Web Analytics](https://vercel.com/docs/analytics) y
 [Speed Insights](https://vercel.com/docs/speed-insights) (`<Analytics />` y `<SpeedInsights />` en
-`src/app/layout.tsx`, activadas en Vercel). Son anónimas y sin cookies, y están explicadas en
+`src/app/[lang]/layout.tsx`, activadas en Vercel). Son anónimas y sin cookies, y están explicadas en
 `/privacidad`. Speed Insights es gratis en Hobby hasta 10.000 eventos cada 30 días; si se llega al
 límite, Vercel pausa la recolección sin cobrar. En producción los scripts se sirven desde la
 propia app, así que la CSP no cambia; en desarrollo cargan solo los scripts de depuración de
@@ -727,7 +753,7 @@ y escribe el correo para confirmar. Si otra cuenta era el super admin, deja de s
 ### Sección de administración
 
 La pestaña **Admin** (solo para admins) abre `/admin`, organizada en **módulos**. Todos comparten un
-marco (`src/app/(app)/admin/layout.tsx`): el título y una subnavegación con chips (Inicio y los
+marco (`src/app/[lang]/(app)/admin/layout.tsx`): el título y una subnavegación con chips (Inicio y los
 módulos activos). **Inicio** muestra una tarjeta por módulo, con un resumen de los activos; los que
 vienen aparecen como "Pronto".
 
@@ -759,7 +785,7 @@ actúa con permisos de admin.
   sesión y la app no las puede importar.
 - **Listados** (Historial, Usuarios y los que vengan) comparten la lectura de filtros de la URL, las
   fechas en hora de Colombia y los formatos (`src/modules/admin/shared/`), y la barra de búsqueda con
-  chips y las etiquetas de filtros activos (`src/app/(app)/admin/chip-filter-bar.tsx` y
+  chips y las etiquetas de filtros activos (`src/app/[lang]/(app)/admin/chip-filter-bar.tsx` y
   `active-filters.tsx`).
 
 ### Usuarios

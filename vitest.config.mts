@@ -25,11 +25,12 @@ export default defineConfig({
         // Las descargas de Reportes (CSV y PDF): rutas fuera de src/app/api, probadas en integración.
         "src/app/**/reportes/*/route.ts",
         "src/proxy.ts",
+        "src/i18n/**",
         "src/app/{robots,sitemap}.ts",
         "src/components/**",
         // Los componentes de src/app con su prueba. test/cobertura.test.ts falla si un componente de cliente
         // ("use client") no está aquí ni excluido a propósito.
-        "src/app/**/{auth-form,two-factor-login,two-factor-setup,expired-session-notice,filter-bar,chip-filter-bar,admin-nav,nav-tabs,whatsapp-connect,page-skeleton,delete-account-form,change-password,user-menu,account-actions,event-item,admin-dialog,category-manager,category-chart,account-menu,month-nav,daily-spending,download-menu,fixed-expenses,trend-chart,upcoming-payments,notification-settings,notification-bell,user-notifications,bot-settings,connections,resend-replies,theme-picker,unlink-whatsapp,whatsapp-hint}.tsx",
+        "src/app/**/{auth-form,two-factor-login,two-factor-setup,expired-session-notice,filter-bar,chip-filter-bar,admin-nav,nav-tabs,whatsapp-connect,page-skeleton,delete-account-form,change-password,user-menu,account-actions,event-item,admin-dialog,category-manager,category-chart,account-menu,month-nav,daily-spending,download-menu,fixed-expenses,trend-chart,upcoming-payments,notification-settings,notification-bell,user-notifications,bot-settings,connections,resend-replies,theme-picker,unlink-whatsapp,whatsapp-hint,not-found-content}.tsx",
         "scripts/*.mjs",
         "scripts/{delete-data,admin,db-cli,db-backup}.ts",
       ],
@@ -41,7 +42,7 @@ export default defineConfig({
         "src/modules/reports/pdf/fonts/**",
         "src/lib/auth-client.ts",
         // El chat del simulador del bot solo existe en desarrollo (en producción la página da 404).
-        "src/app/(app)/simulador/chat.tsx",
+        "src/app/[lang]/(app)/simulador/chat.tsx",
       ],
       reporter: ["text", "json-summary", "html"],
       // Piso: el CI falla si la cobertura baja de aquí. Unos 2 a 3 puntos por debajo de la real (el

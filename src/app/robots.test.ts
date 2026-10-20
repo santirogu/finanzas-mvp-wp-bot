@@ -14,12 +14,15 @@ function allowed(route: string): boolean {
   return longest(["/", ...PUBLIC_EXCEPTIONS]) >= longest(PRIVATE_PATHS);
 }
 
-/** Las rutas de las páginas y rutas de src/app (sin los grupos entre paréntesis; [id] → un id cualquiera). */
+/**
+ * Las rutas de las páginas y rutas de src/app (sin los grupos entre paréntesis ni el idioma, que no va en la
+ * dirección; [id] → un id cualquiera). [...rest] no es una página: es la 404 de lo que no existe.
+ */
 function routesIn(dir: string, base = ""): string[] {
   const routes: string[] = [];
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    if (entry.isDirectory()) {
-      const segment = /^\(.*\)$/.test(entry.name) ? "" : `/${entry.name.replace(/^\[.*\]$/, "un-id")}`;
+    if (entry.isDirectory() && entry.name !== "[...rest]") {
+      const segment = entry.name === "[lang]" || /^\(.*\)$/.test(entry.name) ? "" : `/${entry.name.replace(/^\[.*\]$/, "un-id")}`;
       routes.push(...routesIn(path.join(dir, entry.name), `${base}${segment}`));
     } else if (entry.name === "page.tsx" || entry.name === "route.ts") {
       routes.push(base || "/");
@@ -29,7 +32,7 @@ function routesIn(dir: string, base = ""): string[] {
 }
 
 const APP = path.join(__dirname);
-const privateRoutes = routesIn(path.join(APP, "(app)"));
+const privateRoutes = routesIn(path.join(APP, "[lang]", "(app)"));
 const publicRoutes = routesIn(APP).filter((route) => !privateRoutes.includes(route) && !route.startsWith("/api"));
 
 describe("robots.txt", () => {

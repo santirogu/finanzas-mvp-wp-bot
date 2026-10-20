@@ -27,10 +27,10 @@ describe("formularios", () => {
     const names = validated.map((f) => relative(ROOT, f));
     expect(names).toEqual(
       expect.arrayContaining([
-        "src/app/(auth)/auth-form.tsx",
-        "src/app/(auth)/two-factor-login.tsx",
+        "src/app/[lang]/(auth)/auth-form.tsx",
+        "src/app/[lang]/(auth)/two-factor-login.tsx",
         "src/components/transaction-form.tsx",
-        "src/app/(app)/cuenta/delete-account-form.tsx",
+        "src/app/[lang]/(app)/cuenta/delete-account-form.tsx",
       ]),
     );
   });
