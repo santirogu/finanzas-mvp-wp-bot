@@ -17,9 +17,11 @@ test.describe("sin sesión", () => {
     expect(response.headers()["content-type"]).toContain("text/plain");
     const body = await response.text();
     expect(body).toContain("User-Agent: *");
-    for (const path of ["/dashboard", "/ingresos", "/egresos", "/api/"]) {
+    for (const path of ["/dashboard", "/ingresos", "/egresos", "/gastos-fijos", "/reportes", "/cuenta", "/admin", "/api/"]) {
       expect(body).toContain(`Disallow: ${path}`);
     }
+    // /cuenta-eliminada es pública aunque empiece como /cuenta: la regla más larga gana.
+    expect(body).toContain("Allow: /cuenta-eliminada");
     // La URL de la app con la que corre, no con la que se compiló (en el CI y en Vercel, sin la de producción).
     expect(body).toContain(`Sitemap: ${baseURL}/sitemap.xml`);
   });

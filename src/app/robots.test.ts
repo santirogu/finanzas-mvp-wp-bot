@@ -1,18 +1,58 @@
+import { readdirSync } from "node:fs";
+import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import robots, { PRIVATE_PATHS } from "./robots";
+import robots, { PRIVATE_PATHS, PUBLIC_EXCEPTIONS } from "./robots";
 
 // Fuera de un pedido, connection() no tiene a qué esperar.
 vi.mock("next/server", async (original) => ({ ...(await original<typeof import("next/server")>()), connection: async () => {} }));
 
 afterEach(() => vi.unstubAllEnvs());
 
+/** Lo que haría un buscador (RFC 9309): gana la regla más larga que empiece como la ruta; si empatan, Allow. */
+function allowed(route: string): boolean {
+  const longest = (rules: string[]) => Math.max(-1, ...rules.filter((rule) => route.startsWith(rule)).map((rule) => rule.length));
+  return longest(["/", ...PUBLIC_EXCEPTIONS]) >= longest(PRIVATE_PATHS);
+}
+
+/** Las rutas de las páginas y rutas de src/app (sin los grupos entre paréntesis; [id] → un id cualquiera). */
+function routesIn(dir: string, base = ""): string[] {
+  const routes: string[] = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (entry.isDirectory()) {
+      const segment = /^\(.*\)$/.test(entry.name) ? "" : `/${entry.name.replace(/^\[.*\]$/, "un-id")}`;
+      routes.push(...routesIn(path.join(dir, entry.name), `${base}${segment}`));
+    } else if (entry.name === "page.tsx" || entry.name === "route.ts") {
+      routes.push(base || "/");
+    }
+  }
+  return routes;
+}
+
+const APP = path.join(__dirname);
+const privateRoutes = routesIn(path.join(APP, "(app)"));
+const publicRoutes = routesIn(APP).filter((route) => !privateRoutes.includes(route) && !route.startsWith("/api"));
+
 describe("robots.txt", () => {
   it("deja indexar lo público, bloquea la parte privada y la API, y apunta al sitemap", async () => {
     vi.stubEnv("BETTER_AUTH_URL", "https://finanzas.co");
     expect(await robots()).toEqual({
-      rules: { userAgent: "*", allow: "/", disallow: ["/dashboard", "/ingresos", "/egresos", "/simulador", "/api/"] },
+      rules: {
+        userAgent: "*",
+        allow: ["/", "/cuenta-eliminada"],
+        disallow: ["/dashboard", "/ingresos", "/egresos", "/gastos-fijos", "/reportes", "/movimientos/", "/cuenta", "/admin", "/simulador", "/api/"],
+      },
       sitemap: "https://finanzas.co/sitemap.xml",
     });
-    expect(PRIVATE_PATHS).toContain("/api/");
+  });
+
+  it("bloquea toda página y ruta de la parte privada (una nueva falla aquí hasta que se agregue)", () => {
+    expect(privateRoutes).toEqual(expect.arrayContaining(["/dashboard", "/gastos-fijos", "/reportes/pdf", "/movimientos/un-id/editar", "/admin/usuarios/un-id"]));
+    for (const route of privateRoutes) expect(allowed(route), route).toBe(false);
+    expect(allowed("/api/health")).toBe(false);
+  });
+
+  it("deja ver todas las páginas públicas (también /cuenta-eliminada, aunque empieza como /cuenta)", () => {
+    expect([...publicRoutes].sort()).toEqual(["/", "/cuenta-eliminada", "/eliminar-datos", "/login", "/privacidad", "/registro"]);
+    for (const route of publicRoutes) expect(allowed(route), route).toBe(true);
   });
 });
