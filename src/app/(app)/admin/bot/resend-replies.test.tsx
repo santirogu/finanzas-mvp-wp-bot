@@ -52,11 +52,15 @@ describe("ResendReplies", () => {
     const toast = await findToast();
     expect(toast).toHaveTextContent("Se reenviaron 2 respuestas.");
     expect(toast).toHaveAttribute("data-tone", "success");
+    // El botón desaparece: el foco va al aviso (si no, el teclado quedaría en ninguna parte).
+    expect(toast).toHaveFocus();
     expect(screen.queryByRole("button", { name: "Reenviar" })).toBeNull();
   });
 
-  it("con una sola, en singular", () => {
+  it("con una sola, en singular (también la ventana)", async () => {
     render(<ResendReplies pending={1} windowHours={24} />);
     expect(screen.getByText("1 respuesta no salió en las últimas 24 horas.")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Reenviar" }));
+    expect(screen.getByRole("dialog", { name: "¿Reenviar 1 respuesta?" })).toBeInTheDocument();
   });
 });
