@@ -11,8 +11,19 @@ import { newPhone, nthReply, sendWhatsApp } from "./whatsapp";
 // La configuración del bot en /admin/bot, de punta a punta: pausar y reanudar Claude, y cambiar los
 // topes por cuenta. Cambia la configuración de toda la app, así que corre en el proyecto
 // "configuracion" (playwright.config.ts), nunca a la vez que las demás pruebas, y sus pruebas van
-// una después de otra.
-test.describe.configure({ mode: "serial" });
+// una después de otra ("default": en orden y en un solo worker, aunque el proyecto sea fullyParallel).
+// Cada una empieza con la configuración de siempre (beforeEach): si una se cae a mitad de camino (con
+// Claude en pausa o un tope cambiado), su reintento y las que siguen no dependen de lo que dejó.
+test.describe.configure({ mode: "default" });
+
+test.beforeEach(async () => {
+  const sql = postgres(e2eDatabaseUrl(), { max: 1, onnotice: () => {} });
+  // Sin fila valen los de siempre (Claude activo, los topes de AI_LIMITS y sin tope mensual).
+  await sql`delete from bot_setting`;
+  // Las respuestas sin enviar que dejó un intento anterior: si no, "Errores" contaría también esas.
+  await sql`delete from whatsapp_message where status = 'failed' and error like '%envío:%'`;
+  await sql.end();
+});
 
 const settings = (page: Page) => visible(page.getByRole("region", { name: "Configuración" }));
 const dialog = (page: Page) => page.getByRole("dialog");
@@ -154,13 +165,6 @@ test("cambiar los topes: fuera de rango avisa en su campo; con 1 por hora, el se
       "ahora 1 por hora y 100 por día (antes 20 por hora y 100 por día)",
     );
   });
-
-  // Los de siempre otra vez, por si alguien corre más pruebas sobre esta misma base.
-  await page.goto("/admin/bot");
-  await settings(page).getByRole("button", { name: "Cambiar los topes por cuenta" }).click();
-  await dialog(page).getByLabel("Por hora").fill("20");
-  await confirmWith(page, codeFor(secret, 1), "Guardar topes");
-  await expect(settings(page)).toContainText("20 por hora y 100 por día");
 });
 
 test("el tope mensual de tokens: al alcanzarlo, el bot deja de usar Claude hasta el mes siguiente", async ({ page, browser, request }) => {

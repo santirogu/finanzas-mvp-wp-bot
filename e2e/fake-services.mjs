@@ -143,4 +143,9 @@ const server = createServer(async (request, response) => {
   }
 });
 
+// Las conexiones inactivas no se cierran durante una prueba. Node las cierra a los 5 s, y el `request`
+// de Playwright las reutiliza: si una prueba vuelve a consultar justo entonces, el pedido se corta
+// ("socket hang up", ECONNRESET) y la prueba falla de forma intermitente.
+server.keepAliveTimeout = 10 * 60_000;
+
 server.listen(PORT, () => console.log(`Servicios falsos (WhatsApp y Claude) en http://localhost:${PORT}`));

@@ -59,9 +59,11 @@ export default defineConfig({
       reuseExistingServer: !CI,
     },
     {
+      // Sin cerrar las conexiones inactivas a los 5 s, como el servidor falso (e2e/fake-services.mjs):
+      // el `request` de Playwright las reutiliza y, justo a los 5 s, el pedido se cortaba.
       command: process.env.E2E_SKIP_BUILD
-        ? `pnpm exec next start -p ${PORT}`
-        : `pnpm exec next build && pnpm exec next start -p ${PORT}`,
+        ? `pnpm exec next start -p ${PORT} --keepAliveTimeout 600000`
+        : `pnpm exec next build && pnpm exec next start -p ${PORT} --keepAliveTimeout 600000`,
       url: `${BASE_URL}/login`,
       reuseExistingServer: !CI,
       timeout: 240_000,

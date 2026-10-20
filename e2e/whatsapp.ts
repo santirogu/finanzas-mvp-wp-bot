@@ -40,15 +40,18 @@ export async function sendWhatsApp(
     ],
   });
   const signature = `sha256=${createHmac("sha256", secret).update(body).digest("hex")}`;
+  // Si la conexión se corta (ECONNRESET), se reintenta: es seguro, la app descarta un mensaje repetido
+  // por su id, como hace con los reenvíos de Meta.
   return request.post("/api/whatsapp/webhook", {
     data: body,
     headers: { "content-type": "application/json", "x-hub-signature-256": signature },
+    maxRetries: 2,
   });
 }
 
 /** Lo que el bot le envió a un número (lo guarda el WhatsApp falso). */
 export async function sentTo(request: APIRequestContext, phone: string): Promise<Sent[]> {
-  const response = await request.get(`${FAKE_SERVICES_URL}/mensajes?to=${phone}`);
+  const response = await request.get(`${FAKE_SERVICES_URL}/mensajes?to=${phone}`, { maxRetries: 2 });
   return response.json();
 }
 
