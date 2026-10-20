@@ -1,4 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { parseHeader, runCli, validateHeader } from "./conventional-commit.mjs";
 
 describe("validateHeader", () => {
@@ -120,6 +123,25 @@ describe("parseHeader", () => {
   it("devuelve null si no tiene la forma tipo(ámbito): descripción", () => {
     expect(parseHeader("Merge pull request #2 from santirogu/docs/ramas")).toBeNull();
     expect(parseHeader("")).toBeNull();
+  });
+});
+
+describe("runCli · con el archivo del commit de verdad (como lo usa el hook commit-msg)", () => {
+  const file = (text: string) => {
+    const path = join(mkdtempSync(join(tmpdir(), "commit-")), "COMMIT_EDITMSG");
+    writeFileSync(path, text);
+    return path;
+  };
+
+  it("lee el archivo: con el cuerpo, los comentarios de git y líneas vacías antes, es válido", () => {
+    const errors: string[] = [];
+    const path = file("\n\nfeat(bot): registrar gastos desde notas de voz\n\nEl cuerpo termina en punto.\n# Comentario de git\n");
+    expect(runCli(["--file", path], { error: (line: string) => errors.push(line) })).toBe(0);
+    expect(errors).toEqual([]);
+  });
+
+  it("un título inválido en el archivo devuelve 1", () => {
+    expect(runCli(["--file", file("Arreglé cosas.\n")], { error: () => {} })).toBe(1);
   });
 });
 

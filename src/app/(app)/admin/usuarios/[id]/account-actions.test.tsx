@@ -161,6 +161,8 @@ describe("AccountActions", () => {
     expect(busy).toBeDisabled();
     await userEvent.click(busy);
     expect(actions[action]).toHaveBeenCalledTimes(1);
+    // A la cuenta que se está viendo, no a otra.
+    expect(Object.fromEntries(actions[action].mock.calls[0][1] as FormData)).toEqual({ userId: "cuenta-1", code: "123456" });
     finish({ error: "El código no es correcto. Te quedan 4 intentos.", field: "code" });
     expect(await within(dialog()).findByRole("button", { name: button })).toBeEnabled();
   });

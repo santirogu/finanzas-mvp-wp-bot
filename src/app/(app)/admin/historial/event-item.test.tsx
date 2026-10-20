@@ -88,6 +88,18 @@ describe("EventItem", () => {
     expect(shown.icon.className).toContain("bg-admin-surface");
   });
 
+  it.each([
+    ["bot_claude_paused", "Ana Admin pausó Claude en el bot"],
+    ["bot_claude_resumed", "Ana Admin reanudó Claude en el bot"],
+    ["bot_limits_changed", "Ana Admin cambió los topes de Claude por cuenta"],
+    ["bot_monthly_limit_changed", "Ana Admin cambió el tope mensual de tokens de Claude"],
+    ["bot_replies_resent", "Ana Admin reenvió las respuestas del bot que no habían salido"],
+  ] as const)("acción del admin sobre el bot %s, en su color", (type, sentence) => {
+    const shown = renderItem({ entry: entry({ type, account: null, admin: { name: "Ana Admin" } }) });
+    expect(shown.sentence).toBe(sentence);
+    expect(shown.icon.className).toContain("bg-admin-surface");
+  });
+
   it("si la cuenta del admin ya no existe, dice 'Un admin'", () => {
     expect(renderItem({ entry: entry({ type: "login_unlocked", admin: null }) }).sentence).toBe(
       "Un admin desbloqueó el inicio de sesión de Ana Pérez",

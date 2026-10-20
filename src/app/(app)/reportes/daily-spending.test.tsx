@@ -156,6 +156,18 @@ describe("DailySpending", () => {
     expect(section().getByText("Del 16 al fin de mes: 42%")).toBeInTheDocument();
   });
 
+  it("sin promedios ni quincenas con gastos: sin frase, sin día resaltado y las barras en cero (no NaN)", () => {
+    const { container } = render(
+      <DailySpending {...props({ insight: null, halves: { first: 0, second: 0 }, weekdays: props().weekdays.map((w) => ({ ...w, average: 0 })) })} />,
+    );
+    expect(section().queryByText(/^Gastas/)).toBeNull();
+    expect(section().getByText("Lunes")).toHaveClass("text-muted");
+    expect(section().getByText("Del 1 al 15: 0%")).toBeInTheDocument();
+    // Las 7 de los días y las 2 de las quincenas, todas en 0 (un ancho "NaN%" no llegaría al estilo).
+    const widths = [...container.querySelectorAll<HTMLElement>("[style*=width]")].map((bar) => bar.style.width);
+    expect(widths).toEqual(Array(9).fill("0%"));
+  });
+
   it("sin egresos para mostrar, lo dice en vez del calendario", () => {
     render(<DailySpending {...props({ empty: "Todos los egresos del período son gastos fijos." })} />);
     expect(section().getByText("Todos los egresos del período son gastos fijos.")).toBeInTheDocument();

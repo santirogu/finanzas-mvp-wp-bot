@@ -11,6 +11,8 @@ vi.mock("next/headers", () => ({ headers: async () => new Headers() }));
 vi.mock("next/navigation", () => ({ redirect: vi.fn(), usePathname: () => "/dashboard" }));
 
 const { UserMenu } = await import("./user-menu");
+const { auth } = await import("@/lib/auth");
+const { redirect } = await import("next/navigation");
 
 const ANA: CurrentUser = {
   id: "u1",
@@ -28,6 +30,15 @@ beforeEach(() => {
 });
 
 describe("UserMenu", () => {
+  it("«Salir» cierra la sesión y lleva al login", async () => {
+    render(await UserMenu());
+    await userEvent.click(screen.getByRole("button", { name: /^Tu cuenta/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Salir" }));
+    await vi.waitFor(() => expect(redirect).toHaveBeenCalledWith("/login"));
+    expect(auth.api.signOut).toHaveBeenCalledOnce();
+    expect(vi.mocked(auth.api.signOut).mock.calls[0][0]).toMatchObject({ headers: expect.any(Headers) });
+  });
+
   it("a un usuario: el menú de su cuenta, sin nada de admin (ni en el HTML)", async () => {
     const { container } = render(await UserMenu());
     expect(screen.getByRole("button", { name: "Tu cuenta: Ana Pérez" })).toHaveTextContent("AP");
