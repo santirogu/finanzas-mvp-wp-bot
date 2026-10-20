@@ -40,8 +40,8 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   // Todo menos la API (cada ruta tiene su propia protección), los archivos estáticos,
-  // robots.txt (público, para los buscadores) y las rutas de Vercel (/_vercel/, p. ej. la
-  // analítica). Cada exclusión termina en "/" o en el fin de la ruta: sin eso, "api" también
-  // excluiría "/apiario".
-  matcher: ["/((?!api(?:/|$)|_next/static/|_next/image(?:/|$)|_vercel/|favicon\\.ico$|robots\\.txt$).*)"],
+  // robots.txt y sitemap.xml (públicos, para los buscadores) y las rutas de Vercel (/_vercel/,
+  // p. ej. la analítica). Cada exclusión termina en "/" o en el fin de la ruta: sin eso, "api"
+  // también excluiría "/apiario".
+  matcher: ["/((?!api(?:/|$)|_next/static/|_next/image(?:/|$)|_vercel/|favicon\\.ico$|robots\\.txt$|sitemap\\.xml$).*)"],
 };
