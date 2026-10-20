@@ -93,6 +93,7 @@ const SERVER_ACTIONS = {
     "requireUser; solo notas propias, de un gasto que la persona pagó ese mes; hasta 280 caracteres",
   skipFixedPaymentAction:
     "requireUser; solo marca 'ya no aplica' el pago de un mes de un gasto propio (un egreso propio con esa descripción)",
+  saveUpcomingSettingsAction: "requireUser; solo la configuración propia de los avisos; días de 0 a 10",
 } as const;
 
 // Acciones que no necesitan validar la sesión, con el porqué.

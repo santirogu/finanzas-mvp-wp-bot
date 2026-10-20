@@ -136,3 +136,52 @@ test("los avisos se leen bien en modo oscuro", async ({ page }) => {
   await expect(card(page).getByRole("listitem").first()).toBeVisible();
   expect(await seriousViolations(page)).toEqual([]);
 });
+
+test("Mi cuenta → Notificaciones: los días de anticipación cambian lo que avisa el Resumen; apagados, nada", async ({ page }) => {
+  const { email } = await register(page);
+  // Toca en 6 días: con los 3 de siempre todavía no avisa.
+  const due = shiftDay(6);
+  const rent = paymentsFor(due);
+  await addPayments(email, [{ description: "Arriendo", amount: 1800000, dates: rent }]);
+  const { when } = expected(rent, due.slice(0, 7));
+  await page.reload();
+  await expect(visible(page.getByRole("heading", { level: 1 }))).toBeVisible();
+  await expect(card(page)).toHaveCount(0);
+
+  const settings = () => visible(page.getByRole("region", { name: "Notificaciones" }));
+  const days = () => settings().getByLabel("Días de anticipación");
+
+  await test.step("un número fuera de rango no se guarda: lo dice debajo del campo", async () => {
+    await page.goto("/cuenta");
+    await expect(settings().getByRole("switch", { name: /Avisos de próximos pagos/ })).toBeChecked();
+    await expect(days()).toHaveValue("3");
+    await days().fill("11");
+    await settings().getByRole("button", { name: "Guardar" }).click();
+    await expect(settings().getByText("Escribe un número entre 0 y 10.")).toBeVisible();
+    await expect(days()).toHaveAttribute("aria-invalid", "true");
+    expect(await seriousViolations(page)).toEqual([]);
+  });
+
+  await test.step("con 10 días, el Resumen avisa del arriendo", async () => {
+    await days().fill("10");
+    await settings().getByRole("button", { name: "Guardar" }).click();
+    await expect(toast(page, "Se guardó: te avisaremos 10 días antes de cada pago fijo")).toHaveAttribute("data-tone", "success");
+    await closeToasts(page);
+    await openTab(page, "Resumen");
+    await expect(card(page)).toContainText("Tus gastos fijos de los próximos 10 días y los que todavía no registras.");
+    await expect(card(page).getByRole("listitem").filter({ hasText: "Arriendo" }).getByText(when, { exact: true })).toBeVisible();
+  });
+
+  await test.step("apagados: sin tarjeta, y al volver a Mi cuenta siguen apagados con sus días", async () => {
+    await page.goto("/cuenta");
+    await settings().getByText("Avisos de próximos pagos", { exact: true }).click();
+    await expect(days()).toBeDisabled();
+    await settings().getByRole("button", { name: "Guardar" }).click();
+    await expect(toast(page, "Se apagaron los avisos de próximos pagos")).toHaveAttribute("data-tone", "removal");
+    await page.reload();
+    await expect(settings().getByRole("switch", { name: /Avisos de próximos pagos/ })).not.toBeChecked();
+    await expect(days()).toHaveValue("10");
+    await openTab(page, "Resumen");
+    await expect(card(page)).toHaveCount(0);
+  });
+});

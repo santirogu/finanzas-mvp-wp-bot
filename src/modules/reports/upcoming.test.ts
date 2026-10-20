@@ -1,6 +1,18 @@
 import { describe, expect, it } from "vitest";
 import type { HistoryMonth } from "./history";
-import { dateInMonth, dateLine, daysBetween, upcomingItems, upcomingPayments, usualDay, whenLabel } from "./upcoming";
+import { UPCOMING_DAYS_MAX } from "@/db/schema";
+import {
+  dateInMonth,
+  dateLine,
+  daysAheadPhrase,
+  daysBetween,
+  MAX_DAYS_AHEAD,
+  upcomingItems,
+  upcomingPayments,
+  usualDay,
+  whenLabel,
+  windowPhrase,
+} from "./upcoming";
 
 // Los avisos de próximos pagos: qué día se espera cada gasto fijo y de cuáles avisar hoy.
 
@@ -189,5 +201,38 @@ describe("upcomingItems (los avisos listos para mostrar)", () => {
     const first = paid("Arriendo", "2026-10-01", "2026-11-01", "2026-12-01");
     const [item] = upcomingItems(upcomingPayments([rent], first, NONE, "2026-12-30"), "2026-12-30", "COP");
     expect(item).toMatchObject({ monthName: "enero de 2027", when: "En 2 días", overdue: false });
+  });
+});
+
+describe("los días de anticipación (Mi cuenta → Notificaciones)", () => {
+  const history = paid("Arriendo", "2026-07-15", "2026-08-15", "2026-09-15");
+  const days = (today: string, daysAhead: number) => upcomingPayments([rent], history, NONE, today, daysAhead).map((p) => p.days);
+
+  it("avisa con los días que eligió la persona; con 0, solo el mismo día", () => {
+    expect(days("2026-10-08", 3)).toEqual([]);
+    expect(days("2026-10-08", 7)).toEqual([7]);
+    expect(days("2026-10-14", 0)).toEqual([]);
+    expect(days("2026-10-15", 0)).toEqual([0]);
+    // Los atrasados, con cualquier anticipación.
+    expect(days("2026-10-20", 0)).toEqual([-5]);
+  });
+
+  it("con 10 días, a fin de mes alcanza el pago del mes siguiente", () => {
+    const fifth = paid("Arriendo", "2026-08-05", "2026-09-05", "2026-10-05");
+    expect(upcomingPayments([rent], fifth, NONE, "2026-10-27", 10).map((p) => [p.month, p.days])).toEqual([["2026-11", 9]]);
+  });
+
+  it("el máximo es el mismo que acepta la base", () => {
+    expect(MAX_DAYS_AHEAD).toBe(UPCOMING_DAYS_MAX);
+  });
+
+  it.each([
+    [0, "de hoy", "el mismo día"],
+    [1, "de hoy y mañana", "1 día antes"],
+    [3, "de los próximos 3 días", "3 días antes"],
+    [10, "de los próximos 10 días", "10 días antes"],
+  ])("con %d: la tarjeta dice %j y el aviso al guardar, %j", (daysAhead, window, ahead) => {
+    expect(windowPhrase(daysAhead)).toBe(window);
+    expect(daysAheadPhrase(daysAhead)).toBe(ahead);
   });
 });

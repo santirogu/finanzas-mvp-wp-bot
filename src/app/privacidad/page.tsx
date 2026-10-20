@@ -53,6 +53,11 @@ export default function PrivacyPage() {
               mayúsculas ni tildes) y el mes, hasta que elimines tu cuenta.
             </li>
             <li>
+              <strong>Tu configuración de las notificaciones:</strong> si en Mi cuenta prendes o apagas los
+              avisos de próximos pagos o cambias con cuántos días de anticipación llegan, guardamos esa
+              elección, hasta que elimines tu cuenta.
+            </li>
+            <li>
               <strong>Datos de WhatsApp, si conectas tu número:</strong> tu número de teléfono y el
               contenido de los mensajes que envías al bot, junto con las respuestas del bot.
             </li>

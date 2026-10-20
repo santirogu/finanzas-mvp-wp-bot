@@ -350,8 +350,13 @@ scripts/seed.ts                     Categorías por defecto
     una nota (hasta 280 caracteres; tabla `fixed_expense_note`), solo de un mes en que la persona pagó
     ese gasto; vaciarla la borra.
 - **Próximos pagos en el Resumen** (`src/modules/reports/upcoming.ts`, `upcoming-payments.tsx`): los gastos
-  fijos que tocan en los próximos 3 días (`DAYS_AHEAD`; por ahora fijo) y los atrasados, del más viejo al
+  fijos que tocan en los próximos días (3 si la persona no lo cambió) y los atrasados, del más viejo al
   más próximo. Solo en el mes actual y solo si hay alguno; los primeros 5 y el resto con "Mostrar más".
+  - **Mi cuenta → Notificaciones** (`notification-settings.tsx`, `upcoming-settings.ts`, tabla
+    `notification_setting`): prenderlos o apagarlos (apagados no se avisa nada, tampoco los atrasados) y
+    con cuántos días de anticipación, de 0 (el mismo día) a 10, en un campo numérico con su error en
+    español debajo. Se guarda con el botón; apagados, el campo queda inactivo y los días se conservan.
+    Sin guardar nada: prendidos, con 3 días. Vale en todos los dispositivos (no es como la apariencia).
   - **La fecha esperada:** la mediana de los días del mes de los últimos 3 pagos (resiste uno fuera de lo
     normal: el 5, el 5 y el 20 dan el 5); con menos pagos, con los que haya y "aprox.". Un 31 en un mes
     más corto es su último día, y los pagos alrededor del cambio de mes (el 30, el 31, el 1) van juntos.

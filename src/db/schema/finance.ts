@@ -1,11 +1,13 @@
 import { sql } from "drizzle-orm";
 import {
+  boolean,
   check,
   date,
   index,
   numeric,
   pgEnum,
   pgTable,
+  smallint,
   text,
   timestamp,
   uniqueIndex,
@@ -135,6 +137,24 @@ export const fixedPaymentSkip = pgTable(
     uniqueIndex("fixed_payment_skip_user_key_month_uq").on(t.userId, t.descriptionKey, t.month),
     check("fixed_payment_skip_month", sql`${t.month} ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'`),
   ],
+);
+
+// La configuración de los avisos de próximos pagos (Mi cuenta → Notificaciones): si están prendidos y con cuántos
+// días de anticipación (de 0, el mismo día, a 10). Sin fila, los valores por defecto (prendidos, 3 días:
+// src/modules/reports/upcoming-settings.ts). Se borra con la cuenta.
+export const UPCOMING_DAYS_MAX = 10;
+
+export const notificationSetting = pgTable(
+  "notification_setting",
+  {
+    userId: text("user_id")
+      .primaryKey()
+      .references(() => user.id, { onDelete: "cascade" }),
+    upcomingEnabled: boolean("upcoming_enabled").notNull().default(true),
+    upcomingDays: smallint("upcoming_days").notNull().default(3),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [check("notification_setting_upcoming_days", sql`${t.upcomingDays} between 0 and ${sql.raw(String(UPCOMING_DAYS_MAX))}`)],
 );
 
 export type Category = typeof category.$inferSelect;

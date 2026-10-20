@@ -12,6 +12,8 @@ const field = (validity: Partial<FieldState["validity"]>, overrides: Partial<Fie
     patternMismatch: false,
     rangeOverflow: false,
     rangeUnderflow: false,
+    stepMismatch: false,
+    badInput: false,
     ...validity,
   },
   type: "text",
@@ -79,5 +81,16 @@ describe("fieldErrorMessage", () => {
       required: "Escribe el código de 6 dígitos de Google Authenticator.",
       pattern: "El código tiene 6 dígitos, solo números.",
     });
+  });
+
+  it("un campo numérico fuera de rango, con decimales o que no es un número: su mensaje", () => {
+    const number = { number: "Escribe un número entre 0 y 10." };
+    for (const problem of ["rangeUnderflow", "rangeOverflow", "stepMismatch", "badInput"] as const) {
+      expect(fieldErrorMessage(field({ [problem]: true }, { type: "number" }), number), problem).toBe("Escribe un número entre 0 y 10.");
+      expect(fieldErrorMessage(field({ [problem]: true }, { type: "number" })), problem).toBe("Revisa este campo.");
+    }
+    // Vacío y obligatorio dice lo suyo; una fecha futura, el de max.
+    expect(fieldErrorMessage(field({ valueMissing: true }, { type: "number" }), { ...number, required: "Escribe cuántos días." })).toBe("Escribe cuántos días.");
+    expect(fieldErrorMessage(field({ rangeOverflow: true }), { max: "No puede ser después de hoy.", ...number })).toBe("No puede ser después de hoy.");
   });
 });

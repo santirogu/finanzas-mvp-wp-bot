@@ -29,7 +29,7 @@ export default defineConfig({
         "src/components/**",
         // Los componentes de src/app con su prueba. test/cobertura.test.ts falla si un componente de cliente
         // ("use client") no está aquí ni excluido a propósito.
-        "src/app/**/{auth-form,two-factor-login,two-factor-setup,expired-session-notice,filter-bar,chip-filter-bar,admin-nav,nav-tabs,whatsapp-connect,page-skeleton,delete-account-form,change-password,user-menu,account-actions,event-item,admin-dialog,category-manager,category-chart,account-menu,month-nav,daily-spending,download-menu,fixed-expenses,trend-chart,upcoming-payments,bot-settings,connections,resend-replies,theme-picker,unlink-whatsapp,whatsapp-hint}.tsx",
+        "src/app/**/{auth-form,two-factor-login,two-factor-setup,expired-session-notice,filter-bar,chip-filter-bar,admin-nav,nav-tabs,whatsapp-connect,page-skeleton,delete-account-form,change-password,user-menu,account-actions,event-item,admin-dialog,category-manager,category-chart,account-menu,month-nav,daily-spending,download-menu,fixed-expenses,trend-chart,upcoming-payments,notification-settings,bot-settings,connections,resend-replies,theme-picker,unlink-whatsapp,whatsapp-hint}.tsx",
         "scripts/*.mjs",
         "scripts/{delete-data,admin,db-cli,db-backup}.ts",
       ],
