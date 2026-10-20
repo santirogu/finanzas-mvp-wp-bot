@@ -103,7 +103,7 @@ async function Dashboard({ month }: { month: string | string[] | undefined }) {
       </section>
 
       {upcoming && upcoming.payments.length > 0 && (
-        <UpcomingPayments items={upcomingItems(upcoming.payments, today, user.currency)} span={windowPhrase(upcoming.days)} />
+        <UpcomingPayments items={upcomingItems(upcoming.payments, today, user.currency)} span={windowPhrase(upcoming.days)} today={today} />
       )}
 
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-5">

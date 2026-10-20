@@ -193,8 +193,17 @@ describe("upcomingItems (los avisos listos para mostrar)", () => {
         when: "Atrasado",
         dateLine: "5 de oct · lo sueles pagar el 5",
         overdue: true,
+        category: "Sin categoría",
+        amountInput: "1.800.000,00",
       },
     ]);
+    // Con la categoría del último pago, si la trae.
+    const [withCategory] = upcomingItems(
+      upcomingPayments([rent], history, NONE, "2026-10-10").map((p) => ({ ...p, category: "🏠 Vivienda" })),
+      "2026-10-10",
+      "COP",
+    );
+    expect(withCategory.category).toBe("🏠 Vivienda");
   });
 
   it("un pago del año siguiente lleva el año en el nombre del mes", () => {

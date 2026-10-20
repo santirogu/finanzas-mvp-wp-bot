@@ -391,7 +391,9 @@ describe("getUpcomingPayments (los avisos del Resumen)", () => {
 
     const upcoming = await getUpcomingPayments(ana.id, october, "2026-10-03");
     expect(upcoming.days).toBe(3);
-    expect(upcoming.payments.map((p) => [p.description, p.month, p.date, p.days, p.amount])).toEqual([["Arriendo", "2026-10", "2026-10-05", 2, 1800000]]);
+    expect(upcoming.payments.map((p) => [p.description, p.month, p.date, p.days, p.amount, p.category])).toEqual([
+      ["Arriendo", "2026-10", "2026-10-05", 2, 1800000, "Sin categoría"],
+    ]);
 
     // Atrasado (el 10, sin pago) hasta que lo marca; la marca de Beto no le cambia nada.
     await db.insert(fixedPaymentSkip).values({ userId: beto.id, descriptionKey: "arriendo", month: "2026-10" });

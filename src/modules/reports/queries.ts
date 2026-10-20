@@ -9,6 +9,7 @@ import { AVERAGE_MONTHS, type CategoryMonthTotal, categoryReport } from "./categ
 import type { CsvMovement } from "./csv";
 import type { DayDescriptionTotal } from "./daily";
 import { getFixedChoices } from "./fixed-choices";
+import { getLastPayments } from "./fixed-payments";
 import { type FixedHistoryEntry, fixedHistories } from "./history";
 import { getExpenseHistoryMonths, getFixedNotes, noteKey } from "./history-notes";
 import { getPaymentSkips } from "./payment-skips";
@@ -227,19 +228,29 @@ export type Report = Awaited<ReturnType<typeof getReport>>;
 /**
  * Los avisos de próximos pagos del Resumen: los gastos fijos de los últimos 12 meses (con lo que la
  * persona marcó a mano) cuyo pago toca en los días de anticipación que eligió (`days`) o está atrasado,
- * sin los que marcó "ya no aplica". Con los avisos apagados, ninguno. `current` y `today` (YYYY-MM-DD),
+ * sin los que marcó "ya no aplica", con la categoría de su último pago. Con los avisos apagados, ninguno. `current` y `today` (YYYY-MM-DD),
  * en la zona de la persona.
  */
-export async function getUpcomingPayments(userId: string, current: Month, today: string): Promise<{ days: number; payments: UpcomingPayment[] }> {
+export async function getUpcomingPayments(
+  userId: string,
+  current: Month,
+  today: string,
+): Promise<{ days: number; payments: (UpcomingPayment & { category: string })[] }> {
   const settings = await getUpcomingSettings(userId);
   if (!settings.enabled) return { days: settings.days, payments: [] };
   const period = reportPeriod(undefined, current);
-  const [descriptions, choices, history, skipped] = await Promise.all([
+  const [descriptions, choices, history, skipped, lastPayments] = await Promise.all([
     getExpenseDescriptionsByMonth(userId, recurringFrom(period.months), period.months[period.months.length - 1]),
     getFixedChoices(userId),
     getExpenseHistoryMonths(userId),
     getPaymentSkips(userId),
+    getLastPayments(userId),
   ]);
   const { items } = recurringExpenses(descriptions, period.months, choices);
-  return { days: settings.days, payments: upcomingPayments(items, history, skipped, today, settings.days) };
+  // Con la categoría del último pago: la que lleva "Registrar pago".
+  const payments = upcomingPayments(items, history, skipped, today, settings.days).map((payment) => ({
+    ...payment,
+    category: lastPayments.get(payment.key)?.category ?? "Sin categoría",
+  }));
+  return { days: settings.days, payments };
 }

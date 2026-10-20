@@ -1,5 +1,5 @@
 import { formatMonthName, formatShortDate, monthOf, monthParam, shiftMonth } from "@/lib/dates";
-import { formatMoney } from "@/lib/money";
+import { amountInputValue, formatMoney } from "@/lib/money";
 import { searchKey } from "@/lib/suggestions";
 import type { HistoryMonth } from "./history";
 import type { FixedOption } from "./recurring";
@@ -186,10 +186,14 @@ export type UpcomingItem = {
   /** "5 de oct · lo sueles pagar el 5 (aprox.)". */
   dateLine: string;
   overdue: boolean;
+  /** La categoría del último pago ("🩺 Salud"): con la que se registra el pago. */
+  category: string;
+  /** El monto para el campo de "Registrar pago" ("1.800.000,00"). */
+  amountInput: string;
 };
 
 /** Los avisos con sus textos: los nombres de los meses salen de Intl, en el servidor. */
-export function upcomingItems(payments: UpcomingPayment[], today: string, currency: string): UpcomingItem[] {
+export function upcomingItems(payments: (UpcomingPayment & { category?: string })[], today: string, currency: string): UpcomingItem[] {
   return payments.map((payment) => ({
     id: `${payment.key} ${payment.month}`,
     description: payment.description,
@@ -200,5 +204,7 @@ export function upcomingItems(payments: UpcomingPayment[], today: string, curren
     when: whenLabel(payment.days),
     dateLine: dateLine(payment, today),
     overdue: payment.days < 0,
+    category: payment.category ?? "Sin categoría",
+    amountInput: amountInputValue(payment.amount),
   }));
 }
