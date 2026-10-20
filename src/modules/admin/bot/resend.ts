@@ -2,6 +2,8 @@ import "server-only";
 import { and, count, desc, eq, gt, isNotNull, like, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { whatsappMessage } from "@/db/schema";
+import { getRequestLocale } from "@/i18n/request";
+import { texts } from "@/i18n/texts";
 import { requireAdmin } from "@/lib/session";
 import { recordEvent } from "@/modules/account/events";
 import { sendWhatsAppText, type Sender } from "@/modules/whatsapp/client";
@@ -12,7 +14,27 @@ import type { BotSettingResult } from "./bot-settings";
 // Reenviar desde /admin/bot las respuestas del bot que no salieron por WhatsApp (por ejemplo, un
 // token vencido o un número fuera de la lista de Meta, ya arreglados). Se reenvía la respuesta que
 // guardó el bot, tal cual: no se vuelve a interpretar nada ni se registran movimientos otra vez. El
-// admin no la ve: solo cuántas son. Pide el código y queda en el historial (sin cuenta ni número).
+// admin no la ve: solo cuántas son. Pide el código y queda en el historial (sin cuenta ni número). Los
+// mensajes van en el idioma de quien hace el pedido (la cookie).
+
+const TEXTS = texts(
+  {
+    none: "No hay respuestas para reenviar.",
+    noneWent: (failed: number) => `No salió ninguna: WhatsApp rechazó ${failed === 1 ? "la respuesta" : `las ${failed} respuestas`} otra vez.`,
+    resent: (resent: number, failed: number) =>
+      `Se ${resent === 1 ? "reenvió 1 respuesta" : `reenviaron ${resent} respuestas`}${
+        failed ? `; ${failed} ${failed === 1 ? "no salió" : "no salieron"} otra vez` : ""
+      }.`,
+  },
+  {
+    en: {
+      none: "There are no replies to resend.",
+      noneWent: (failed) => `None went out: WhatsApp rejected ${failed === 1 ? "the reply" : `the ${failed} replies`} again.`,
+      resent: (resent, failed) =>
+        `${resent === 1 ? "1 reply was" : `${resent} replies were`} resent${failed ? `; ${failed} didn't go out again` : ""}.`,
+    },
+  },
+);
 
 /**
  * Las que se pueden reenviar: fallaron al enviar (no al entender el mensaje), tienen una respuesta de
@@ -44,13 +66,14 @@ export async function resendFailedReplies(
   send: Sender = sendWhatsAppText,
 ): Promise<BotSettingResult> {
   const admin = await requireAdmin();
+  const t = TEXTS[await getRequestLocale()];
   const pending = await db
     .select({ id: whatsappMessage.id, phone: whatsappMessage.phone, reply: whatsappMessage.reply })
     .from(whatsappMessage)
     .where(resendable(now))
     .orderBy(desc(whatsappMessage.receivedAt))
     .limit(MAX_RESENDS);
-  if (pending.length === 0) return { ok: false, error: "No hay respuestas para reenviar." };
+  if (pending.length === 0) return { ok: false, error: t.none };
   const check = await confirmAdminCode(code, now);
   if (!check.ok) return { ok: false, error: check.error, field: "code" };
 
@@ -76,14 +99,6 @@ export async function resendFailedReplies(
   }
   await recordEvent({ type: "bot_replies_resent", userId: null, adminId: admin.id, details: { resent, failed } });
 
-  const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
-  if (resent === 0) {
-    return { ok: false, error: `No salió ninguna: WhatsApp rechazó ${failed === 1 ? "la respuesta" : `las ${failed} respuestas`} otra vez.` };
-  }
-  return {
-    ok: true,
-    message: `Se ${resent === 1 ? "reenvió" : "reenviaron"} ${plural(resent, "respuesta", "respuestas")}${
-      failed ? `; ${plural(failed, "no salió", "no salieron")} otra vez` : ""
-    }.`,
-  };
+  if (resent === 0) return { ok: false, error: t.noneWent(failed) };
+  return { ok: true, message: t.resent(resent, failed) };
 }

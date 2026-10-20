@@ -1,12 +1,13 @@
 "use client";
 
 import { useActionState, useEffect, useId, useRef, useState, type ReactNode } from "react";
-import { CATEGORY_NAME_MAX, CATEGORY_TYPE_LABELS, DEFAULT_CATEGORY, EMOJI_SUGGESTIONS, type CategoryType } from "@/modules/admin/categories/category-input";
+import { CATEGORY_NAME_MAX, CATEGORY_TYPE_TEXTS, DEFAULT_CATEGORY, EMOJI_SUGGESTIONS, type CategoryType } from "@/modules/admin/categories/category-input";
 import { describedBy } from "@/components/field-error";
 import { useFieldErrors } from "@/components/use-field-errors";
-import type { FieldMessages } from "@/lib/field-errors";
+import { useLocale, useTexts } from "@/i18n/client";
+import { texts } from "@/i18n/texts";
 import { type ToastTone, useToast } from "@/components/toaster";
-import { Buttons, CODE_FIELD_MESSAGES, CodeField, Dialog, FormError } from "../admin-dialog";
+import { Buttons, CODE_FIELD_TEXTS, CodeField, Dialog, FormError } from "../admin-dialog";
 import {
   archiveCategoryAction,
   createCategoryAction,
@@ -18,7 +19,8 @@ import {
 
 // Las categorías de un tipo en /admin/categorias: las activas (alfabéticas, "Otros" al final) y las
 // archivadas, con sus acciones. Crear, editar y restaurar no piden código; archivar y eliminar, sí.
-// El servidor vuelve a validar todo.
+// El servidor vuelve a validar todo. Los textos, en el idioma de la página; los nombres de las categorías
+// (también "Otros"), tal cual.
 
 export type ManagedCategory = {
   id: string;
@@ -37,15 +39,114 @@ type Open =
   | { kind: "delete"; category: ManagedCategory }
   | null;
 
-const movementsLabel = (n: number) => (n === 0 ? "Sin movimientos" : `${n} ${n === 1 ? "movimiento" : "movimientos"}`);
-
-// El error del nombre antes de enviar, en español (en vez del globo del navegador).
-const CATEGORY_MESSAGES: Record<string, FieldMessages> = { name: { required: "Escribe un nombre." } };
+const TEXTS = texts(
+  {
+    intro: "Se aplican de inmediato en los formularios y en el bot.",
+    newCategory: "Nueva categoría",
+    list: (type: CategoryType) => `Categorías de ${type === "expense" ? "egresos" : "ingresos"}`,
+    archivedList: (type: CategoryType) => `Categorías archivadas de ${type === "expense" ? "egresos" : "ingresos"}`,
+    archive: "Archivar",
+    delete: "Eliminar",
+    archivedTitle: "Archivadas",
+    archivedIntro: "No aparecen en los formularios ni las usa el bot; sus movimientos las conservan.",
+    archiveQuestion: (name: string) => `¿Archivar la categoría ${name}?`,
+    archiving: "Archivando…",
+    archiveBody: (n: number) =>
+      `Dejará de aparecer en los formularios y el bot no la usará. ${
+        n === 0 ? "No tiene movimientos." : n === 1 ? "El movimiento que ya la tiene la conserva." : `Los ${n} movimientos que ya la tienen la conservan.`
+      } Puedes restaurarla cuando quieras.`,
+    deleteQuestion: (name: string) => `¿Eliminar la categoría ${name}?`,
+    deleteAndMove: `Eliminar y pasar a ${DEFAULT_CATEGORY}`,
+    deleting: "Eliminando…",
+    deleteWarning: (movements: string, fallback: string) =>
+      `Tiene ${movements}. Si la eliminas, pasarán a ${fallback}. La eliminación queda en el registro de cambios y no se puede deshacer.`,
+    archiveInstead: "Si solo quieres que no se use más, archívala: los movimientos la conservan.",
+    deleteEmpty: "No tiene movimientos. La eliminación queda en el registro de cambios y no se puede deshacer.",
+    movements: (n: number): string => (n === 0 ? "Sin movimientos" : `${n} ${n === 1 ? "movimiento" : "movimientos"}`),
+    byDefault: "Por defecto",
+    onlyEmoji: " · solo se cambia el emoji",
+    edit: "Editar",
+    editLabel: (name: string) => `Editar ${name}`,
+    more: (name: string) => `Más acciones para ${name}`,
+    asksCode: "Pide el código",
+    restore: "Restaurar",
+    restoring: "Restaurando…",
+    restoreLabel: (name: string) => `Restaurar ${name}`,
+    editTitle: (name: string) => `Editar la categoría ${name}`,
+    newTitle: (type: CategoryType) => `Nueva categoría de ${type === "expense" ? "egresos" : "ingresos"}`,
+    formIntro: (typeName: string) => `${typeName} · se aplica de inmediato en los formularios y en el bot.`,
+    renameNote: " Los movimientos que ya la usan pasan a verse con el nombre nuevo.",
+    name: "Nombre",
+    defaultOnlyEmoji: `A "${DEFAULT_CATEGORY}" solo se le puede cambiar el emoji.`,
+    emoji: "Emoji",
+    optional: "(opcional)",
+    emojiHelp: "Toca uno de los sugeridos o escribe otro. Si lo dejas vacío, la categoría se mostrará con un punto (•).",
+    suggested: "Emojis sugeridos",
+    use: (emoji: string) => `Usar ${emoji}`,
+    save: "Guardar",
+    saving: "Guardando…",
+    create: "Crear",
+    creating: "Creando…",
+    // El error del nombre antes de enviar (en vez del globo del navegador).
+    nameRequired: "Escribe un nombre.",
+  },
+  {
+    en: {
+      intro: "They apply right away in the forms and in the bot.",
+      newCategory: "New category",
+      list: (type) => `${type === "expense" ? "Expense" : "Income"} categories`,
+      archivedList: (type) => `Archived ${type === "expense" ? "expense" : "income"} categories`,
+      archive: "Archive",
+      delete: "Delete",
+      archivedTitle: "Archived",
+      archivedIntro: "They don't show up in the forms and the bot doesn't use them; their transactions keep them.",
+      archiveQuestion: (name) => `Archive the category ${name}?`,
+      archiving: "Archiving…",
+      archiveBody: (n) =>
+        `It will stop showing up in the forms and the bot won't use it. ${
+          n === 0 ? "It has no transactions." : n === 1 ? "The transaction that already has it keeps it." : `The ${n} transactions that already have it keep it.`
+        } You can restore it whenever you want.`,
+      deleteQuestion: (name) => `Delete the category ${name}?`,
+      deleteAndMove: `Delete and move to ${DEFAULT_CATEGORY}`,
+      deleting: "Deleting…",
+      deleteWarning: (movements, fallback) =>
+        `It has ${movements}. If you delete it, they'll move to ${fallback}. The deletion stays in the change log and can't be undone.`,
+      archiveInstead: "If you just want it not to be used anymore, archive it: the transactions keep it.",
+      deleteEmpty: "It has no transactions. The deletion stays in the change log and can't be undone.",
+      movements: (n) => (n === 0 ? "No transactions" : `${n} ${n === 1 ? "transaction" : "transactions"}`),
+      byDefault: "Default",
+      onlyEmoji: " · only the emoji changes",
+      edit: "Edit",
+      editLabel: (name) => `Edit ${name}`,
+      more: (name) => `More actions for ${name}`,
+      asksCode: "Asks for the code",
+      restore: "Restore",
+      restoring: "Restoring…",
+      restoreLabel: (name) => `Restore ${name}`,
+      editTitle: (name) => `Edit the category ${name}`,
+      newTitle: (type) => `New ${type === "expense" ? "expense" : "income"} category`,
+      formIntro: (typeName) => `${typeName} · it applies right away in the forms and in the bot.`,
+      renameNote: " The transactions that already use it will show the new name.",
+      name: "Name",
+      defaultOnlyEmoji: `Only the emoji of "${DEFAULT_CATEGORY}" can be changed.`,
+      emoji: "Emoji",
+      optional: "(optional)",
+      emojiHelp: "Tap one of the suggestions or type another. If you leave it empty, the category will show a dot (•).",
+      suggested: "Suggested emojis",
+      use: (emoji) => `Use ${emoji}`,
+      save: "Save",
+      saving: "Saving…",
+      create: "Create",
+      creating: "Creating…",
+      nameRequired: "Enter a name.",
+    },
+  },
+);
 
 export function CategoryManager({ type, categories }: { type: CategoryType; categories: ManagedCategory[] }) {
+  const t = useTexts(TEXTS);
   const [open, setOpen] = useState<Open>(null);
   const toast = useToast();
-  const kind = CATEGORY_TYPE_LABELS[type].toLowerCase();
   const active = categories.filter((c) => !c.archived);
   const archived = categories.filter((c) => c.archived);
   const fallbackEmoji = categories.find((c) => c.isDefault)?.emoji ?? "📦";
@@ -61,13 +162,13 @@ export function CategoryManager({ type, categories }: { type: CategoryType; cate
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-sm text-muted">Se aplican de inmediato en los formularios y en el bot.</p>
+        <p className="text-sm text-muted">{t.intro}</p>
         <button type="button" onClick={() => start({ kind: "create" })} className="btn-primary shrink-0">
-          Nueva categoría
+          {t.newCategory}
         </button>
       </div>
 
-      <ul aria-label={`Categorías de ${kind}`} className="divide-y divide-border">
+      <ul aria-label={t.list(type)} className="divide-y divide-border">
         {active.map((category) => (
           <CategoryRow key={category.id} category={category} onEdit={() => start({ kind: "edit", category })}>
             {category.isDefault ? (
@@ -80,8 +181,8 @@ export function CategoryManager({ type, categories }: { type: CategoryType; cate
               <MoreActions
                 name={category.name}
                 actions={[
-                  { label: "Archivar", onClick: () => start({ kind: "archive", category }) },
-                  { label: "Eliminar", danger: true, onClick: () => start({ kind: "delete", category }) },
+                  { label: t.archive, onClick: () => start({ kind: "archive", category }) },
+                  { label: t.delete, danger: true, onClick: () => start({ kind: "delete", category }) },
                 ]}
               />
             )}
@@ -92,14 +193,14 @@ export function CategoryManager({ type, categories }: { type: CategoryType; cate
       {archived.length > 0 && (
         <section aria-labelledby={`archivadas-${type}`} className="space-y-1 pt-2">
           <h3 id={`archivadas-${type}`} className="text-sm font-medium text-muted">
-            Archivadas
+            {t.archivedTitle}
           </h3>
-          <p className="text-xs text-muted">No aparecen en los formularios ni las usa el bot; sus movimientos las conservan.</p>
-          <ul aria-label={`Categorías archivadas de ${kind}`} className="divide-y divide-border">
+          <p className="text-xs text-muted">{t.archivedIntro}</p>
+          <ul aria-label={t.archivedList(type)} className="divide-y divide-border">
             {archived.map((category) => (
               <CategoryRow key={category.id} category={category}>
                 <RestoreButton category={category} onDone={finish("success")} />
-                <MoreActions name={category.name} actions={[{ label: "Eliminar", danger: true, onClick: () => start({ kind: "delete", category }) }]} />
+                <MoreActions name={category.name} actions={[{ label: t.delete, danger: true, onClick: () => start({ kind: "delete", category }) }]} />
               </CategoryRow>
             ))}
           </ul>
@@ -112,33 +213,23 @@ export function CategoryManager({ type, categories }: { type: CategoryType; cate
       )}
       {open?.kind === "archive" && (
         <CodeDialog
-          title={`¿Archivar la categoría ${open.category.name}?`}
+          title={t.archiveQuestion(open.category.name)}
           action={archiveCategoryAction}
           id={open.category.id}
-          submit="Archivar"
-          pending="Archivando…"
+          submit={t.archive}
+          pending={t.archiving}
           onClose={close}
           onDone={finish("removal")}
-          description={
-            <>
-              Dejará de aparecer en los formularios y el bot no la usará.{" "}
-              {open.category.movements === 0
-                ? "No tiene movimientos."
-                : open.category.movements === 1
-                  ? "El movimiento que ya la tiene la conserva."
-                  : `Los ${open.category.movements} movimientos que ya la tienen la conservan.`}{" "}
-              Puedes restaurarla cuando quieras.
-            </>
-          }
+          description={t.archiveBody(open.category.movements)}
         />
       )}
       {open?.kind === "delete" && (
         <CodeDialog
-          title={`¿Eliminar la categoría ${open.category.name}?`}
+          title={t.deleteQuestion(open.category.name)}
           action={deleteCategoryAction}
           id={open.category.id}
-          submit={open.category.movements > 0 ? `Eliminar y pasar a ${DEFAULT_CATEGORY}` : "Eliminar"}
-          pending="Eliminando…"
+          submit={open.category.movements > 0 ? t.deleteAndMove : t.delete}
+          pending={t.deleting}
           danger
           onClose={close}
           onDone={finish("removal")}
@@ -146,19 +237,18 @@ export function CategoryManager({ type, categories }: { type: CategoryType; cate
             open.category.movements > 0 ? (
               <>
                 <span className="block rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-danger">
-                  Tiene {movementsLabel(open.category.movements)}. Si la eliminas, pasarán a {fallbackEmoji} {DEFAULT_CATEGORY}. La
-                  eliminación queda en el registro de cambios y no se puede deshacer.
+                  {t.deleteWarning(t.movements(open.category.movements), `${fallbackEmoji} ${DEFAULT_CATEGORY}`)}
                 </span>
                 {/* El espacio separa las dos frases para los lectores de pantalla (los bloques no lo ponen). */}
                 {!open.category.archived && (
                   <>
                     {" "}
-                    <span className="mt-2 block">Si solo quieres que no se use más, archívala: los movimientos la conservan.</span>
+                    <span className="mt-2 block">{t.archiveInstead}</span>
                   </>
                 )}
               </>
             ) : (
-              "No tiene movimientos. La eliminación queda en el registro de cambios y no se puede deshacer."
+              t.deleteEmpty
             )
           }
         />
@@ -168,6 +258,7 @@ export function CategoryManager({ type, categories }: { type: CategoryType; cate
 }
 
 function CategoryRow({ category, onEdit, children }: { category: ManagedCategory; onEdit?: () => void; children?: ReactNode }) {
+  const t = useTexts(TEXTS);
   return (
     <li className="flex items-center gap-3 py-3">
       <span aria-hidden className={`flex size-9 flex-none items-center justify-center rounded-lg bg-chip text-lg ${category.archived ? "grayscale" : ""}`}>
@@ -176,11 +267,11 @@ function CategoryRow({ category, onEdit, children }: { category: ManagedCategory
       <div className="min-w-0 flex-1">
         <p className={`flex flex-wrap items-center gap-2 text-sm font-medium ${category.archived ? "text-muted" : ""}`}>
           <span className="break-words">{category.name}</span>
-          {category.isDefault && <span className="rounded-full border border-border px-2 text-xs font-normal text-muted">Por defecto</span>}
+          {category.isDefault && <span className="rounded-full border border-border px-2 text-xs font-normal text-muted">{t.byDefault}</span>}
         </p>
         <p className="text-xs text-muted">
-          {movementsLabel(category.movements)}
-          {category.isDefault && " · solo se cambia el emoji"}
+          {t.movements(category.movements)}
+          {category.isDefault && t.onlyEmoji}
         </p>
       </div>
       <div className="flex shrink-0 items-center gap-1">
@@ -188,10 +279,10 @@ function CategoryRow({ category, onEdit, children }: { category: ManagedCategory
           <button
             type="button"
             onClick={onEdit}
-            aria-label={`Editar ${category.name}`}
+            aria-label={t.editLabel(category.name)}
             className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium hover:bg-background"
           >
-            Editar
+            {t.edit}
           </button>
         )}
         {children}
@@ -202,6 +293,7 @@ function CategoryRow({ category, onEdit, children }: { category: ManagedCategory
 
 /** El botón "⋯": muestra las acciones que piden el código (un desplegable simple, no un menú). */
 function MoreActions({ name, actions }: { name: string; actions: { label: string; danger?: boolean; onClick: () => void }[] }) {
+  const t = useTexts(TEXTS);
   const [expanded, setExpanded] = useState(false);
   const panelId = useId();
   const wrapper = useRef<HTMLDivElement>(null);
@@ -231,7 +323,7 @@ function MoreActions({ name, actions }: { name: string; actions: { label: string
         type="button"
         aria-expanded={expanded}
         aria-controls={panelId}
-        aria-label={`Más acciones para ${name}`}
+        aria-label={t.more(name)}
         onClick={() => setExpanded(!expanded)}
         className="rounded-lg border border-border px-2.5 py-1.5 text-sm font-medium hover:bg-background"
       >
@@ -256,7 +348,7 @@ function MoreActions({ name, actions }: { name: string; actions: { label: string
             className={`block w-full rounded-md px-3 py-2 text-left text-sm hover:bg-background ${action.danger ? "text-danger" : ""}`}
           >
             {action.label}
-            <span className="block text-xs text-muted">Pide el código</span>
+            <span className="block text-xs text-muted">{t.asksCode}</span>
           </button>
         ))}
       </div>
@@ -266,6 +358,7 @@ function MoreActions({ name, actions }: { name: string; actions: { label: string
 
 /** Restaurar no pide código: solo deshace un archivado. */
 function RestoreButton({ category, onDone }: { category: ManagedCategory; onDone: (message: string) => void }) {
+  const t = useTexts(TEXTS);
   const [state, formAction, busy] = useNotifyingAction(restoreCategoryAction, onDone);
   return (
     <form action={formAction} className="flex flex-col items-end">
@@ -273,10 +366,10 @@ function RestoreButton({ category, onDone }: { category: ManagedCategory; onDone
       <button
         type="submit"
         disabled={busy}
-        aria-label={`Restaurar ${category.name}`}
+        aria-label={t.restoreLabel(category.name)}
         className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium hover:bg-background disabled:opacity-60"
       >
-        {busy ? "Restaurando…" : "Restaurar"}
+        {busy ? t.restoring : t.restore}
       </button>
       {state.error && (
         <span role="alert" className="mt-1 text-xs text-danger">
@@ -307,29 +400,30 @@ function CategoryFormDialog({
   onClose: () => void;
   onDone: (message: string) => void;
 }) {
+  const locale = useLocale();
+  const t = TEXTS[locale];
   const editing = Boolean(category);
   const [state, formAction, busy] = useNotifyingAction(editing ? updateCategoryAction : createCategoryAction, onDone);
-  const { errors, formProps } = useFieldErrors(CATEGORY_MESSAGES);
+  const { errors, formProps } = useFieldErrors({ name: { required: t.nameRequired } });
   // El del navegador (antes de enviar) o el del servidor (un nombre repetido, p. ej.).
   const nameMessage = errors.name ?? (state.field === "name" ? state.error : undefined);
   const [emoji, setEmoji] = useState(category?.emoji ?? "");
   const nameError = useId();
   const emojiError = useId();
   const emojiHelp = useId();
-  const kind = CATEGORY_TYPE_LABELS[type].toLowerCase();
 
   return (
-    <Dialog title={category ? `Editar la categoría ${category.name}` : `Nueva categoría de ${kind}`} onClose={onClose}>
+    <Dialog title={category ? t.editTitle(category.name) : t.newTitle(type)} onClose={onClose}>
       {(ids) => (
         <form action={formAction} {...formProps} className="space-y-4">
           <p id={ids.description} className="text-sm text-muted">
-            {CATEGORY_TYPE_LABELS[type]} · se aplica de inmediato en los formularios y en el bot.
-            {category && category.movements > 0 && " Los movimientos que ya la usan pasan a verse con el nombre nuevo."}
+            {t.formIntro(CATEGORY_TYPE_TEXTS[locale][type])}
+            {category && category.movements > 0 && t.renameNote}
           </p>
           {category ? <input type="hidden" name="id" value={category.id} /> : <input type="hidden" name="type" value={type} />}
           <div className="space-y-1.5">
             <label className="block space-y-1.5">
-              <span className="text-sm font-medium">Nombre</span>
+              <span className="text-sm font-medium">{t.name}</span>
               <input
                 name="name"
                 required
@@ -342,7 +436,7 @@ function CategoryFormDialog({
                 className="input read-only:bg-background read-only:text-muted"
               />
             </label>
-            {category?.isDefault && <p className="text-xs text-muted">A &quot;{DEFAULT_CATEGORY}&quot; solo se le puede cambiar el emoji.</p>}
+            {category?.isDefault && <p className="text-xs text-muted">{t.defaultOnlyEmoji}</p>}
             {nameMessage && (
               <p id={nameError} className="text-xs text-danger">
                 {nameMessage}
@@ -352,7 +446,7 @@ function CategoryFormDialog({
           <div className="space-y-1.5">
             <label className="block space-y-1.5">
               <span className="block text-sm font-medium">
-                Emoji <span className="font-normal text-muted">(opcional)</span>
+                {t.emoji} <span className="font-normal text-muted">{t.optional}</span>
               </span>
               <input
                 name="emoji"
@@ -365,14 +459,14 @@ function CategoryFormDialog({
               />
             </label>
             <p id={emojiHelp} className="text-xs text-muted">
-              Toca uno de los sugeridos o escribe otro. Si lo dejas vacío, la categoría se mostrará con un punto (•).
+              {t.emojiHelp}
             </p>
-            <div role="group" aria-label="Emojis sugeridos" className="flex flex-wrap gap-1">
+            <div role="group" aria-label={t.suggested} className="flex flex-wrap gap-1">
               {EMOJI_SUGGESTIONS[type].map((suggestion) => (
                 <button
                   key={suggestion}
                   type="button"
-                  aria-label={`Usar ${suggestion}`}
+                  aria-label={t.use(suggestion)}
                   aria-pressed={emoji === suggestion}
                   onClick={() => setEmoji(suggestion)}
                   className="size-9 rounded-lg border border-border text-lg hover:bg-background aria-pressed:border-brand aria-pressed:bg-brand/10"
@@ -388,7 +482,7 @@ function CategoryFormDialog({
             )}
           </div>
           <FormError state={state} />
-          <Buttons submit={editing ? "Guardar" : "Crear"} pending={editing ? "Guardando…" : "Creando…"} busy={busy} />
+          <Buttons submit={editing ? t.save : t.create} pending={editing ? t.saving : t.creating} busy={busy} />
         </form>
       )}
     </Dialog>
@@ -417,7 +511,7 @@ function CodeDialog({
   onDone: (message: string) => void;
 }) {
   const [state, formAction, busy] = useNotifyingAction(action, onDone);
-  const { errors, formProps } = useFieldErrors(CODE_FIELD_MESSAGES);
+  const { errors, formProps } = useFieldErrors(CODE_FIELD_TEXTS[useLocale()]);
   return (
     <Dialog title={title} onClose={onClose}>
       {(ids) => (

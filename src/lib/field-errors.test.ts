@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { EMAIL_MESSAGE, FIELD_TEXTS, TOTP_CODE_MESSAGES, fieldErrorMessage, type FieldState } from "./field-errors";
+import { FIELD_TEXTS, fieldErrorMessage, type FieldState } from "./field-errors";
 
 // Lo que dice el navegador de un campo (ValidityState): todo en orden salvo lo que diga cada prueba.
 const field = (validity: Partial<FieldState["validity"]>, overrides: Partial<FieldState> = {}): FieldState => ({
@@ -39,8 +39,7 @@ describe("fieldErrorMessage", () => {
   });
 
   it("un correo mal escrito", () => {
-    expect(fieldErrorMessage(field({ typeMismatch: true }, { type: "email" }))).toBe(EMAIL_MESSAGE);
-    expect(EMAIL_MESSAGE).toBe("Revisa el correo: debe verse como nombre@correo.com.");
+    expect(fieldErrorMessage(field({ typeMismatch: true }, { type: "email" }))).toBe("Revisa el correo: debe verse como nombre@correo.com.");
     expect(fieldErrorMessage(field({ typeMismatch: true }, { type: "email" }), { email: "Otro" })).toBe("Otro");
     // Otro tipo mal escrito (p. ej. una URL), el general.
     expect(fieldErrorMessage(field({ typeMismatch: true }, { type: "url" }))).toBe("Revisa este campo.");
@@ -60,7 +59,7 @@ describe("fieldErrorMessage", () => {
   });
 
   it("formato: el del campo o el general", () => {
-    expect(fieldErrorMessage(field({ patternMismatch: true }), TOTP_CODE_MESSAGES)).toBe("El código tiene 6 dígitos, solo números.");
+    expect(fieldErrorMessage(field({ patternMismatch: true }), FIELD_TEXTS.es.totpCode)).toBe("El código tiene 6 dígitos, solo números.");
     expect(fieldErrorMessage(field({ patternMismatch: true }))).toBe("Revisa el formato.");
   });
 
@@ -77,7 +76,7 @@ describe("fieldErrorMessage", () => {
   });
 
   it("los del código de Google Authenticator", () => {
-    expect(TOTP_CODE_MESSAGES).toEqual({
+    expect(FIELD_TEXTS.es.totpCode).toEqual({
       required: "Escribe el código de 6 dígitos de Google Authenticator.",
       pattern: "El código tiene 6 dígitos, solo números.",
     });
@@ -105,10 +104,5 @@ describe("fieldErrorMessage · en inglés", () => {
     expect(fieldErrorMessage(field({ badInput: true }), {}, "en")).toBe("Check this field.");
     expect(fieldErrorMessage(field({ valueMissing: true }), { required: "Enter your name." }, "en")).toBe("Enter your name.");
     expect(fieldErrorMessage(field({ patternMismatch: true }), FIELD_TEXTS.en.totpCode, "en")).toBe("The code has 6 digits, numbers only.");
-  });
-
-  it("en español, los de siempre", () => {
-    expect(FIELD_TEXTS.es.email).toBe(EMAIL_MESSAGE);
-    expect(FIELD_TEXTS.es.totpCode).toBe(TOTP_CODE_MESSAGES);
   });
 });

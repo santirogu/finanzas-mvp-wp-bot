@@ -115,3 +115,24 @@ describe("el tope mensual de tokens", () => {
     expect(parseMonthlyTokenLimit(raw)).toEqual({ ok: false, error });
   });
 });
+
+describe("en inglés (lo que escribe el admin en /admin/bot)", () => {
+  it("los miles van con coma; el punto no es un separador", () => {
+    expect(parseAiLimits({ perHour: "30", perDay: "1,500" }, "en")).toEqual({ ok: true, limits: { perHour: 30, perDay: 1500 } });
+    expect(parseAiLimits({ perHour: "30", perDay: "1.500" }, "en")).toEqual({ ok: false, field: "perDay", error: "Enter how many messages per day, in numbers." });
+    expect(parseMonthlyTokenLimit("2,000,000", "en")).toEqual({ ok: true, limit: 2_000_000 });
+    expect(parseMonthlyTokenLimit("2.000.000", "en")).toEqual({
+      ok: false,
+      error: "Enter how many tokens a month, in numbers (or leave it empty for no limit).",
+    });
+    expect(parseMonthlyTokenLimit(" ", "en")).toEqual({ ok: true, limit: null });
+  });
+
+  it("los mensajes de cada campo", () => {
+    expect(parseAiLimits({ perHour: "x", perDay: "100" }, "en")).toEqual({ ok: false, field: "perHour", error: "Enter how many messages per hour, in numbers." });
+    expect(parseAiLimits({ perHour: "0", perDay: "100" }, "en")).toEqual({ ok: false, field: "perHour", error: "The limit per hour goes from 1 to 200." });
+    expect(parseAiLimits({ perHour: "20", perDay: "5000" }, "en")).toEqual({ ok: false, field: "perDay", error: "The limit per day goes from 1 to 2,000." });
+    expect(parseAiLimits({ perHour: "50", perDay: "40" }, "en")).toEqual({ ok: false, field: "perHour", error: "The hourly limit can't be higher than the daily one." });
+    expect(parseMonthlyTokenLimit("5", "en")).toEqual({ ok: false, error: "The monthly limit goes from 10,000 to 100,000,000 tokens." });
+  });
+});

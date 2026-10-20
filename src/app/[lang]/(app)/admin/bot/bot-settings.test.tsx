@@ -250,3 +250,73 @@ describe("BotSettings · tope mensual de tokens", () => {
     expect(actions.changeMonthlyLimitAction).not.toHaveBeenCalled();
   });
 });
+
+describe("BotSettings en inglés", () => {
+  const en = (overrides: Partial<BotSettingsProps> = {}) => props({ month: { used: 37579, reached: false, resetsOn: "November 1" }, ...overrides });
+  const settings = () => within(screen.getByRole("region", { name: "Settings" }));
+
+  it("el estado, los topes y el tope mensual, con los números como en Estados Unidos", () => {
+    render(<BotSettings {...en({ monthlyTokenLimit: 2_000_000 })} />, { english: true });
+    const rows = settings().getAllByRole("listitem");
+    expect(rows[0]).toHaveTextContent("ClaudeOn: it understands freely written messages.");
+    expect(rows[1]).toHaveTextContent("Limits per account20 per hour and 100 per day, of messages with Claude.");
+    expect(rows[2]).toHaveTextContent("2,000,000 a month, across all accounts. 37,579 so far this month (1%).");
+    expect(settings().getByText("No changes: the defaults apply.")).toBeInTheDocument();
+    expect(settings().getByRole("button", { name: "Pause Claude" })).toBeInTheDocument();
+    expect(settings().getByRole("button", { name: "Change the limits per account" })).toHaveTextContent("Change");
+  });
+
+  it("en pausa, y alcanzado el tope mensual", () => {
+    render(<BotSettings {...en({ monthlyTokenLimit: 30_000, month: { used: 31_000, reached: true, resetsOn: "November 1" }, lastChange: "Ana Admin · Oct 16" })} />, {
+      english: true,
+    });
+    const rows = settings().getAllByRole("listitem");
+    expect(rows[0]).toHaveTextContent("Paused by the monthly limit until November 1: the bot only answers balance, reporte, deshacer and ayuda.");
+    expect(rows[2]).toHaveTextContent("Reached: 31,000 of 30,000. Claude comes back on November 1.");
+    expect(settings().getByText("Last change: Ana Admin · Oct 16")).toBeInTheDocument();
+  });
+
+  it("pausar: la ventana y los errores del código", async () => {
+    render(<BotSettings {...en()} />, { english: true });
+    await userEvent.click(settings().getByRole("button", { name: "Pause Claude" }));
+    const box = screen.getByRole("dialog", { name: "Pause Claude?" });
+    expect(box).toHaveAccessibleDescription(expect.stringContaining("While paused, it doesn't spend Anthropic credits."));
+    await userEvent.click(within(box).getByRole("button", { name: "Pause" }));
+    expect(within(box).getByLabelText("Google Authenticator code")).toHaveAccessibleDescription("Enter the 6-digit code from Google Authenticator.");
+    expect(actions.pauseClaudeAction).not.toHaveBeenCalled();
+  });
+
+  it("los topes: con la coma de los miles y sus errores en inglés", async () => {
+    render(<BotSettings {...en()} />, { english: true });
+    await userEvent.click(settings().getByRole("button", { name: "Change the limits per account" }));
+    const box = within(screen.getByRole("dialog", { name: "Change the limits per account" }));
+    expect(screen.getByRole("dialog")).toHaveAccessibleDescription(/Up to 200 per hour and 2,000 per day\./);
+    const perDay = box.getByLabelText("Per day");
+    expect(perDay).toHaveAttribute("pattern", "\\s*\\d[\\d,]*\\s*");
+    await userEvent.clear(perDay);
+    await userEvent.clear(box.getByLabelText("Per hour"));
+    await userEvent.click(box.getByRole("button", { name: "Save limits" }));
+    expect(box.getByLabelText("Per hour")).toHaveAccessibleDescription("Enter how many messages per hour.");
+    expect(perDay).toHaveAccessibleDescription("Enter how many messages per day.");
+    // El punto no es un separador en inglés: "1.5" no pasa; "1,500" sí.
+    await userEvent.type(perDay, "1.5");
+    await userEvent.click(box.getByRole("button", { name: "Save limits" }));
+    expect(perDay).toHaveAccessibleDescription("Enter a whole number, without decimals.");
+    await userEvent.clear(perDay);
+    await userEvent.type(perDay, "1,500");
+    expect(perDay).toBeValid();
+  });
+
+  it("el tope mensual: el rango y cuánto alcanza, con comas", async () => {
+    render(<BotSettings {...en()} />, { english: true });
+    await userEvent.click(settings().getByRole("button", { name: "Change the monthly token limit" }));
+    const box = within(screen.getByRole("dialog", { name: "Change the monthly token limit" }));
+    const input = box.getByLabelText("Tokens a month");
+    expect(input).toHaveAttribute("placeholder", "No limit");
+    await userEvent.type(input, "1,708,000");
+    expect(input).toHaveAccessibleDescription(
+      "Between 10,000 and 100,000,000. On average, each message uses 1,708 tokens: enough for about 1,000 messages.",
+    );
+    expect(box.getByRole("button", { name: "Save limit" })).toBeInTheDocument();
+  });
+});

@@ -2,6 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ConnectionsState } from "./actions";
+import { InEnglish } from "../../../../../../test/locale";
 
 // La Server Action se simula: aquí se prueba qué se muestra. Lo que hace de verdad se prueba en
 // integración y en la E2E.
@@ -69,5 +70,33 @@ describe("Connections", () => {
     expect(section().getByRole("button", { name: "Probando…" })).toBeDisabled();
     finish(ok);
     expect(await section().findByRole("button", { name: "Probar otra vez" })).toBeEnabled();
+  });
+});
+
+describe("Connections en inglés", () => {
+  it("antes y después de probar", async () => {
+    actions.testConnectionsAction.mockResolvedValue({
+      whatsapp: { ok: true, title: "Connected", detail: "Finanzas MVP", warning: null },
+      claude: { ok: false, title: "Couldn't connect to the service", detail: null, warning: null },
+      lastMessage: null,
+      checkedAt: "6:05 PM",
+    });
+    render(<Connections />, { wrapper: InEnglish });
+    const region = within(screen.getByRole("region", { name: "Connections" }));
+    expect(region.getByText(/without sending messages or spending credits/)).toBeInTheDocument();
+    await userEvent.click(region.getByRole("button", { name: "Test connections" }));
+    const status = region.getByRole("status");
+    await within(status).findAllByRole("listitem");
+    expect(status).toHaveTextContent("No message has reached the webhook yet. Tested at 6:05 PM.");
+    expect(region.getByRole("button", { name: "Test again" })).toBeInTheDocument();
+  });
+
+  it("con el último mensaje", async () => {
+    actions.testConnectionsAction.mockResolvedValue({ ...ok, lastMessage: "Oct 16, 2026, 6:00 PM", checkedAt: "6:05 PM" });
+    render(<Connections />, { wrapper: InEnglish });
+    const region = within(screen.getByRole("region", { name: "Connections" }));
+    await userEvent.click(region.getByRole("button", { name: "Test connections" }));
+    await within(region.getByRole("status")).findAllByRole("listitem");
+    expect(region.getByRole("status")).toHaveTextContent("Last message that reached the webhook: Oct 16, 2026, 6:00 PM. Tested at 6:05 PM.");
   });
 });

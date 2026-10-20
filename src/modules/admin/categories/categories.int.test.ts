@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "@/db";
 import { adminCodeUse, category, categoryChange, transaction, user } from "@/db/schema";
 import { createUser } from "../../../../test/integration/factories";
+import { requestLocale } from "../../../../test/integration/locale";
 import { createAdminWithTwoFactor } from "../../../../test/integration/two-factor";
 
 // Las categorías globales con la base de verdad: cada cambio, lo que queda en el registro y que los
@@ -385,5 +386,56 @@ describe("sin admin no hay nada", () => {
     expect(await globalByName("expense", "Mercado")).toMatchObject({ archivedAt: null });
     expect(await globalByName("expense", "Intrusa")).toBeUndefined();
     expect(await changes()).toEqual([]);
+  });
+});
+
+describe("en inglés (el idioma de quien hace el pedido)", () => {
+  beforeEach(() => {
+    requestLocale.value = "en";
+  });
+
+  it("crear, editar, archivar, restaurar y eliminar avisan en inglés (los nombres, tal cual)", async () => {
+    const { codeAt } = await adminReady();
+    expect(await createCategory({ type: "expense", name: "Juegos", emoji: "🎮" })).toEqual({ ok: true, message: "The category 🎮 Juegos was created." });
+    const juegos = await globalByName("expense", "Juegos");
+    expect(await updateCategory({ id: juegos.id, name: "Juegos", emoji: "🎮" })).toEqual({ ok: true, message: "There was nothing to change." });
+    expect(await updateCategory({ id: juegos.id, name: "Videojuegos", emoji: "🎮" })).toEqual({ ok: true, message: "The category 🎮 Videojuegos was saved." });
+    expect(await archiveCategory({ id: juegos.id, code: codeAt(NOW) }, NOW)).toEqual({ ok: true, message: "The category 🎮 Videojuegos was archived." });
+    expect(await archiveCategory({ id: juegos.id, code: codeAt(NOW) }, NOW)).toEqual({ ok: false, error: "The category is already archived." });
+    expect(await restoreCategory({ id: juegos.id })).toEqual({ ok: true, message: "The category 🎮 Videojuegos was restored." });
+    expect(await restoreCategory({ id: juegos.id })).toEqual({ ok: false, error: "The category isn't archived." });
+
+    const ana = await createUser();
+    await addTransaction(ana.id, juegos.id);
+    const later = new Date(NOW.getTime() + 30_000);
+    expect(await deleteCategory({ id: juegos.id, code: codeAt(later) }, later)).toEqual({
+      ok: true,
+      message: "The category 🎮 Videojuegos was deleted; 1 transaction moved to Otros.",
+    });
+    expect(await deleteCategory({ id: juegos.id, code: codeAt(later) }, later)).toEqual({ ok: false, error: "This category no longer exists." });
+  });
+
+  it("los errores de lo que escribe el admin y de Otros", async () => {
+    const { codeAt } = await adminReady();
+    expect(await createCategory({ type: "expense", name: " ", emoji: "" })).toEqual({ ok: false, error: "Enter a name.", field: "name" });
+    expect(await createCategory({ type: "expense", name: "Algo", emoji: "ab" })).toEqual({ ok: false, error: "Enter a single emoji.", field: "emoji" });
+    expect(await createCategory({ type: "expense", name: "mercado", emoji: "" })).toEqual({
+      ok: false,
+      error: "There's already an expense category with that name.",
+      field: "name",
+    });
+    expect(await createCategory({ type: "income", name: "otros", emoji: "" })).toEqual({
+      ok: false,
+      error: "There's already an income category with that name.",
+      field: "name",
+    });
+    const otros = await globalByName("expense", "Otros");
+    expect(await updateCategory({ id: otros.id, name: "Varios", emoji: "📦" })).toEqual({
+      ok: false,
+      error: 'Only the emoji of "Otros" can be changed.',
+      field: "name",
+    });
+    expect(await archiveCategory({ id: otros.id, code: codeAt(NOW) }, NOW)).toEqual({ ok: false, error: `"Otros" can't be archived: it's the default category.` });
+    expect(await deleteCategory({ id: otros.id, code: codeAt(NOW) }, NOW)).toEqual({ ok: false, error: `"Otros" can't be deleted: it's the default category.` });
   });
 });

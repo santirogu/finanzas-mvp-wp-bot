@@ -2,6 +2,8 @@ import "server-only";
 import { eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { botSetting, user, whatsappMessage } from "@/db/schema";
+import { getRequestLocale } from "@/i18n/request";
+import { texts } from "@/i18n/texts";
 import { requireAdmin } from "@/lib/session";
 import { recordEvent } from "@/modules/account/events";
 import { monthlyBudgetReached, parseAiLimits, parseMonthlyTokenLimit, type AiLimits } from "@/modules/bot/limits";
@@ -18,7 +20,8 @@ import { formatCount } from "./bot-filters";
 //  3. confirma el código de Google Authenticator (confirmAdminCode: límite de intentos, un solo uso);
 //  4. guarda la fila única de bot_setting y lo registra en el historial con el admin (sin cuenta ni
 //     número), en la misma transacción.
-// El bot la lee en cada mensaje (src/modules/bot/settings.ts): el cambio aplica desde el siguiente.
+// El bot la lee en cada mensaje (src/modules/bot/settings.ts): el cambio aplica desde el siguiente. Los
+// mensajes van en el idioma de quien hace el pedido (la cookie), como los de Usuarios.
 
 export type BotSettingsView = {
   claudePaused: boolean;
@@ -36,6 +39,35 @@ type Field = "code" | "perHour" | "perDay" | "monthlyLimit";
 export type BotSettingResult = { ok: true; message: string } | { ok: false; error: string; field?: Field };
 
 const fail = (error: string, field?: Field): BotSettingResult => ({ ok: false, error, ...(field && { field }) });
+
+const TEXTS = texts(
+  {
+    alreadyPaused: "Claude ya está en pausa.",
+    alreadyActive: "Claude ya está activo.",
+    paused: "Claude quedó en pausa: el bot responde los comandos y pide registrar lo demás en la web.",
+    resumed: "Claude volvió a funcionar: el bot entiende otra vez los mensajes escritos libremente.",
+    sameLimits: "Los topes ya son esos: cambia alguno.",
+    limits: (perHour: string, perDay: string) => `Los topes quedaron en ${perHour} por hora y ${perDay} por día, por cuenta.`,
+    alreadyNoMonthly: "Ya no hay tope mensual.",
+    sameMonthly: "El tope mensual ya es ese: cambia el número.",
+    monthlyRemoved: "Se quitó el tope mensual de tokens.",
+    monthly: (tokens: string) => `El tope mensual quedó en ${tokens} tokens: al llegar, el bot deja de usar Claude hasta el mes siguiente.`,
+  },
+  {
+    en: {
+      alreadyPaused: "Claude is already paused.",
+      alreadyActive: "Claude is already on.",
+      paused: "Claude is paused: the bot answers the commands and asks to record everything else on the web.",
+      resumed: "Claude is working again: the bot understands freely written messages again.",
+      sameLimits: "Those are already the limits: change one.",
+      limits: (perHour, perDay) => `The limits are now ${perHour} per hour and ${perDay} per day, per account.`,
+      alreadyNoMonthly: "There's already no monthly limit.",
+      sameMonthly: "That's already the monthly limit: change the number.",
+      monthlyRemoved: "The monthly token limit was removed.",
+      monthly: (tokens) => `The monthly limit is now ${tokens} tokens: once it's reached, the bot stops using Claude until next month.`,
+    },
+  },
+);
 
 /** La configuración actual, con lo que va del mes y quién la cambió por última vez. */
 export async function botSettingsForAdmin(now = new Date()): Promise<BotSettingsView> {
@@ -78,8 +110,9 @@ export async function botSettingsForAdmin(now = new Date()): Promise<BotSettings
 /** Pausa o reanuda Claude: en pausa, el texto libre recibe un aviso y los comandos siguen. */
 export async function setClaudePaused({ paused, code }: { paused: boolean; code: string }, now = new Date()): Promise<BotSettingResult> {
   const admin = await requireAdmin();
+  const t = TEXTS[await getRequestLocale()];
   const current = await getBotSettings();
-  if (current.claudePaused === paused) return fail(paused ? "Claude ya está en pausa." : "Claude ya está activo.");
+  if (current.claudePaused === paused) return fail(paused ? t.alreadyPaused : t.alreadyActive);
   const check = await confirmAdminCode(code, now);
   if (!check.ok) return fail(check.error, "code");
 
@@ -90,12 +123,7 @@ export async function setClaudePaused({ paused, code }: { paused: boolean; code:
       .onConflictDoUpdate({ target: botSetting.id, set: { claudePaused: paused, updatedAt: now, updatedBy: admin.id } });
     await recordEvent({ type: paused ? "bot_claude_paused" : "bot_claude_resumed", userId: null, adminId: admin.id }, tx);
   });
-  return {
-    ok: true,
-    message: paused
-      ? "Claude quedó en pausa: el bot responde los comandos y pide registrar lo demás en la web."
-      : "Claude volvió a funcionar: el bot entiende otra vez los mensajes escritos libremente.",
-  };
+  return { ok: true, message: paused ? t.paused : t.resumed };
 }
 
 /** Cambia los topes de mensajes con Claude por cuenta (por hora y por día). */
@@ -104,12 +132,14 @@ export async function setAiLimits(
   now = new Date(),
 ): Promise<BotSettingResult> {
   const admin = await requireAdmin();
-  const input = parseAiLimits({ perHour, perDay });
+  const locale = await getRequestLocale();
+  const t = TEXTS[locale];
+  const input = parseAiLimits({ perHour, perDay }, locale);
   if (!input.ok) return fail(input.error, input.field);
   const current = await getBotSettings();
   const { limits } = input;
   if (limits.perHour === current.limits.perHour && limits.perDay === current.limits.perDay) {
-    return fail("Los topes ya son esos: cambia alguno.");
+    return fail(t.sameLimits);
   }
   const check = await confirmAdminCode(code, now);
   if (!check.ok) return fail(check.error, "code");
@@ -127,20 +157,19 @@ export async function setAiLimits(
       tx,
     );
   });
-  return {
-    ok: true,
-    message: `Los topes quedaron en ${formatCount(limits.perHour)} por hora y ${formatCount(limits.perDay)} por día, por cuenta.`,
-  };
+  return { ok: true, message: t.limits(formatCount(limits.perHour, locale), formatCount(limits.perDay, locale)) };
 }
 
 /** Pone, cambia o quita (vacío) el tope mensual de tokens de Claude, de todas las cuentas. */
 export async function setMonthlyTokenLimit({ limit, code }: { limit: string; code: string }, now = new Date()): Promise<BotSettingResult> {
   const admin = await requireAdmin();
-  const input = parseMonthlyTokenLimit(limit);
+  const locale = await getRequestLocale();
+  const t = TEXTS[locale];
+  const input = parseMonthlyTokenLimit(limit, locale);
   if (!input.ok) return fail(input.error, "monthlyLimit");
   const current = await getBotSettings();
   if (input.limit === current.monthlyTokenLimit) {
-    return fail(input.limit === null ? "Ya no hay tope mensual." : "El tope mensual ya es ese: cambia el número.");
+    return fail(input.limit === null ? t.alreadyNoMonthly : t.sameMonthly);
   }
   const check = await confirmAdminCode(code, now);
   if (!check.ok) return fail(check.error, "code");
@@ -170,9 +199,6 @@ export async function setMonthlyTokenLimit({ limit, code }: { limit: string; cod
   });
   return {
     ok: true,
-    message:
-      input.limit === null
-        ? "Se quitó el tope mensual de tokens."
-        : `El tope mensual quedó en ${formatCount(input.limit)} tokens: al llegar, el bot deja de usar Claude hasta el mes siguiente.`,
+    message: input.limit === null ? t.monthlyRemoved : t.monthly(formatCount(input.limit, locale)),
   };
 }

@@ -1,3 +1,4 @@
+import { DEFAULT_LOCALE, type Locale } from "@/i18n/locales";
 import { formatMoney } from "@/lib/money";
 
 // El costo estimado de Claude en dólares (/admin/bot): los tokens que guarda cada mensaje por el precio
@@ -83,9 +84,12 @@ export function totalCost(usages: readonly ModelUsage[]): { usd: number; unprice
 /** Desde aquí se muestra el monto; menos que esto (pero más de cero) redondearía a US$0,00. */
 const SMALLEST_SHOWN = 0.005;
 
-/** El costo para mostrar: "US$0,07", "<US$0,01" si no alcanza un centavo, "—" si no se puede calcular. */
-export function formatCost(usd: number | null): string {
+/**
+ * El costo para mostrar: "US$0,07", "<US$0,01" si no alcanza un centavo, "—" si no se puede calcular. En
+ * inglés, "$0.07" (la página ya dice que es en dólares).
+ */
+export function formatCost(usd: number | null, locale: Locale = DEFAULT_LOCALE): string {
   if (usd === null) return "—";
-  if (usd > 0 && usd < SMALLEST_SHOWN) return `<${formatMoney(0.01, "USD")}`;
-  return formatMoney(usd, "USD");
+  if (usd > 0 && usd < SMALLEST_SHOWN) return `<${formatMoney(0.01, "USD", locale)}`;
+  return formatMoney(usd, "USD", locale);
 }

@@ -255,8 +255,7 @@ scripts/seed.ts                     Categorías por defecto
 La app tiene español (el de siempre) e inglés, que se pasa por partes: todavía no se puede elegir, pero
 con la cookie `idioma=en` ya se ve lo que está traducido (la navegación, el login y el registro, el
 Resumen con la campana y los próximos pagos, Ingresos, Egresos, Fijos, Reportes con sus descargas, Mi
-cuenta, la Ayuda, la 404 y, de la administración, el inicio, Seguridad y Usuarios). Faltan el Historial,
-el Bot y Categorías.
+cuenta, la Ayuda, la 404 y toda la administración).
 
 - **Las direcciones no llevan el idioma.** Las páginas están en `src/app/[lang]/` y el proxy
   (`src/proxy.ts`) arma cada una, por dentro, en el idioma de la cookie `idioma`: `/dashboard` se arma
@@ -283,6 +282,12 @@ el Bot y Categorías.
 - **Montos y fechas:** `formatMoney`, `parseAmountInput`, `formatAmountTyping`, `formatMonthName`,
   `formatShortDate`… reciben el idioma (por defecto, español). En inglés, con el formato de EE. UU.:
   "$1,000,000.00" (en el campo de monto, la coma separa los miles) y "Oct 13". El bot sigue en español.
+  Los topes del bot en `/admin/bot` también se escriben con los miles del idioma ("1.000" o "1,000"):
+  los campos y el servidor (`parseAiLimits`, `parseMonthlyTokenLimit`) aceptan ese separador y no el otro.
+- **En la administración** quedan como están los nombres de las categorías (también "Otros") y los
+  comandos del bot (balance, reporte, deshacer, ayuda), que se escriben en español. Los avisos de la prueba
+  de conexiones son datos (`ServiceWarning`, `src/lib/service-check.ts`): la frase la arma `connectionView`
+  en el idioma de la página.
 - **Las descargas de Reportes** salen en el idioma de la página (la cookie). El CSV en inglés va como lo
   abre el Excel en inglés: separado por "," y con el punto de los centavos (en español, ";" y la coma), y
   los archivos se llaman `transactions-…csv` y `report-…pdf`. Los textos fijos del PDF van en la vista

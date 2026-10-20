@@ -12,6 +12,7 @@ import {
   DATE_PRESET_LABELS,
   EVENT_TYPES,
   EVENT_TYPE_FILTER_LABELS,
+  EVENT_TYPE_FILTER_TEXTS,
   NO_FILTERS,
   activeFilterCount,
   addDays,
@@ -431,5 +432,55 @@ describe("el chip de acciones del admin en la URL", () => {
     expect(parseLogFilters({ tipo: ["whatsapp_unlinked", "admin"] })).toEqual(filters);
     expect(activeFilterCount(filters)).toBe(2);
     expect(withoutFilter(filters, { type: "admin" }).types).toEqual(["whatsapp_unlinked"]);
+  });
+});
+
+describe("en inglés", () => {
+  it("los chips de tipo", () => {
+    expect(EVENT_FILTERS.map((f) => EVENT_TYPE_FILTER_TEXTS.en[f])).toEqual([
+      "Sign-ups",
+      "Codes",
+      "Links",
+      "Unlinks",
+      "Failed attempts",
+      "Admin actions",
+    ]);
+    expect(EVENT_TYPE_FILTER_LABELS).toBe(EVENT_TYPE_FILTER_TEXTS.es);
+  });
+
+  it("los días: Today, Yesterday, el mes en letras y, de otro año, con el año", () => {
+    const today = "2026-10-15";
+    expect(dayLabel(today, today, "en")).toBe("Today");
+    expect(dayLabel("2026-10-14", today, "en")).toBe("Yesterday");
+    expect(dayLabel("2026-10-10", today, "en")).toBe("October 10");
+    expect(dayLabel("2025-09-25", today, "en")).toBe("September 25, 2025");
+    const entries = [{ createdAt: new Date("2026-10-15T15:00:00Z") }, { createdAt: new Date("2026-10-14T15:00:00Z") }];
+    expect(groupByDay(entries, today, "en").map((g) => g.label)).toEqual(["Today", "Yesterday"]);
+  });
+
+  it.each([
+    [{ reason: "by_user" }, "the person unlinked it"],
+    [{ reason: "number_moved" }, "the number moved to another account"],
+    [{ reason: "number_changed" }, "the account linked another number"],
+    [{ reason: "invalid_code" }, "invalid or expired code"],
+    [{ reason: "rate_limited" }, "too many attempts"],
+    [{ note: "spam", sessions: 2 }, "reason: spam · 2 sessions"],
+    [{ sessions: 1, reconstructed: true }, "1 session · rebuilt from earlier data"],
+    [
+      { limits: { perHour: 30, perDay: 1500 }, previousLimits: { perHour: 20, perDay: 100 } },
+      "now 30 per hour and 1,500 per day (before 20 per hour and 100 per day)",
+    ],
+    [{ limits: { perHour: 30, perDay: 1500 } }, "now 30 per hour and 1,500 per day"],
+    [{ monthlyLimit: 2_000_000, previousMonthlyLimit: null }, "now 2,000,000 tokens a month (before no limit)"],
+    [{ resent: 1 }, "1 resent"],
+    [{ resent: 3, failed: 2 }, "3 resent · 2 didn't go out again"],
+  ] as const)("el detalle %j", (details, expected) => {
+    expect(eventDetail(details, "en")).toBe(expected);
+  });
+
+  it("las horas con el formato de Estados Unidos", () => {
+    const night = new Date("2026-10-15T02:41:00Z");
+    expect(formatEventTime(night, "en")).toBe("Oct 14, 2026, 9:41 PM");
+    expect(formatEventHour(night, "en")).toBe("9:41 PM");
   });
 });

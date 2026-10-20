@@ -4,8 +4,9 @@
 // El módulo muestra cómo funciona el bot, nunca lo que la gente escribe: la política de privacidad
 // promete que el admin no ve los mensajes (ni sus montos). Cada mensaje cuenta por su resultado.
 
+import { DEFAULT_LOCALE, INTL_LOCALES, type Locale } from "@/i18n/locales";
 import { todayInTimezone } from "@/lib/dates";
-import type { ServiceCheck } from "@/lib/service-check";
+import type { ServiceCheck, ServiceWarning } from "@/lib/service-check";
 import {
   ADMIN_MAX_ROWS,
   ADMIN_PAGE_SIZE,
@@ -27,12 +28,12 @@ export const BOT_PATH = "/admin/bot";
 /** Cómo se ordena la tabla "Por cuenta" (?orden=); por defecto, de la que más tokens usa. */
 export const ACCOUNT_SORTS = ["tokens", "mensajes", "errores", "ultimo"] as const;
 export type AccountSort = (typeof ACCOUNT_SORTS)[number];
-export const ACCOUNT_SORT_LABELS: Record<AccountSort, string> = {
-  tokens: "Tokens",
-  mensajes: "Mensajes",
-  errores: "Errores",
-  ultimo: "Último mensaje",
+export const ACCOUNT_SORT_TEXTS: Readonly<Record<Locale, Record<AccountSort, string>>> = {
+  es: { tokens: "Tokens", mensajes: "Mensajes", errores: "Errores", ultimo: "Último mensaje" },
+  en: { tokens: "Tokens", mensajes: "Messages", errores: "Errors", ultimo: "Last message" },
 };
+/** En español (el de siempre). */
+export const ACCOUNT_SORT_LABELS = ACCOUNT_SORT_TEXTS.es;
 
 export type BotFilters = {
   /** Nombre o correo de la cuenta, o el número. */
@@ -85,12 +86,17 @@ export function botHref(filters: BotFilters): string {
  * Las etiquetas de los filtros activos, cada una con la URL que lo quita. Quitar uno vuelve a la
  * primera página de "Por cuenta": con otros filtros, las cuentas son otras.
  */
-export function activeBotFilters(filters: BotFilters): { label: string; href: string }[] {
+export function activeBotFilters(filters: BotFilters, locale: Locale = DEFAULT_LOCALE): { label: string; href: string }[] {
   const base = { ...filters, limit: ADMIN_PAGE_SIZE };
+  const result = locale === "es" ? "Resultado" : "Result";
   return [
     ...(filters.search ? [{ label: `“${filters.search}”`, href: botHref({ ...base, search: "" }) }] : []),
-    ...(filters.outcome ? [{ label: `Resultado: ${OUTCOME_LABELS[filters.outcome]}`, href: botHref({ ...base, outcome: null }) }] : []),
-    ...(filters.date !== "todo" ? [{ label: dateFilterLabel(filters), href: botHref({ ...base, date: "todo", from: null, to: null }) }] : []),
+    ...(filters.outcome
+      ? [{ label: `${result}: ${OUTCOME_TEXTS[locale][filters.outcome]}`, href: botHref({ ...base, outcome: null }) }]
+      : []),
+    ...(filters.date !== "todo"
+      ? [{ label: dateFilterLabel(filters, locale), href: botHref({ ...base, date: "todo", from: null, to: null }) }]
+      : []),
   ];
 }
 
@@ -128,21 +134,42 @@ export const OUTCOMES = [
 ] as const;
 export type Outcome = (typeof OUTCOMES)[number];
 
-export const OUTCOME_LABELS: Record<Outcome, string> = {
-  registrado: "Registró movimientos",
-  comando: "Comandos (balance, reporte, deshacer, ayuda)",
-  respuesta: "Respuesta sin registrar nada",
-  vinculado: "Vinculó su número",
-  tope_claude: "Llegó al tope de Claude",
-  tope_mensual: "Tope mensual de tokens alcanzado (se pidió usar la web)",
-  pausa: "Claude en pausa (se pidió usar la web)",
-  error: "Error",
-  vinculacion_fallida: "Código de vinculación inválido",
-  sin_vincular: "Número sin vincular",
-  no_texto: "No era texto (audio, foto…)",
-  suspendida: "Cuenta suspendida",
-  pendiente: "Sin procesar todavía",
+export const OUTCOME_TEXTS: Readonly<Record<Locale, Record<Outcome, string>>> = {
+  es: {
+    registrado: "Registró movimientos",
+    comando: "Comandos (balance, reporte, deshacer, ayuda)",
+    respuesta: "Respuesta sin registrar nada",
+    vinculado: "Vinculó su número",
+    tope_claude: "Llegó al tope de Claude",
+    tope_mensual: "Tope mensual de tokens alcanzado (se pidió usar la web)",
+    pausa: "Claude en pausa (se pidió usar la web)",
+    error: "Error",
+    vinculacion_fallida: "Código de vinculación inválido",
+    sin_vincular: "Número sin vincular",
+    no_texto: "No era texto (audio, foto…)",
+    suspendida: "Cuenta suspendida",
+    pendiente: "Sin procesar todavía",
+  },
+  // Los comandos van como se escriben en el bot, que responde en español.
+  en: {
+    registrado: "Recorded transactions",
+    comando: "Commands (balance, reporte, deshacer, ayuda)",
+    respuesta: "Reply without recording anything",
+    vinculado: "Linked their number",
+    tope_claude: "Hit the Claude limit",
+    tope_mensual: "Monthly token limit reached (asked to use the web)",
+    pausa: "Claude paused (asked to use the web)",
+    error: "Error",
+    vinculacion_fallida: "Invalid linking code",
+    sin_vincular: "Number not linked",
+    no_texto: "Not text (audio, photo…)",
+    suspendida: "Suspended account",
+    pendiente: "Not processed yet",
+  },
 };
+
+/** En español (el de siempre). */
+export const OUTCOME_LABELS = OUTCOME_TEXTS.es;
 
 /** Los resultados que piden atención (se resaltan en la página). */
 export const PROBLEM_OUTCOMES: readonly Outcome[] = ["tope_claude", "tope_mensual", "error", "pendiente"];
@@ -163,9 +190,9 @@ export function claudeDays(filters: BotFilters, today: string): string[] {
   return days;
 }
 
-/** Segundos para leer: "0,8 s", "12 s", "2 min". */
-export function formatSeconds(seconds: number): string {
-  if (seconds < 10) return `${seconds.toFixed(1).replace(".", ",")} s`;
+/** Segundos para leer: "0,8 s", "12 s", "2 min" (en inglés, "0.8 s"). */
+export function formatSeconds(seconds: number, locale: Locale = DEFAULT_LOCALE): string {
+  if (seconds < 10) return `${locale === "es" ? seconds.toFixed(1).replace(".", ",") : seconds.toFixed(1)} s`;
   if (seconds < 120) return `${Math.round(seconds)} s`;
   return `${Math.round(seconds / 60)} min`;
 }
@@ -194,48 +221,70 @@ export function readableApiError(detail: string): string {
   return `HTTP ${match[1]} · ${code}${text}`;
 }
 
+const ERROR_TEXTS = {
+  es: {
+    send: "No se pudo enviar la respuesta por WhatsApp",
+    notConfigured: "Claude no está configurado (falta la API key)",
+    refusal: "Claude no quiso responder",
+    invalidOutput: "Claude respondió en un formato que no se pudo leer",
+    apiError: "Error de la API de Claude",
+    empty: "Error sin detalle",
+    internal: "Error interno de la app",
+  },
+  en: {
+    send: "The reply couldn't be sent over WhatsApp",
+    notConfigured: "Claude isn't set up (the API key is missing)",
+    refusal: "Claude declined to answer",
+    invalidOutput: "Claude answered in a format that couldn't be read",
+    apiError: "Claude API error",
+    empty: "Error with no detail",
+    internal: "Internal app error",
+  },
+} as const satisfies Record<Locale, unknown>;
+
 /**
  * El nombre de un error del bot (la columna error: el motivo que dio Claude, el tipo de excepción o
- * lo que respondió WhatsApp al enviar). Lo técnico va aparte, como detalle.
+ * lo que respondió WhatsApp al enviar). Lo técnico va aparte, como detalle, tal cual.
  */
-export function errorLabel(error: string): { label: string; detail: string | null } {
+export function errorLabel(error: string, locale: Locale = DEFAULT_LOCALE): { label: string; detail: string | null } {
+  const t = ERROR_TEXTS[locale];
   const send = error.indexOf("envío: ");
   if (send >= 0) {
     const detail = error.slice(send + "envío: ".length);
-    return { label: "No se pudo enviar la respuesta por WhatsApp", detail: detail ? readableApiError(detail) : null };
+    return { label: t.send, detail: detail ? readableApiError(detail) : null };
   }
   const [reason, ...rest] = error.split(": ");
   const raw = rest.join(": ");
   const detail = raw ? readableApiError(raw) : null;
   switch (reason) {
     case "not_configured":
-      return { label: "Claude no está configurado (falta la API key)", detail };
+      return { label: t.notConfigured, detail };
     case "refusal":
-      return { label: "Claude no quiso responder", detail };
+      return { label: t.refusal, detail };
     case "invalid_output":
-      return { label: "Claude respondió en un formato que no se pudo leer", detail };
+      return { label: t.invalidOutput, detail };
     case "api_error":
-      return { label: "Error de la API de Claude", detail };
+      return { label: t.apiError, detail };
     case "":
-      return { label: "Error sin detalle", detail: null };
+      return { label: t.empty, detail: null };
     default:
       // Lo que lanzaba la SDK de Anthropic sin API key, antes de que el bot lo revisara (not_configured).
       if (error.startsWith("Could not resolve authentication method")) {
-        return { label: "Claude no está configurado (falta la API key)", detail: error };
+        return { label: t.notConfigured, detail: error };
       }
-      return { label: "Error interno de la app", detail: error };
+      return { label: t.internal, detail: error };
   }
 }
 
-/** Un número para leer, con puntos de miles: "18.400" (tokens, mensajes; no es dinero). */
-export const formatCount = (n: number) => new Intl.NumberFormat("es-CO").format(n);
+/** Un número para leer, con los separadores de miles del idioma: "18.400" (en inglés, "18,400"; no es dinero). */
+export const formatCount = (n: number, locale: Locale = DEFAULT_LOCALE) => new Intl.NumberFormat(INTL_LOCALES[locale]).format(n);
 
-/** Un día (YYYY-MM-DD) corto, para el gráfico: "12 oct". */
-export function formatShortDay(day: string): string {
+/** Un día (YYYY-MM-DD) corto, para el gráfico: "12 oct" (en inglés, "Oct 12"). */
+export function formatShortDay(day: string, locale: Locale = DEFAULT_LOCALE): string {
+  const date = new Date(`${day}T00:00:00Z`);
+  if (locale === "en") return new Intl.DateTimeFormat(INTL_LOCALES.en, { day: "numeric", month: "short", timeZone: "UTC" }).format(date);
   // Por partes: el formato completo de es-CO dice "12 de oct".
-  const parts = new Intl.DateTimeFormat("es-CO", { day: "numeric", month: "short", timeZone: "UTC" }).formatToParts(
-    new Date(`${day}T00:00:00Z`),
-  );
+  const parts = new Intl.DateTimeFormat(INTL_LOCALES.es, { day: "numeric", month: "short", timeZone: "UTC" }).formatToParts(date);
   const part = (type: "day" | "month") => parts.find((p) => p.type === type)!.value;
   return `${part("day")} ${part("month")}`;
 }
@@ -243,42 +292,63 @@ export function formatShortDay(day: string): string {
 /** Cómo se ve la prueba de un servicio en /admin/bot → Conexiones. */
 export type ConnectionView = { ok: boolean; title: string; detail: string | null; warning: string | null };
 
-const SERVICE_NAMES = { whatsapp: "el token de WhatsApp", claude: "la API key de Claude" } as const;
-/** Por qué no sirve una credencial, con su género: "el token… vencido", "la API key… vencida". */
-const INVALID_REASONS = { whatsapp: "vencido, revocado o mal copiado", claude: "vencida, revocada o mal copiada" } as const;
+const CONNECTION_TEXTS = {
+  es: {
+    ok: "Conectado",
+    missing: (names: string[]) => `Falta configurar ${names.join(" y ")}`,
+    whereToConfigure: "Se configura en Vercel → Settings → Environment Variables (y en .env en local).",
+    timeout: "No respondió a tiempo (8 s)",
+    noConnection: "No se pudo conectar con el servicio",
+    noReadPermission: "El token no tiene permiso para leer el número (whatsapp_business_management); los envíos pueden funcionar igual",
+    // Con su género: "el token… vencido", "la API key… vencida".
+    invalid: { whatsapp: "El token de WhatsApp no sirve: vencido, revocado o mal copiado", claude: "La API key de Claude no sirve: vencida, revocada o mal copiada" },
+    noModel: "El modelo del bot no existe o la API key no tiene acceso a él (BOT_MODEL)",
+    forbidden: { whatsapp: "El token de WhatsApp no tiene permiso", claude: "La API key de Claude no tiene permiso" },
+    other: "El servicio respondió con un error",
+    lowQuality: (quality: string) => `Meta marca la calidad del número como ${quality}: podría limitar los envíos.`,
+    deprecated: (since: string) => `Anthropic marcó el modelo como obsoleto (${since}): conviene cambiarlo.`,
+  },
+  en: {
+    ok: "Connected",
+    missing: (names: string[]) => `${names.join(" and ")} ${names.length === 1 ? "isn't" : "aren't"} set up`,
+    whereToConfigure: "It's set up in Vercel → Settings → Environment Variables (and in .env locally).",
+    timeout: "It didn't answer in time (8 s)",
+    noConnection: "Couldn't connect to the service",
+    noReadPermission: "The token isn't allowed to read the number (whatsapp_business_management); sending may still work",
+    invalid: { whatsapp: "The WhatsApp token doesn't work: expired, revoked or copied wrong", claude: "The Claude API key doesn't work: expired, revoked or copied wrong" },
+    noModel: "The bot's model doesn't exist or the API key can't use it (BOT_MODEL)",
+    forbidden: { whatsapp: "The WhatsApp token isn't allowed", claude: "The Claude API key isn't allowed" },
+    other: "The service answered with an error",
+    lowQuality: (quality: string) => `Meta rates the number's quality as ${quality}: it could limit sending.`,
+    deprecated: (since: string) => `Anthropic marked the model as deprecated (${since}): it's worth changing it.`,
+  },
+} as const satisfies Record<Locale, unknown>;
 
 /**
  * El resultado de probar un servicio, para leer: qué pasó (title), lo técnico (detail) y un aviso.
  * Los errores más comunes llevan su causa: el token vencido o revocado de Meta, un permiso que falta,
  * un modelo que ya no existe, o que el servicio no respondió.
  */
-export function connectionView(service: "whatsapp" | "claude", check: ServiceCheck): ConnectionView {
-  if (check.status === "ok") return { ok: true, title: "Conectado", detail: check.detail, warning: check.warning ?? null };
+export function connectionView(service: "whatsapp" | "claude", check: ServiceCheck, locale: Locale = DEFAULT_LOCALE): ConnectionView {
+  const t = CONNECTION_TEXTS[locale];
+  const warning = (w: ServiceWarning) => (w.kind === "low_quality" ? t.lowQuality(w.quality) : t.deprecated(w.since));
+  if (check.status === "ok") return { ok: true, title: t.ok, detail: check.detail, warning: check.warning ? warning(check.warning) : null };
   if (check.status === "sin_configurar") {
-    return {
-      ok: false,
-      title: `Falta configurar ${check.missing.join(" y ")}`,
-      detail: "Se configura en Vercel → Settings → Environment Variables (y en .env en local).",
-      warning: null,
-    };
+    return { ok: false, title: t.missing(check.missing), detail: t.whereToConfigure, warning: null };
   }
   const detail = readableApiError(check.error);
   const status = Number(check.error.match(/^(\d{3}) /)?.[1] ?? 0);
   const metaCode = check.error.match(/"code":\s*(\d+)/)?.[1];
   const fail = (title: string): ConnectionView => ({ ok: false, title, detail, warning: null });
   // "TimeoutError (23)": describeError suma el código heredado de DOMException.
-  if (/^(TimeoutError|AbortError)\b/.test(check.error)) return { ok: false, title: "No respondió a tiempo (8 s)", detail: null, warning: null };
-  if (/^(TypeError|APIConnectionError|Connection error)/.test(check.error)) return fail("No se pudo conectar con el servicio");
-  if (service === "whatsapp" && (metaCode === "10" || metaCode === "200")) {
-    return fail("El token no tiene permiso para leer el número (whatsapp_business_management); los envíos pueden funcionar igual");
-  }
-  if (status === 401 || metaCode === "190") return fail(`${capitalize(SERVICE_NAMES[service])} no sirve: ${INVALID_REASONS[service]}`);
-  if (service === "claude" && status === 404) return fail("El modelo del bot no existe o la API key no tiene acceso a él (BOT_MODEL)");
-  if (status === 403) return fail(`${capitalize(SERVICE_NAMES[service])} no tiene permiso`);
-  return fail("El servicio respondió con un error");
+  if (/^(TimeoutError|AbortError)\b/.test(check.error)) return { ok: false, title: t.timeout, detail: null, warning: null };
+  if (/^(TypeError|APIConnectionError|Connection error)/.test(check.error)) return fail(t.noConnection);
+  if (service === "whatsapp" && (metaCode === "10" || metaCode === "200")) return fail(t.noReadPermission);
+  if (status === 401 || metaCode === "190") return fail(t.invalid[service]);
+  if (service === "claude" && status === 404) return fail(t.noModel);
+  if (status === 403) return fail(t.forbidden[service]);
+  return fail(t.other);
 }
-
-const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
 /**
  * Reenviar respuestas que no salieron: WhatsApp solo deja escribirle a alguien hasta 24 horas después
@@ -287,14 +357,15 @@ const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1
 export const RESEND_WINDOW_HOURS = 24;
 export const MAX_RESENDS = 50;
 
-/** Un día (YYYY-MM-DD) con el mes en letras: "1 de noviembre". */
-export const formatDayMonth = (day: string) =>
-  new Intl.DateTimeFormat("es-CO", { day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(`${day}T00:00:00Z`));
+/** Un día (YYYY-MM-DD) con el mes en letras: "1 de noviembre" (en inglés, "November 1"). */
+export const formatDayMonth = (day: string, locale: Locale = DEFAULT_LOCALE) =>
+  new Intl.DateTimeFormat(INTL_LOCALES[locale], { day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(`${day}T00:00:00Z`));
 
-/** El último mensaje de una cuenta, corto: "hoy", "ayer" o "13 oct" (días de Colombia). */
-export function lastSeenLabel(last: Date, today: string): string {
+/** El último mensaje de una cuenta, corto: "hoy", "ayer" o "13 oct" (días de Colombia; en inglés, "today", "Oct 13"). */
+export function lastSeenLabel(last: Date, today: string, locale: Locale = DEFAULT_LOCALE): string {
+  const es = locale === "es";
   const day = todayInTimezone(ADMIN_TIMEZONE, last);
-  if (day === today) return "hoy";
-  if (day === addDays(today, -1)) return "ayer";
-  return formatShortDay(day);
+  if (day === today) return es ? "hoy" : "today";
+  if (day === addDays(today, -1)) return es ? "ayer" : "yesterday";
+  return formatShortDay(day, locale);
 }

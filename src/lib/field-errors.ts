@@ -78,10 +78,6 @@ export const FIELD_TEXTS = texts(
   },
 );
 
-// En español, para los formularios que todavía no tienen sus textos en inglés.
-export const EMAIL_MESSAGE = FIELD_TEXTS.es.email;
-export const TOTP_CODE_MESSAGES: FieldMessages = FIELD_TEXTS.es.totpCode;
-
 /** El mensaje del primer problema del campo, o null si está bien. Lo general va en el idioma de la página. */
 export function fieldErrorMessage(field: FieldState, messages: FieldMessages = {}, locale: Locale = DEFAULT_LOCALE): string | null {
   const { validity } = field;

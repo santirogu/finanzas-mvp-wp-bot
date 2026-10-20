@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NO_BOT_FILTERS, type BotFilters } from "@/modules/admin/bot/bot-filters";
+import { InEnglish } from "../../../../../../test/locale";
 
 // next/form necesita el router de Next: aquí es un <form> común (su envío se espía).
 vi.mock("next/form", () => ({
@@ -78,5 +79,15 @@ describe("BotFilterBar", () => {
   it("el formulario va a /admin/bot", () => {
     render(<BotFilterBar filters={f()} panelOpen={false} />);
     expect(document.querySelector("form")).toHaveAttribute("action", "/admin/bot");
+  });
+});
+
+describe("BotFilterBar en inglés", () => {
+  it("la búsqueda y la fecha de los mensajes", () => {
+    render(<BotFilterBar filters={f({ date: "hoy" })} panelOpen />, { wrapper: InEnglish });
+    expect(screen.getByRole("searchbox", { name: "Search" })).toHaveAttribute("placeholder", "Name, email or number");
+    expect(screen.getByRole("button", { name: /^Filters/ })).toHaveAccessibleName("Filters (active: 1)");
+    expect(screen.getByRole("group", { name: "Message date" })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Today" })).toBeChecked();
   });
 });

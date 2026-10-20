@@ -1,6 +1,8 @@
 "use client";
 
 import { useActionState } from "react";
+import { useTexts } from "@/i18n/client";
+import { texts } from "@/i18n/texts";
 import type { ConnectionView } from "@/modules/admin/bot/bot-filters";
 import { testConnectionsAction, type ConnectionsState } from "./actions";
 
@@ -8,7 +10,34 @@ import { testConnectionsAction, type ConnectionsState } from "./actions";
 // enviar mensajes ni gastar créditos) y cuándo llegó el último mensaje al webhook. Solo lee: no pide
 // el código. El resultado se anuncia al lector de pantalla (role="status").
 
+// En español, la hora ya termina en punto ("6:00 p. m."); en inglés, no.
+const TEXTS = texts(
+  {
+    title: "Conexiones",
+    intro: "Prueba el token de WhatsApp y la API key de Claude, sin enviar mensajes ni gastar créditos.",
+    testing: "Probando…",
+    again: "Probar otra vez",
+    test: "Probar conexiones",
+    lastMessage: (date: string) => `Último mensaje que llegó al webhook: ${date}`,
+    noMessage: "Todavía no ha llegado ningún mensaje al webhook.",
+    checkedAt: (hour: string) => `Probado a las ${hour}`,
+  },
+  {
+    en: {
+      title: "Connections",
+      intro: "Tests the WhatsApp token and the Claude API key, without sending messages or spending credits.",
+      testing: "Testing…",
+      again: "Test again",
+      test: "Test connections",
+      lastMessage: (date) => `Last message that reached the webhook: ${date}.`,
+      noMessage: "No message has reached the webhook yet.",
+      checkedAt: (hour) => `Tested at ${hour}.`,
+    },
+  },
+);
+
 export function Connections() {
+  const t = useTexts(TEXTS);
   const [state, formAction, busy] = useActionState<ConnectionsState, FormData>(testConnectionsAction, {});
   const tested = Boolean(state.checkedAt);
 
@@ -18,15 +47,13 @@ export function Connections() {
       <div className="flex flex-col items-start gap-3 sm:flex-row sm:justify-between">
         <div className="min-w-0 flex-1 space-y-1">
           <h2 id="conexiones" className="font-semibold">
-            Conexiones
+            {t.title}
           </h2>
-          <p className="text-sm text-muted">
-            Prueba el token de WhatsApp y la API key de Claude, sin enviar mensajes ni gastar créditos.
-          </p>
+          <p className="text-sm text-muted">{t.intro}</p>
         </div>
         <form action={formAction}>
           <button type="submit" disabled={busy} className="btn-primary shrink-0">
-            {busy ? "Probando…" : tested ? "Probar otra vez" : "Probar conexiones"}
+            {busy ? t.testing : tested ? t.again : t.test}
           </button>
         </form>
       </div>
@@ -38,9 +65,7 @@ export function Connections() {
               <Result name="Claude" view={state.claude!} />
             </ul>
             <p className="text-xs text-muted">
-              {/* La hora ya termina en punto ("6:00 p. m."). */}
-              {state.lastMessage ? `Último mensaje que llegó al webhook: ${state.lastMessage}` : "Todavía no ha llegado ningún mensaje al webhook."}{" "}
-              Probado a las {state.checkedAt}
+              {state.lastMessage ? t.lastMessage(state.lastMessage) : t.noMessage} {t.checkedAt(state.checkedAt!)}
             </p>
           </>
         )}

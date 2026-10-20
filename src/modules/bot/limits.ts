@@ -1,5 +1,7 @@
-// Límites del bot de WhatsApp (auditoría de seguridad 2026-10-15). Sin dependencias: los aplican
-// src/modules/bot/ai-quota.ts, src/modules/whatsapp/link.ts y normalize.ts, y se prueban aparte.
+// Límites del bot de WhatsApp (auditoría de seguridad 2026-10-15). Sin dependencias (solo los idiomas): los
+// aplican src/modules/bot/ai-quota.ts, src/modules/whatsapp/link.ts y normalize.ts, y se prueban aparte.
+
+import { DEFAULT_LOCALE, INTL_LOCALES, type Locale } from "@/i18n/locales";
 
 /**
  * Mensajes de una cuenta que se pueden interpretar con Claude. Cada uno es una llamada a la API
@@ -40,15 +42,39 @@ export const monthlyBudgetReached = (limit: number | null, used: number) => limi
 
 export type MonthlyLimitInput = { ok: true; limit: number | null } | { ok: false; error: string };
 
+// Lo que escribe el admin en /admin/bot, en el idioma de la página: los miles van con el separador de ese
+// idioma ("1.000" en español, "1,000" en inglés) y los mensajes, en sus palabras.
+const LIMIT_TEXTS = {
+  es: {
+    thousands: /[\s.]/g,
+    names: { perHour: "por hora", perDay: "por día" },
+    monthlyNumber: "Escribe cuántos tokens al mes, en números (o déjalo vacío para no tener tope).",
+    monthlyRange: (min: string, max: string) => `El tope mensual va de ${min} a ${max} tokens.`,
+    number: (name: string) => `Escribe cuántos mensajes ${name}, en números.`,
+    range: (name: string, min: string, max: string) => `El tope ${name} va de ${min} a ${max}.`,
+    hourOverDay: "El tope por hora no puede ser mayor que el del día.",
+  },
+  en: {
+    thousands: /[\s,]/g,
+    names: { perHour: "per hour", perDay: "per day" },
+    monthlyNumber: "Enter how many tokens a month, in numbers (or leave it empty for no limit).",
+    monthlyRange: (min: string, max: string) => `The monthly limit goes from ${min} to ${max} tokens.`,
+    number: (name: string) => `Enter how many messages ${name}, in numbers.`,
+    range: (name: string, min: string, max: string) => `The limit ${name} goes from ${min} to ${max}.`,
+    hourOverDay: "The hourly limit can't be higher than the daily one.",
+  },
+} as const satisfies Record<Locale, unknown>;
+
 /** El tope que escribió el admin: vacío es sin tope; si no, un entero dentro de MONTHLY_TOKEN_BOUNDS. */
-export function parseMonthlyTokenLimit(raw: string): MonthlyLimitInput {
-  const text = raw.replace(/[\s.]/g, "");
+export function parseMonthlyTokenLimit(raw: string, locale: Locale = DEFAULT_LOCALE): MonthlyLimitInput {
+  const t = LIMIT_TEXTS[locale];
+  const text = raw.replace(t.thousands, "");
   if (text === "") return { ok: true, limit: null };
-  if (!/^\d+$/.test(text)) return { ok: false, error: "Escribe cuántos tokens al mes, en números (o déjalo vacío para no tener tope)." };
+  if (!/^\d+$/.test(text)) return { ok: false, error: t.monthlyNumber };
   const limit = Number(text);
   const { min, max } = MONTHLY_TOKEN_BOUNDS;
-  const count = new Intl.NumberFormat("es-CO").format;
-  if (limit < min || limit > max) return { ok: false, error: `El tope mensual va de ${count(min)} a ${count(max)} tokens.` };
+  const count = new Intl.NumberFormat(INTL_LOCALES[locale]).format;
+  if (limit < min || limit > max) return { ok: false, error: t.monthlyRange(count(min), count(max)) };
   return { ok: true, limit };
 }
 
@@ -64,27 +90,28 @@ export type AiLimitsInput =
   | { ok: true; limits: AiLimits }
   | { ok: false; field: "perHour" | "perDay"; error: string };
 
-const LIMIT_NAMES = { perHour: "por hora", perDay: "por día" } as const;
-
 /**
  * Los topes que escribió el admin: enteros dentro de AI_LIMIT_BOUNDS, y el de una hora no mayor que
- * el del día (no podría alcanzarse). Acepta "1.000" o espacios; el error dice qué campo y por qué.
+ * el del día (no podría alcanzarse). Acepta "1.000" (en inglés, "1,000") o espacios; el error dice qué
+ * campo y por qué.
  */
-export function parseAiLimits(raw: { perHour: string; perDay: string }): AiLimitsInput {
+export function parseAiLimits(raw: { perHour: string; perDay: string }, locale: Locale = DEFAULT_LOCALE): AiLimitsInput {
+  const t = LIMIT_TEXTS[locale];
+  const count = new Intl.NumberFormat(INTL_LOCALES[locale]).format;
   // Stryker disable next-line ObjectLiteral: los dos campos se llenan antes de usarse (o la función vuelve antes)
   const limits = { perHour: 0, perDay: 0 };
   for (const field of ["perHour", "perDay"] as const) {
-    const text = raw[field].replace(/[\s.]/g, "");
+    const text = raw[field].replace(t.thousands, "");
     const { min, max } = AI_LIMIT_BOUNDS[field];
-    if (!/^\d+$/.test(text)) return { ok: false, field, error: `Escribe cuántos mensajes ${LIMIT_NAMES[field]}, en números.` };
+    if (!/^\d+$/.test(text)) return { ok: false, field, error: t.number(t.names[field]) };
     const value = Number(text);
     if (value < min || value > max) {
-      return { ok: false, field, error: `El tope ${LIMIT_NAMES[field]} va de ${min} a ${new Intl.NumberFormat("es-CO").format(max)}.` };
+      return { ok: false, field, error: t.range(t.names[field], String(min), count(max)) };
     }
     limits[field] = value;
   }
   if (limits.perHour > limits.perDay) {
-    return { ok: false, field: "perHour", error: "El tope por hora no puede ser mayor que el del día." };
+    return { ok: false, field: "perHour", error: t.hourOverDay };
   }
   return { ok: true, limits };
 }

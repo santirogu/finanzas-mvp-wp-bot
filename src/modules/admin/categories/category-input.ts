@@ -2,6 +2,7 @@
 // frases del registro de cambios. Sin base de datos (las consultas están en categories.ts).
 
 import type { CategoryChangeDetails } from "@/db/schema";
+import { DEFAULT_LOCALE, type Locale } from "@/i18n/locales";
 import { DEFAULT_CATEGORY } from "@/modules/transactions/default-categories";
 
 // "Otros", la comparación de nombres y el orden son comunes con los formularios y el bot.
@@ -16,8 +17,13 @@ export const DEFAULT_EMOJI = "•";
 export const CATEGORY_NAME_MAX = 40;
 
 export const CATEGORY_TYPES = ["expense", "income"] as const;
-/** El nombre de la pestaña y el de la frase: "Egresos" / "egresos". */
-export const CATEGORY_TYPE_LABELS: Record<CategoryType, string> = { expense: "Egresos", income: "Ingresos" };
+/** El nombre de la pestaña y el de la frase ("Egresos" / "egresos"), en cada idioma. */
+export const CATEGORY_TYPE_TEXTS: Readonly<Record<Locale, Record<CategoryType, string>>> = {
+  es: { expense: "Egresos", income: "Ingresos" },
+  en: { expense: "Expenses", income: "Income" },
+};
+/** En español (el de siempre). */
+export const CATEGORY_TYPE_LABELS = CATEGORY_TYPE_TEXTS.es;
 /** El parámetro de la URL de cada pestaña (?tipo=ingresos); egresos es la de por defecto. */
 export const CATEGORY_TYPE_PARAMS: Record<CategoryType, string> = { expense: "egresos", income: "ingresos" };
 
@@ -33,14 +39,19 @@ export const parseCategoryType = (value: string | string[] | undefined): Categor
 
 type Parsed<T> = { ok: true; value: T } | { ok: false; error: string };
 
+const INPUT_TEXTS = {
+  es: { noName: "Escribe un nombre.", tooLong: (max: number) => `Máximo ${max} caracteres.`, oneEmoji: "Escribe un solo emoji." },
+  en: { noName: "Enter a name.", tooLong: (max: number) => `${max} characters at most.`, oneEmoji: "Enter a single emoji." },
+} as const satisfies Record<Locale, unknown>;
+
 /** El nombre que escribió el admin: en una línea, sin espacios de más ni caracteres de control. */
-export function parseCategoryName(raw: string): Parsed<string> {
+export function parseCategoryName(raw: string, locale: Locale = DEFAULT_LOCALE): Parsed<string> {
   const name = Array.from(raw.replace(/\s+/g, " "))
     .filter((char) => char.charCodeAt(0) >= 32 && char.charCodeAt(0) !== 127)
     .join("")
     .trim();
-  if (!name) return { ok: false, error: "Escribe un nombre." };
-  if (name.length > CATEGORY_NAME_MAX) return { ok: false, error: `Máximo ${CATEGORY_NAME_MAX} caracteres.` };
+  if (!name) return { ok: false, error: INPUT_TEXTS[locale].noName };
+  if (name.length > CATEGORY_NAME_MAX) return { ok: false, error: INPUT_TEXTS[locale].tooLong(CATEGORY_NAME_MAX) };
   return { ok: true, value: name };
 }
 
@@ -50,10 +61,10 @@ const PICTOGRAPH = new RegExp("\\p{Extended_Pictographic}|\\p{Regional_Indicator
 const graphemes = (text: string) => [...new Intl.Segmenter("es").segment(text)].length;
 
 /** El emoji que escribió el admin; vacío es "•". */
-export function parseEmoji(raw: string): Parsed<string> {
+export function parseEmoji(raw: string, locale: Locale = DEFAULT_LOCALE): Parsed<string> {
   const emoji = raw.trim();
   if (!emoji || emoji === DEFAULT_EMOJI) return { ok: true, value: DEFAULT_EMOJI };
-  if (graphemes(emoji) !== 1 || !PICTOGRAPH.test(emoji)) return { ok: false, error: "Escribe un solo emoji." };
+  if (graphemes(emoji) !== 1 || !PICTOGRAPH.test(emoji)) return { ok: false, error: INPUT_TEXTS[locale].oneEmoji };
   return { ok: true, value: emoji };
 }
 
@@ -66,8 +77,15 @@ export type CategoryChangeEntry = {
   admin: { name: string } | null;
 };
 
-/** El registro de un cambio como frase y su detalle: "Ana Admin archivó 🎮 Videojuegos (egresos)". */
-export function changeSentence(change: CategoryChangeEntry): { text: string; detail: string | null } {
+/**
+ * El registro de un cambio como frase y su detalle: "Ana Admin archivó 🎮 Videojuegos (egresos)" (en
+ * inglés, "Ana Admin archived 🎮 Videojuegos (expenses)": el nombre de la categoría va tal cual).
+ */
+export function changeSentence(change: CategoryChangeEntry, locale: Locale = DEFAULT_LOCALE): { text: string; detail: string | null } {
+  return (locale === "es" ? spanishSentence : englishSentence)(change);
+}
+
+function spanishSentence(change: CategoryChangeEntry): { text: string; detail: string | null } {
   const admin = change.admin?.name ?? "Un admin";
   const label = `${change.emoji} ${change.name}`;
   const kind = CATEGORY_TYPE_LABELS[change.type].toLowerCase();
@@ -88,6 +106,31 @@ export function changeSentence(change: CategoryChangeEntry): { text: string; det
       return {
         text: `${admin} eliminó la categoría ${label} (${kind})`,
         detail: moved ? `${moved} ${moved === 1 ? "movimiento pasó" : "movimientos pasaron"} a ${DEFAULT_CATEGORY}` : null,
+      };
+  }
+}
+
+function englishSentence(change: CategoryChangeEntry): { text: string; detail: string | null } {
+  const admin = change.admin?.name ?? "An admin";
+  const label = `${change.emoji} ${change.name}`;
+  const kind = CATEGORY_TYPE_TEXTS.en[change.type].toLowerCase();
+  const { previousName, previousEmoji, moved } = change.details;
+  switch (change.action) {
+    case "created":
+      return { text: `${admin} created ${label} (${kind})`, detail: null };
+    case "updated":
+      if (previousName && previousName !== change.name) {
+        return { text: `${admin} renamed ${previousName} to ${label} (${kind})`, detail: null };
+      }
+      return { text: `${admin} changed the emoji of ${change.name} (${kind}): ${previousEmoji ?? DEFAULT_EMOJI} → ${change.emoji}`, detail: null };
+    case "archived":
+      return { text: `${admin} archived ${label} (${kind})`, detail: null };
+    case "restored":
+      return { text: `${admin} restored ${label} (${kind})`, detail: null };
+    case "deleted":
+      return {
+        text: `${admin} deleted the category ${label} (${kind})`,
+        detail: moved ? `${moved} ${moved === 1 ? "transaction" : "transactions"} moved to ${DEFAULT_CATEGORY}` : null,
       };
   }
 }

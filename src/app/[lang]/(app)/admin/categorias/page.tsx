@@ -1,21 +1,49 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
+import type { Locale } from "@/i18n/locales";
+import { getLocale } from "@/i18n/server";
+import { texts } from "@/i18n/texts";
 import { requireAdmin } from "@/lib/session";
 import { listAdminCategories, listCategoryChanges, type CategoryChange } from "@/modules/admin/categories/categories";
 import {
   CATEGORIES_PATH,
   CATEGORY_TYPES,
-  CATEGORY_TYPE_LABELS,
   CATEGORY_TYPE_PARAMS,
+  CATEGORY_TYPE_TEXTS,
   changeSentence,
   parseCategoryType,
 } from "@/modules/admin/categories/category-input";
+import { adminModuleLabel, adminTitle } from "@/modules/admin/modules";
 import { formatDateTime } from "@/modules/admin/shared/filters";
 import { PageSkeleton } from "../../page-skeleton";
 import { CategoryManager } from "./category-manager";
 
-export const metadata: Metadata = { title: "Categorías · Administración" };
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
+  return { title: adminTitle(adminModuleLabel("categorias", locale), locale) };
+}
+
+const TEXTS = texts(
+  {
+    title: "Categorías",
+    intro: "Las de ingresos y egresos de todas las cuentas.",
+    type: "Tipo de categoría",
+    changes: "Cambios recientes",
+    noChanges: "Todavía no hay cambios.",
+  },
+  {
+    en: {
+      title: "Categories",
+      intro: "The income and expense categories of every account.",
+      type: "Category type",
+      changes: "Recent changes",
+      noChanges: "There are no changes yet.",
+    },
+  },
+);
+
+type Texts = (typeof TEXTS)["es"];
 
 // La pestaña (egresos o ingresos) viene en la URL: se lee en cada request, dentro de Suspense.
 export default function CategoriesPage({ searchParams }: PageProps<"/[lang]/admin/categorias">) {
@@ -31,6 +59,8 @@ export default function CategoriesPage({ searchParams }: PageProps<"/[lang]/admi
 async function Categories({ params }: { params: Record<string, string | string[] | undefined> }) {
   // Rol de admin y verificación en dos pasos activa (sin ella, lleva a configurarla).
   await requireAdmin();
+  const locale = await getLocale();
+  const t = TEXTS[locale];
   const type = parseCategoryType(params.tipo);
   const [categories, changes] = await Promise.all([listAdminCategories(), listCategoryChanges()]);
 
@@ -39,11 +69,11 @@ async function Categories({ params }: { params: Record<string, string | string[]
       <section className="card space-y-4 p-4" aria-labelledby="categorias">
         <div className="space-y-1">
           <h2 id="categorias" className="font-semibold">
-            Categorías
+            {t.title}
           </h2>
-          <p className="text-sm text-muted">Las de ingresos y egresos de todas las cuentas.</p>
+          <p className="text-sm text-muted">{t.intro}</p>
         </div>
-        <nav aria-label="Tipo de categoría" className="flex gap-2">
+        <nav aria-label={t.type} className="flex gap-2">
           {CATEGORY_TYPES.map((tab) => {
             const total = categories.filter((c) => c.type === tab && !c.archived).length;
             const current = tab === type;
@@ -57,7 +87,7 @@ async function Categories({ params }: { params: Record<string, string | string[]
                   current ? "border-brand/50 bg-brand/10 font-medium text-foreground" : "border-border text-muted hover:text-foreground"
                 }`}
               >
-                {CATEGORY_TYPE_LABELS[tab]} · {total}
+                {CATEGORY_TYPE_TEXTS[locale][tab]} · {total}
               </Link>
             );
           })}
@@ -65,23 +95,23 @@ async function Categories({ params }: { params: Record<string, string | string[]
         {/* key: al cambiar de pestaña, empieza de nuevo (sin ventanas ni avisos de la otra). */}
         <CategoryManager key={type} type={type} categories={categories.filter((c) => c.type === type)} />
       </section>
-      <ChangeLog changes={changes} />
+      <ChangeLog changes={changes} t={t} locale={locale} />
     </div>
   );
 }
 
-function ChangeLog({ changes }: { changes: CategoryChange[] }) {
+function ChangeLog({ changes, t, locale }: { changes: CategoryChange[]; t: Texts; locale: Locale }) {
   return (
     <section className="card space-y-3 p-4" aria-labelledby="cambios">
       <h2 id="cambios" className="font-semibold">
-        Cambios recientes
+        {t.changes}
       </h2>
       {changes.length === 0 ? (
-        <p className="text-sm text-muted">Todavía no hay cambios.</p>
+        <p className="text-sm text-muted">{t.noChanges}</p>
       ) : (
-        <ol aria-label="Cambios recientes" className="divide-y divide-border">
+        <ol aria-label={t.changes} className="divide-y divide-border">
           {changes.map((change) => {
-            const { text, detail } = changeSentence(change);
+            const { text, detail } = changeSentence(change, locale);
             return (
               <li key={change.id} className="flex gap-3 py-3">
                 <span className="flex size-8 flex-none items-center justify-center rounded-full bg-admin-surface text-admin" aria-hidden>
@@ -90,7 +120,7 @@ function ChangeLog({ changes }: { changes: CategoryChange[] }) {
                 <div className="min-w-0 flex-1">
                   <p className="text-sm leading-snug">{text}</p>
                   <p className="mt-0.5 text-xs text-muted">
-                    {[detail, formatDateTime(change.createdAt)].filter(Boolean).join(" · ")}
+                    {[detail, formatDateTime(change.createdAt, locale)].filter(Boolean).join(" · ")}
                   </p>
                 </div>
               </li>

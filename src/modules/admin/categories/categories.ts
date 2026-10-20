@@ -4,11 +4,12 @@ import { alias } from "drizzle-orm/pg-core";
 import { z } from "zod";
 import { db } from "@/db";
 import { category, categoryChange, transaction, user, type CategoryChangeDetails } from "@/db/schema";
+import { getRequestLocale } from "@/i18n/request";
+import { texts } from "@/i18n/texts";
 import { requireAdmin } from "@/lib/session";
 import { confirmAdminCode } from "../shared/confirm-code";
 import {
   CATEGORY_TYPES,
-  CATEGORY_TYPE_LABELS,
   DEFAULT_CATEGORY,
   foldName,
   isDefaultCategory,
@@ -22,7 +23,8 @@ import {
 // Categorías (/admin/categorias): las globales (user_id NULL), que usan los formularios y el bot de
 // todas las cuentas. Cada función valida el rol (requireAdmin) antes de tocar la base, como toda la
 // capa de datos de administración. Archivar y eliminar piden además el código de Google
-// Authenticator; cada cambio queda en category_change con el admin.
+// Authenticator; cada cambio queda en category_change con el admin. Los mensajes van en el idioma de quien
+// hace el pedido (la cookie); el nombre de las categorías, tal cual.
 
 export type AdminCategory = {
   id: string;
@@ -50,6 +52,45 @@ const usage = sql<number>`count(${transaction.id}) filter (where ${transaction.d
 const fail = (error: string, field?: "name" | "emoji" | "code"): CategoryResult => ({ ok: false, error, ...(field && { field }) });
 const label = (c: { emoji: string; name: string }) => `${c.emoji} ${c.name}`;
 
+const TEXTS = texts(
+  {
+    created: (label: string) => `Se creó la categoría ${label}.`,
+    gone: "Esta categoría ya no existe.",
+    defaultOnlyEmoji: `A "${DEFAULT_CATEGORY}" solo se le puede cambiar el emoji.`,
+    nothing: "No había nada que cambiar.",
+    saved: (label: string) => `Se guardó la categoría ${label}.`,
+    cannotArchive: `"${DEFAULT_CATEGORY}" no se puede archivar: es la categoría por defecto.`,
+    alreadyArchived: "La categoría ya está archivada.",
+    archived: (label: string) => `Se archivó la categoría ${label}.`,
+    notArchived: "La categoría no está archivada.",
+    restored: (label: string) => `Se restauró la categoría ${label}.`,
+    cannotDelete: `"${DEFAULT_CATEGORY}" no se puede eliminar: es la categoría por defecto.`,
+    missingDefault: `Falta la categoría "${DEFAULT_CATEGORY}": créala antes de eliminar otra.`,
+    deleted: (label: string, moved: number) =>
+      `Se eliminó la categoría ${label}${moved ? `; ${moved} ${moved === 1 ? "movimiento pasó" : "movimientos pasaron"} a ${DEFAULT_CATEGORY}` : ""}.`,
+    taken: (type: CategoryType) => `Ya hay una categoría de ${type === "expense" ? "egresos" : "ingresos"} con ese nombre.`,
+  },
+  {
+    en: {
+      created: (label) => `The category ${label} was created.`,
+      gone: "This category no longer exists.",
+      defaultOnlyEmoji: `Only the emoji of "${DEFAULT_CATEGORY}" can be changed.`,
+      nothing: "There was nothing to change.",
+      saved: (label) => `The category ${label} was saved.`,
+      cannotArchive: `"${DEFAULT_CATEGORY}" can't be archived: it's the default category.`,
+      alreadyArchived: "The category is already archived.",
+      archived: (label) => `The category ${label} was archived.`,
+      notArchived: "The category isn't archived.",
+      restored: (label) => `The category ${label} was restored.`,
+      cannotDelete: `"${DEFAULT_CATEGORY}" can't be deleted: it's the default category.`,
+      missingDefault: `The "${DEFAULT_CATEGORY}" category is missing: create it before deleting another one.`,
+      deleted: (label, moved) =>
+        `The category ${label} was deleted${moved ? `; ${moved} ${moved === 1 ? "transaction" : "transactions"} moved to ${DEFAULT_CATEGORY}` : ""}.`,
+      taken: (type) => `There's already ${type === "expense" ? "an expense" : "an income"} category with that name.`,
+    },
+  },
+);
+
 /** Una categoría global por su id, o null (también con un id inválido). */
 async function loadCategory(id: string) {
   if (!z.uuid().safeParse(id).success) return null;
@@ -69,7 +110,6 @@ async function nameTaken(type: CategoryType, name: string, exceptId?: string) {
   return rows.some((row) => row.id !== exceptId && foldName(row.name) === foldName(name));
 }
 
-const takenMessage = (type: CategoryType) => `Ya hay una categoría de ${CATEGORY_TYPE_LABELS[type].toLowerCase()} con ese nombre.`;
 
 /** Todas las categorías globales, de los dos tipos, en orden alfabético con "Otros" al final. */
 export async function listAdminCategories(): Promise<AdminCategory[]> {
@@ -140,35 +180,39 @@ function logChange(
 /** Crea una categoría global: aparece de inmediato en los formularios y el bot puede usarla. */
 export async function createCategory(input: { type: string; name: string; emoji: string }): Promise<CategoryResult> {
   const admin = await requireAdmin();
+  const locale = await getRequestLocale();
+  const t = TEXTS[locale];
   const type: CategoryType = input.type === "income" ? "income" : "expense";
-  const name = parseCategoryName(input.name);
+  const name = parseCategoryName(input.name, locale);
   if (!name.ok) return fail(name.error, "name");
-  const emoji = parseEmoji(input.emoji);
+  const emoji = parseEmoji(input.emoji, locale);
   if (!emoji.ok) return fail(emoji.error, "emoji");
-  if (await nameTaken(type, name.value)) return fail(takenMessage(type), "name");
+  if (await nameTaken(type, name.value)) return fail(t.taken(type), "name");
 
   const created = { type, name: name.value, emoji: emoji.value };
   await db.transaction(async (tx) => {
     const [row] = await tx.insert(category).values(created).returning({ id: category.id });
     await logChange(tx, { adminId: admin.id, categoryId: row.id, action: "created", ...created });
   });
-  return { ok: true, message: `Se creó la categoría ${label(created)}.` };
+  return { ok: true, message: t.created(label(created)) };
 }
 
 /** Cambia el nombre o el emoji. A "Otros" solo el emoji. Los movimientos que la usan pasan a verse con el nombre nuevo. */
 export async function updateCategory(input: { id: string; name: string; emoji: string }): Promise<CategoryResult> {
   const admin = await requireAdmin();
+  const locale = await getRequestLocale();
+  const t = TEXTS[locale];
   const current = await loadCategory(input.id);
-  if (!current) return fail("Esta categoría ya no existe.");
-  const name = parseCategoryName(input.name);
+  if (!current) return fail(t.gone);
+  const name = parseCategoryName(input.name, locale);
   if (!name.ok) return fail(name.error, "name");
-  const emoji = parseEmoji(input.emoji);
+  const emoji = parseEmoji(input.emoji, locale);
   if (!emoji.ok) return fail(emoji.error, "emoji");
   if (isDefaultCategory(current.name) && name.value !== current.name) {
-    return fail(`A "${DEFAULT_CATEGORY}" solo se le puede cambiar el emoji.`, "name");
+    return fail(t.defaultOnlyEmoji, "name");
   }
-  if (name.value === current.name && emoji.value === current.emoji) return { ok: true, message: "No había nada que cambiar." };
-  if (await nameTaken(current.type, name.value, current.id)) return fail(takenMessage(current.type), "name");
+  if (name.value === current.name && emoji.value === current.emoji) return { ok: true, message: t.nothing };
+  if (await nameTaken(current.type, name.value, current.id)) return fail(t.taken(current.type), "name");
 
   const updated = { name: name.value, emoji: emoji.value };
   await db.transaction(async (tx) => {
@@ -182,16 +226,17 @@ export async function updateCategory(input: { id: string; name: string; emoji: s
       details: { previousName: current.name, previousEmoji: current.emoji },
     });
   });
-  return { ok: true, message: `Se guardó la categoría ${label(updated)}.` };
+  return { ok: true, message: t.saved(label(updated)) };
 }
 
 /** Archiva: deja de aparecer en los formularios y el bot no la usa, pero los movimientos la conservan. */
 export async function archiveCategory(input: { id: string; code: string }, now = new Date()): Promise<CategoryResult> {
   const admin = await requireAdmin();
+  const t = TEXTS[await getRequestLocale()];
   const current = await loadCategory(input.id);
-  if (!current) return fail("Esta categoría ya no existe.");
-  if (isDefaultCategory(current.name)) return fail(`"${DEFAULT_CATEGORY}" no se puede archivar: es la categoría por defecto.`);
-  if (current.archivedAt) return fail("La categoría ya está archivada.");
+  if (!current) return fail(t.gone);
+  if (isDefaultCategory(current.name)) return fail(t.cannotArchive);
+  if (current.archivedAt) return fail(t.alreadyArchived);
   const check = await confirmAdminCode(input.code, now);
   if (!check.ok) return fail(check.error, "code");
 
@@ -199,21 +244,22 @@ export async function archiveCategory(input: { id: string; code: string }, now =
     await tx.update(category).set({ archivedAt: now }).where(eq(category.id, current.id));
     await logChange(tx, { adminId: admin.id, categoryId: current.id, action: "archived", type: current.type, name: current.name, emoji: current.emoji });
   });
-  return { ok: true, message: `Se archivó la categoría ${label(current)}.` };
+  return { ok: true, message: t.archived(label(current)) };
 }
 
 /** Restaura una archivada: vuelve a los formularios y al bot. No pide el código (solo deshace un archivado). */
 export async function restoreCategory(input: { id: string }): Promise<CategoryResult> {
   const admin = await requireAdmin();
+  const t = TEXTS[await getRequestLocale()];
   const current = await loadCategory(input.id);
-  if (!current) return fail("Esta categoría ya no existe.");
-  if (!current.archivedAt) return fail("La categoría no está archivada.");
+  if (!current) return fail(t.gone);
+  if (!current.archivedAt) return fail(t.notArchived);
 
   await db.transaction(async (tx) => {
     await tx.update(category).set({ archivedAt: null }).where(eq(category.id, current.id));
     await logChange(tx, { adminId: admin.id, categoryId: current.id, action: "restored", type: current.type, name: current.name, emoji: current.emoji });
   });
-  return { ok: true, message: `Se restauró la categoría ${label(current)}.` };
+  return { ok: true, message: t.restored(label(current)) };
 }
 
 /**
@@ -222,15 +268,16 @@ export async function restoreCategory(input: { id: string }): Promise<CategoryRe
  */
 export async function deleteCategory(input: { id: string; code: string }, now = new Date()): Promise<CategoryResult> {
   const admin = await requireAdmin();
+  const t = TEXTS[await getRequestLocale()];
   const current = await loadCategory(input.id);
-  if (!current) return fail("Esta categoría ya no existe.");
-  if (isDefaultCategory(current.name)) return fail(`"${DEFAULT_CATEGORY}" no se puede eliminar: es la categoría por defecto.`);
+  if (!current) return fail(t.gone);
+  if (isDefaultCategory(current.name)) return fail(t.cannotDelete);
   const [fallback] = await db
     .select({ id: category.id, name: category.name })
     .from(category)
     .where(and(eq(category.type, current.type), isNull(category.userId)))
     .then((rows) => rows.filter((row) => isDefaultCategory(row.name)));
-  if (!fallback) return fail(`Falta la categoría "${DEFAULT_CATEGORY}": créala antes de eliminar otra.`);
+  if (!fallback) return fail(t.missingDefault);
   const check = await confirmAdminCode(input.code, now);
   if (!check.ok) return fail(check.error, "code");
 
@@ -254,10 +301,5 @@ export async function deleteCategory(input: { id: string; code: string }, now = 
     });
     return active;
   });
-  return {
-    ok: true,
-    message: moved
-      ? `Se eliminó la categoría ${label(current)}; ${moved} ${moved === 1 ? "movimiento pasó" : "movimientos pasaron"} a ${DEFAULT_CATEGORY}.`
-      : `Se eliminó la categoría ${label(current)}.`,
-  };
+  return { ok: true, message: t.deleted(label(current), moved) };
 }

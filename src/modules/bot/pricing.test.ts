@@ -131,3 +131,12 @@ describe("formatCost", () => {
     expect(formatCost(usd)).toBe(shown);
   });
 });
+
+describe("formatCost en inglés", () => {
+  it("con el formato de Estados Unidos (la página ya dice que es en dólares)", () => {
+    expect(formatCost(0.07, "en")).toBe("$0.07");
+    expect(formatCost(0.001, "en")).toBe("<$0.01");
+    expect(formatCost(null, "en")).toBe("—");
+    expect(formatCost(0.07)).toBe("US$0,07");
+  });
+});

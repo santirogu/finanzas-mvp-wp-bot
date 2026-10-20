@@ -76,10 +76,10 @@ export async function checkWhatsAppConnection(): Promise<ServiceCheck> {
   } catch {
     // Meta respondió 200 sin JSON: el token sirve, pero no hay datos que mostrar.
   }
-  const detail = [number.verified_name, number.display_phone_number].filter(Boolean).join(" · ") || "Conectado";
+  const detail = [number.verified_name, number.display_phone_number].filter(Boolean).join(" · ") || null;
   // GREEN es la calidad normal; YELLOW o RED avisan que Meta podría limitar el número.
   const quality = number.quality_rating?.toUpperCase();
   return quality && quality !== "GREEN" && quality !== "UNKNOWN"
-    ? { status: "ok", detail, warning: `Meta marca la calidad del número como ${quality}: podría limitar los envíos.` }
+    ? { status: "ok", detail, warning: { kind: "low_quality", quality } }
     : { status: "ok", detail };
 }

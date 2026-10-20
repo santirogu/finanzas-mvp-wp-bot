@@ -1,6 +1,7 @@
 "use server";
 
 import { refresh } from "next/cache";
+import { getRequestLocale } from "@/i18n/request";
 import { requireAdmin } from "@/lib/session";
 import { connectionView, type ConnectionView } from "@/modules/admin/bot/bot-filters";
 import { setAiLimits, setClaudePaused, setMonthlyTokenLimit, type BotSettingResult } from "@/modules/admin/bot/bot-settings";
@@ -64,14 +65,15 @@ export type ConnectionsState = {
   checkedAt?: string;
 };
 
-/** Prueba WhatsApp y Claude sin enviar nada ni gastar créditos: solo lee, no pide el código. */
+/** Prueba WhatsApp y Claude sin enviar nada ni gastar créditos: solo lee, no pide el código. En el idioma de la página. */
 export async function testConnectionsAction(): Promise<ConnectionsState> {
   await requireAdmin();
+  const locale = await getRequestLocale();
   const report = await testConnections();
   return {
-    whatsapp: connectionView("whatsapp", report.whatsapp),
-    claude: connectionView("claude", report.claude),
-    lastMessage: report.lastMessageAt && formatDateTime(report.lastMessageAt),
-    checkedAt: formatHour(report.checkedAt),
+    whatsapp: connectionView("whatsapp", report.whatsapp, locale),
+    claude: connectionView("claude", report.claude, locale),
+    lastMessage: report.lastMessageAt && formatDateTime(report.lastMessageAt, locale),
+    checkedAt: formatHour(report.checkedAt, locale),
   };
 }

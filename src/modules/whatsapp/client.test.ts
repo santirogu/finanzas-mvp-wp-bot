@@ -144,15 +144,15 @@ describe("checkWhatsAppConnection", () => {
     expect(await checkWhatsAppConnection()).toEqual({
       status: "ok",
       detail: "Finanzas MVP",
-      warning: `Meta marca la calidad del número como ${quality.toUpperCase()}: podría limitar los envíos.`,
+      warning: { kind: "low_quality", quality: quality.toUpperCase() },
     });
   });
 
-  it("sin datos del número (o UNKNOWN), solo dice que conectó", async () => {
+  it("sin datos del número (o UNKNOWN), conectó sin detalle ni aviso", async () => {
     fetchMock.mockResolvedValueOnce(new Response("no es json")).mockResolvedValueOnce(new Response(JSON.stringify({ quality_rating: "UNKNOWN" })));
     const { checkWhatsAppConnection } = await loadClient();
-    expect(await checkWhatsAppConnection()).toEqual({ status: "ok", detail: "Conectado" });
-    expect(await checkWhatsAppConnection()).toEqual({ status: "ok", detail: "Conectado" });
+    expect(await checkWhatsAppConnection()).toEqual({ status: "ok", detail: null });
+    expect(await checkWhatsAppConnection()).toEqual({ status: "ok", detail: null });
   });
 
   it("si Meta lo rechaza, devuelve el estado y lo que respondió (sin el token)", async () => {

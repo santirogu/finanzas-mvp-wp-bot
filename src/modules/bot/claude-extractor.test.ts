@@ -327,7 +327,7 @@ describe("checkClaudeConnection", () => {
     expect(await checkClaudeConnection()).toEqual({
       status: "ok",
       detail: "Claude Haiku 5.5 (claude-haiku-5-5)",
-      warning: "Anthropic marcó el modelo como obsoleto (2027-03-01): conviene cambiarlo.",
+      warning: { kind: "deprecated_model", since: "2027-03-01" },
     });
   });
 
