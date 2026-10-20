@@ -160,3 +160,30 @@ describe("todayInTimezone · otras zonas horarias", () => {
     expect(todayInTimezone("America/Bogota", now)).toBe("2026-10-13");
   });
 });
+
+describe("fechas en inglés", () => {
+  it("el mes: con mayúscula, también dentro de una frase", () => {
+    expect(formatMonthLabel({ year: 2026, month: 10 }, "en")).toBe("October 2026");
+    expect(formatMonthName({ year: 2026, month: 9 }, { locale: "en" })).toBe("September");
+    expect(formatMonthName({ year: 2026, month: 9 }, { withYear: true, locale: "en" })).toBe("September 2026");
+    expect(formatMonthName({ year: 2026, month: 9 })).toBe("septiembre");
+  });
+
+  it("la fecha corta: el mes primero, y la coma antes del año", () => {
+    expect(formatShortDate("2026-10-13", { locale: "en" })).toBe("Oct 13");
+    expect(formatShortDate("2026-09-01", { withYear: true, locale: "en" })).toBe("Sep 1, 2026");
+    expect(formatShortDate("2026-10-13")).toBe("13 de oct");
+  });
+
+  it("el mes corto de las barras", () => {
+    expect(formatShortMonth({ year: 2026, month: 9 }, "en")).toBe("Sep");
+    expect(formatShortMonth({ year: 2026, month: 1 }, "en")).toBe("Jan");
+    expect(formatShortMonth({ year: 2026, month: 12 }, "en")).toBe("Dec");
+    expect(formatShortMonth({ year: 2026, month: 9 })).toBe("sept");
+  });
+
+  it("la fecha larga: con su coma después del día de la semana", () => {
+    expect(formatLongDate("2026-10-13", "en")).toBe("Tuesday, October 13, 2026");
+    expect(formatLongDate("2026-10-13")).toBe("martes 13 de octubre de 2026");
+  });
+});

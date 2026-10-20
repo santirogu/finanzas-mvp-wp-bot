@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { InEnglish } from "../../../../test/locale";
 
 type Result = { data?: unknown; error: { code?: string; status?: number; message?: string } | null };
 const mocks = vi.hoisted(() => ({
@@ -133,3 +134,19 @@ describe("TwoFactorLogin · errores del código en español", () => {
   });
 });
 
+
+describe("TwoFactorLogin · en inglés", () => {
+  it("los textos y los errores en inglés, también con un código de respaldo", async () => {
+    mocks.verifyTotp.mockResolvedValue({ error: { status: 401, code: "INVALID_CODE", message: "Invalid code" } });
+    render(<TwoFactorLogin onCancel={() => {}} />, { wrapper: InEnglish });
+    expect(screen.getByRole("heading", { name: "Two-step verification" })).toBeVisible();
+    await userEvent.click(screen.getByRole("button", { name: "Verify" }));
+    expect(await screen.findByText("Enter the 6-digit code from Google Authenticator.")).toBeVisible();
+    await userEvent.type(screen.getByLabelText("6-digit code"), "123456");
+    await userEvent.click(screen.getByRole("button", { name: "Verify" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Wrong code. Enter the code Google Authenticator shows right now.");
+    await userEvent.click(screen.getByRole("button", { name: "I don't have my phone: use a backup code" }));
+    expect(screen.getByLabelText("Backup code")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Back to sign in" })).toBeVisible();
+  });
+});

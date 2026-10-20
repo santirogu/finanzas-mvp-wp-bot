@@ -237,3 +237,45 @@ describe("formatShare", () => {
     expect(formatShare(part, total)).toBe(expected);
   });
 });
+
+describe("en inglés (los separadores al revés)", () => {
+  it("formatMoney: $1,000,000.00, con el mismo signo menos y el peso como $", () => {
+    expect(formatMoney(1_000_000, "COP", "en")).toBe("$1,000,000.00");
+    expect(formatMoney(45_900.5, "COP", "en")).toBe("$45,900.50");
+    expect(formatMoney(-50_000, "COP", "en")).toBe("−$50,000.00");
+    expect(formatMoney(0, "COP", "en")).toBe("$0.00");
+    // El español no cambia, aunque antes se haya pedido el inglés (cada idioma, su formateador).
+    expect(formatMoney(1_000_000, "COP", "es")).toBe("$1.000.000,00");
+    expect(formatMoney(1_000_000)).toBe("$1.000.000,00");
+  });
+
+  it("parseAmountInput: la coma separa miles y el punto los centavos", () => {
+    expect(parseAmountInput("$500,000", "en")).toBe(500_000);
+    expect(parseAmountInput("1,250,000.50", "en")).toBe(1_250_000.5);
+    expect(parseAmountInput("45900.5", "en")).toBe(45_900.5);
+    expect(parseAmountInput("500000", "en")).toBe(500_000);
+    // Sin punto, una coma final con 1 o 2 dígitos también son centavos (del teclado en español).
+    expect(parseAmountInput("45900,5", "en")).toBe(45_900.5);
+    expect(parseAmountInput("1.500,25", "en")).toBeNull();
+    expect(parseAmountInput("-5,000", "en")).toBeNull();
+    // En español, lo de siempre.
+    expect(parseAmountInput("1.250.000,50", "es")).toBe(1_250_000.5);
+  });
+
+  it("formatAmountTyping: pone las comas de miles y deja dos centavos después del punto", () => {
+    expect(formatAmountTyping("1250000.5", "en")).toBe("1,250,000.5");
+    expect(formatAmountTyping("1250000", "en")).toBe("1,250,000");
+    expect(formatAmountTyping("4,590", "en")).toBe("4,590");
+    expect(formatAmountTyping("12.", "en")).toBe("12.");
+    expect(formatAmountTyping("1250000,5", "es")).toBe("1.250.000,5");
+  });
+
+  it("amountInputValue y completeAmountDecimals: siempre con sus centavos", () => {
+    expect(amountInputValue(45_900.5, "en")).toBe("45,900.50");
+    expect(amountInputValue(45_900, "en")).toBe("45,900.00");
+    expect(completeAmountDecimals("500,000", "en")).toBe("500,000.00");
+    expect(completeAmountDecimals("45,900.5", "en")).toBe("45,900.50");
+    expect(completeAmountDecimals("", "en")).toBe("");
+    expect(completeAmountDecimals("500.000", "es")).toBe("500.000,00");
+  });
+});

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { EMAIL_MESSAGE, TOTP_CODE_MESSAGES, fieldErrorMessage, type FieldState } from "./field-errors";
+import { EMAIL_MESSAGE, FIELD_TEXTS, TOTP_CODE_MESSAGES, fieldErrorMessage, type FieldState } from "./field-errors";
 
 // Lo que dice el navegador de un campo (ValidityState): todo en orden salvo lo que diga cada prueba.
 const field = (validity: Partial<FieldState["validity"]>, overrides: Partial<FieldState> = {}): FieldState => ({
@@ -92,5 +92,23 @@ describe("fieldErrorMessage", () => {
     // Vacío y obligatorio dice lo suyo; una fecha futura, el de max.
     expect(fieldErrorMessage(field({ valueMissing: true }, { type: "number" }), { ...number, required: "Escribe cuántos días." })).toBe("Escribe cuántos días.");
     expect(fieldErrorMessage(field({ rangeOverflow: true }), { max: "No puede ser después de hoy.", ...number })).toBe("No puede ser después de hoy.");
+  });
+});
+
+describe("fieldErrorMessage · en inglés", () => {
+  it("los mensajes generales y el del correo, en inglés; los propios del campo, como vengan", () => {
+    expect(fieldErrorMessage(field({ valueMissing: true }), {}, "en")).toBe("Fill out this field.");
+    expect(fieldErrorMessage(field({ typeMismatch: true }, { type: "email" }), {}, "en")).toBe("Check the email: it should look like name@email.com.");
+    expect(fieldErrorMessage(field({ tooShort: true }, { minLength: 8, value: "abc" }), {}, "en")).toBe("It must have at least 8 characters (you have 3).");
+    expect(fieldErrorMessage(field({ tooLong: true }, { maxLength: 40 }), {}, "en")).toBe("It must have at most 40 characters.");
+    expect(fieldErrorMessage(field({ patternMismatch: true }), {}, "en")).toBe("Check the format.");
+    expect(fieldErrorMessage(field({ badInput: true }), {}, "en")).toBe("Check this field.");
+    expect(fieldErrorMessage(field({ valueMissing: true }), { required: "Enter your name." }, "en")).toBe("Enter your name.");
+    expect(fieldErrorMessage(field({ patternMismatch: true }), FIELD_TEXTS.en.totpCode, "en")).toBe("The code has 6 digits, numbers only.");
+  });
+
+  it("en español, los de siempre", () => {
+    expect(FIELD_TEXTS.es.email).toBe(EMAIL_MESSAGE);
+    expect(FIELD_TEXTS.es.totpCode).toBe(TOTP_CODE_MESSAGES);
   });
 });

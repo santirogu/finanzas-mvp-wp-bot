@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { InEnglish } from "../../../../test/locale";
 
 const navigation = vi.hoisted(() => ({ pathname: "/dashboard", search: "" }));
 vi.mock("next/navigation", () => ({
@@ -143,5 +144,15 @@ describe("TabLinks", () => {
     const links = screen.getAllByRole("link");
     expect(links.map((l) => l.textContent)).toEqual(["Resumen", "Ingresos", "Egresos", "Fijos", "Reportes"]);
     for (const link of links) expect(link).not.toHaveAttribute("aria-current");
+  });
+});
+
+describe("NavTabs · en inglés", () => {
+  it("las pestañas, con sus nombres en inglés (y la de Admin igual)", () => {
+    navigation.pathname = "/ingresos";
+    navigation.search = "";
+    render(<NavTabs showAdmin />, { wrapper: InEnglish });
+    expect(screen.getAllByRole("link").map((l) => l.textContent)).toEqual(["Overview", "Income", "Expenses", "Bills", "Reports", "Admin"]);
+    expect(screen.getByRole("link", { name: "Income" })).toHaveAttribute("aria-current", "page");
   });
 });

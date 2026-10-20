@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { InEnglish } from "../../test/locale";
 
 // El reloj se simula para probar cuánto dura cada aviso; el router, para ver cómo limpia la URL.
 const navigation = vi.hoisted(() => ({ replace: vi.fn(), pathname: "/egresos", search: "" }));
@@ -224,5 +225,24 @@ describe("ToastOnLoad", () => {
     );
     expect(screen.getByText("Se restauró «Mercado»")).toBeVisible();
     expect(navigation.replace).toHaveBeenCalledWith("/egresos?mes=2026-09", { scroll: false });
+  });
+});
+
+describe("Toaster · en inglés", () => {
+  it("la región, el botón de cerrar y el aviso de la URL, en inglés", () => {
+    // La dirección como la arma el proxy (/en/egresos): el aviso es de /egresos igual.
+    navigation.pathname = "/en/egresos";
+    navigation.search = "aviso=guardado";
+    render(
+      <InEnglish>
+        <Toaster>
+          <UrlToasts />
+        </Toaster>
+      </InEnglish>,
+    );
+    const notices = screen.getByRole("region", { name: "Notices" });
+    expect(notices).toHaveTextContent("Changes saved");
+    expect(screen.getByRole("button", { name: "Dismiss the notice" })).toBeVisible();
+    expect(navigation.replace).toHaveBeenCalledWith("/egresos", { scroll: false });
   });
 });

@@ -3,8 +3,11 @@
 // /es/dashboard), y el navegador sigue viendo /dashboard. Así las páginas públicas se prearman una vez
 // por idioma y el <html lang> sale del segmento (next/root-params), sin leer cookies al armarlas.
 
-export const LOCALES = ["es"] as const;
+export const LOCALES = ["es", "en"] as const;
 export type Locale = (typeof LOCALES)[number];
+
+/** Con qué formato de Intl se escriben los números y las fechas de cada idioma. */
+export const INTL_LOCALES: Readonly<Record<Locale, string>> = { es: "es-CO", en: "en-US" };
 
 /** El de quien no eligió otro (y el de la cookie con un valor que no es un idioma). */
 export const DEFAULT_LOCALE: Locale = "es";

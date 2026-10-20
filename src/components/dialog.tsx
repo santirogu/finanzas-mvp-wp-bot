@@ -1,6 +1,10 @@
 "use client";
 
 import { useId, type ReactNode } from "react";
+import { useTexts } from "@/i18n/client";
+import { texts } from "@/i18n/texts";
+
+const TEXTS = texts({ cancel: "Cancelar" }, { en: { cancel: "Cancel" } });
 
 // Las ventanas modales de la app (las confirmaciones de la administración, "Registrar pago" del Resumen):
 // la ventana, sus errores generales y sus botones. El estado de cada formulario viene de su Server Action
@@ -45,6 +49,7 @@ export function FormError({ state }: { state: DialogState }) {
 
 /** "Cancelar" (cierra la ventana) y el botón que envía; de 44 px de alto en pantallas táctiles. */
 export function Buttons({ submit, pending, busy, danger = false, disabled = false }: { submit: string; pending: string; busy: boolean; danger?: boolean; disabled?: boolean }) {
+  const t = useTexts(TEXTS);
   return (
     <div className="flex justify-end gap-2">
       <button
@@ -52,7 +57,7 @@ export function Buttons({ submit, pending, busy, danger = false, disabled = fals
         onClick={(event) => event.currentTarget.closest("dialog")?.close()}
         className="min-h-11 rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-background pointer-fine:min-h-9"
       >
-        Cancelar
+        {t.cancel}
       </button>
       <button
         type="submit"

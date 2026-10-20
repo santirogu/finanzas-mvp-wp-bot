@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useId, useState, useTransition, type FormEvent } from "react";
 import { describedBy, FieldError } from "@/components/field-error";
 import { useFieldErrors } from "@/components/use-field-errors";
+import { useLocale } from "@/i18n/client";
+import { texts } from "@/i18n/texts";
 import { authClient } from "@/lib/auth-client";
 import { authErrorMessage } from "@/lib/auth-errors";
 import { suggestEmailCorrection } from "@/lib/email-typo";
@@ -13,18 +15,64 @@ import { afterLoginPath } from "@/lib/roles";
 import { MAX_NAME_LENGTH } from "@/modules/auth/account-name";
 import { TwoFactorLogin } from "./two-factor-login";
 
-// Los errores de los campos, en español (en vez del globo del navegador).
-const MESSAGES: Record<string, FieldMessages> = {
-  name: { required: "Escribe tu nombre." },
-  email: { required: "Escribe tu correo." },
-  password: { required: "Escribe tu contraseña." },
-};
+const TEXTS = texts(
+  {
+    // Los errores de los campos (en vez del globo del navegador).
+    messages: {
+      name: { required: "Escribe tu nombre." },
+      email: { required: "Escribe tu correo." },
+      password: { required: "Escribe tu contraseña." },
+    } as Record<string, FieldMessages>,
+    login: { title: "Inicia sesión", subtitle: "Bienvenido de nuevo.", submit: "Entrar", other: "¿No tienes cuenta? ", otherLink: "Regístrate" },
+    register: {
+      title: "Crea tu cuenta",
+      subtitle: "Empieza a llevar tus cuentas en minutos.",
+      submit: "Crear cuenta",
+      other: "¿Ya tienes cuenta? ",
+      otherLink: "Inicia sesión",
+    },
+    name: "Nombre",
+    email: "Correo",
+    password: "Contraseña",
+    didYouMean: "¿Quisiste decir",
+    fix: "Sí, corregir",
+    keepEmail: "Si tu correo está bien escrito, presiona “Crear cuenta” de nuevo.",
+    pending: "Un momento…",
+  },
+  {
+    en: {
+      messages: {
+        name: { required: "Enter your name." },
+        email: { required: "Enter your email." },
+        password: { required: "Enter your password." },
+      },
+      login: { title: "Sign in", subtitle: "Welcome back.", submit: "Sign in", other: "Don't have an account? ", otherLink: "Sign up" },
+      register: {
+        title: "Create your account",
+        subtitle: "Start tracking your money in minutes.",
+        submit: "Create account",
+        other: "Already have an account? ",
+        otherLink: "Sign in",
+      },
+      name: "Name",
+      email: "Email",
+      password: "Password",
+      didYouMean: "Did you mean",
+      fix: "Yes, fix it",
+      keepEmail: "If your email is spelled right, press “Create account” again.",
+      pending: "One moment…",
+    },
+  },
+);
 
 export function AuthForm({ mode }: { mode: "login" | "register" }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const isRegister = mode === "register";
+  const locale = useLocale();
+  const t = TEXTS[locale];
+  const page = isRegister ? t.register : t.login;
   const [email, setEmail] = useState("");
   // Sugerencia de corrección del dominio (solo en registro): "gmal.com" → "gmail.com".
   const [suggestion, setSuggestion] = useState<string | null>(null);
@@ -33,7 +81,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
   const nameErrorId = useId();
   const emailErrorId = useId();
   const passwordErrorId = useId();
-  const { errors, formProps } = useFieldErrors(MESSAGES);
+  const { errors, formProps } = useFieldErrors(t.messages);
   // Quien tiene la verificación en dos pasos pasa a un segundo paso después de la contraseña.
   const [needsCode, setNeedsCode] = useState(false);
 
@@ -64,7 +112,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
         : await authClient.signIn.email({ email, password });
 
       if (error) {
-        setError(authErrorMessage(error));
+        setError(authErrorMessage(error, locale));
         return;
       }
       if (data && "twoFactorRedirect" in data && data.twoFactorRedirect) {
@@ -81,10 +129,8 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
 
   return (
     <div className="card w-full max-w-sm p-6 sm:p-8">
-      <h1 className="text-xl font-semibold">{isRegister ? "Crea tu cuenta" : "Inicia sesión"}</h1>
-      <p className="mt-1 text-sm text-muted">
-        {isRegister ? "Empieza a llevar tus cuentas en minutos." : "Bienvenido de nuevo."}
-      </p>
+      <h1 className="text-xl font-semibold">{page.title}</h1>
+      <p className="mt-1 text-sm text-muted">{page.subtitle}</p>
 
       {/* method="post": si se envía antes de que cargue el JavaScript (o si falla), el navegador
           lo manda por su cuenta; con GET la contraseña quedaría en la URL (historial, logs). */}
@@ -92,7 +138,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
         {isRegister && (
           <div className="space-y-1.5">
             <label className="block space-y-1.5">
-              <span className="text-sm font-medium">Nombre</span>
+              <span className="text-sm font-medium">{t.name}</span>
               <input
                 name="name"
                 required
@@ -108,7 +154,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
         )}
         <div className="space-y-1.5">
           <label className="block space-y-1.5">
-            <span className="text-sm font-medium">Correo</span>
+            <span className="text-sm font-medium">{t.email}</span>
             <input
               name="email"
               type="email"
@@ -131,7 +177,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
           <div aria-live="polite">
             {suggestion && (
               <p id={suggestionId} className="rounded-lg bg-brand/10 px-3 py-2 text-sm">
-                ¿Quisiste decir <strong className="break-all">{suggestion}</strong>?{" "}
+                {t.didYouMean} <strong className="break-all">{suggestion}</strong>?{" "}
                 <button
                   type="button"
                   className="font-medium text-brand underline underline-offset-2"
@@ -140,12 +186,10 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
                     setSuggestion(null);
                   }}
                 >
-                  Sí, corregir
+                  {t.fix}
                 </button>
                 {warnedFor === email && (
-                  <span className="mt-1 block text-xs text-muted">
-                    Si tu correo está bien escrito, presiona “Crear cuenta” de nuevo.
-                  </span>
+                  <span className="mt-1 block text-xs text-muted">{t.keepEmail}</span>
                 )}
               </p>
             )}
@@ -153,7 +197,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
         </div>
         <div className="space-y-1.5">
           <label className="block space-y-1.5">
-            <span className="text-sm font-medium">Contraseña</span>
+            <span className="text-sm font-medium">{t.password}</span>
             <input
               name="password"
               type="password"
@@ -176,14 +220,14 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
         )}
 
         <button type="submit" disabled={pending} className="btn-primary w-full">
-          {pending ? "Un momento…" : isRegister ? "Crear cuenta" : "Entrar"}
+          {pending ? t.pending : page.submit}
         </button>
       </form>
 
       <p className="mt-6 text-center text-sm text-muted">
-        {isRegister ? "¿Ya tienes cuenta? " : "¿No tienes cuenta? "}
+        {page.other}
         <Link href={isRegister ? "/login" : "/registro"} className="font-medium text-brand">
-          {isRegister ? "Inicia sesión" : "Regístrate"}
+          {page.otherLink}
         </Link>
       </p>
     </div>

@@ -1,8 +1,10 @@
+import { DEFAULT_LOCALE, type Locale } from "@/i18n/locales";
 import {
   compareMonths,
   FIRST_MONTH,
   formatMonthLabel,
   formatMonthName,
+  formatShortMonth,
   type Month,
   type MonthRange,
   monthParam,
@@ -32,10 +34,13 @@ export function monthHref(path: string, month: Month, current: Month, extra: Rec
   return query ? `${path}?${query}` : path;
 }
 
-/** "este mes", "en septiembre" o, si es de otro año, "en septiembre de 2025": para las frases de la página. */
-export function inMonthPhrase(month: Month, current: Month): string {
-  if (compareMonths(month, current) === 0) return "este mes";
-  return `en ${formatMonthName(month, { withYear: month.year !== current.year })}`;
+/**
+ * "este mes", "en septiembre" o, si es de otro año, "en septiembre de 2025": para las frases de la página.
+ * En inglés, "this month", "in September", "in September 2025".
+ */
+export function inMonthPhrase(month: Month, current: Month, locale: Locale = DEFAULT_LOCALE): string {
+  if (compareMonths(month, current) === 0) return locale === "es" ? "este mes" : "this month";
+  return `${locale === "es" ? "en" : "in"} ${formatMonthName(month, { withYear: month.year !== current.year, locale })}`;
 }
 
 export type MonthNavData = {
@@ -53,34 +58,35 @@ export type MonthNavData = {
   backToCurrent: string | null;
   /** Los meses con movimientos ("YYYY-MM"): llevan un punto en la cuadrícula del año. */
   activeMonths: string[];
+  /** El idioma de los nombres de los meses (también los de la cuadrícula). */
+  locale: Locale;
 };
 
 /**
  * Lo que muestra el navegador de meses de una página (`path`) en el mes `selected`. Las flechas van a
  * cualquier mes, tenga o no movimientos: "›" hasta el actual y "‹" hasta FIRST_MONTH.
  */
-export function monthNav(path: string, selected: Month, current: Month, activeMonths: string[]): MonthNavData {
+export function monthNav(path: string, selected: Month, current: Month, activeMonths: string[], locale: Locale = DEFAULT_LOCALE): MonthNavData {
   const arrow = (month: Month) => ({
     href: monthHref(path, month, current),
-    name: formatMonthName(month, { withYear: true }),
+    name: formatMonthName(month, { withYear: true, locale }),
   });
   const isCurrent = compareMonths(selected, current) === 0;
   return {
     path,
-    label: formatMonthLabel(selected),
+    label: formatMonthLabel(selected, locale),
     selected: { year: selected.year, month: selected.month },
     current: { year: current.year, month: current.month },
     prev: compareMonths(selected, FIRST_MONTH) > 0 ? arrow(shiftMonth(selected, -1)) : null,
     next: isCurrent ? null : arrow(shiftMonth(selected, 1)),
     backToCurrent: isCurrent ? null : path,
     activeMonths,
+    locale,
   };
 }
 
-const shortMonth = new Intl.DateTimeFormat("es-CO", { month: "short", timeZone: "UTC" });
-
 export type MonthCell = {
-  /** "sept" (lo que se ve). */
+  /** "sept" (lo que se ve; en inglés, "Sep"). */
   short: string;
   /** "septiembre de 2026" (lo que lee el lector de pantalla). */
   name: string;
@@ -98,8 +104,8 @@ export function yearGrid(nav: MonthNavData, year: number): MonthCell[] {
   return Array.from({ length: 12 }, (_, i) => {
     const month = { year, month: i + 1 };
     return {
-      short: shortMonth.format(new Date(Date.UTC(year, i, 1))).replace(".", ""),
-      name: formatMonthName(month, { withYear: true }),
+      short: formatShortMonth(month, nav.locale),
+      name: formatMonthName(month, { withYear: true, locale: nav.locale }),
       href: compareMonths(month, nav.current) > 0 ? null : monthHref(nav.path, month, nav.current),
       selected: compareMonths(month, nav.selected) === 0,
       current: compareMonths(month, nav.current) === 0,

@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TOO_MANY_ATTEMPTS } from "@/lib/auth-errors";
+import { InEnglish } from "../../../../test/locale";
 
 // Better Auth y el router se simulan: se prueba qué envía el formulario y qué muestra.
 type Result = {
@@ -284,3 +285,36 @@ describe("AuthForm · errores de los campos en español", () => {
   });
 });
 
+
+describe("AuthForm · en inglés", () => {
+  it("el login: títulos, campos, botón y el enlace al registro", async () => {
+    render(<AuthForm mode="login" />, { wrapper: InEnglish });
+    expect(screen.getByRole("heading", { name: "Sign in" })).toBeVisible();
+    expect(screen.getByText("Welcome back.")).toBeVisible();
+    expect(screen.getByRole("link", { name: "Sign up" })).toHaveAttribute("href", "/registro");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+    // Los campos vacíos, con sus mensajes en inglés.
+    expect(await screen.findByText("Enter your email.")).toBeVisible();
+    expect(screen.getByText("Enter your password.")).toBeVisible();
+  });
+
+  it("los errores del servidor, en inglés", async () => {
+    mocks.signIn.mockResolvedValueOnce({ error: { code: "INVALID_EMAIL_OR_PASSWORD" } });
+    render(<AuthForm mode="login" />, { wrapper: InEnglish });
+    await userEvent.type(screen.getByLabelText("Email"), "ana@gmail.com");
+    await userEvent.type(screen.getByLabelText("Password"), "clave-segura-123");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Wrong email or password.");
+  });
+
+  it("el registro, con la sugerencia del correo", async () => {
+    render(<AuthForm mode="register" />, { wrapper: InEnglish });
+    expect(screen.getByRole("heading", { name: "Create your account" })).toBeVisible();
+    expect(screen.getByLabelText("Name")).toBeVisible();
+    await userEvent.type(screen.getByLabelText("Email"), "ana@gmal.com");
+    await userEvent.tab();
+    expect(await screen.findByText(/Did you mean/)).toHaveTextContent("Did you mean ana@gmail.com?");
+    expect(screen.getByRole("button", { name: "Yes, fix it" })).toBeVisible();
+    expect(screen.getByRole("link", { name: "Sign in" })).toHaveAttribute("href", "/login");
+  });
+});

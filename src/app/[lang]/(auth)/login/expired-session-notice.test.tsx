@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { InEnglish } from "../../../../../test/locale";
 
 const navigation = vi.hoisted(() => ({ search: "" }));
 vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams(navigation.search) }));
@@ -17,5 +18,13 @@ describe("ExpiredSessionNotice", () => {
     navigation.search = search;
     const { container } = render(<ExpiredSessionNotice />);
     expect(container).toBeEmptyDOMElement();
+  });
+});
+
+describe("ExpiredSessionNotice · en inglés", () => {
+  it("el aviso en inglés", () => {
+    navigation.search = "sesion=vencida";
+    render(<ExpiredSessionNotice />, { wrapper: InEnglish });
+    expect(screen.getByRole("status")).toHaveTextContent("Your session ended. Sign in again.");
   });
 });

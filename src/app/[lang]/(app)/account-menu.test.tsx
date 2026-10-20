@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { InEnglish } from "../../../../test/locale";
 
 const navigation = vi.hoisted(() => ({ pathname: "/dashboard" }));
 vi.mock("next/navigation", () => ({ usePathname: () => navigation.pathname }));
@@ -131,5 +132,17 @@ describe("AccountMenu", () => {
     await userEvent.click(screen.getByRole("link", { name }));
     window.removeEventListener("click", stay);
     expect(card()).not.toBeVisible();
+  });
+});
+
+describe("AccountMenu · en inglés", () => {
+  it("el botón, la tarjeta y sus opciones en inglés", async () => {
+    render(<AccountMenu name="Ana" email="ana@test.local" signOut={signOut} />, { wrapper: InEnglish });
+    const button = screen.getByRole("button", { name: "Your account: Ana" });
+    await userEvent.click(button);
+    expect(screen.getByRole("group", { name: "Your account" })).toBeVisible();
+    expect(screen.getByRole("link", { name: "My account" })).toHaveAttribute("href", "/cuenta");
+    expect(screen.getByRole("link", { name: "Help" })).toHaveAttribute("href", "/ayuda");
+    expect(screen.getByRole("button", { name: "Sign out" })).toBeVisible();
   });
 });

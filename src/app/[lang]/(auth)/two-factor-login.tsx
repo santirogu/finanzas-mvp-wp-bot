@@ -4,9 +4,11 @@ import { useRouter } from "next/navigation";
 import { useId, useState, useTransition, type FormEvent } from "react";
 import { describedBy, FieldError } from "@/components/field-error";
 import { useFieldErrors } from "@/components/use-field-errors";
+import { useLocale } from "@/i18n/client";
+import { texts } from "@/i18n/texts";
 import { authClient } from "@/lib/auth-client";
 import { authErrorMessage } from "@/lib/auth-errors";
-import { TOTP_CODE_MESSAGES, type FieldMessages } from "@/lib/field-errors";
+import { FIELD_TEXTS, type FieldMessages } from "@/lib/field-errors";
 
 type Mode = "totp" | "backup";
 
@@ -15,14 +17,46 @@ type Mode = "totp" | "backup";
  * Google Authenticator o, si no tiene el celular, uno de sus códigos de respaldo (cada uno sirve una
  * vez). Better Auth guarda el primer paso en una cookie que dura 10 minutos.
  */
-// Los errores del campo del código, en español (en vez del globo del navegador).
-const TOTP_MESSAGES: Record<string, FieldMessages> = { code: TOTP_CODE_MESSAGES };
-const BACKUP_MESSAGES: Record<string, FieldMessages> = { code: { required: "Escribe uno de tus códigos de respaldo." } };
+const TEXTS = texts(
+  {
+    // Los errores del campo del código (en vez del globo del navegador).
+    totpMessages: { code: FIELD_TEXTS.es.totpCode } as Record<string, FieldMessages>,
+    backupMessages: { code: { required: "Escribe uno de tus códigos de respaldo." } } as Record<string, FieldMessages>,
+    title: "Verificación en dos pasos",
+    totpIntro: "Abre Google Authenticator y escribe el código de 6 dígitos de Finanzas MVP.",
+    backupIntro: "Escribe uno de los códigos de respaldo que guardaste. Cada uno sirve una sola vez.",
+    totpLabel: "Código de 6 dígitos",
+    backupLabel: "Código de respaldo",
+    submit: "Verificar",
+    pending: "Verificando…",
+    useBackup: "No tengo el celular: usar un código de respaldo",
+    useTotp: "Usar Google Authenticator",
+    back: "Volver a iniciar sesión",
+  },
+  {
+    en: {
+      totpMessages: { code: FIELD_TEXTS.en.totpCode },
+      backupMessages: { code: { required: "Enter one of your backup codes." } },
+      title: "Two-step verification",
+      totpIntro: "Open Google Authenticator and enter the 6-digit code for Finanzas MVP.",
+      backupIntro: "Enter one of the backup codes you saved. Each one works only once.",
+      totpLabel: "6-digit code",
+      backupLabel: "Backup code",
+      submit: "Verify",
+      pending: "Verifying…",
+      useBackup: "I don't have my phone: use a backup code",
+      useTotp: "Use Google Authenticator",
+      back: "Back to sign in",
+    },
+  },
+);
 
 export function TwoFactorLogin({ onCancel }: { onCancel: () => void }) {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>("totp");
-  const { errors, reset, formProps } = useFieldErrors(mode === "totp" ? TOTP_MESSAGES : BACKUP_MESSAGES);
+  const locale = useLocale();
+  const t = TEXTS[locale];
+  const { errors, reset, formProps } = useFieldErrors(mode === "totp" ? t.totpMessages : t.backupMessages);
   const codeErrorId = useId();
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -37,7 +71,7 @@ export function TwoFactorLogin({ onCancel }: { onCancel: () => void }) {
           ? await authClient.twoFactor.verifyTotp({ code })
           : await authClient.twoFactor.verifyBackupCode({ code });
       if (error) {
-        setError(authErrorMessage(error));
+        setError(authErrorMessage(error, locale));
         return;
       }
       router.replace("/dashboard");
@@ -47,17 +81,13 @@ export function TwoFactorLogin({ onCancel }: { onCancel: () => void }) {
 
   return (
     <div className="card w-full max-w-sm p-6 sm:p-8">
-      <h1 className="text-xl font-semibold">Verificación en dos pasos</h1>
-      <p className="mt-1 text-sm text-muted">
-        {mode === "totp"
-          ? "Abre Google Authenticator y escribe el código de 6 dígitos de Finanzas MVP."
-          : "Escribe uno de los códigos de respaldo que guardaste. Cada uno sirve una sola vez."}
-      </p>
+      <h1 className="text-xl font-semibold">{t.title}</h1>
+      <p className="mt-1 text-sm text-muted">{mode === "totp" ? t.totpIntro : t.backupIntro}</p>
 
       <form method="post" onSubmit={onSubmit} {...formProps} className="mt-6 space-y-4">
         <div className="space-y-1.5">
           <label className="block space-y-1.5">
-            <span className="text-sm font-medium">{mode === "totp" ? "Código de 6 dígitos" : "Código de respaldo"}</span>
+            <span className="text-sm font-medium">{mode === "totp" ? t.totpLabel : t.backupLabel}</span>
             <input
               key={mode}
               name="code"
@@ -82,7 +112,7 @@ export function TwoFactorLogin({ onCancel }: { onCancel: () => void }) {
         )}
 
         <button type="submit" disabled={pending} className="btn-primary w-full">
-          {pending ? "Verificando…" : "Verificar"}
+          {pending ? t.pending : t.submit}
         </button>
       </form>
 
@@ -96,10 +126,10 @@ export function TwoFactorLogin({ onCancel }: { onCancel: () => void }) {
             setError(null);
           }}
         >
-          {mode === "totp" ? "No tengo el celular: usar un código de respaldo" : "Usar Google Authenticator"}
+          {mode === "totp" ? t.useBackup : t.useTotp}
         </button>
         <button type="button" className="text-muted hover:text-foreground" onClick={onCancel}>
-          Volver a iniciar sesión
+          {t.back}
         </button>
       </div>
     </div>

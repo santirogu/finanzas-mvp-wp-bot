@@ -1,3 +1,5 @@
+import { DEFAULT_LOCALE, INTL_LOCALES, type Locale } from "@/i18n/locales";
+
 /** El monto más alto que se acepta (web y bot): 100 mil millones. Por encima, casi seguro es un error. */
 export const MAX_AMOUNT = 100_000_000_000;
 
@@ -5,26 +7,37 @@ const formatters = new Map<string, Intl.NumberFormat>();
 
 /**
  * Un monto como se muestra en toda la app (web y bot): con dos decimales y sin espacio después del
- * símbolo, "$1.000.000,00", "$45.900,50" o "−$50.000,00". Los negativos llevan el signo menos
- * tipográfico (U+2212), el mismo que las listas les ponen a los egresos, no el guion de Intl.
+ * símbolo, "$1.000.000,00", "$45.900,50" o "−$50.000,00" (en inglés, "$1,000,000.00"). Los negativos
+ * llevan el signo menos tipográfico (U+2212), el mismo que las listas les ponen a los egresos, no el
+ * guion de Intl.
  */
-export function formatMoney(amount: number, currency = "COP"): string {
-  let fmt = formatters.get(currency);
+export function formatMoney(amount: number, currency = "COP", locale: Locale = DEFAULT_LOCALE): string {
+  const key = `${locale} ${currency}`;
+  let fmt = formatters.get(key);
   // Stryker disable next-line ConditionalExpression: el caché solo evita crear el formateador cada vez; el resultado es el mismo
   if (!fmt) {
-    fmt = new Intl.NumberFormat("es-CO", {
+    fmt = new Intl.NumberFormat(INTL_LOCALES[locale], {
       style: "currency",
       currency,
+      // En inglés, el símbolo del peso sería "COP": "$", como en español.
+      currencyDisplay: locale === "es" ? "symbol" : "narrowSymbol",
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     });
     // Stryker disable next-line CallExpression: ídem (sin guardarlo, se vuelve a crear igual)
-    formatters.set(currency, fmt);
+    formatters.set(key, fmt);
   }
   // Intl pone un espacio duro entre el símbolo y el número ("$ 1.000,00"); se quita.
   // Stryker disable next-line Regex: sin el "^" da lo mismo (Intl pone un solo guion, el del negativo, al comienzo)
   return fmt.format(amount).replace(/\s/g, "").replace(/^-/, "−");
 }
+
+/**
+ * En inglés, la coma separa los miles y el punto los centavos, al revés que en español: los campos de
+ * monto en inglés se leen y se escriben cambiando uno por otro y usando las mismas reglas.
+ */
+const swapSeparators = (text: string) => text.replace(/[.,]/g, (separator) => (separator === "." ? "," : "."));
+const inSpanishSeparators = (text: string, locale: Locale) => (locale === "es" ? text : swapSeparators(text));
 
 /**
  * Convierte lo que escribe el usuario en pesos, con hasta dos decimales para los centavos.
@@ -33,16 +46,16 @@ export function formatMoney(amount: number, currency = "COP"): string {
  * inglés): un punto de miles siempre va seguido de 3 dígitos, así que no hay confusión.
  * Devuelve null si no hay un monto válido mayor que cero, si tiene más de dos decimales ("1,500"
  * sería ambiguo) o si es negativo (el tipo ingreso/egreso ya indica el signo: "-5.000", "−5.000" o
- * "–5.000" no deben guardarse como 5.000).
+ * "–5.000" no deben guardarse como 5.000). En inglés, con los separadores al revés: "1,250,000.50".
  */
-export function parseAmountInput(raw: string): number | null {
+export function parseAmountInput(raw: string, locale: Locale = DEFAULT_LOCALE): number | null {
   // Cualquier guion o raya (\p{Pd}: el guion, la raya "–" y "—", que el iPhone pone en vez de "--", el
   // de ancho completo "－"…) y el signo menos tipográfico (U+2212) que muestra la app, si se copia un
   // monto de ella. Con JavaScript, el campo ya los quita al escribir (formatAmountTyping); esto cubre el
   // formulario enviado sin él.
   if (/[\p{Pd}\u2212]/u.test(raw)) return null;
   // Solo cuentan los dígitos y los separadores: "$", espacios y letras se ignoran.
-  const text = raw.replace(/[^\d.,]/g, "");
+  const text = inSpanishSeparators(raw.replace(/[^\d.,]/g, ""), locale);
   // Stryker disable next-line Regex: sin el "^" del segundo patrón el resultado es el mismo (solo hay dígitos y puntos, y el grupo perezoso arranca en 0)
   const match = text.includes(",") ? /^([\d.]*),(\d{0,2})$/.exec(text) : /^([\d.]*?)(?:\.(\d{1,2}))?$/.exec(text);
   if (!match) return null;
@@ -75,9 +88,11 @@ function groupThousands(digits: string): string {
  * El campo del monto mientras se escribe: pone los puntos de miles y deja hasta dos centavos
  * después de la coma ("1250000,5" → "1.250.000,5"). Un punto al final también abre los centavos
  * (el teclado en inglés no tiene coma); los demás puntos son de miles y se recalculan, así que
- * borrar el último dígito de "4.590" da "459" y no "4,59".
+ * borrar el último dígito de "4.590" da "459" y no "4,59". En inglés, con los separadores al revés:
+ * "1250000.5" → "1,250,000.5".
  */
-export function formatAmountTyping(raw: string): string {
+export function formatAmountTyping(raw: string, locale: Locale = DEFAULT_LOCALE): string {
+  if (locale !== "es") return swapSeparators(formatAmountTyping(swapSeparators(raw)));
   const text = raw.replace(/[^\d.,]/g, "");
   const comma = text.indexOf(",");
   // Stryker disable next-line ArithmeticOperator: cualquier índice desde el punto final da lo mismo (el punto se quita con los demás no dígitos)
@@ -88,22 +103,26 @@ export function formatAmountTyping(raw: string): string {
   return `${groupThousands(whole || "0")},${decimals}`;
 }
 
-/** Un monto guardado como se escribe en el formulario, siempre con sus centavos: "45.900,00", "45.900,50". */
-export function amountInputValue(amount: number): string {
+/**
+ * Un monto guardado como se escribe en el formulario, siempre con sus centavos: "45.900,00", "45.900,50"
+ * (en inglés, "45,900.50").
+ */
+export function amountInputValue(amount: number, locale: Locale = DEFAULT_LOCALE): string {
   const cents = Math.round(amount * 100);
   const rest = cents % 100;
-  return `${groupThousands(String((cents - rest) / 100))},${String(rest).padStart(2, "0")}`;
+  return inSpanishSeparators(`${groupThousands(String((cents - rest) / 100))},${String(rest).padStart(2, "0")}`, locale);
 }
 
 /**
  * Lo escrito en el campo de monto, completado con sus dos decimales al salir del campo:
- * "500.000" → "500.000,00", "45.900,5" → "45.900,50". Vacío sigue vacío (el campo avisa que falta).
+ * "500.000" → "500.000,00", "45.900,5" → "45.900,50" (en inglés, "45,900.50"). Vacío sigue vacío (el campo
+ * avisa que falta).
  */
-export function completeAmountDecimals(raw: string): string {
-  const typed = formatAmountTyping(raw);
+export function completeAmountDecimals(raw: string, locale: Locale = DEFAULT_LOCALE): string {
+  const typed = formatAmountTyping(inSpanishSeparators(raw, locale));
   if (!typed) return "";
   const [whole, decimals = ""] = typed.split(",");
-  return `${whole},${decimals.padEnd(2, "0")}`;
+  return inSpanishSeparators(`${whole},${decimals.padEnd(2, "0")}`, locale);
 }
 
 /**

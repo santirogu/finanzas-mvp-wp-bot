@@ -2,6 +2,7 @@ import { z } from "zod";
 import { SearchableTransactionList } from "@/components/searchable-transaction-list";
 import { TransactionForm } from "@/components/transaction-form";
 import { ToastOnLoad } from "@/components/toaster";
+import { getLocale } from "@/i18n/server";
 import { compareMonths, currentMonthRange, monthOf, sameDayIn, shiftMonth, todayInTimezone } from "@/lib/dates";
 import { formatMoney, sumAmounts } from "@/lib/money";
 import { inMonthPhrase, monthHref, monthNav, selectedMonth } from "@/lib/month-nav";
@@ -59,7 +60,7 @@ export async function TransactionsView({ type, params = {} }: { type: "income" |
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
-          <MonthNav nav={monthNav(path, range, current, activeMonths)} />
+          <MonthNav nav={monthNav(path, range, current, activeMonths, await getLocale())} />
           <h1 className="text-2xl font-semibold tracking-tight">
             {isIncome ? "Ingresos" : "Egresos"}
           </h1>

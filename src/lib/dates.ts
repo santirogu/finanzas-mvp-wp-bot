@@ -1,3 +1,5 @@
+import { DEFAULT_LOCALE, INTL_LOCALES, type Locale } from "@/i18n/locales";
+
 /** Fecha de hoy (YYYY-MM-DD) en la zona horaria indicada. */
 export function todayInTimezone(timezone: string, now: Date = new Date()): string {
   // en-CA formatea como YYYY-MM-DD.
@@ -38,14 +40,18 @@ export function monthRange(year: number, month: number): MonthRange {
 /** Un mes, sin sus días: el que se navega en el Resumen, Ingresos y Egresos (`?mes=`). */
 export type Month = Pick<MonthRange, "year" | "month">;
 
-export function formatMonthLabel({ year, month }: Month): string {
-  const label = formatMonthName({ year, month }, { withYear: true });
+/** "Septiembre de 2025" (en inglés, "September 2025"): el título de un mes. */
+export function formatMonthLabel({ year, month }: Month, locale: Locale = DEFAULT_LOCALE): string {
+  const label = formatMonthName({ year, month }, { withYear: true, locale });
   return label.charAt(0).toUpperCase() + label.slice(1);
 }
 
-/** "septiembre" (o "septiembre de 2025", con el año), en minúscula: para usarlo dentro de una frase. */
-export function formatMonthName({ year, month }: Month, { withYear = false } = {}): string {
-  return new Intl.DateTimeFormat("es-CO", {
+/**
+ * "septiembre" (o "septiembre de 2025", con el año), en minúscula: para usarlo dentro de una frase. En
+ * inglés, "September" ("September 2025"): los meses van con mayúscula.
+ */
+export function formatMonthName({ year, month }: Month, { withYear = false, locale = DEFAULT_LOCALE }: { withYear?: boolean; locale?: Locale } = {}): string {
+  return new Intl.DateTimeFormat(INTL_LOCALES[locale], {
     month: "long",
     year: withYear ? "numeric" : undefined,
     timeZone: "UTC",
@@ -101,32 +107,38 @@ export function compareMonths(a: Month, b: Month): number {
  * Chrome dicen "sept"; Safari, "sep."), y la lista de Ingresos y Egresos se dibuja en el servidor y
  * también en el navegador (el buscador): si no dicen lo mismo, React da un error de hidratación.
  */
-const SHORT_MONTHS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sept", "oct", "nov", "dic"];
+const SHORT_MONTHS: Readonly<Record<Locale, readonly string[]>> = {
+  es: ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sept", "oct", "nov", "dic"],
+  en: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+};
 
 /**
  * "2026-10-13" → "13 de oct" (igual en el servidor y en cualquier navegador). Con el año, "13 de oct de
- * 2026": para una lista de varios meses (los gastos más grandes de Reportes).
+ * 2026": para una lista de varios meses (los gastos más grandes de Reportes). En inglés, "Oct 13" y
+ * "Oct 13, 2026".
  */
-export function formatShortDate(isoDate: string, { withYear = false } = {}): string {
+export function formatShortDate(isoDate: string, { withYear = false, locale = DEFAULT_LOCALE }: { withYear?: boolean; locale?: Locale } = {}): string {
   const [y, m, d] = isoDate.split("-").map(Number);
-  return `${d} de ${SHORT_MONTHS[m - 1]}${withYear ? ` de ${y}` : ""}`;
+  const month = SHORT_MONTHS[locale][m - 1];
+  if (locale === "en") return `${month} ${d}${withYear ? `, ${y}` : ""}`;
+  return `${d} de ${month}${withYear ? ` de ${y}` : ""}`;
 }
 
-/** Septiembre → "sept" (igual en el servidor y en cualquier navegador): debajo de cada barra de Reportes. */
-export function formatShortMonth({ month }: Month): string {
-  return SHORT_MONTHS[month - 1];
+/** Septiembre → "sept" (en inglés, "Sep"; igual en el servidor y en cualquier navegador): debajo de cada barra de Reportes. */
+export function formatShortMonth({ month }: Month, locale: Locale = DEFAULT_LOCALE): string {
+  return SHORT_MONTHS[locale][month - 1];
 }
 
-/** "2026-10-13" → "martes 13 de octubre de 2026" */
-export function formatLongDate(isoDate: string): string {
+/** "2026-10-13" → "martes 13 de octubre de 2026" (en inglés, "Tuesday, October 13, 2026"). */
+export function formatLongDate(isoDate: string, locale: Locale = DEFAULT_LOCALE): string {
   const [y, m, d] = isoDate.split("-").map(Number);
-  return new Intl.DateTimeFormat("es-CO", {
+  const text = new Intl.DateTimeFormat(INTL_LOCALES[locale], {
     weekday: "long",
     day: "numeric",
     month: "long",
     year: "numeric",
     timeZone: "UTC",
-  })
-    .format(new Date(Date.UTC(y, m - 1, d)))
-    .replace(",", "");
+  }).format(new Date(Date.UTC(y, m - 1, d)));
+  // En español, Intl pone una coma después del día de la semana ("martes, 13 de…"); en inglés va.
+  return locale === "es" ? text.replace(",", "") : text;
 }
