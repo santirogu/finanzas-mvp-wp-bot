@@ -140,3 +140,26 @@ describe("averagedPhrase", () => {
     expect(averagedPhrase([m(6), m(7), m(8)])).toBe("junio a agosto");
   });
 });
+
+describe("las categorías en inglés", () => {
+  it("los meses del promedio y la comparación de cada una", () => {
+    expect(averagedPhrase([{ year: 2026, month: 8 }], "en")).toBe("August");
+    expect(averagedPhrase([{ year: 2026, month: 7 }, { year: 2026, month: 8 }], "en")).toBe("July and August");
+    expect(averagedPhrase([{ year: 2026, month: 6 }, { year: 2026, month: 7 }, { year: 2026, month: 8 }], "en")).toBe("June to August");
+    expect(categoryChange(140, 100, "September", "en")).toEqual({ direction: "up", text: "In September, 40% more than its average" });
+    expect(categoryChange(60, 100, "September", "en")).toEqual({ direction: "down", text: "In September, 40% less than its average" });
+    expect(categoryChange(100, 100, "September", "en")?.text).toBe("In September, the same as its average");
+    expect(categoryChange(100, 0, "September", "en")?.text).toBe("New in September");
+    expect(categoryChange(0, 100, "September", "en")?.text).toBe("No spending in September");
+    expect(categoryChange(13500, 100, "September", "en")?.text).toBe("In September, 13,400% more than its average");
+  });
+
+  it("el informe arma las comparaciones con el mes en inglés", () => {
+    const rows: CategoryMonthTotal[] = [
+      { month: "2026-08", name: "Mercado", emoji: "🛒", total: 100 },
+      { month: "2026-09", name: "Mercado", emoji: "🛒", total: 150 },
+    ];
+    const report = categoryReport(rows, [{ year: 2026, month: 9 }, { year: 2026, month: 10 }], { year: 2026, month: 10 }, new Set(["2026-08", "2026-09"]), "en");
+    expect(report.rows[0].change?.text).toBe("In September, 50% more than its average");
+  });
+});

@@ -1,3 +1,5 @@
+import { DEFAULT_LOCALE, INTL_LOCALES, type Locale } from "@/i18n/locales";
+import { texts } from "@/i18n/texts";
 import { compareMonths, formatMonthName, type Month, monthParam, shiftMonth } from "@/lib/dates";
 import { roundToCents, sumAmounts } from "@/lib/money";
 import { MAX_SLICES } from "@/modules/transactions/category-chart";
@@ -37,7 +39,33 @@ export type CategoryReport = {
 };
 
 // El porcentaje ya llega redondeado: el formato solo le pone el punto de los miles ("1.500%").
-const percent = new Intl.NumberFormat("es-CO");
+const percents: Readonly<Record<Locale, Intl.NumberFormat>> = {
+  es: new Intl.NumberFormat(INTL_LOCALES.es),
+  en: new Intl.NumberFormat(INTL_LOCALES.en),
+};
+
+const TEXTS = texts(
+  {
+    two: (a: string, b: string) => `${a} y ${b}`,
+    span: (a: string, b: string) => `${a} a ${b}`,
+    isNew: (month: string) => `Nueva en ${month}`,
+    none: (month: string) => `Sin gastos en ${month}`,
+    same: (month: string) => `En ${month}, igual que su promedio`,
+    more: (month: string, pct: string) => `En ${month}, ${pct}% más que su promedio`,
+    less: (month: string, pct: string) => `En ${month}, ${pct}% menos que su promedio`,
+  },
+  {
+    en: {
+      two: (a, b) => `${a} and ${b}`,
+      span: (a, b) => `${a} to ${b}`,
+      isNew: (month) => `New in ${month}`,
+      none: (month) => `No spending in ${month}`,
+      same: (month) => `In ${month}, the same as its average`,
+      more: (month, pct) => `In ${month}, ${pct}% more than its average`,
+      less: (month, pct) => `In ${month}, ${pct}% less than its average`,
+    },
+  },
+);
 
 const key = (row: { name: string; emoji: string }) => `${row.emoji} ${row.name}`;
 
@@ -47,7 +75,13 @@ const key = (row: { name: string; emoji: string }) => `${row.emoji} ${row.name}`
  * período). `activeMonths` ("YYYY-MM") son los meses en que la persona tiene movimientos: un mes antes
  * de que empezara a usar la app no cuenta para el promedio (lo bajaría).
  */
-export function categoryReport(rows: CategoryMonthTotal[], period: Month[], current: Month, activeMonths: Set<string>): CategoryReport {
+export function categoryReport(
+  rows: CategoryMonthTotal[],
+  period: Month[],
+  current: Month,
+  activeMonths: Set<string>,
+  locale: Locale = DEFAULT_LOCALE,
+): CategoryReport {
   const inPeriod = new Set(period.map(monthParam));
   const compared = period.findLast((month) => compareMonths(month, current) < 0) ?? null;
   const averaged = compared
@@ -87,7 +121,8 @@ export function categoryReport(rows: CategoryMonthTotal[], period: Month[], curr
           ? categoryChange(
               entry.byMonth.get(monthParam(compared)) ?? 0,
               sumAmounts(averaged.map((month) => entry.byMonth.get(monthParam(month)) ?? 0)) / averaged.length,
-              formatMonthName(compared),
+              formatMonthName(compared, { locale }),
+              locale,
             )
           : null,
     })),
@@ -95,25 +130,28 @@ export function categoryReport(rows: CategoryMonthTotal[], period: Month[], curr
 }
 
 /** Los meses del promedio, en una frase: "agosto", "julio y agosto" o "junio a agosto". */
-export function averagedPhrase(averaged: Month[]): string {
-  const names = averaged.map((month) => formatMonthName(month));
+export function averagedPhrase(averaged: Month[], locale: Locale = DEFAULT_LOCALE): string {
+  const t = TEXTS[locale];
+  const names = averaged.map((month) => formatMonthName(month, { locale }));
   if (names.length <= 1) return names[0] ?? "";
-  if (names.length === 2) return `${names[0]} y ${names[1]}`;
-  return `${names[0]} a ${names[names.length - 1]}`;
+  if (names.length === 2) return t.two(names[0], names[1]);
+  return t.span(names[0], names[names.length - 1]);
 }
 
 /**
  * Lo que gastó en una categoría en el mes comparado frente a su promedio: "En septiembre, 40% más que
  * su promedio". null si no hubo nada ni en ese mes ni en los anteriores.
  */
-export function categoryChange(month: number, average: number, monthName: string): CategoryChange | null {
+export function categoryChange(month: number, average: number, monthName: string, locale: Locale = DEFAULT_LOCALE): CategoryChange | null {
+  const t = TEXTS[locale];
   if (month === 0 && average === 0) return null;
-  if (average === 0) return { direction: "up", text: `Nueva en ${monthName}` };
-  if (month === 0) return { direction: "down", text: `Sin gastos en ${monthName}` };
+  if (average === 0) return { direction: "up", text: t.isNew(monthName) };
+  if (month === 0) return { direction: "down", text: t.none(monthName) };
   const diff = roundToCents(month - average);
   const pct = Math.round((Math.abs(diff) / average) * 100);
-  if (pct === 0) return { direction: "same", text: `En ${monthName}, igual que su promedio` };
+  if (pct === 0) return { direction: "same", text: t.same(monthName) };
   // Stryker disable next-line EqualityOperator: aquí diff nunca es cero (con cero, el 0 % ya devolvió "igual")
   const more = diff > 0;
-  return { direction: more ? "up" : "down", text: `En ${monthName}, ${percent.format(pct)}% ${more ? "más" : "menos"} que su promedio` };
+  const share = percents[locale].format(pct);
+  return { direction: more ? "up" : "down", text: more ? t.more(monthName, share) : t.less(monthName, share) };
 }

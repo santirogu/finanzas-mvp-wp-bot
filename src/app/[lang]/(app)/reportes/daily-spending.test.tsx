@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import type { ExpenseRow } from "@/modules/reports/biggest";
 import { calendarDays, type DayTotal, heatLevels } from "@/modules/reports/daily";
 import { DailySpending, type DailySpendingProps } from "./daily-spending";
+import { InEnglish } from "../../../../../test/locale";
 
 const october = { year: 2026, month: 10 };
 const expense = (id: string, occurredOn: string, description: string, amount: number, category: [string, string] | null = null): ExpenseRow => ({
@@ -173,5 +174,29 @@ describe("DailySpending", () => {
     expect(section().getByText("Todos los egresos del período son gastos fijos.")).toBeInTheDocument();
     expect(section().queryAllByRole("button")).toEqual([]);
     expect(section().queryByText("Por día de la semana")).toBeNull();
+  });
+});
+
+describe("DailySpending · en inglés", () => {
+  it("el título, el calendario, el detalle del día y las quincenas, en inglés", async () => {
+    render(
+      <DailySpending
+        {...props({
+          days: calendarDays(october, DAYS, heatLevels([245000, 12000]), EXPENSES, "2026-10-19", "en").map((day) => ({ ...day, name: `Oct ${day.day}` })),
+        })}
+      />,
+      { wrapper: InEnglish },
+    );
+    const daily = within(screen.getByRole("region", { name: "Which days do you spend the most?" }));
+    expect(daily.getByRole("link", { name: /^Previous month/ })).toBeVisible();
+    expect(daily.getByRole("button", { name: "Oct 10: $245,000.00 in 2 expenses" })).toHaveAttribute("aria-pressed", "true");
+    expect(daily.getByRole("button", { name: "Oct 11: no expenses" })).toBeVisible();
+    expect(daily.getByRole("heading", { name: "Saturday, Oct 10" })).toBeVisible();
+    expect(daily.getByText("No category")).toBeVisible();
+    expect(daily.getByText("By day of the week")).toBeVisible();
+    expect(daily.getByText("1st to 15th: 58%")).toBeVisible();
+    expect(daily.getByText("16th to month end: 42%")).toBeVisible();
+    await userEvent.click(daily.getByRole("button", { name: "Oct 11: no expenses" }));
+    expect(daily.getByText("You didn't spend anything that day (not counting your bills).")).toBeVisible();
   });
 });

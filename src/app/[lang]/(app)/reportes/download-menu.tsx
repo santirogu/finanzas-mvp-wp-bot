@@ -1,6 +1,29 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
+import { useTexts } from "@/i18n/client";
+import { texts } from "@/i18n/texts";
+
+const TEXTS = texts(
+  {
+    download: "Descargar",
+    options: "Opciones de descarga",
+    csv: "Movimientos (CSV)",
+    csvHint: "Para Excel o Google Sheets",
+    pdf: "Reporte (PDF)",
+    pdfHint: "Para guardar o imprimir",
+  },
+  {
+    en: {
+      download: "Download",
+      options: "Download options",
+      csv: "Transactions (CSV)",
+      csvHint: "For Excel or Google Sheets",
+      pdf: "Report (PDF)",
+      pdfHint: "To save or print",
+    },
+  },
+);
 
 /**
  * Las descargas de Reportes: un botón con solo el ícono que abre la lista de lo que se puede bajar del
@@ -9,6 +32,7 @@ import { useEffect, useId, useRef, useState } from "react";
  * foco vuelve al botón), al tocar fuera, al salir con Tab o al elegir una descarga.
  */
 export function DownloadMenu({ csvHref, pdfHref }: { csvHref: string; pdfHref: string }) {
+  const t = useTexts(TEXTS);
   const [open, setOpen] = useState(false);
   const listId = useId();
   const wrapper = useRef<HTMLDivElement>(null);
@@ -48,8 +72,8 @@ export function DownloadMenu({ csvHref, pdfHref }: { csvHref: string; pdfHref: s
         type="button"
         aria-expanded={open}
         aria-controls={listId}
-        aria-label="Descargar"
-        title="Descargar"
+        aria-label={t.download}
+        title={t.download}
         onClick={() => setOpen(!open)}
         className={`inline-flex size-11 items-center justify-center rounded-lg border transition hover:bg-background pointer-fine:size-9 ${open ? "border-brand" : "border-border"}`}
       >
@@ -62,7 +86,7 @@ export function DownloadMenu({ csvHref, pdfHref }: { csvHref: string; pdfHref: s
       <div
         id={listId}
         role="group"
-        aria-label="Opciones de descarga"
+        aria-label={t.options}
         hidden={!open}
         className="card absolute right-0 top-full z-30 mt-2 w-64 max-w-[calc(100vw-2rem)] p-1.5 shadow-lg"
       >
@@ -78,8 +102,8 @@ export function DownloadMenu({ csvHref, pdfHref }: { csvHref: string; pdfHref: s
                 />
               </svg>
               <span className="min-w-0">
-                <span className="block">Movimientos (CSV)</span>
-                <span className="block text-xs text-muted">Para Excel o Google Sheets</span>
+                <span className="block">{t.csv}</span>
+                <span className="block text-xs text-muted">{t.csvHint}</span>
               </span>
             </a>
           </li>
@@ -89,8 +113,8 @@ export function DownloadMenu({ csvHref, pdfHref }: { csvHref: string; pdfHref: s
                 <path d="M3 3.5A1.5 1.5 0 0 1 4.5 2h6.879a1.5 1.5 0 0 1 1.06.44l4.122 4.12A1.5 1.5 0 0 1 17 7.622V16.5a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 3 16.5v-13Z" />
               </svg>
               <span className="min-w-0">
-                <span className="block">Reporte (PDF)</span>
-                <span className="block text-xs text-muted">Para guardar o imprimir</span>
+                <span className="block">{t.pdf}</span>
+                <span className="block text-xs text-muted">{t.pdfHint}</span>
               </span>
             </a>
           </li>

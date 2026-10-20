@@ -2,7 +2,30 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useLocale } from "@/i18n/client";
+import { texts } from "@/i18n/texts";
 import { formatMoney } from "@/lib/money";
+
+const TEXTS = texts(
+  {
+    income: "Ingresos",
+    expenses: "Egresos",
+    balance: "Balance",
+    detail: (month: string, income: string, expense: string, balance: string) => `${month}: ingresos ${income}, egresos ${expense}, balance ${balance}`,
+    touch: "Toca un mes para ver su Resumen.",
+    hover: "Pasa el mouse por un mes para ver sus cifras, o haz clic para ver su Resumen.",
+  },
+  {
+    en: {
+      income: "Income",
+      expenses: "Expenses",
+      balance: "Balance",
+      detail: (month, income, expense, balance) => `${month}: income ${income}, expenses ${expense}, balance ${balance}`,
+      touch: "Tap a month to see its Overview.",
+      hover: "Hover over a month to see its figures, or click to see its Overview.",
+    },
+  },
+);
 
 /** Un mes del gráfico, con sus textos ya armados en el servidor (así el navegador dibuja lo mismo). */
 export type TrendPoint = {
@@ -31,10 +54,10 @@ const heightOf = (amount: number, top: number) => (amount > 0 ? Math.max((amount
  */
 export function TrendChart({ points, currency }: { points: TrendPoint[]; currency: string }) {
   const [active, setActive] = useState<number | null>(null);
-  const money = (n: number) => formatMoney(n, currency);
+  const locale = useLocale();
+  const money = (n: number) => formatMoney(n, currency, locale);
   const top = Math.max(...points.flatMap((p) => [p.income, p.expense]), 0);
-  const detail = (p: TrendPoint) =>
-    `${p.name}: ingresos ${money(p.income)}, egresos ${money(p.expense)}, balance ${money(p.balance)}`;
+  const detail = (p: TrendPoint) => TEXTS[locale].detail(p.name, money(p.income), money(p.expense), money(p.balance));
   const shown = active === null ? null : points[active];
 
   return (
@@ -76,11 +99,11 @@ export function TrendChart({ points, currency }: { points: TrendPoint[]; currenc
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted">
         <span className="inline-flex items-center gap-1.5">
           <span aria-hidden className="size-2.5 rounded-sm bg-income" />
-          Ingresos
+          {TEXTS[locale].income}
         </span>
         <span className="inline-flex items-center gap-1.5">
           <span aria-hidden className="size-2.5 rounded-sm bg-expense" />
-          Egresos
+          {TEXTS[locale].expenses}
         </span>
       </div>
       {/* El detalle del mes señalado (el lector de pantalla ya lo leyó en el enlace). Con su alto
@@ -90,15 +113,18 @@ export function TrendChart({ points, currency }: { points: TrendPoint[]; currenc
           <>
             <span className="font-medium">{shown.name}</span>
             <span className="text-muted">
-              {" · "}Ingresos <span className="whitespace-nowrap text-income">{money(shown.income)}</span>
-              {" · "}Egresos <span className="whitespace-nowrap text-expense">{money(shown.expense)}</span>
-              {" · "}Balance <span className="whitespace-nowrap text-foreground">{money(shown.balance)}</span>
+              {" · "}
+              {TEXTS[locale].income} <span className="whitespace-nowrap text-income">{money(shown.income)}</span>
+              {" · "}
+              {TEXTS[locale].expenses} <span className="whitespace-nowrap text-expense">{money(shown.expense)}</span>
+              {" · "}
+              {TEXTS[locale].balance} <span className="whitespace-nowrap text-foreground">{money(shown.balance)}</span>
             </span>
           </>
         ) : (
           <span className="text-muted">
-            <span className="pointer-fine:hidden">Toca un mes para ver su Resumen.</span>
-            <span className="hidden pointer-fine:inline">Pasa el mouse por un mes para ver sus cifras, o haz clic para ver su Resumen.</span>
+            <span className="pointer-fine:hidden">{TEXTS[locale].touch}</span>
+            <span className="hidden pointer-fine:inline">{TEXTS[locale].hover}</span>
           </span>
         )}
       </p>

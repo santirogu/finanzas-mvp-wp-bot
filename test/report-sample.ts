@@ -1,3 +1,4 @@
+import { DEFAULT_LOCALE, type Locale } from "@/i18n/locales";
 import { type Month, monthOf, monthParam, shiftMonth } from "@/lib/dates";
 import { sumAmounts } from "@/lib/money";
 import { biggestExpenses, type ExpenseRow } from "@/modules/reports/biggest";
@@ -7,6 +8,7 @@ import { type ReportPeriod, reportPeriod } from "@/modules/reports/period";
 import type { Report } from "@/modules/reports/queries";
 import { recurringExpenses } from "@/modules/reports/recurring";
 import { monthSeries, periodSummary } from "@/modules/reports/summary";
+import { NO_CATEGORIES } from "@/modules/transactions/search";
 
 // Un año de movimientos de ejemplo (sueldo, arriendo, mercado, salidas…) y el reporte que arma Reportes
 // con ellos, sin la base: con las mismas funciones que usa getReport (src/modules/reports/queries.ts).
@@ -68,8 +70,12 @@ const total = (group: SampleMovement[]) => sumAmounts(group.map((m) => m.amount)
 const monthKey = (m: SampleMovement) => m.date.slice(0, 7);
 
 /** El reporte de los últimos 12 meses, como lo arma getReport, y los egresos por día del período. */
-export function sampleReport(movements: SampleMovement[], current: Month): { report: Report; period: ReportPeriod; byDay: DayDescriptionTotal[] } {
-  const period = reportPeriod(undefined, current);
+export function sampleReport(
+  movements: SampleMovement[],
+  current: Month,
+  locale: Locale = DEFAULT_LOCALE,
+): { report: Report; period: ReportPeriod; byDay: DayDescriptionTotal[] } {
+  const period = reportPeriod(undefined, current, locale);
   const expenses = movements.filter((m) => m.type === "expense");
   const activeMonths = [...new Set(movements.map(monthKey))].sort().reverse();
   const series = monthSeries(
@@ -98,11 +104,12 @@ export function sampleReport(movements: SampleMovement[], current: Month): { rep
       groupSum(
         expenses,
         (m) => `${monthKey(m)} ${m.category}`,
-        (first, group) => ({ month: monthKey(first), name: first.category ?? "Sin categoría", emoji: first.emoji, total: total(group) }),
+        (first, group) => ({ month: monthKey(first), name: first.category ?? NO_CATEGORIES[locale], emoji: first.emoji, total: total(group) }),
       ),
       period.months,
       current,
       new Set(activeMonths),
+      locale,
     ),
     recurring,
     biggest: biggestExpenses(largest, recurring.items),
