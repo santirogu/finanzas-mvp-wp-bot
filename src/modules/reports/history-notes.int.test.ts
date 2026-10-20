@@ -226,6 +226,7 @@ describe("saveFixedNoteAction", () => {
     expect(await saveFixedNoteAction({}, form({ description: "Netflix", month: "2026-09", note: "Hola" }))).toEqual({
       error: "No se pudo guardar la nota.",
     });
+    expect(await notesOf(user.id)).toEqual([]);
     expect(refresh).not.toHaveBeenCalled();
   });
 });

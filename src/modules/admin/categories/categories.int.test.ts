@@ -166,11 +166,15 @@ describe("updateCategory", () => {
   it("a Otros solo se le cambia el emoji", async () => {
     await adminReady();
     const otros = await globalByName("expense", "Otros");
-    expect(await updateCategory({ id: otros.id, name: "Varios", emoji: "📦" })).toEqual({
+    expect(otros.emoji).not.toBe("🧩");
+    expect(await updateCategory({ id: otros.id, name: "Varios", emoji: "🧩" })).toEqual({
       ok: false,
       error: 'A "Otros" solo se le puede cambiar el emoji.',
       field: "name",
     });
+    // Ni el nombre ni el emoji: con el error no se guarda nada ni se registra.
+    expect(await globalByName("expense", "Otros")).toMatchObject({ id: otros.id, emoji: otros.emoji });
+    expect(await changes()).toEqual([]);
     expect(await updateCategory({ id: otros.id, name: "Otros", emoji: "🗃️" })).toMatchObject({ ok: true });
     expect(await globalByName("expense", "Otros")).toMatchObject({ emoji: "🗃️" });
   });
@@ -178,8 +182,12 @@ describe("updateCategory", () => {
   it("no puede quedar con el nombre de otra (pero sí cambiar mayúsculas de la suya)", async () => {
     await adminReady();
     const mercado = await globalByName("expense", "Mercado");
-    expect(await updateCategory({ id: mercado.id, name: "salud", emoji: "🛒" })).toMatchObject({ ok: false, field: "name" });
-    expect(await updateCategory({ id: mercado.id, name: "Otros", emoji: "🛒" })).toMatchObject({ ok: false, field: "name" });
+    expect(await updateCategory({ id: mercado.id, name: "salud", emoji: "🧺" })).toMatchObject({ ok: false, field: "name" });
+    expect(await updateCategory({ id: mercado.id, name: "Otros", emoji: "🧺" })).toMatchObject({ ok: false, field: "name" });
+    // Las dos quedaron como estaban (tampoco el emoji nuevo) y no se registró nada.
+    expect(await globalByName("expense", "Mercado")).toMatchObject({ id: mercado.id, emoji: mercado.emoji });
+    expect(await globalByName("expense", "Salud")).toBeTruthy();
+    expect(await changes()).toEqual([]);
     expect(await updateCategory({ id: mercado.id, name: "MERCADO", emoji: "🛒" })).toMatchObject({ ok: true });
   });
 
@@ -207,7 +215,9 @@ describe("updateCategory", () => {
     await adminReady();
     const ana = await createUser();
     const [mine] = await db.insert(category).values({ userId: ana.id, type: "expense", name: "Mía", emoji: "🙂" }).returning();
-    expect(await updateCategory({ id: mine.id, name: "Cambiada", emoji: "🙂" })).toEqual({ ok: false, error: "Esta categoría ya no existe." });
+    expect(await updateCategory({ id: mine.id, name: "Cambiada", emoji: "😎" })).toEqual({ ok: false, error: "Esta categoría ya no existe." });
+    expect(await db.select().from(category).where(eq(category.id, mine.id))).toEqual([mine]);
+    expect(await changes()).toEqual([]);
   });
 });
 

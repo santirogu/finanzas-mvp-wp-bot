@@ -181,11 +181,12 @@ describe("chooseFixedExpenseAction", () => {
     expect(await choicesOf(user.id)).toEqual([{ key: "netflix", choice: "exclude" }]);
   });
 
-  it("con un error lo devuelve y no refresca", async () => {
-    await signIn();
+  it("con un error lo devuelve, no guarda nada y no refresca", async () => {
+    const user = await signIn();
     expect(await chooseFixedExpenseAction({}, form({ description: "Inventado", action: "include" }))).toEqual({
       error: "Ese egreso no está entre tus movimientos.",
     });
+    expect(await choicesOf(user.id)).toEqual([]);
     expect(refresh).not.toHaveBeenCalled();
   });
 });
