@@ -108,7 +108,7 @@ test("vincular el número desde Mi cuenta y llevar las cuentas por WhatsApp", as
     expect(reply).toMatch(new RegExp(`^📊 \\*Reporte de ${from} a ${formatMonthName(current, { withYear: true })}\\*\n`));
     // El arriendo del mes pasado (1.200.000) y el almuerzo de hoy (25.900,50).
     expect(reply).toContain("Egresos: $1.225.900,50");
-    expect(reply).toContain("Más detalle: http://localhost:3100/reportes");
+    expect(reply).toContain("Más detalle en *Reportes*: http://localhost:3100/reportes");
     expect((await (await request.get(`${FAKE_SERVICES_URL}/claude`)).json()).length).toBe(claudeBefore);
   });
 });
@@ -133,7 +133,7 @@ test("un código inválido no vincula nada", async ({ request }) => {
   const phone = newPhone();
   await sendWhatsApp(request, phone, "VINCULAR 000000");
   expect(await nthReply(request, phone, 1)).toBe(
-    "Ese código no es válido o ya venció. Genera uno nuevo en Mi cuenta.",
+    "Ese código no es válido o ya venció. Pide otro en *Mi cuenta*: toca *Conectar WhatsApp*.",
   );
 });
 

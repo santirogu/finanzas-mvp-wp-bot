@@ -190,7 +190,7 @@ describe("handleIncomingMessage · configuración del admin (/admin/bot)", () =>
     await handleIncomingMessage(free, d);
     expect(extractor.calls).toBe(0);
     expect(sender.sent[0].body).toBe(replies.aiPausedReply(APP_URL));
-    expect(sender.sent[0].body).toContain("https://app.test/dashboard");
+    expect(sender.sent[0].body).toContain("https://app.test/egresos");
     expect(await activeTransactions(user.id)).toEqual([]);
     expect(await loggedMessage(free.id)).toMatchObject({
       status: "processed",
@@ -511,7 +511,7 @@ describe("handleIncomingMessage · reporte", () => {
       `Mes de más gasto: ${formatMonthName(previous, { withYear: true })} ($500.000,00)`,
       "En qué se te fue: • Sin categoría 100%",
       "",
-      `Más detalle: ${APP_URL}/reportes`,
+      `Más detalle en *Reportes*: ${APP_URL}/reportes`,
     ]);
     expect(reply).not.toContain("7.777.777");
     expect(extractor.calls).toBe(0);
@@ -525,7 +525,7 @@ describe("handleIncomingMessage · reporte", () => {
     const { reply } = await send(`informe del ${lastYear.year}`);
     expect(reply).toMatch(new RegExp(`^📊 \\*Reporte de enero a diciembre de ${lastYear.year}\\*`));
     expect(reply).toContain("Egresos: $120.000,00");
-    expect(reply).toContain(`Más detalle: ${APP_URL}/reportes?periodo=${lastYear.year}`);
+    expect(reply).toContain(`Más detalle en *Reportes*: ${APP_URL}/reportes?periodo=${lastYear.year}`);
   });
 
   it("un año que todavía no llega, o de antes del 2000, responde sin consultar nada; sin movimientos, lo dice", async () => {

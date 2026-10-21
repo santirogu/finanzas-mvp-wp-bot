@@ -27,7 +27,8 @@ const hashCode = (code: string) => createHash("sha256").update(code).digest("hex
 /** Se generaron demasiados códigos en la última hora (LINK_LIMITS.codesPerHour). */
 export class LinkCodeLimitError extends Error {
   constructor() {
-    super("Ya generaste varios códigos en la última hora. Usa el último que generaste o espera un rato para pedir otro.");
+    // Sin "usa el último": la tarjeta de Mi cuenta deja de mostrarlo al llegar a este tope.
+    super("Ya pediste varios códigos en la última hora. Espera un rato para pedir otro.");
     this.name = "LinkCodeLimitError";
   }
 }

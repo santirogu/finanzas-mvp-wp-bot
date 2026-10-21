@@ -14,7 +14,7 @@ export type BotIntent =
 const MAX_MESSAGE_LENGTH = 1000;
 
 const FALLBACK_REPLY =
-  "No logré identificar un ingreso o egreso en tu mensaje. Prueba algo como: “gasté $20.000 en almuerzo”.";
+  "No logré identificar un ingreso o un egreso en tu mensaje. Prueba con algo como “gasté 20 mil en almuerzo”.";
 
 /**
  * Convierte un mensaje de WhatsApp en una intención del bot.
@@ -33,7 +33,8 @@ export async function interpretMessage(
   if (command) return command;
 
   if (trimmed.length > MAX_MESSAGE_LENGTH) {
-    return { kind: "reply", text: "Tu mensaje es muy largo. Envíame un movimiento a la vez, en pocas palabras." };
+    // Un mensaje puede traer varios movimientos (hasta MAX_TRANSACTIONS_PER_MESSAGE): lo que sobra es el largo.
+    return { kind: "reply", text: "Tu mensaje es muy largo. Envíamelo en partes más cortas." };
   }
 
   const result = await extractor({
@@ -55,7 +56,8 @@ export async function interpretMessage(
 
   // La IA propuso movimientos pero ninguno pasó la validación (p. ej. monto 0).
   if (result.transactions.length > 0) {
-    return { kind: "reply", text: "No entendí el monto. ¿Cuánto fue exactamente?", usage: result.usage };
+    // Sin preguntar "¿cuánto fue?": el bot no recuerda el mensaje anterior, así que la respuesta llegaría sola.
+    return { kind: "reply", text: "No entendí el monto. Escríbeme el movimiento completo con su monto, por ejemplo “almuerzo 25 mil”.", usage: result.usage };
   }
   return { kind: "reply", text: normalizeReply(result.reply) ?? FALLBACK_REPLY, usage: result.usage };
 }

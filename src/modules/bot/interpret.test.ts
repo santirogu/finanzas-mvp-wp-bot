@@ -249,7 +249,7 @@ describe("interpretMessage", () => {
     const intent = await interpretMessage("¿cuál es la capital de Francia?", ctx, extractor);
     expect(intent).toMatchObject({ kind: "reply" });
     expect((intent as { text: string }).text).not.toContain("http");
-    expect((intent as { text: string }).text).toContain("gasté $20.000 en almuerzo");
+    expect((intent as { text: string }).text).toContain("gasté 20 mil en almuerzo");
   });
 
   it("resuelve comandos sin llamar a la IA", async () => {
@@ -355,7 +355,7 @@ describe("interpretMessage", () => {
     const extractor = fakeExtractor({ ok: true, transactions: [], reply: null, usage });
     expect(await interpretMessage("algo raro", ctx, extractor)).toMatchObject({
       kind: "reply",
-      text: expect.stringContaining("gasté $20.000 en almuerzo"),
+      text: expect.stringContaining("gasté 20 mil en almuerzo"),
     });
   });
 
@@ -415,7 +415,7 @@ describe("interpretMessage · límites y respuestas", () => {
     });
     expect(await interpretMessage("zapatos", ctx, extractor)).toMatchObject({
       kind: "reply",
-      text: "No entendí el monto. ¿Cuánto fue exactamente?",
+      text: "No entendí el monto. Escríbeme el movimiento completo con su monto, por ejemplo “almuerzo 25 mil”.",
     });
   });
 

@@ -10,5 +10,5 @@ export const BOT_COMMANDS = [
   { command: "balance", description: "cómo vas este mes" },
   { command: "balance septiembre", alternative: "balance mes pasado", description: "otro mes" },
   { command: "reporte", description: "tus últimos 12 meses", note: "o *reporte 2025*, un año" },
-  { command: "deshacer", description: "borra el último registro" },
+  { command: "deshacer", description: "borra lo último que registré" },
 ] as const;
