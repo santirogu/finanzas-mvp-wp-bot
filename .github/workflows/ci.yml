@@ -171,7 +171,9 @@ jobs:
           - parte: 3
             pruebas: --project=escritorio --shard=3/3
           - parte: 4
-            pruebas: --project=celular --project=tableta
+            pruebas: --project=celular --project=tableta --project=iphone --project=ipad
+            # Safari (WebKit) solo en esta parte: la del iPhone y el iPad.
+            webkit: true
           # La configuración global (pausar Claude, topes), sola: en su propia base no afecta a nadie.
           - parte: 5
             pruebas: --project=configuracion --no-deps
@@ -215,10 +217,13 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          key: playwright-${{ runner.os }}-${{ matrix.webkit && 'webkit-' || '' }}${{ hashFiles('pnpm-lock.yaml') }}
 
-      - name: Instalar Chromium
-        run: pnpm exec playwright install --with-deps chromium
+      - name: Instalar los navegadores
+        env:
+          NAVEGADORES: ${{ matrix.webkit && 'chromium webkit' || 'chromium' }}
+        # Sin comillas a propósito: $NAVEGADORES son uno o dos argumentos.
+        run: pnpm exec playwright install --with-deps $NAVEGADORES
 
       - name: Compilar la app
         env:

@@ -34,14 +34,18 @@ export default defineConfig({
     { name: "escritorio", use: { ...devices["Desktop Chrome"] }, grepInvert: /@tactil/, testIgnore: GLOBAL_SETTINGS },
     // En celular, el flujo principal (@principal) y lo que solo importa en pantallas táctiles (@tactil).
     { name: "celular", use: { ...devices["Pixel 7"] }, grep: /@principal|@tactil/, testIgnore: GLOBAL_SETTINGS },
-    // En tableta, solo lo táctil. Un iPad Air vertical en Chromium (el CI no instala WebKit), con el
-    // navegador de computador: Safari del iPad se presenta como una Mac.
+    // En tableta, solo lo táctil. Un iPad Air vertical en Chromium, con el navegador de computador:
+    // Safari del iPad se presenta como una Mac.
     {
       name: "tableta",
       use: { ...devices["Desktop Chrome"], viewport: { width: 820, height: 1180 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
       grep: /@tactil/,
       testIgnore: GLOBAL_SETTINGS,
     },
+    // Safari de verdad (WebKit), en un iPhone y en un iPad: lo que solo falla ahí (@safari). Por ejemplo,
+    // Safari no manda el click de un toque cuyo pointerdown se canceló (y Chromium sí).
+    { name: "iphone", use: { ...devices["iPhone 15"] }, grep: /@safari/, testIgnore: GLOBAL_SETTINGS },
+    { name: "ipad", use: { ...devices["iPad Pro 11"] }, grep: /@safari/, testIgnore: GLOBAL_SETTINGS },
     // Lo que cambia la configuración de toda la app (pausar Claude, los topes del bot): si corriera a
     // la vez que las demás, sus mensajes recibirían "Claude está en pausa". En local va después de
     // todas; en el CI, en su propia parte, con su propia base (--no-deps).
@@ -49,7 +53,7 @@ export default defineConfig({
       name: "configuracion",
       use: { ...devices["Desktop Chrome"] },
       testMatch: GLOBAL_SETTINGS,
-      dependencies: ["escritorio", "celular", "tableta"],
+      dependencies: ["escritorio", "celular", "tableta", "iphone", "ipad"],
     },
   ],
   webServer: [
