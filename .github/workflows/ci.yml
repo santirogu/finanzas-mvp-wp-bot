@@ -408,15 +408,8 @@ jobs:
             exit 0
           fi
 
-          # Último despliegue a producción cuyo estado final fue "success".
-          last=""
-          for id in $(gh api "repos/$GITHUB_REPOSITORY/deployments?environment=production&per_page=30" --jq '.[].id'); do
-            state=$(gh api "repos/$GITHUB_REPOSITORY/deployments/$id/statuses" --jq '.[0].state')
-            if [ "$state" = "success" ]; then
-              last=$(gh api "repos/$GITHUB_REPOSITORY/deployments/$id" --jq '.sha')
-              break
-            fi
-          done
+          # Si la API falla, vacío: se despliega por seguridad (abajo).
+          last=$(scripts/last-production-sha.sh || true)
 
           if [ -z "$last" ] || ! git cat-file -e "$last^{commit}" 2>/dev/null; then
             echo "No se encontró el último despliegue en el historial: se despliega por seguridad."
@@ -432,146 +425,20 @@ jobs:
           { echo "### ¿Desplegar a producción?"; echo; echo '```'; cat decision.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
 
   # Solo se despliega si las pruebas pasaron y hubo cambios que afectan la app, y solo desde main.
-  # Vercel no despliega por su cuenta (vercel.json → git.deploymentEnabled: false),
-  # así que ni el código ni las migraciones llegan a producción sin pasar el CI.
+  # Los pasos están en deploy.yml (los usa también el simulacro de la vuelta atrás).
   deploy:
     name: Desplegar a producción
     needs: [checks, e2e, dast, changes]
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && needs.changes.outputs.deploy == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    # Registra cada publicación en el entorno "production": es el historial que usa el job
-    # "Detectar cambios de la app" para saber qué fue lo último desplegado.
     permissions:
       contents: read
       deployments: write
-    environment:
-      name: production
-      url: https://finanzas-mvp-wp-bot.vercel.app
-    # Un despliegue a la vez; uno nuevo espera a que termine el anterior (no lo cancela a mitad).
-    concurrency:
-      group: deploy-production
-      cancel-in-progress: false
-    # Los secretos de Vercel van solo en los pasos que los usan: no quedan a la vista de la
-    # instalación de dependencias ni de las acciones de terceros.
-    env:
-      PRODUCTION_URL: https://finanzas-mvp-wp-bot.vercel.app
-      # El CLI de Vercel con su versión y la de todas sus dependencias fijas (.github/vercel-cli/).
-      VERCEL: .github/vercel-cli/node_modules/.bin/vercel
-
-    # Publicar sin tráfico → smoke tests → pasarle el dominio → smoke tests → (si fallan) volver a
-    # la versión anterior. Ojo: las migraciones corren en el build y no se deshacen; por eso deben
-    # ser compatibles con la versión anterior del código (ver CLAUDE.md).
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          # Sin el token de GitHub en .git/config mientras corre código de terceros.
-          persist-credentials: false
-
-      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
-
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: 22
-          cache: pnpm
-
-      - run: pnpm install --frozen-lockfile
-
-      # Con su lockfile: ninguna dependencia del CLI cambia sin un PR (antes, `pnpm dlx` resolvía
-      # cerca de 400 paquetes en cada despliegue, sin lockfile y con el token a mano).
-      - name: Instalar el CLI de Vercel
-        run: pnpm install --frozen-lockfile --dir .github/vercel-cli
-
-      # Antes de migrar: si falta algo, mejor fallar aquí que con la base ya migrada.
-      - name: Verificar credenciales de Vercel
-        env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
-        run: |
-          for name in VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID VERCEL_AUTOMATION_BYPASS_SECRET; do
-            if [ -z "${!name}" ]; then echo "::error::Falta el secreto $name en GitHub"; exit 1; fi
-          done
-
-      - name: Descargar configuración y variables de producción
-        env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        run: |
-          "$VERCEL" pull --yes --environment=production --token="$VERCEL_TOKEN"
-
-      # Ejecuta `pnpm vercel-build`: migraciones + categorías + build de Next.js. Sin el token de Vercel:
-      # es el paso que más código de terceros corre (todas las dependencias del build), y no lo
-      # necesita porque lee la configuración y las variables que dejó `vercel pull` en .vercel/
-      # (probado en local: el CLI solo llama a la API con --project o al construir un despliegue ya creado).
-      - name: Migrar base de datos y compilar
-        run: |
-          "$VERCEL" build --prod
-
-      # --skip-domain: la versión nueva queda publicada en su propia URL, sin recibir tráfico.
-      # --archive=tgz: sube el build comprimido en pocas partes. Archivo por archivo eran cientos de
-      # subidas por despliegue, y el plan gratis rechaza más de 5000 en 24 horas (le pasó a #147).
-      - name: Publicar sin dominio
-        id: publicar
-        env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        run: |
-          url=$("$VERCEL" deploy --prebuilt --prod --skip-domain --archive=tgz --token="$VERCEL_TOKEN")
-          echo "Versión nueva, todavía sin tráfico: $url"
-          echo "url=$url" >> "$GITHUB_OUTPUT"
-
-      - name: Smoke tests de la versión nueva (sin tráfico)
-        env:
-          NUEVA: ${{ steps.publicar.outputs.url }}
-          # Llave de "Protection Bypass for Automation" (Vercel → Settings → Deployment
-          # Protection): la URL propia de cada versión está protegida; el dominio, no.
-          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
-        run: node scripts/smoke.mjs "$NUEVA"
-
-      # La que hoy sirve el dominio: es a la que se vuelve si algo falla después del cambio.
-      - name: Anotar la versión actual de producción
-        id: anterior
-        env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        run: |
-          id=$("$VERCEL" inspect "$PRODUCTION_URL" --json --token="$VERCEL_TOKEN" | jq -er '.id')
-          echo "Versión actual de producción: $id"
-          echo "id=$id" >> "$GITHUB_OUTPUT"
-
-      - name: Pasarle el dominio a la versión nueva
-        id: promover
-        env:
-          NUEVA: ${{ steps.publicar.outputs.url }}
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        run: |
-          "$VERCEL" promote "$NUEVA" --timeout=5m --token="$VERCEL_TOKEN"
-
-      - name: Smoke tests en el dominio de producción
-        run: node scripts/smoke.mjs "$PRODUCTION_URL"
-
-      # Solo si se alcanzó a intentar el cambio de dominio (si falló antes, el dominio sigue en la
-      # versión anterior y no hay nada que deshacer). También si el job se cancela (por ejemplo, al
-      # llegar al tiempo máximo) durante el cambio o los smoke tests: ahí failure() es falso.
-      - name: Volver a la versión anterior
-        if: (failure() || cancelled()) && (steps.promover.outcome == 'success' || steps.promover.outcome == 'failure')
-        env:
-          ANTERIOR: ${{ steps.anterior.outputs.id }}
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        run: |
-          echo "::error::La versión nueva falló en producción: volviendo a la anterior ($ANTERIOR)."
-          "$VERCEL" rollback "$ANTERIOR" --timeout=5m --token="$VERCEL_TOKEN"
-          node scripts/smoke.mjs "$PRODUCTION_URL" || echo "::error::La versión anterior tampoco pasa los smoke tests: revisa Vercel."
-
+    uses: ./.github/workflows/deploy.yml
+    secrets:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
 
   # Cada despliegue a producción exitoso queda como una release de GitHub (v1.0.0, v1.1.0, …),
   # con la versión calculada de los Conventional Commits y las notas agrupadas por tipo.
