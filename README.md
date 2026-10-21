@@ -294,6 +294,10 @@ logo es un globo de chat con un ✓, con el verde azulado de la app (`--brand`).
   - `public/app-icon-1024.png`, el ícono de la app en Meta.
 
   Una prueba exige que `icon.svg` esté al día con el dibujo y que sus colores sean los de `--brand`.
+  La portada se arma al compilar: la imagen para compartir lleva la URL de producción que el job de
+  despliegue pasa al build (`PRODUCTION_URL`, que `next.config.ts` fija como `APP_PUBLIC_URL`). Un
+  smoke test revisa que no diga `localhost`. Si se suma un dominio propio, cambia `PRODUCTION_URL` en
+  `.github/workflows/ci.yml`.
 - **Google Authenticator** muestra la app como "Anotado". Quien lo configuró antes la ve como "Finanzas
   MVP", y sus códigos sirven igual.
 - **Fuera del repo:**

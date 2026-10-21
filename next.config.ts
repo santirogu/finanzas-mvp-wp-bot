@@ -9,6 +9,10 @@ const nextConfig: NextConfig = {
   env: {
     APP_COMMIT_SHA: process.env.GITHUB_SHA ?? process.env.VERCEL_GIT_COMMIT_SHA ?? "",
     APP_BUILT_AT: new Date().toISOString(),
+    // La URL pública, para lo que se arma al compilar (la imagen para compartir de la portada, src/lib/
+    // app-url.ts): el job de despliegue del CI la define como PRODUCTION_URL. Sin ella, en el build no hay
+    // cómo saberla y quedaría http://localhost:3000.
+    APP_PUBLIC_URL: process.env.PRODUCTION_URL ?? "",
   },
   // No anunciar "X-Powered-By: Next.js".
   poweredByHeader: false,

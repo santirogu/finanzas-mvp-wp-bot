@@ -42,6 +42,9 @@ export const CHECKS = [
   // Se arman en cada pedido con la URL de la app: si la leyeran al compilar, dirían http://localhost:3000.
   { name: "El sitemap es público y lleva la URL de producción", path: "/sitemap.xml", status: 200, contains: "<loc>https://" },
   { name: "robots.txt es público y apunta al sitemap de producción", path: "/robots.txt", status: 200, contains: "Sitemap: https://" },
+  // La portada se arma al compilar: si el build no supiera la URL (PRODUCTION_URL), la imagen para compartir
+  // diría http://localhost:3000 y no se vería al compartir el enlace (le pasó a #159).
+  { name: "La portada carga y su imagen para compartir lleva la URL de producción", path: "/", status: 200, contains: 'property="og:image" content="https://' },
   {
     name: "La base de datos responde, tiene todas las migraciones y no falta configuración",
     path: "/api/health",
