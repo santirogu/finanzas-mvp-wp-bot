@@ -270,7 +270,7 @@ test("en pantallas táctiles las páginas caben y los campos no hacen zoom @tact
       values (${`wamid.tactil.${randomUUID()}`}, '573000000001', 'mensaje de prueba', 'processed',
               ${sql.json({ kind: "reply", text: "", usage })}, now(), now())`;
     await sql.end();
-    for (const path of ["/admin", "/admin/usuarios", "/admin/historial", "/admin/bot", "/admin/seguridad"]) {
+    for (const path of ["/admin", "/admin/usuarios", "/admin/historial", "/admin/bot", "/admin/salud", "/admin/seguridad"]) {
       await open(page, path);
       await expectFitsOnScreens(page, path);
     }

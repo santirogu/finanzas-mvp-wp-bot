@@ -3,3 +3,4 @@ export * from "./finance";
 export * from "./whatsapp";
 export * from "./events";
 export * from "./admin";
+export * from "./system";

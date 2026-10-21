@@ -204,7 +204,7 @@ test("en inglés: la administración (Seguridad, el inicio, Usuarios y una acci�
     await expect(page).toHaveTitle("Administration · Finanzas");
     await expect(page.getByRole("heading", { level: 1, name: "Administration" })).toBeVisible();
     const nav = visible(page.getByRole("navigation", { name: "Administration sections" }));
-    await expect(nav.getByRole("link")).toHaveText(["Home", "History", "Users", "WhatsApp bot", "Categories", "Security"]);
+    await expect(nav.getByRole("link")).toHaveText(["Home", "History", "Users", "WhatsApp bot", "Categories", "System health", "Security"]);
     await expect(visible(page.getByText("Two-step verification on"))).toBeVisible();
     expect(await seriousViolations(page)).toEqual([]);
     await nav.getByRole("link", { name: "Users", exact: true }).click();
@@ -282,7 +282,7 @@ test("en inglés: el Historial, el Bot y Categorías de la administración @prin
   await test.step("Bot: sus secciones y la ventana de los topes (sin cambiarlos)", async () => {
     await page.goto("/admin/bot");
     await expect(page).toHaveTitle("WhatsApp bot · Administration · Finanzas");
-    for (const name of ["Settings", "Connections", "What happened with the messages", "By account", "Claude usage", "Errors"]) {
+    for (const name of ["Settings", "What happened with the messages", "By account", "Claude usage", "Errors"]) {
       await expect(heading(name)).toBeVisible();
     }
     expect(await seriousViolations(page)).toEqual([]);
@@ -291,6 +291,17 @@ test("en inglés: el Historial, el Bot y Categorías de la administración @prin
     await expect(dialog).toContainText("Up to 200 per hour and 2,000 per day.");
     await dialog.getByRole("button", { name: "Cancel" }).click();
     await expect(dialog).toBeHidden();
+  });
+
+  await test.step("Salud del sistema: sus secciones y los despliegues", async () => {
+    await page.goto("/admin/salud");
+    await expect(page).toHaveTitle("System health · Administration · Finanzas");
+    for (const name of ["System health", "Version", "Database", "Daily cleanup", "Connections", "Recent deployments"]) {
+      await expect(heading(name)).toBeVisible();
+    }
+    await expect(visible(page.getByText("Every day at 4:00 AM (Colombia time)", { exact: false }))).toBeVisible();
+    await expect(visible(page.getByRole("link", { name: "v9.2.0" }))).toBeVisible();
+    expect(await seriousViolations(page)).toEqual([]);
   });
 
   await test.step("Categorías: crear una y verla en los cambios recientes", async () => {

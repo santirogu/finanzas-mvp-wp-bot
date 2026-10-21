@@ -19,9 +19,10 @@ describe("AdminNav", () => {
       ["Usuarios", "/admin/usuarios"],
       ["Bot de WhatsApp", "/admin/bot"],
       ["Categorías", "/admin/categorias"],
+      ["Salud del sistema", "/admin/salud"],
       ["Seguridad", "/admin/seguridad"],
     ]);
-    expect(screen.queryByText("Salud del sistema")).toBeNull();
+    expect(screen.queryByText("Configuración")).toBeNull();
   });
 
   it.each([
@@ -54,6 +55,7 @@ describe("AdminNav en inglés", () => {
       ["Users", "/admin/usuarios"],
       ["WhatsApp bot", "/admin/bot"],
       ["Categories", "/admin/categorias"],
+      ["System health", "/admin/salud"],
       ["Security", "/admin/seguridad"],
     ]);
     expect(screen.getByRole("link", { name: "Users" })).toHaveAttribute("aria-current", "page");

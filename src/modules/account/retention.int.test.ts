@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { GET } from "@/app/api/cron/limpieza/route";
 import { db } from "@/db";
-import { accountEvent, transaction, whatsappMessage } from "@/db/schema";
+import { accountEvent, cronRun, transaction, whatsappMessage } from "@/db/schema";
 import { createUser } from "../../../test/integration/factories";
 import { purgeDeletedTransactions, RETENTION_DAYS, runDailyCleanup } from "./retention";
 
@@ -126,6 +126,7 @@ describe("GET /api/cron/limpieza", () => {
     const response = await cron(authorization);
     expect(response.status).toBe(401);
     expect(await db.select().from(transaction)).toHaveLength(1);
+    expect(await db.select().from(cronRun)).toEqual([]);
   });
 
   it("sin CRON_SECRET configurado, rechaza todo (no queda abierta por olvido)", async () => {
@@ -146,6 +147,10 @@ describe("GET /api/cron/limpieza", () => {
     expect(await response.json()).toEqual({ ok: true, messages: 0, events: 0, transactions: 1 });
     expect((await db.select({ id: transaction.id }).from(transaction)).map((row) => row.id)).toEqual([kept]);
     expect(info).toHaveBeenCalledWith("[limpieza] datos vencidos borrados", { messages: 0, events: 0, transactions: 1 });
+    // La corrida queda para /admin/salud, con lo que borró.
+    const [run] = await db.select().from(cronRun);
+    expect(run).toMatchObject({ job: "limpieza", ok: true, result: { messages: 0, events: 0, transactions: 1 }, error: null });
+    expect(run.finishedAt.getTime()).toBeGreaterThanOrEqual(run.startedAt.getTime());
   });
 
   it("si la limpieza falla, responde 500 y en el log solo va el tipo del error", async () => {
@@ -159,6 +164,24 @@ describe("GET /api/cron/limpieza", () => {
     expect(response.status).toBe(500);
     expect(await response.json()).toEqual({ ok: false });
     expect(error).toHaveBeenCalledWith("[limpieza] falló", "DrizzleQueryError");
+    // La corrida queda como fallida, con el tipo del error y sin su mensaje (que trae datos de la consulta).
+    expect(await db.select({ ok: cronRun.ok, result: cronRun.result, error: cronRun.error }).from(cronRun)).toEqual([
+      { ok: false, result: null, error: "DrizzleQueryError" },
+    ]);
+  });
+
+  it("si no puede guardar la corrida, igual responde lo que hizo la limpieza", async () => {
+    vi.stubEnv("CRON_SECRET", "secreto-del-cron");
+    vi.spyOn(console, "info").mockImplementation(() => {});
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.spyOn(db, "insert").mockImplementation(() => {
+      throw Object.assign(new Error("connection terminated"), { name: "PostgresError", code: "57P01" });
+    });
+
+    const response = await cron("Bearer secreto-del-cron");
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ ok: true });
+    expect(error).toHaveBeenCalledWith("[limpieza] no se pudo guardar la corrida", "PostgresError (57P01)");
   });
 });
 

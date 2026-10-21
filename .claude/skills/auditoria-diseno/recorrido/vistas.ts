@@ -383,12 +383,13 @@ export const VISTAS: Vista[] = [
     necesita: ["datos"],
     ruta: fija("/admin/bot?resultado=registrado&orden=mensajes"),
   },
+  { id: "admin-salud", titulo: "Administración: salud del sistema", persona: "admin", ruta: fija("/admin/salud") },
   // Probar las conexiones solo lee (contra los servidores falsos): se ven los resultados.
   {
-    id: "admin-bot-conexiones",
+    id: "admin-salud-conexiones",
     titulo: "Administración: resultado de probar las conexiones del bot",
     persona: "admin",
-    ruta: fija("/admin/bot"),
+    ruta: fija("/admin/salud"),
     preparar: async (page) => {
       const conexiones = visible(page.getByRole("region", { name: "Conexiones" }));
       await conexiones.getByRole("button", { name: "Probar conexiones" }).click();

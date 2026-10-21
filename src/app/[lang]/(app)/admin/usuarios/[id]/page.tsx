@@ -8,7 +8,6 @@ import { texts } from "@/i18n/texts";
 import { hasRole, isSuperAdmin, roleLabel } from "@/lib/roles";
 import { requireAdmin } from "@/lib/session";
 import { NO_FILTERS, logHref } from "@/modules/admin/history/log-filters";
-import { adminTitle } from "@/modules/admin/modules";
 import { formatDate, formatDateTime, formatHour, formatPhone } from "@/modules/admin/shared/filters";
 import { describeUserAgent, formatIp } from "@/modules/admin/users/session-info";
 import { USERS_PATH } from "@/modules/admin/users/user-filters";
@@ -17,11 +16,11 @@ import { PageSkeleton } from "../../../page-skeleton";
 import { EventItem } from "../../historial/event-item";
 import { AccountBadges, Initial } from "../account-badges";
 import { AccountActions, RevokeAdminActions } from "./account-actions";
+import { adminMetadata } from "../../admin-metadata";
 
 // Sin el nombre de la cuenta en el título: quedaría en el historial del navegador.
 export async function generateMetadata(): Promise<Metadata> {
-  const locale = await getLocale();
-  return { title: adminTitle(locale === "es" ? "Cuenta" : "Account", locale) };
+  return adminMetadata({ es: "Cuenta", en: "Account" });
 }
 
 const TEXTS = texts(

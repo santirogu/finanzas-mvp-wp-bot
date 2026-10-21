@@ -6,14 +6,17 @@ import { texts } from "@/i18n/texts";
 import { requireAdmin } from "@/lib/session";
 import { botSummary } from "@/modules/admin/bot/bot-activity";
 import { categoriesSummary } from "@/modules/admin/categories/categories";
+import { problemLabel } from "@/modules/admin/health/health-view";
+import { healthSummary } from "@/modules/admin/health/system";
 import { historySummary } from "@/modules/admin/history/events-log";
-import { adminModules, adminTitle, type AdminModuleId } from "@/modules/admin/modules";
+import { adminModules, type AdminModuleId } from "@/modules/admin/modules";
 import { usersSummary } from "@/modules/admin/users/users";
 import { PageSkeleton } from "../page-skeleton";
 import { ModuleIcon } from "./module-icon";
+import { adminMetadata } from "./admin-metadata";
 
 export async function generateMetadata(): Promise<Metadata> {
-  return { title: adminTitle(null, await getLocale()) };
+  return adminMetadata(null);
 }
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
@@ -29,6 +32,8 @@ const TEXTS = texts(
     bot: (today: number, failed: number) => `${plural(today, "mensaje", "mensajes")} hoy · ${plural(failed, "error", "errores")}`,
     categories: (expense: number, income: number) => `${expense} de egresos · ${income} de ingresos`,
     security: "Verificación en dos pasos activa",
+    healthy: "Todo en orden",
+    problems: (n: number) => plural(n, "problema", "problemas"),
     modules: "Módulos de administración",
     soon: "Pronto",
   },
@@ -43,6 +48,8 @@ const TEXTS = texts(
       bot: (today, failed) => `${plural(today, "message", "messages")} today · ${plural(failed, "error", "errors")}`,
       categories: (expense, income) => `${expense} for expenses · ${income} for income`,
       security: "Two-step verification on",
+      healthy: "All good",
+      problems: (n) => plural(n, "problem", "problems"),
       modules: "Administration modules",
       soon: "Soon",
     },
@@ -64,7 +71,13 @@ async function AdminHome() {
   await requireAdmin();
   const locale = await getLocale();
   const t = TEXTS[locale];
-  const [history, users, bot, categories] = await Promise.all([historySummary(), usersSummary(), botSummary(), categoriesSummary()]);
+  const [history, users, bot, categories, health] = await Promise.all([
+    historySummary(),
+    usersSummary(),
+    botSummary(),
+    categoriesSummary(),
+    healthSummary(),
+  ]);
   const summaries: Partial<Record<AdminModuleId, string>> = {
     historial: t.history(history.today, history.failedToday),
     usuarios: [t.accounts(users.total), t.withWhatsApp(users.withWhatsApp), ...(users.suspended > 0 ? [t.suspended(users.suspended)] : [])].join(" · "),
@@ -72,6 +85,9 @@ async function AdminHome() {
     categorias: t.categories(categories.expense, categories.income),
     seguridad: t.security,
   };
+  // Salud, como un semáforo: en verde si todo está en orden; en rojo, cuántos problemas y cuáles.
+  const healthy = health.problems.length === 0;
+  const healthLine = healthy ? t.healthy : `${t.problems(health.problems.length)}: ${health.problems.map((p) => problemLabel(p, locale)).join(" · ")}`;
 
   return (
     <ul aria-label={t.modules} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -88,6 +104,12 @@ async function AdminHome() {
               </p>
               <p className="text-sm text-muted">{adminModule.description}</p>
               {summaries[adminModule.id] && <p className="text-sm">{summaries[adminModule.id]}</p>}
+              {adminModule.id === "salud" && (
+                <p className={`flex items-start gap-1.5 text-sm font-medium ${healthy ? "text-income" : "text-danger"}`}>
+                  <span aria-hidden>{healthy ? "●" : "▲"}</span>
+                  <span>{healthLine}</span>
+                </p>
+              )}
             </div>
           </>
         );

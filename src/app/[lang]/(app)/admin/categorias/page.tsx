@@ -14,14 +14,13 @@ import {
   changeSentence,
   parseCategoryType,
 } from "@/modules/admin/categories/category-input";
-import { adminModuleLabel, adminTitle } from "@/modules/admin/modules";
 import { formatDateTime } from "@/modules/admin/shared/filters";
 import { PageSkeleton } from "../../page-skeleton";
 import { CategoryManager } from "./category-manager";
+import { adminMetadata } from "../admin-metadata";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const locale = await getLocale();
-  return { title: adminTitle(adminModuleLabel("categorias", locale), locale) };
+  return adminMetadata("categorias");
 }
 
 const TEXTS = texts(

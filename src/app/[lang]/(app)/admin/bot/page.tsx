@@ -32,18 +32,17 @@ import {
   toggleOutcome,
   type BotFilters,
 } from "@/modules/admin/bot/bot-filters";
-import { adminModuleLabel, adminTitle } from "@/modules/admin/modules";
+import { adminModuleLabel } from "@/modules/admin/modules";
 import { ADMIN_MAX_ROWS, ADMIN_PAGE_SIZE, ADMIN_TIMEZONE, formatDate, formatDateTime } from "@/modules/admin/shared/filters";
 import { PageSkeleton } from "../../page-skeleton";
 import { ActiveFilters } from "../active-filters";
 import { BotSettings } from "./bot-settings";
-import { Connections } from "./connections";
 import { ResendReplies } from "./resend-replies";
 import { BotFilterBar } from "./filter-bar";
+import { adminMetadata } from "../admin-metadata";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const locale = await getLocale();
-  return { title: adminTitle(adminModuleLabel("bot", locale), locale) };
+  return adminMetadata("bot");
 }
 
 // Los comandos (balance, reporte, deshacer, ayuda) van como se escriben en el bot, que responde en español.
@@ -102,6 +101,7 @@ const TEXTS = texts(
     },
     moreAccounts: "Ver más cuentas",
     maxAccounts: (n: number) => `Se muestran las ${n} primeras: usa los filtros para ver las demás.`,
+    connections: "Las conexiones con WhatsApp y Claude se prueban en",
   },
   {
     en: {
@@ -157,6 +157,7 @@ const TEXTS = texts(
       },
       moreAccounts: "See more accounts",
       maxAccounts: (n) => `The first ${n} are shown: use the filters to see the rest.`,
+      connections: "The connections to WhatsApp and Claude are tested in",
     },
   },
 );
@@ -233,7 +234,13 @@ async function Bot({ params }: { params: Record<string, string | string[] | unde
         averageTokensPerCall={settings.averageTokensPerCall}
         lastChange={settings.updated && `${settings.updated.by ?? t.someAdmin} · ${formatDateTime(settings.updated.at, locale)}`}
       />
-      <Connections />
+      <p className="px-1 text-sm text-muted">
+        {t.connections}{" "}
+        <Link href="/admin/salud" className="text-brand underline">
+          {adminModuleLabel("salud", locale)}
+        </Link>
+        .
+      </p>
 
       <section className="card space-y-3 p-4" aria-labelledby="resultados">
         <div className="space-y-1">
