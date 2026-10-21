@@ -1,4 +1,4 @@
-# Finanzas MVP — reglas del proyecto
+# Anotado (antes, Finanzas MVP) — reglas del proyecto
 
 App de finanzas personales (Next.js 16 + Postgres) con un bot de WhatsApp que interpreta mensajes
 con Claude. Los detalles de stack, scripts y despliegue están en el [README](README.md).
@@ -226,6 +226,9 @@ de Vercel ni muevas las migraciones fuera del job `deploy`.
   El modo oscuro está en dos bloques iguales (el del sistema y el elegido en Mi cuenta, `src/lib/theme.ts`):
   cambia los dos (la prueba exige que coincidan) y nunca uses la variante `dark:` de Tailwind, que solo
   mira el sistema (`src/global-styles.test.ts` lo revisa).
+- **Marca** (README → Marca): el nombre de la app sale de `BRAND_NAME` (`src/lib/brand.ts`), nunca escrito a
+  mano ("Anotado"; no "Finanzas MVP"), y el logo, de `<Logo>` / `<LogoMark>` (`src/components/logo.tsx`). Si
+  cambia el dibujo (`src/lib/brand-mark.json`) o el eslogan, corre `pnpm brand:assets` y sube los íconos.
 - **Dinero**: siempre con `formatMoney` (`src/lib/money.ts`), que da "$1.000.000,00" (dos decimales,
   sin espacio) y "−$50.000,00" para los negativos (el signo menos tipográfico, U+2212, como el de los
   egresos en las listas), en la web y en el bot. No uses `toLocaleString` para mostrar montos, y un

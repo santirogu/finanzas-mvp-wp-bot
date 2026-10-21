@@ -21,11 +21,11 @@ test("sin sesión: la portada, el login y el registro en inglés, con sus mensaj
   await inEnglish(page);
   await page.goto("/");
   await expect(page.locator("html")).toHaveAttribute("lang", "en");
-  await expect(visible(page.getByRole("heading", { level: 1, name: "Your finances, as easy as sending a WhatsApp." }))).toBeVisible();
+  await expect(visible(page.getByRole("heading", { level: 1, name: "Text your expense on WhatsApp. It's noted." }))).toBeVisible();
 
   await visible(page.getByRole("link", { name: "Sign in" })).click();
   await expect(page).toHaveURL(/\/login$/);
-  await expect(page).toHaveTitle("Sign in · Finanzas");
+  await expect(page).toHaveTitle("Sign in · Anotado");
   await visible(page.getByRole("button", { name: "Sign in" })).click();
   await expect(visible(page.getByText("Enter your email."))).toBeVisible();
   expect(await seriousViolations(page)).toEqual([]);
@@ -61,7 +61,7 @@ test("con sesión: la navegación, el menú de la cuenta, el selector de meses y
 
   const response = await page.goto("/esta-pagina-no-existe");
   expect(response?.status()).toBe(404);
-  await expect(page).toHaveTitle("Page not found · Finanzas");
+  await expect(page).toHaveTitle("Page not found · Anotado");
   await expect(visible(page.getByRole("heading", { name: "We couldn't find this page" }))).toBeVisible();
 });
 
@@ -84,7 +84,7 @@ test("en inglés: registrar un egreso con el formato de EE. UU. y verlo en la li
   await inEnglish(page);
   await page.goto("/egresos");
   await expect(visible(page.getByRole("heading", { level: 1, name: "Expenses" }))).toBeVisible();
-  await expect(page).toHaveTitle("Expenses · Finanzas");
+  await expect(page).toHaveTitle("Expenses · Anotado");
 
   const form = visible(page.locator("form").filter({ has: page.getByRole("heading", { name: "New expense" }) }));
   await form.getByLabel(/Amount/).fill("1250.5");
@@ -104,7 +104,7 @@ test("en inglés: registrar un egreso con el formato de EE. UU. y verlo en la li
   await expect(visible(page.getByRole("region", { name: "Notices" }))).toContainText("“Lunch” was restored");
 
   await page.goto("/dashboard");
-  await expect(page).toHaveTitle("Overview · Finanzas");
+  await expect(page).toHaveTitle("Overview · Anotado");
   await expect(visible(page.getByText("Balance for the month"))).toBeVisible();
   await expect(visible(page.getByText("−$1,250.50")).first()).toBeVisible();
   await expect(visible(page.getByRole("heading", { name: "Latest transactions" }))).toBeVisible();
@@ -125,7 +125,7 @@ test("en inglés: Reportes, con la descarga del CSV para el Excel en inglés @pr
   await expect(toast(page, "Egreso registrado")).toBeVisible();
   await inEnglish(page);
   await page.goto("/reportes");
-  await expect(page).toHaveTitle("Reports · Finanzas");
+  await expect(page).toHaveTitle("Reports · Anotado");
   await expect(visible(page.getByRole("heading", { level: 1, name: "Reports" }))).toBeVisible();
   await expect(visible(page.getByRole("navigation", { name: "Period" }).getByRole("link", { name: "Last 12 months" }))).toHaveAttribute("aria-current", "page");
   await expect(visible(page.getByRole("region", { name: "Period summary" }))).toContainText("$1,250.50");
@@ -148,7 +148,7 @@ test("en inglés: Mi cuenta, la Ayuda y las páginas legales (solo en español, 
   await inEnglish(page);
 
   await page.goto("/cuenta");
-  await expect(page).toHaveTitle("My account · Finanzas");
+  await expect(page).toHaveTitle("My account · Anotado");
   await expect(visible(page.getByRole("heading", { level: 1, name: "My account" }))).toBeVisible();
   await expect(visible(page.getByRole("region", { name: "Your details" }))).toContainText("User");
   await expect(visible(page.getByRole("region", { name: "Security" }))).toBeVisible();
@@ -157,7 +157,7 @@ test("en inglés: Mi cuenta, la Ayuda y las páginas legales (solo en español, 
   expect(await seriousViolations(page)).toEqual([]);
 
   await page.goto("/ayuda");
-  await expect(page).toHaveTitle("Help · Finanzas");
+  await expect(page).toHaveTitle("Help · Anotado");
   const topics = visible(page.getByRole("region", { name: "Help topics" }));
   await topics.locator("summary", { hasText: "The WhatsApp bot" }).click();
   await expect(topics).toContainText("For now the bot answers in Spanish.");
@@ -185,7 +185,7 @@ test("en inglés: la administración (Seguridad, el inicio, Usuarios y una acci�
 
   await test.step("Seguridad: los tres pasos de la verificación", async () => {
     await page.goto("/admin/seguridad");
-    await expect(page).toHaveTitle("Security · Administration · Finanzas");
+    await expect(page).toHaveTitle("Security · Administration · Anotado");
     await expect(heading("Two-step verification")).toBeVisible();
     await page.getByLabel("Your password").fill(PASSWORD);
     await page.getByRole("button", { name: "Continue" }).click();
@@ -201,7 +201,7 @@ test("en inglés: la administración (Seguridad, el inicio, Usuarios y una acci�
   });
 
   await test.step("el inicio y la subnavegación", async () => {
-    await expect(page).toHaveTitle("Administration · Finanzas");
+    await expect(page).toHaveTitle("Administration · Anotado");
     await expect(page.getByRole("heading", { level: 1, name: "Administration" })).toBeVisible();
     const nav = visible(page.getByRole("navigation", { name: "Administration sections" }));
     await expect(nav.getByRole("link")).toHaveText(["Home", "History", "Users", "WhatsApp bot", "Categories", "System health", "Security"]);
@@ -212,7 +212,7 @@ test("en inglés: la administración (Seguridad, el inicio, Usuarios y una acci�
   });
 
   await test.step("Usuarios: la búsqueda, los filtros y la cuenta", async () => {
-    await expect(page).toHaveTitle("Users · Administration · Finanzas");
+    await expect(page).toHaveTitle("Users · Administration · Anotado");
     await expect(heading("Accounts")).toBeVisible();
     const search = visible(page.getByRole("searchbox", { name: "Search" }));
     await search.fill(betoEmail);
@@ -234,7 +234,7 @@ test("en inglés: la administración (Seguridad, el inicio, Usuarios y una acci�
   });
 
   await test.step("el detalle y cerrar sus sesiones con el código (primero uno equivocado)", async () => {
-    await expect(page).toHaveTitle("Account · Administration · Finanzas");
+    await expect(page).toHaveTitle("Account · Administration · Anotado");
     await expect(heading(/Beto Inglés/)).toBeVisible();
     await expect(field("Role")).toHaveText("User");
     await expect(field("Status")).toHaveText("Active");
@@ -267,7 +267,7 @@ test("en inglés: el Historial, el Bot y Categorías de la administración @prin
 
   await test.step("Historial: sus eventos, agrupados por día", async () => {
     await page.goto("/admin/historial");
-    await expect(page).toHaveTitle("History · Administration · Finanzas");
+    await expect(page).toHaveTitle("History · Administration · Anotado");
     await expect(heading("Sign-ups and WhatsApp linking")).toBeVisible();
     const search = visible(page.getByRole("searchbox", { name: "Search" }));
     await search.fill(email);
@@ -281,7 +281,7 @@ test("en inglés: el Historial, el Bot y Categorías de la administración @prin
 
   await test.step("Bot: sus secciones y la ventana de los topes (sin cambiarlos)", async () => {
     await page.goto("/admin/bot");
-    await expect(page).toHaveTitle("WhatsApp bot · Administration · Finanzas");
+    await expect(page).toHaveTitle("WhatsApp bot · Administration · Anotado");
     for (const name of ["Settings", "What happened with the messages", "By account", "Claude usage", "Errors"]) {
       await expect(heading(name)).toBeVisible();
     }
@@ -295,7 +295,7 @@ test("en inglés: el Historial, el Bot y Categorías de la administración @prin
 
   await test.step("Salud del sistema: sus secciones y los despliegues", async () => {
     await page.goto("/admin/salud");
-    await expect(page).toHaveTitle("System health · Administration · Finanzas");
+    await expect(page).toHaveTitle("System health · Administration · Anotado");
     for (const name of ["System health", "Version", "Database", "Daily cleanup", "Connections", "Recent deployments"]) {
       await expect(heading(name)).toBeVisible();
     }
@@ -306,7 +306,7 @@ test("en inglés: el Historial, el Bot y Categorías de la administración @prin
 
   await test.step("Categorías: crear una y verla en los cambios recientes", async () => {
     await page.goto("/admin/categorias");
-    await expect(page).toHaveTitle("Categories · Administration · Finanzas");
+    await expect(page).toHaveTitle("Categories · Administration · Anotado");
     await expect(visible(page.getByRole("navigation", { name: "Category type" }).getByRole("link", { name: /^Expenses · \d+$/ }))).toBeVisible();
     expect(await seriousViolations(page)).toEqual([]);
     const name = `Juegos ${id}`;

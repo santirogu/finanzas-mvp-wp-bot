@@ -1,13 +1,18 @@
-// Reglas propias sobre el plugin de verificación en dos pasos (twoFactor) de Better Auth. Sin
-// dependencias: las usa src/lib/auth.ts en sus hooks y se prueban por separado.
+// Reglas propias sobre el plugin de verificación en dos pasos (twoFactor) de Better Auth. Sin más
+// dependencias que el nombre de la marca: las usa src/lib/auth.ts en sus hooks y se prueban por separado.
 //
 // La verificación es solo para administradores y obligatoria para entrar a la sección de
 // administración. Se configura una sola vez con Google Authenticator (o cualquier app TOTP) y no se
 // desactiva desde la app: si se pierde el celular, se usa un código de respaldo o el dueño la
 // reinicia desde la terminal (pnpm admin:reset-2fa).
 
-/** Nombre de la app en Google Authenticator. */
-export const TWO_FACTOR_ISSUER = "Finanzas MVP";
+import { BRAND_NAME } from "@/lib/brand";
+
+/**
+ * Nombre de la app en Google Authenticator. Las cuentas que ya lo tenían configurado siguen con el
+ * nombre de antes (Finanzas MVP): sus códigos sirven igual.
+ */
+export const TWO_FACTOR_ISSUER = BRAND_NAME;
 
 /** Códigos incorrectos seguidos antes de bloquear la verificación, y por cuánto tiempo. */
 export const TWO_FACTOR_LOCKOUT = { maxFailedAttempts: 5, durationSeconds: 15 * 60 } as const;

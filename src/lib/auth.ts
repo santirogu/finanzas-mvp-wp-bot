@@ -25,6 +25,7 @@ import { envVar } from "./env";
 import { ROLES, hasRole, parseRole } from "./roles";
 import { describeError, logAuthSafely } from "./safe-log";
 import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from "@/modules/account/password-change";
+import { BRAND_NAME } from "@/lib/brand";
 
 // Better Auth exige un secreto al inicializarse. El build de producción trae el real (el job de
 // despliegue hace `vercel pull`); si un build corre sin él (por ejemplo, el de las E2E en el CI), se
@@ -36,7 +37,7 @@ const secret =
     : undefined);
 
 export const auth = betterAuth({
-  appName: "Finanzas MVP",
+  appName: BRAND_NAME,
   // Sin datos personales en los logs: el logger por defecto imprime los errores con los parámetros
   // de la consulta (correo, nombre, hash de la contraseña).
   logger: { log: logAuthSafely },

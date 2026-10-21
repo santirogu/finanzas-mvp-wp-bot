@@ -79,7 +79,7 @@ describe("TwoFactorSetup · paso 2 (escanear)", () => {
   it("muestra el QR y la clave para escribir a mano, en grupos de 4", async () => {
     render(<TwoFactorSetup onDone={mocks.done} />);
     await passStep1();
-    expect(screen.getByRole("img", { name: /Código QR para agregar Finanzas MVP/ })).toBeVisible();
+    expect(screen.getByRole("img", { name: /Código QR para agregar Anotado/ })).toBeVisible();
     expect(screen.getByLabelText("Clave de configuración")).toHaveTextContent(
       "JBSW Y3DP EHPK 3PXP JBSW Y3DP EHPK 3PXP",
     );
@@ -185,7 +185,7 @@ describe("TwoFactorSetup en inglés", () => {
     await userEvent.click(screen.getByRole("button", { name: "Continue" }));
 
     expect(await screen.findByRole("heading", { name: "Step 2 of 3: scan the code" })).toBeVisible();
-    expect(screen.getByRole("img", { name: "QR code to add Finanzas MVP to Google Authenticator" })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "QR code to add Anotado to Google Authenticator" })).toBeInTheDocument();
     expect(screen.getByText(/Can't scan it\?/)).toBeInTheDocument();
     await userEvent.type(screen.getByLabelText("6-digit code"), "123456");
     await userEvent.click(screen.getByRole("button", { name: "Turn on verification" }));

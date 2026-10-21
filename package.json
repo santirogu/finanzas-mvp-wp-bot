@@ -29,6 +29,7 @@
     "bot:try": "tsx scripts/bot-try.ts",
     "smoke": "node scripts/smoke.mjs",
     "bot:eval": "tsx scripts/bot-eval.ts",
+    "brand:assets": "node scripts/brand-assets.mjs",
     "test:int": "vitest run --project integration",
     "test:all": "vitest run",
     "test:coverage": "vitest run --coverage",

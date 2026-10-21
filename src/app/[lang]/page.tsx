@@ -1,50 +1,144 @@
 import Link from "next/link";
+import { LogoMark, Logo } from "@/components/logo";
 import { getTexts } from "@/i18n/server";
 import { texts } from "@/i18n/texts";
+import { BRAND_NAME } from "@/lib/brand";
+
+// La página de inicio: qué es Anotado, una conversación de ejemplo con el bot y para qué sirve. El ejemplo
+// va en español también en inglés (el bot todavía responde en español: lo dice la nota de abajo).
 
 const TEXTS = texts(
   {
-    heading: "Tus finanzas, tan fácil como mandar un WhatsApp.",
-    body: "Escribe “me compré unos zapatos de $500.000” y queda registrado. Revisa tu balance del mes cuando quieras.",
+    heading: "Escribe tu gasto por WhatsApp. Queda anotado.",
+    body: "Le escribes al bot como a cualquier persona y registra el monto, la descripción y la categoría. En la web ves tu mes, tus reportes y tus gastos fijos.",
     register: "Crear cuenta",
     login: "Iniciar sesión",
+    example: "Una conversación de ejemplo con el bot",
+    exampleNote: null as string | null,
+    featuresTitle: `Qué hace ${BRAND_NAME}`,
+    features: [
+      { icon: "chat", title: "Por WhatsApp", body: "Escribe como hablas: “gasté 25 mil en almuerzo”. Si se equivoca, escribe deshacer." },
+      { icon: "chart", title: "Tu mes en claro", body: "El balance, en qué se te va la plata y tus gastos fijos, con un aviso antes de cada pago." },
+      { icon: "lock", title: "Tus datos son tuyos", body: "Sin conectar tu banco y sin anuncios. Borras tu cuenta y tus datos cuando quieras." },
+    ],
     privacy: "Política de privacidad",
   },
   {
     en: {
-      heading: "Your finances, as easy as sending a WhatsApp.",
-      // Sin un ejemplo escrito: el bot todavía responde en español.
-      body: "Tell the WhatsApp bot what you spent and it's recorded. Check your monthly balance whenever you want.",
+      heading: "Text your expense on WhatsApp. It's noted.",
+      body: "Write to the bot as you would to anyone, and it records the amount, the description and the category. On the web you see your month, your reports and your bills.",
       register: "Create account",
       login: "Sign in",
+      example: "An example conversation with the bot",
+      exampleNote: "For now the bot speaks Spanish.",
+      featuresTitle: `What ${BRAND_NAME} does`,
+      features: [
+        { icon: "chat", title: "On WhatsApp", body: "Write the way you talk. If it gets something wrong, send deshacer (undo)." },
+        { icon: "chart", title: "Your month, clear", body: "Your balance, where your money goes and your bills, with a heads-up before each payment." },
+        { icon: "lock", title: "Your data is yours", body: "No bank connection and no ads. Delete your account and your data whenever you want." },
+      ],
       privacy: "Privacy policy",
     },
   },
 );
 
+// Los íconos de los beneficios (trazos simples, del color de la marca).
+const ICONS: Record<string, React.ReactNode> = {
+  chat: <path d="M5 6.5A2.5 2.5 0 0 1 7.5 4h9A2.5 2.5 0 0 1 19 6.5v6a2.5 2.5 0 0 1-2.5 2.5H11l-4 3.5V15a2 2 0 0 1-2-2z" />,
+  chart: <path d="M5 19V9m7 10V5m7 14v-7" />,
+  lock: (
+    <>
+      <rect x="5" y="11" width="14" height="9" rx="2" />
+      <path d="M8.5 11V8a3.5 3.5 0 0 1 7 0v3" />
+    </>
+  ),
+};
+
 export default async function Home() {
   const t = await getTexts(TEXTS);
   return (
-    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center px-6 py-16">
-      <p className="text-sm font-medium text-brand">Finanzas MVP</p>
-      <h1 className="mt-3 text-4xl font-semibold tracking-tight sm:text-5xl">{t.heading}</h1>
-      <p className="mt-4 text-lg text-muted">{t.body}</p>
-      <div className="mt-8 flex flex-wrap gap-3">
-        <Link href="/registro" className="btn-primary">
-          {t.register}
-        </Link>
+    <div className="flex flex-1 flex-col">
+      <header className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4 px-6 py-5">
+        <Logo className="text-xl" markClassName="size-8" />
         <Link
           href="/login"
           className="inline-flex items-center rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-surface"
         >
           {t.login}
         </Link>
-      </div>
-      <p className="mt-16 text-xs text-muted">
+      </header>
+
+      <main className="mx-auto w-full max-w-5xl flex-1 px-6 pb-16">
+        <div className="grid grid-cols-1 items-center gap-12 py-10 lg:grid-cols-2 lg:py-16">
+          <div>
+            <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">{t.heading}</h1>
+            <p className="mt-5 text-lg text-muted">{t.body}</p>
+            {/* "Iniciar sesión" está arriba, en la barra: aquí, solo lo que hace quien llega por primera vez. */}
+            <Link href="/registro" className="btn-primary mt-8">
+              {t.register}
+            </Link>
+          </div>
+          <ChatExample label={t.example} note={t.exampleNote} />
+        </div>
+
+        <section aria-labelledby="que-hace">
+          <h2 id="que-hace" className="sr-only">
+            {t.featuresTitle}
+          </h2>
+          <ul className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            {t.features.map((feature) => (
+              <li key={feature.title} className="card p-5">
+                <svg viewBox="0 0 24 24" aria-hidden className="size-6 fill-none stroke-brand" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                  {ICONS[feature.icon]}
+                </svg>
+                <h3 className="mt-3 font-semibold">{feature.title}</h3>
+                <p className="mt-1 text-sm text-muted">{feature.body}</p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      </main>
+
+      <footer className="mx-auto w-full max-w-5xl px-6 pb-10 text-xs text-muted">
         <Link href="/privacidad" className="underline underline-offset-2 hover:text-foreground">
           {t.privacy}
         </Link>
-      </p>
-    </main>
+      </footer>
+    </div>
+  );
+}
+
+/**
+ * Una conversación con el bot, como se ve en WhatsApp: tu mensaje a la derecha y la respuesta a la
+ * izquierda. Es un ejemplo fijo y en español (lang="es"), resumido de lo que responde el bot
+ * (src/modules/bot/replies.ts).
+ */
+function ChatExample({ label, note }: { label: string; note: string | null }) {
+  const sent = "ml-auto w-fit max-w-[85%] rounded-2xl rounded-br-md bg-brand/10 px-4 py-2.5";
+  const received = "mr-auto w-fit max-w-[85%] rounded-2xl rounded-bl-md bg-background px-4 py-2.5";
+  return (
+    <figure className="card mx-auto w-full max-w-md p-4 sm:p-5">
+      <figcaption className="flex items-center gap-3 border-b border-border pb-3">
+        <LogoMark className="size-9" />
+        <span className="min-w-0">
+          <span className="block font-semibold">{BRAND_NAME}</span>
+          <span className="block text-xs text-muted">{label}</span>
+        </span>
+      </figcaption>
+      <ol lang="es" className="mt-4 space-y-3 text-sm">
+        <li className={sent}>gasté 25 mil en almuerzo</li>
+        <li className={received}>
+          ✅ Anotado: <strong>Almuerzo</strong> — $25.000,00 (Alimentación)
+        </li>
+        <li className={sent}>y 12 mil de taxi</li>
+        <li className={received}>
+          ✅ Anotado: <strong>Taxi</strong> — $12.000,00 (Transporte)
+          <span className="mt-1 block text-muted">
+            Balance del mes: <strong className="text-foreground">$1.284.500,00</strong>
+          </span>
+        </li>
+      </ol>
+      {note && <p className="mt-4 text-xs text-muted">{note}</p>}
+    </figure>
   );
 }

@@ -2,6 +2,7 @@ import { Document, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 import type { ReactNode } from "react";
 import { PDF_COLORS as C } from "./colors";
 import type { ReportPdfView } from "./view";
+import { BRAND_NAME } from "@/lib/brand";
 
 // La hoja del "Reporte (PDF)": tamaño carta, en el modo claro de la app. Página 1: el resumen, el gráfico
 // y la tabla mes a mes; página 2: las categorías a la izquierda, y los gastos más grandes y los días de
@@ -273,7 +274,7 @@ function Daily({ daily, labels }: { daily: ReportPdfView["daily"]; labels: Repor
 
 export function ReportDocument({ view }: { view: ReportPdfView }) {
   return (
-    <Document title={`${view.labels.title} · ${view.range}`} author={view.name} creator="Finanzas" producer="Finanzas" language={view.labels.language}>
+    <Document title={`${view.labels.title} · ${view.range}`} author={view.name} creator={BRAND_NAME} producer={BRAND_NAME} language={view.labels.language}>
       <Page size="LETTER" style={s.page}>
         <Header view={view} />
         {view.empty ? (
@@ -307,7 +308,9 @@ export function ReportDocument({ view }: { view: ReportPdfView }) {
         )}
         {/* El pie, en cada hoja. */}
         <View style={s.footer} fixed>
-          <Text>Finanzas · {view.currency}</Text>
+          <Text>
+            {BRAND_NAME} · {view.currency}
+          </Text>
           <Text render={({ pageNumber, totalPages }) => view.labels.page(pageNumber, totalPages)} />
         </View>
       </Page>

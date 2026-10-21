@@ -15,8 +15,8 @@ const user = { isAdmin: false, twoFactorEnabled: false };
 const verifiedAdmin = { isAdmin: true, twoFactorEnabled: true };
 
 describe("configuración", () => {
-  it("Google Authenticator muestra la app como Finanzas MVP", () => {
-    expect(TWO_FACTOR_ISSUER).toBe("Finanzas MVP");
+  it("Google Authenticator muestra la app como Anotado", () => {
+    expect(TWO_FACTOR_ISSUER).toBe("Anotado");
   });
 
   it("bloquea 15 minutos tras 5 códigos incorrectos (como el login)", () => {

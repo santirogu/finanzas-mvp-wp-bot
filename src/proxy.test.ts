@@ -111,13 +111,18 @@ describe("proxy · matcher", () => {
       "/_vercel/insights/script.js",
       "/_vercel/insights/view",
       "/app-icon-1024.png",
+      "/icon.svg",
+      "/apple-icon.png",
+      "/opengraph-image.png",
+      "/manifest.webmanifest",
+      "/marca/icono-512.png",
     ]) {
       expect(runsOn(url), url).toBe(false);
     }
   });
 
   it("no se salta páginas que solo empiezan como una ruta excluida", () => {
-    for (const url of ["/apiario", "/api-docs", "/_next/staticos", "/_next/imagenes", "/favicon.icono", "/faviconXico", "/robots.txt.bak", "/robotsXtxt", "/sitemap.xml.bak", "/sitemapXxml", "/_vercelito", "/_vercel", "/app-icon-1024.pngx", "/app-icon-1024Xpng"]) {
+    for (const url of ["/apiario", "/api-docs", "/_next/staticos", "/_next/imagenes", "/favicon.icono", "/faviconXico", "/robots.txt.bak", "/robotsXtxt", "/sitemap.xml.bak", "/sitemapXxml", "/_vercelito", "/_vercel", "/app-icon-1024.pngx", "/app-icon-1024Xpng", "/icon.svgx", "/iconXsvg", "/apple-icon.pngs", "/opengraph-image.pngx", "/manifest.webmanifests", "/marcas", "/marca"]) {
       expect(runsOn(url), url).toBe(true);
     }
   });

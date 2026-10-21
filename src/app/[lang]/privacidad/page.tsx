@@ -5,14 +5,14 @@ import { SpanishOnlyNote } from "./spanish-only";
 
 export const metadata: Metadata = {
   title: "Política de privacidad",
-  description: "Cómo Finanzas MVP trata tus datos personales y cómo solicitar su eliminación.",
+  description: "Cómo Anotado trata tus datos personales y cómo solicitar su eliminación.",
 };
 
 export default function PrivacyPage() {
   return (
     <main lang="es" className="mx-auto w-full max-w-3xl px-6 py-12">
       <Link href="/" className="text-sm font-medium text-brand">
-        ← Finanzas MVP
+        ← Anotado
       </Link>
       <SpanishOnlyNote />
       <h1 className="mt-4 text-3xl font-semibold tracking-tight">Política de privacidad</h1>
@@ -21,7 +21,7 @@ export default function PrivacyPage() {
       <div className={legalProseClass}>
         <section>
           <p>
-            Finanzas MVP es una aplicación para registrar ingresos y egresos personales desde la web
+            Anotado (antes, Finanzas MVP) es una aplicación para registrar ingresos y egresos personales desde la web
             o escribiendo a un bot de WhatsApp. Esta política explica qué datos recopilamos, para
             qué los usamos y cómo puedes ejercer tus derechos, de acuerdo con la Ley 1581 de 2012 de
             Colombia sobre protección de datos personales.

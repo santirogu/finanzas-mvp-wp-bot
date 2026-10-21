@@ -1,4 +1,4 @@
-# Finanzas MVP + Bot de WhatsApp
+# Anotado (antes, Finanzas MVP) + bot de WhatsApp
 
 App web para registrar ingresos y egresos y ver el balance del mes actual. Cada usuario tiene
 su propia sesión y su dashboard con cinco pestañas: **Resumen**, **Ingresos** y **Egresos**, donde
@@ -58,6 +58,7 @@ pnpm dev                        # http://localhost:3000 (antes, copia la base lo
 | `pnpm admin:reset-2fa <correo>` | Reinicia la verificación en dos pasos de un admin que perdió el celular y los códigos de respaldo |
 | `pnpm bot:try 'texto'` | Muestra cómo interpreta el bot un mensaje (usa la API de Claude). Usa comillas simples si el texto tiene `$` |
 | `pnpm bot:eval` | Corre el set de ~55 frases de prueba del bot y reporta aciertos, latencia y costo |
+| `pnpm brand:assets` | Regenera los íconos y la imagen para compartir a partir del logo (ver Estructura → Marca) |
 
 > No uses `pnpm setup` (es un comando propio de pnpm que modifica tu shell). El script del proyecto se llama `db:setup`.
 
@@ -276,6 +277,30 @@ src/
   proxy.ts                          Redirecciones rápidas según haya cookie de sesión, y el idioma de cada página
 scripts/seed.ts                     Categorías por defecto
 ```
+
+### Marca
+
+La app se llama **Anotado** (antes, Finanzas MVP): escribes el gasto por WhatsApp y queda anotado. El
+logo es un globo de chat con un ✓, con el verde azulado de la app (`--brand`).
+- **El nombre** sale de `BRAND_NAME` (`src/lib/brand.ts`), el mismo en todos los idiomas: nunca se
+  escribe a mano. Siempre "Anotado", con mayúscula, también en el logo.
+- **El logo** (`src/components/logo.tsx`) se dibuja desde `src/lib/brand-mark.json` y usa los colores de
+  la marca de cada tema: en oscuro, el cuadro verde claro y el globo oscuro.
+- **Los íconos y la imagen para compartir** salen del mismo dibujo con `pnpm brand:assets`
+  (`scripts/brand-assets.mjs`, con Chromium de Playwright):
+  - `src/app/icon.svg`, `favicon.ico` y `apple-icon.png`, la pestaña y la pantalla de inicio del iPhone;
+  - `public/marca/`, los del manifest (`src/app/manifest.ts`);
+  - `src/app/opengraph-image.png`, la vista previa al compartir el enlace;
+  - `public/app-icon-1024.png`, el ícono de la app en Meta.
+
+  Una prueba exige que `icon.svg` esté al día con el dibujo y que sus colores sean los de `--brand`.
+- **Google Authenticator** muestra la app como "Anotado". Quien lo configuró antes la ve como "Finanzas
+  MVP", y sus códigos sirven igual.
+- **Fuera del repo:**
+  - el nombre visible del número en Meta (WhatsApp Manager), que pasa por una revisión;
+  - el ícono de la app en Meta for Developers.
+
+  El repositorio y el proyecto de Vercel conservan el nombre viejo.
 
 ### Idiomas
 
