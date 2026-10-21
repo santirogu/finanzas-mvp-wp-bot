@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useId, useState, type ReactNode } from "react";
+import { BotCommandsText } from "@/components/bot-commands-text";
 import { describedBy, FieldError } from "@/components/field-error";
 import { useFieldErrors } from "@/components/use-field-errors";
 import { useLocale } from "@/i18n/client";
@@ -106,7 +107,7 @@ const TEXTS = texts(
       pause: "Pause Claude",
       limitsTitle: "Limits per account",
       limits: (perHour, perDay) => `${perHour} per hour and ${perDay} per day`,
-      limitsDescription: (limits) => `${limits}, of messages with Claude.`,
+      limitsDescription: (limits) => `${limits} of messages with Claude.`,
       change: "Change",
       changeLimits: "Change the limits per account",
       monthlyTitle: "Monthly token limit",
@@ -120,7 +121,7 @@ const TEXTS = texts(
       pauseSubmit: "Pause",
       pausing: "Pausing…",
       pauseBody:
-        "The bot stops calling Claude: to free text it replies to record it on the web, and balance, reporte, deshacer and ayuda keep working. While paused, it doesn't spend Anthropic credits.",
+        "The bot stops calling Claude: when someone writes freely, it asks them to add it on the web, and balance, reporte, deshacer and ayuda keep working. While paused, it doesn't spend Anthropic credits.",
       resumeQuestion: "Resume Claude?",
       resumeSubmit: "Resume",
       resuming: "Resuming…",
@@ -181,9 +182,13 @@ export function BotSettings({ claudePaused, limits, monthlyTokenLimit, month, av
           title="Claude"
           description={
             claudePaused ? (
-              <span className="font-medium text-danger">{t.paused}</span>
+              <span className="font-medium text-danger">
+                <BotCommandsText text={t.paused} locale={locale} />
+              </span>
             ) : month.reached ? (
-              <span className="font-medium text-danger">{t.monthlyPaused(month.resetsOn)}</span>
+              <span className="font-medium text-danger">
+                <BotCommandsText text={t.monthlyPaused(month.resetsOn)} locale={locale} />
+              </span>
             ) : (
               t.active
             )
@@ -227,7 +232,7 @@ export function BotSettings({ claudePaused, limits, monthlyTokenLimit, month, av
           onClose={close}
           onDone={finish("removal")}
         >
-          {t.pauseBody}
+          <BotCommandsText text={t.pauseBody} locale={locale} />
         </ConfirmDialog>
       )}
       {open === "resume" && (

@@ -25,7 +25,7 @@ test("Ayuda: se abre desde el menú de la cuenta, con sus temas cerrados y lo mi
     const bot = topic("El bot de WhatsApp");
     for (const example of BOT_EXAMPLES) await expect(bot).toContainText(example);
     for (const { command, description } of BOT_COMMANDS) {
-      await expect(bot.locator("li", { hasText: description }).locator("strong").first()).toHaveText(command);
+      await expect(bot.locator("li", { hasText: description.es }).locator("strong").first()).toHaveText(command);
     }
   });
 

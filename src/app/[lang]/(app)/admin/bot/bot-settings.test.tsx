@@ -259,7 +259,7 @@ describe("BotSettings en inglés", () => {
     render(<BotSettings {...en({ monthlyTokenLimit: 2_000_000 })} />, { english: true });
     const rows = settings().getAllByRole("listitem");
     expect(rows[0]).toHaveTextContent("ClaudeOn: it understands freely written messages.");
-    expect(rows[1]).toHaveTextContent("Limits per account20 per hour and 100 per day, of messages with Claude.");
+    expect(rows[1]).toHaveTextContent("Limits per account20 per hour and 100 per day of messages with Claude.");
     expect(rows[2]).toHaveTextContent("2,000,000 a month, across all accounts. 37,579 so far this month (1%).");
     expect(settings().getByText("No changes: the defaults apply.")).toBeInTheDocument();
     expect(settings().getByRole("button", { name: "Pause Claude" })).toBeInTheDocument();

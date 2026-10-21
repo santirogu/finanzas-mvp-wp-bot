@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { LogoMark, Logo } from "@/components/logo";
 import { getTexts } from "@/i18n/server";
 import { texts } from "@/i18n/texts";
@@ -17,7 +18,15 @@ const TEXTS = texts(
     exampleNote: null as string | null,
     featuresTitle: `Qué hace ${BRAND_NAME}`,
     features: [
-      { icon: "chat", title: "Por WhatsApp", body: "Escribe como hablas: “gasté 25 mil en almuerzo”. Si se equivoca, escribe deshacer." },
+      {
+        icon: "chat",
+        title: "Por WhatsApp",
+        body: (
+          <>
+            Escribe como hablas: “gasté 25 mil en almuerzo”. Si se equivoca, escribe <strong>deshacer</strong>.
+          </>
+        ) as ReactNode,
+      },
       { icon: "chart", title: "Tu mes en claro", body: "El balance, en qué se te va la plata y tus gastos fijos, con un aviso antes de cada pago." },
       { icon: "lock", title: "Tus datos son tuyos", body: "Sin conectar tu banco y sin anuncios. Borras tu cuenta y tus datos cuando quieras." },
     ],
@@ -33,8 +42,17 @@ const TEXTS = texts(
       exampleNote: "For now the bot speaks Spanish.",
       featuresTitle: `What ${BRAND_NAME} does`,
       features: [
-        { icon: "chat", title: "On WhatsApp", body: "Write the way you talk. If it gets something wrong, send deshacer (undo)." },
-        { icon: "chart", title: "Your month, clear", body: "Your balance, where your money goes and your bills, with a heads-up before each payment." },
+        {
+        icon: "chat",
+        title: "On WhatsApp",
+        body: (
+          <>
+            Write the way you talk: <span lang="es">“gasté 25 mil en almuerzo”</span>. If it gets something wrong, send{" "}
+            <strong lang="es">deshacer</strong> (undo).
+          </>
+        ),
+      },
+        { icon: "chart", title: "Your month, clear", body: "Your balance, where your money goes and your bills, with a notice before each payment." },
         { icon: "lock", title: "Your data is yours", body: "No bank connection and no ads. Delete your account and your data whenever you want." },
       ],
       privacy: "Privacy policy",

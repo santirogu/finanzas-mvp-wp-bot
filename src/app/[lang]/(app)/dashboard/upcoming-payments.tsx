@@ -61,7 +61,7 @@ const TEXTS = texts(
       date: "Date",
       messages: {
         amount: { required: "Enter the amount." },
-        occurredOn: { required: "Pick the date.", max: "The date can't be after today." },
+        occurredOn: { required: "Choose the date.", max: "The date can't be after today." },
       },
     },
   },

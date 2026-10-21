@@ -203,6 +203,6 @@ describe("chooseFixedExpense · en inglés", () => {
     expect((await chooseFixedExpense(id, { description: "Netflix", action: "restore" }, "en")).ok).toBe(true);
     expect(await chooseFixedExpense(id, { description: "Netflix", action: "exclude" }, "en")).toMatchObject({ message: "“Netflix” was removed from your bills" });
     expect(await chooseFixedExpense(id, { description: "Otro", action: "include" }, "en")).toEqual({ ok: false, error: "That expense isn't among your transactions." });
-    expect(await chooseFixedExpense(id, { description: "", action: "include" }, "en")).toEqual({ ok: false, error: "Pick an expense." });
+    expect(await chooseFixedExpense(id, { description: "", action: "include" }, "en")).toEqual({ ok: false, error: "Choose an expense." });
   });
 });

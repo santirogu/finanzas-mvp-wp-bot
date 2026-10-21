@@ -61,7 +61,7 @@ const TEXTS = texts(
       messages: {
         amount: { required: "Enter the amount." },
         description: { required: "Enter a description, for example “Lunch”." },
-        occurredOn: { required: "Pick the date.", max: "The date can't be after today." },
+        occurredOn: { required: "Choose the date.", max: "The date can't be after today." },
       },
       income: { new: "New income", edit: "Edit income", submit: "Add income", placeholder: "Paycheck" },
       expense: { new: "New expense", edit: "Edit expense", submit: "Add expense", placeholder: "Shoes" },
@@ -73,7 +73,7 @@ const TEXTS = texts(
       noCategory: "No category",
       archived: " (archived)",
       date: "Date",
-      proposed: (category) => `The category ${category} was picked, the same as last time.`,
+      proposed: (category) => `We chose ${category}, like last time.`,
       elsewhere: (month) => ` in ${month}`,
       pending: "Saving…",
       save: "Save changes",

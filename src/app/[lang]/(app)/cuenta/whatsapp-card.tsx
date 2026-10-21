@@ -39,7 +39,7 @@ export async function WhatsAppCard() {
         <div className="mt-3 space-y-3 text-sm">
           <p className="text-muted">
             {t.linked} <span className="whitespace-nowrap font-medium text-foreground">{maskPhone(link.phone)}</span>. {t.tryIt}{" "}
-            <em>{t.example}</em>.
+            <em lang="es">{t.example}</em>.
           </p>
           <UnlinkWhatsApp />
         </div>
