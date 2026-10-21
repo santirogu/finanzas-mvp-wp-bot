@@ -139,8 +139,10 @@ export function useDescriptionSuggestions({
             id={optionId(i)}
             role="option"
             aria-selected={i === active}
-            onPointerDown={(event) => {
-              // Con el mouse, el campo conserva el foco (en el celular, el teclado sigue abierto).
+            onMouseDown={(event) => {
+              // El campo conserva el foco (en el celular, el teclado sigue abierto). En mousedown y no en
+              // pointerdown: Safari (iPhone, iPad) no manda el click de un toque cuyo pointerdown se canceló,
+              // y elegir no hacía nada.
               event.preventDefault();
             }}
             onClick={() => {
@@ -148,7 +150,11 @@ export function useDescriptionSuggestions({
               pick(input.current, item);
               input.current.focus();
             }}
-            onPointerEnter={() => setActive(i)}
+            onPointerEnter={(event) => {
+              // Solo con el mouse: con el dedo no hay "pasar por encima", y en Safari un cambio al tocar
+              // puede tomarse como un hover y comerse el toque.
+              if (event.pointerType === "mouse") setActive(i);
+            }}
             className={`flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-md px-2.5 text-sm pointer-fine:min-h-9 ${i === active ? "bg-background" : ""}`}
           >
             <span className="min-w-0 truncate">

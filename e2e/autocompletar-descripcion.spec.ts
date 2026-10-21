@@ -58,6 +58,23 @@ test("la descripción sugiere lo que ya registró y propone su categoría @princ
   });
 });
 
+// En Safari (iPhone, iPad) tocar una sugerencia no hacía nada: la lista cancelaba el pointerdown para que
+// el campo no perdiera el foco, y Safari, a diferencia de Chromium, no manda el click de ese toque.
+test("al tocar una sugerencia la elige con su categoría, y el teclado sigue en el campo @tactil @safari", async ({ page }) => {
+  await register(page);
+  await openTab(page, "Egresos");
+  await addTransaction(page, { amount: "85000", description: "Mercado del barrio", category: "Mercado" });
+  await expect(visible(page.getByText("1 movimiento este mes"))).toBeVisible();
+
+  await description(page).tap();
+  await description(page).pressSequentially("merc");
+  await suggestionList(page).getByRole("option", { name: /Mercado del barrio/ }).tap();
+  await expect(description(page)).toHaveValue("Mercado del barrio");
+  await expect(form(page).getByLabel("Categoría").locator("option:checked")).toHaveText(/Mercado/);
+  await expect(suggestionList(page)).toBeHidden();
+  await expect(description(page)).toBeFocused();
+});
+
 test("una poco usada aparece aunque haya muchas que se repiten más, y a mitad de palabra no sugiere nada", async ({ page }) => {
   const { email } = await register(page);
   // Como la cuenta de la captura: más de 20 egresos que se repiten (créditos, gastos varios) y un

@@ -1,4 +1,4 @@
-import { act, render as renderAlone, screen, waitFor, within } from "@testing-library/react";
+import { act, createEvent, fireEvent, render as renderAlone, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { FormState } from "@/modules/transactions/actions";
@@ -335,6 +335,28 @@ describe("TransactionForm · sugerencias de la descripción", () => {
     expect(options()).toEqual(["Mercado del barrio🛒 Mercado"]);
     const [first] = within(listbox()).getAllByRole("option");
     expect(within(first).getByText("ba")).toHaveClass("font-semibold");
+  });
+
+  it("el toque en una sugerencia no se cancela (Safari no mandaría su click): el foco se conserva en mousedown", async () => {
+    renderSuggesting();
+    await userEvent.type(description(), "ba");
+    const [option] = within(listbox()).getAllByRole("option");
+    const pointerDown = createEvent.pointerDown(option, { pointerType: "touch" });
+    fireEvent(option, pointerDown);
+    expect(pointerDown.defaultPrevented).toBe(false);
+    const mouseDown = createEvent.mouseDown(option);
+    fireEvent(option, mouseDown);
+    expect(mouseDown.defaultPrevented).toBe(true);
+  });
+
+  it("pasar por encima marca la opción solo con el mouse, no con el dedo", async () => {
+    renderSuggesting();
+    await userEvent.type(description(), "ba");
+    const [option] = within(listbox()).getAllByRole("option");
+    fireEvent.pointerEnter(option, { pointerType: "touch" });
+    expect(option).toHaveAttribute("aria-selected", "false");
+    fireEvent.pointerEnter(option, { pointerType: "mouse" });
+    expect(option).toHaveAttribute("aria-selected", "true");
   });
 
   it("a mitad de palabra no sugiere nada (\"rr\" no trae \"Mercado del barrio\")", async () => {

@@ -100,9 +100,12 @@ pnpm dev                        # http://localhost:3000 (antes, copia la base lo
   en lenguaje natural, `balance`, `deshacer`, números sin vincular, firmas falsas, mensajes
   repetidos y audios. Los mensajes llegan al webhook firmados como los manda Meta y la app
   responde a servidores falsos de WhatsApp y Claude (`e2e/fake-services.mjs`): nada sale a
-  internet, así que no cuesta nada. La primera vez instala el navegador:
-  `pnpm exec playwright install chromium`. En el CI van partidas en 4 jobs que corren a la vez (el
-  escritorio en 3 con `--shard` de Playwright, y celular y tableta en la cuarta), y el check
+  internet, así que no cuesta nada. Lo que solo falla en Safari (`@safari`) corre además con WebKit,
+  el motor de Safari, en un iPhone y un iPad (proyectos "iphone" e "ipad"): por ejemplo, tocar una
+  sugerencia de la descripción. La primera vez instala los navegadores:
+  `pnpm exec playwright install chromium webkit`. En el CI van partidas en 4 jobs que corren a la vez (el
+  escritorio en 3 con `--shard` de Playwright, y celular, tableta, iPhone y iPad en la cuarta, la única
+  que instala WebKit), y el check
   obligatorio **E2E y accesibilidad** pasa solo si pasan todas. Las partes están en la matriz del job
   `e2e-parte` de `.github/workflows/ci.yml`: si agregas un proyecto de Playwright, súmalo ahí
   (`test/e2e-en-ci.test.ts` falla si falta). La regla de `main` no cambia. Las pruebas que cambian la
