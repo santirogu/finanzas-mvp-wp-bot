@@ -141,7 +141,7 @@ export const helpReply = (name?: string) =>
     "También entiendo:",
     ...BOT_COMMANDS.map(
       (c) =>
-        `• *${c.command}*${"alternative" in c ? ` o *${c.alternative}*` : ""} — ${c.description}${"note" in c ? ` (${c.note})` : ""}`,
+        `• *${c.command}*${"alternative" in c ? ` o *${c.alternative}*` : ""} — ${c.description.es}${"also" in c ? ` (o *${c.also.command}*, ${c.also.description.es})` : ""}`,
     ),
   ].join("\n");
 

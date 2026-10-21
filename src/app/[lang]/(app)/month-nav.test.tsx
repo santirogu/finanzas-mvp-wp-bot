@@ -174,7 +174,7 @@ describe("MonthNav · en inglés", () => {
     expect(screen.getByRole("link", { name: "Back to this month" })).toHaveAttribute("href", "/egresos");
     const button = screen.getByRole("button", { name: "September 2026" });
     await userEvent.click(button);
-    const picker = screen.getByRole("group", { name: "Pick a month" });
+    const picker = screen.getByRole("group", { name: "Choose a month" });
     expect(within(picker).getByRole("button", { name: "Previous year: 2025" })).toBeEnabled();
     expect(within(picker).getByRole("link", { name: "October 2026 (this month), with transactions" })).toBeVisible();
     expect(within(picker).getByText("Sep")).toBeVisible();

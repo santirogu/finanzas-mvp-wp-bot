@@ -21,7 +21,7 @@ const TEXTS = texts(
     en: {
       prevMonth: "Previous month",
       nextMonth: "Next month",
-      pickMonth: "Pick a month",
+      pickMonth: "Choose a month",
       prevYear: "Previous year",
       nextYear: "Next year",
       thisMonth: "this month",

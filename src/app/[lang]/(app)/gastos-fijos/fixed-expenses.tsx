@@ -52,7 +52,7 @@ const TEXTS = texts(
   },
   {
     en: {
-      messages: { description: { required: "Pick an expense." } },
+      messages: { description: { required: "Choose an expense." } },
       section: "Bills",
       none: "There are no expenses that repeat every month yet.",
       total: "Total per month",
@@ -79,7 +79,7 @@ const TEXTS = texts(
       saveNote: "Save note",
       add: "Add a bill",
       expense: "Expense",
-      pick: "Pick an expense from the period",
+      pick: "Choose an expense from the period",
       adding: "Adding…",
       addShort: "Add",
     },

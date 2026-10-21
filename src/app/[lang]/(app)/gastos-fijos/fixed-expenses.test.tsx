@@ -372,9 +372,9 @@ describe("FixedExpenses · en inglés", () => {
   it("agregar un gasto fijo, con su mensaje en inglés", async () => {
     render(<FixedExpenses {...props} />, { english: true });
     await userEvent.click(screen.getByRole("button", { name: "Add a bill" }));
-    expect(screen.getByRole("option", { name: "Pick an expense from the period" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Choose an expense from the period" })).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Add" }));
-    expect(await screen.findByText("Pick an expense.")).toBeVisible();
+    expect(await screen.findByText("Choose an expense.")).toBeVisible();
   });
 
   it("sin gastos fijos", () => {

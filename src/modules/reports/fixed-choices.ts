@@ -62,7 +62,7 @@ const TEXTS = texts(
         restore: (name) => `“${name}” is back in your bills`,
         unadd: (name) => `“${name}” was removed from your bills`,
       },
-      pick: "Pick an expense.",
+      pick: "Choose an expense.",
       notYours: "That expense isn't among your transactions.",
     },
   },

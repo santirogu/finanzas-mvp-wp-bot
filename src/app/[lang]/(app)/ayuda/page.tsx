@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense, type ReactNode } from "react";
+import type { Locale } from "@/i18n/locales";
 import { getLocale, getTexts } from "@/i18n/server";
 import { texts } from "@/i18n/texts";
 import { BRAND_NAME } from "@/lib/brand";
 import { requireUser } from "@/lib/session";
-import { BOT_COMMANDS, BOT_EXAMPLES } from "@/modules/bot/help";
+import { BOT_COMMANDS, BOT_EXAMPLES, HELP_COMMAND } from "@/modules/bot/help";
 import { BIGGEST_SHOWN } from "@/modules/reports/biggest";
 import { RECURRING_MIN_MONTHS, RECURRING_WINDOW } from "@/modules/reports/recurring";
 import { DAYS_AHEAD, MAX_DAYS_AHEAD, MONTHS_BACK, PAYMENTS_FOR_DAY } from "@/modules/reports/upcoming";
@@ -77,26 +78,32 @@ async function Help() {
   );
 }
 
-/** Los comandos del bot, de la misma lista que su respuesta a "ayuda" (en español: el bot responde en español). */
-function BotCommands({ help }: { help: string }) {
+/**
+ * Los comandos del bot, de la misma lista que su respuesta a "ayuda": se escriben en español (el bot responde en
+ * español), con `lang="es"`; su explicación va en el idioma de la página.
+ */
+function BotCommands({ locale }: { locale: Locale }) {
+  const or = locale === "es" ? "o" : "or";
   return (
     <ul className="list-disc space-y-1 pl-5">
-      {BOT_COMMANDS.map((c) => (
+      {[...BOT_COMMANDS, HELP_COMMAND].map((c) => (
         <li key={c.command}>
-          <strong>{c.command}</strong>
+          <strong lang="es">{c.command}</strong>
           {"alternative" in c && (
             <>
               {" "}
-              o <strong>{c.alternative}</strong>
+              {or} <strong lang="es">{c.alternative}</strong>
             </>
           )}{" "}
-          — {c.description}
-          {"note" in c && ` (${c.note.replaceAll("*", "")})`}
+          — {c.description[locale]}
+          {"also" in c && (
+            <>
+              {" "}
+              ({or} <span lang="es">{c.also.command}</span>, {c.also.description[locale]})
+            </>
+          )}
         </li>
       ))}
-      <li>
-        <strong>ayuda</strong> — {help}
-      </li>
     </ul>
   );
 }
@@ -106,7 +113,7 @@ function BotExamples() {
     <ul className="list-disc space-y-1 pl-5">
       {BOT_EXAMPLES.map((example) => (
         <li key={example}>
-          <em>{example}</em>
+          <em lang="es">{example}</em>
         </li>
       ))}
     </ul>
@@ -139,7 +146,7 @@ function SpanishTopics() {
         <p>Después, escríbele tus ingresos y gastos como se los contarías a alguien:</p>
         <BotExamples />
         <p>También entiende estos comandos:</p>
-        <BotCommands help="te recuerda todo esto" />
+        <BotCommands locale="es" />
       </Topic>
 
       <Topic title="Gastos fijos y avisos de pagos">
@@ -204,7 +211,7 @@ function EnglishTopics() {
           their category.
         </p>
         <p>
-          Each transaction in the list is edited with the pencil and deleted with the trash can. If you deleted it by mistake, tap{" "}
+          To edit a transaction, tap the pencil; to delete it, tap the trash can. If you deleted it by mistake, tap{" "}
           <strong>Undo</strong> in the notice that shows up below.
         </p>
         <p>
@@ -215,12 +222,12 @@ function EnglishTopics() {
 
       <Topic title="The WhatsApp bot">
         <p>
-          Connect it in <A href="/cuenta">My account</A>: tap <strong>Connect WhatsApp</strong> and send the bot the message you see (<strong>VINCULAR</strong> and the code).
+          Connect it in <A href="/cuenta">My account</A>: tap <strong>Connect WhatsApp</strong> and send the bot the message you see (<strong lang="es">VINCULAR</strong> and the code).
         </p>
         <p>For now the bot answers in Spanish. Write your income and expenses the way you&apos;d tell someone, for example:</p>
         <BotExamples />
         <p>It also understands these commands:</p>
-        <BotCommands help="te recuerda todo esto (reminds you of all this)" />
+        <BotCommands locale="en" />
       </Topic>
 
       <Topic title="Bills and payment notices">
@@ -251,7 +258,7 @@ function EnglishTopics() {
         </p>
         <ul className="list-disc space-y-1 pl-5">
           <li>your figures and the income and expenses of each month;</li>
-          <li>what each category adds up to, and how it did last month compared with its average;</li>
+          <li>what each category adds up to, and how it did in the period&apos;s last month compared with its average;</li>
           <li>
             your {BIGGEST_SHOWN} biggest expenses and which days you spend the most.
           </li>

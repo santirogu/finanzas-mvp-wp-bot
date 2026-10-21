@@ -84,7 +84,7 @@ const TEXTS = texts(
       title: "Reports",
       period: "Period",
       noData: "You don't have transactions yet.",
-      noDataHint: "Once you add your income and expenses, here you'll see how you're doing month by month.",
+      noDataHint: "Once you add your income and expenses, you'll see how you're doing month by month here.",
       byMonth: "Income and expenses by month",
       allFixed: "All the expenses in the period are bills.",
       noExpenses: "No expenses in the period.",

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
+import { BotCommandsText } from "@/components/bot-commands-text";
 import type { Locale } from "@/i18n/locales";
 import { getLocale } from "@/i18n/server";
 import { texts } from "@/i18n/texts";
@@ -268,7 +269,7 @@ async function Bot({ params }: { params: Record<string, string | string[] | unde
                   >
                     <span className="flex justify-between gap-2 text-sm">
                       <span className={problem ? "font-medium text-danger" : selected ? "font-medium" : ""}>
-                        {OUTCOME_TEXTS[locale][o]}
+                        <BotCommandsText text={OUTCOME_TEXTS[locale][o]} locale={locale} />
                         {selected && <span className="font-normal text-muted">{t.filtering}</span>}
                       </span>
                       <span className="shrink-0 tabular-nums text-muted">
@@ -296,7 +297,9 @@ async function Bot({ params }: { params: Record<string, string | string[] | unde
           <h2 id="claude" className="font-semibold">
             {t.claudeTitle}
           </h2>
-          <p className="text-sm text-muted">{t.claudeIntro(formatPriceDate(PRICES_CHECKED_ON, locale))}</p>
+          <p className="text-sm text-muted">
+            <BotCommandsText text={t.claudeIntro(formatPriceDate(PRICES_CHECKED_ON, locale))} locale={locale} />
+          </p>
         </div>
         {/* Las llamadas ya están arriba. Dos columnas desde 352 px: un total de cientos de millones de
             tokens no cabe en una más angosta (e2e/diseno-tactil.spec.ts); tres desde sm. */}
