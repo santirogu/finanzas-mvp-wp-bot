@@ -5,6 +5,15 @@ una regla general. Una auditoría no marca lo que está aquí, pero puede propon
 lo aprueba, se cambia aquí y en `textos.mjs` (`VARIANTS` y las reglas), en el mismo PR que cambia los
 textos.
 
+## La marca
+
+- **Anotado**, siempre con mayúscula, también en el logo ("Gracias por usar Anotado"). Sale de
+  `BRAND_NAME` (`src/lib/brand.ts`).
+- No usar "Finanzas MVP", "Finanzas" ni "Finanzas Bot", los nombres de antes. Hay una excepción: donde
+  se explica el cambio, como en Google Authenticator: "Anotado (antes, Finanzas MVP)".
+- **Eslogan:** "Escribe tu gasto por WhatsApp. Queda anotado." (en inglés, "Text your expense on WhatsApp.
+  It's noted.").
+
 ## Trato y tono
 
 - **Tú**, en toda la app y en el bot: "escribe", "toca", "elige". Nunca usted ni vos.

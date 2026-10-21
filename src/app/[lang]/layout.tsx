@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
@@ -6,6 +6,7 @@ import { ThemeSync } from "@/components/theme-sync";
 import { LocaleProvider } from "@/i18n/client";
 import { LOCALES } from "@/i18n/locales";
 import { getLocale, getTexts } from "@/i18n/server";
+import { getAppUrl } from "@/lib/app-url";
 import { THEME_SCRIPT } from "@/lib/theme";
 import "../globals.css";
 import { APP_TEXTS } from "./app-texts";
@@ -22,8 +23,29 @@ const geistMono = Geist_Mono({
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTexts(APP_TEXTS);
-  return { title: { default: t.name, template: `%s · ${t.name}` }, description: t.description };
+  const shareImage = { url: "/opengraph-image.png", width: 1200, height: 630, alt: t.shareImage };
+  return {
+    title: { default: t.name, template: `%s · ${t.name}` },
+    description: t.description,
+    applicationName: t.name,
+    // Para que la imagen para compartir vaya con la dirección completa.
+    metadataBase: new URL(getAppUrl()),
+    // La vista previa al compartir el enlace (WhatsApp, redes), con la imagen de src/app/opengraph-image.png
+    // (scripts/brand-assets.mjs): Next no la agrega sola porque el layout raíz está en [lang]. Los íconos y
+    // el manifest sí salen solos de los archivos de src/app (icon.svg, apple-icon.png, favicon.ico, manifest.ts).
+    openGraph: { type: "website", siteName: t.name, title: t.name, description: t.description, images: [shareImage] },
+    twitter: { card: "summary_large_image", images: [shareImage] },
+    appleWebApp: { title: t.name, statusBarStyle: "default" },
+  };
 }
+
+// El color de la barra del navegador en el celular: el de la barra de la app, en claro y en oscuro.
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#161a20" },
+  ],
+};
 
 // Cada página se arma una vez por idioma (src/i18n/locales.ts): las públicas quedan prearmadas en todos.
 export function generateStaticParams() {

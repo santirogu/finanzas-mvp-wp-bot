@@ -70,8 +70,8 @@ describe("activar la verificación (solo admins)", () => {
     await makeAdmin("ana@test.local");
     const enabled = await json(await post("/two-factor/enable", { password: PASSWORD }, jar));
 
-    expect(enabled.totpURI).toMatch(/^otpauth:\/\/totp\/Finanzas%20MVP:ana%40test\.local\?/);
-    expect(new URL(enabled.totpURI as string).searchParams.get("issuer")).toBe("Finanzas MVP");
+    expect(enabled.totpURI).toMatch(/^otpauth:\/\/totp\/Anotado:ana%40test\.local\?/);
+    expect(new URL(enabled.totpURI as string).searchParams.get("issuer")).toBe("Anotado");
     expect(enabled.backupCodes).toHaveLength(10);
     expect((await userRow("ana@test.local")).twoFactorEnabled).toBe(false);
     expect(await db.select({ verified: twoFactor.verified }).from(twoFactor)).toEqual([{ verified: false }]);

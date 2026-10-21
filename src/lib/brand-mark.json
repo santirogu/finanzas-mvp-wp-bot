@@ -1,0 +1,9 @@
+{
+  "viewBox": "0 0 32 32",
+  "radius": 8,
+  "bubble": "M10 6h12a4 4 0 0 1 4 4v7a4 4 0 0 1-4 4h-9.5L6 25.5V10a4 4 0 0 1 4-4z",
+  "check": "M11.5 13.6l3.2 3.2 6.3-6.3",
+  "checkWidth": 3,
+  "brand": "#0f766e",
+  "brandForeground": "#ffffff"
+}

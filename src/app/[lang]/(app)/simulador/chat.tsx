@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition, type FormEvent } from "react";
 import { simulateMessageAction } from "./actions";
+import { BRAND_NAME } from "@/lib/brand";
 
 type Bubble =
   | { from: "user"; text: string }
@@ -80,7 +81,7 @@ export function Chat() {
             $
           </span>
           <div>
-            <p className="text-sm font-semibold">Finanzas Bot</p>
+            <p className="text-sm font-semibold">{BRAND_NAME}</p>
             <p className="text-xs text-muted">Simulación</p>
           </div>
         </div>

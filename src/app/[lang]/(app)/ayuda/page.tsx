@@ -12,8 +12,8 @@ import { SEARCH_FROM } from "@/modules/transactions/search";
 import { PageSkeleton } from "../page-skeleton";
 
 const TEXTS = texts(
-  { title: "Ayuda", intro: "Cómo sacarle provecho a Finanzas. Toca un tema para abrirlo.", topics: "Temas de ayuda" },
-  { en: { title: "Help", intro: "How to get the most out of Finanzas. Tap a topic to open it.", topics: "Help topics" } },
+  { title: "Ayuda", intro: "Cómo sacarle provecho a Anotado. Toca un tema para abrirlo.", topics: "Temas de ayuda" },
+  { en: { title: "Help", intro: "How to get the most out of Anotado. Tap a topic to open it.", topics: "Help topics" } },
 );
 
 export async function generateMetadata(): Promise<Metadata> {

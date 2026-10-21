@@ -9,7 +9,7 @@ test("con sesión, una dirección que no existe muestra la 404 en español y vue
   const response = await page.goto("/esta-pagina-no-existe");
 
   expect(response?.status()).toBe(404);
-  await expect(page).toHaveTitle("Página no encontrada · Finanzas");
+  await expect(page).toHaveTitle("Página no encontrada · Anotado");
   await expect(visible(page.getByRole("heading", heading))).toBeVisible();
   await expect(page.getByText(/could not be found/i)).toHaveCount(0);
 

@@ -7,7 +7,7 @@ const TEXTS = texts(
   {
     title: "Cuenta eliminada",
     heading: "Tu cuenta fue eliminada",
-    body: "Borramos tu cuenta, tus movimientos y los mensajes que le enviaste al bot de WhatsApp. Gracias por haber usado Finanzas MVP.",
+    body: "Borramos tu cuenta, tus movimientos y los mensajes que le enviaste al bot de WhatsApp. Gracias por haber usado Anotado.",
     home: "Ir al inicio",
     register: "Crear una cuenta nueva",
   },
@@ -15,7 +15,7 @@ const TEXTS = texts(
     en: {
       title: "Account deleted",
       heading: "Your account was deleted",
-      body: "We deleted your account, your transactions and the messages you sent to the WhatsApp bot. Thanks for using Finanzas MVP.",
+      body: "We deleted your account, your transactions and the messages you sent to the WhatsApp bot. Thanks for using Anotado.",
       home: "Go to home",
       register: "Create a new account",
     },

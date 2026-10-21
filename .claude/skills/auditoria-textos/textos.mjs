@@ -276,7 +276,7 @@ const UNACCENT = Object.fromEntries(
 
 // Nombres propios y de secciones de la app: no cuentan para las mayúsculas ni para las repeticiones.
 const PROPER = new Set(
-  "whatsapp claude anthropic google authenticator excel sheets finanzas vercel meta speed insights analytics web api pdf csv ip ipv6 https qr mvp geist resumen reportes ingresos egresos fijos ayuda notificaciones seguridad usuarios categorías historial inicio simulador overview reports income expenses bills help notifications security users categories history home account".split(" "),
+  "anotado whatsapp claude anthropic google authenticator excel sheets finanzas vercel meta speed insights analytics web api pdf csv ip ipv6 https qr mvp geist resumen reportes ingresos egresos fijos ayuda notificaciones seguridad usuarios categorías historial inicio simulador overview reports income expenses bills help notifications security users categories history home account".split(" "),
 );
 
 // [expresión, por qué, categoría]. Las expresiones son pistas para el criterio, no errores seguros.
@@ -313,6 +313,7 @@ const ES_RULES = [
   [/\b(usted|ustedes)\b/iu, "la app tutea (glosario)", "glosario"],
   [/\b(ingrese|seleccione|haga|elija|toque|presione|introduzca|verifique|intente|confirme|revise)\b/iu, "¿imperativo de «usted»? La app tutea", "glosario"],
   [/\b(e-?mails?|click|clickea|cliquea|links?|login|logout|loguea\w*|setear|resetear|customizar|chequear|checkear|password|feedback|dashboard|online|upload|download)\b/iu, "anglicismo (glosario)", "glosario"],
+  [/\bFinanzas (MVP|Bot)\b(?!\))/u, "la marca es Anotado (glosario); el nombre viejo, solo para explicar el cambio", "glosario"],
 ];
 const EN_RULES = [
   [/[¿¡]/u, "Spanish punctuation in English", "puntuación"],

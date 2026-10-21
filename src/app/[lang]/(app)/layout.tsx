@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import { Logo } from "@/components/logo";
 import { Toaster, UrlToasts } from "@/components/toaster";
 import { hasRole } from "@/lib/roles";
 import { requireUser } from "@/lib/session";
@@ -20,8 +21,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <header className="border-b border-border bg-surface">
           {/* relative: la lista de la campana se abre, en pantallas angostas, a lo ancho de esta fila. */}
           <div className="relative mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 pt-4">
-            <Link href="/dashboard" className="font-semibold tracking-tight">
-              Finanzas <span className="text-brand">MVP</span>
+            <Link href="/dashboard" className="text-lg">
+              <Logo />
             </Link>
             <div className="flex items-center gap-2">
               {/* La sesión se lee dentro de Suspense para no bloquear el resto del layout. La campana aparece

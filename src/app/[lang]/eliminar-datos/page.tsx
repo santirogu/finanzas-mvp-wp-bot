@@ -10,14 +10,14 @@ import { SpanishOnlyNote } from "../privacidad/spanish-only";
 
 export const metadata: Metadata = {
   title: "Eliminar tus datos",
-  description: "Cómo desconectar WhatsApp y eliminar tu cuenta y tus datos de Finanzas MVP.",
+  description: "Cómo desconectar WhatsApp y eliminar tu cuenta y tus datos de Anotado.",
 };
 
 export default function DataDeletionPage() {
   return (
     <main lang="es" className="mx-auto w-full max-w-3xl px-6 py-12">
       <Link href="/" className="text-sm font-medium text-brand">
-        ← Finanzas MVP
+        ← Anotado
       </Link>
       <SpanishOnlyNote />
       <h1 className="mt-4 text-3xl font-semibold tracking-tight">Eliminar tus datos</h1>

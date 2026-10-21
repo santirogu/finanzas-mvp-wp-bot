@@ -20,7 +20,7 @@ test("el estado de la app, la versión, la base, la limpieza y los despliegues @
   await newAdmin(page);
   await setUpTwoFactor(page);
   await page.goto("/admin/salud");
-  await expect(page).toHaveTitle("Salud del sistema · Administración · Finanzas");
+  await expect(page).toHaveTitle("Salud del sistema · Administración · Anotado");
 
   await test.step("el estado: todo en orden y cada revisión", async () => {
     await expect(region(page, "Salud del sistema")).toContainText("Todo en orden");
