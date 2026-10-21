@@ -1,4 +1,4 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { and, asc, eq, isNull } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "@/db";
 import { adminCodeUse, category, categoryChange, transaction, user } from "@/db/schema";
@@ -44,10 +44,13 @@ async function addTransaction(userId: string, categoryId: string | null, overrid
   return row;
 }
 
+// Ordenados por fecha: sin ORDER BY, el orden es el de la tabla, que no siempre es el de llegada (con varias
+// conexiones, cada una guarda en la página que tiene a mano).
 const changes = () =>
   db
     .select({ action: categoryChange.action, type: categoryChange.type, name: categoryChange.name, emoji: categoryChange.emoji, details: categoryChange.details })
-    .from(categoryChange);
+    .from(categoryChange)
+    .orderBy(asc(categoryChange.createdAt));
 
 beforeEach(() => {
   auth.requireAdmin.mockReset();

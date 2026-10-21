@@ -95,6 +95,14 @@ Archivos: `*.int.test.ts`, `test/integration/` (`factories.ts`, `setup.ts`, `glo
   violarlos (la base es la última defensa si el código falla).
 - **Independencia:** cada prueba crea sus datos con las factories y no depende de lo que dejó otra
   (corren un archivo a la vez, pero el orden dentro del archivo no debería importar).
+- **Listas en orden:** una lista leída de la base que se compara en orden (`toEqual([a, b])`) lleva
+  `orderBy`.
+  - Sin `ORDER BY`, Postgres devuelve las filas en el orden en que quedaron en la tabla, y no siempre
+    es el de llegada.
+  - El pool tiene varias conexiones, y después de un `Promise.all` las consultas siguientes van rotando
+    entre ellas: cada una guarda en la página que tiene a mano.
+  - Falla muy de vez en cuando, con la base cargada (le pasó a "pausar y reanudar Claude").
+  - Si el orden no importa, `.sort()` o `expect.arrayContaining`.
 
 ## componentes — React Testing Library
 

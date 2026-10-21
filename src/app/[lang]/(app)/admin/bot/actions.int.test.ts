@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "@/db";
 import { accountEvent, botSetting, whatsappMessage } from "@/db/schema";
@@ -31,7 +31,15 @@ const form = (fields: Record<string, string>) => {
   for (const [key, value] of Object.entries(fields)) data.set(key, value);
   return data;
 };
-const events = () => db.select({ type: accountEvent.type, userId: accountEvent.userId, adminId: accountEvent.adminId, details: accountEvent.details }).from(accountEvent);
+// Ordenados por fecha: sin ORDER BY, Postgres los devuelve en el orden en que quedaron en la tabla, que no
+// siempre es el de llegada. Entre pausar y reanudar, botSettingsForAdmin hace consultas en paralelo y las
+// siguientes van por otras conexiones: cada una guarda en la página que tiene a mano, y a veces "reanudó"
+// salía primero.
+const events = () =>
+  db
+    .select({ type: accountEvent.type, userId: accountEvent.userId, adminId: accountEvent.adminId, details: accountEvent.details })
+    .from(accountEvent)
+    .orderBy(asc(accountEvent.createdAt));
 
 describe("pausar y reanudar Claude", () => {
   it("sin cambios nadie la tocó: Claude activo y los topes de siempre", async () => {
