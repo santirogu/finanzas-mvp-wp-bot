@@ -61,6 +61,15 @@ describe("getLastPayments", () => {
     expect(last.has("gimnasio borrado")).toBe(false);
     expect(last.has("salario")).toBe(false);
   });
+
+  it("en inglés, con el nombre en inglés de la categoría", async () => {
+    const user = await createUser();
+    const salud = await globalCategory("Salud");
+    await db.update(category).set({ nameEn: "Health" }).where(eq(category.id, salud.id));
+    await addExpense(user.id, { categoryId: salud.id });
+    expect((await getLastPayments(user.id, "en")).get("gimnasio")).toMatchObject({ category: `${salud.emoji} Health` });
+    expect((await getLastPayments(user.id)).get("gimnasio")).toMatchObject({ category: `${salud.emoji} Salud` });
+  });
 });
 
 describe("registerFixedPayment", () => {

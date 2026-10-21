@@ -35,6 +35,7 @@ beforeEach(() => {
 const cat = (overrides: Partial<ManagedCategory>): ManagedCategory => ({
   id: "c1",
   name: "Mercado",
+  nameEn: null,
   emoji: "🛒",
   archived: false,
   movements: 124,
@@ -78,7 +79,7 @@ describe("la lista", () => {
     renderManager();
     const otros = within(row("Otros"));
     expect(otros.getByText("Por defecto")).toBeInTheDocument();
-    expect(row("Otros")).toHaveTextContent("solo se cambia el emoji");
+    expect(row("Otros")).toHaveTextContent("su nombre no se cambia");
     expect(otros.getByRole("button", { name: "Editar Otros" })).toBeInTheDocument();
     expect(otros.queryByRole("button", { name: /Más acciones/ })).toBeNull();
   });
@@ -164,7 +165,7 @@ describe("crear y editar (sin código)", () => {
     expect(within(dialog()).getByRole("button", { name: "Usar 🐾" })).toHaveAttribute("aria-pressed", "true");
     await userEvent.click(within(dialog()).getByRole("button", { name: "Crear" }));
 
-    expect(Object.fromEntries(actions.createCategoryAction.mock.calls[0][1] as FormData)).toEqual({ type: "expense", name: "Mascotas", emoji: "🐾" });
+    expect(Object.fromEntries(actions.createCategoryAction.mock.calls[0][1] as FormData)).toEqual({ type: "expense", name: "Mascotas", nameEn: "", emoji: "🐾" });
     const toast = await findToast();
     expect(toast).toHaveTextContent("Se creó la categoría 🐾 Mascotas.");
     expect(toast).toHaveAttribute("data-tone", "success");
@@ -186,7 +187,7 @@ describe("crear y editar (sin código)", () => {
     await userEvent.type(name, "Salud");
     await userEvent.click(within(dialog()).getByRole("button", { name: "Guardar" }));
 
-    expect(Object.fromEntries(actions.updateCategoryAction.mock.calls[0][1] as FormData)).toEqual({ id: "c1", name: "Salud", emoji: "🛒" });
+    expect(Object.fromEntries(actions.updateCategoryAction.mock.calls[0][1] as FormData)).toEqual({ id: "c1", name: "Salud", nameEn: "", emoji: "🛒" });
     expect(await within(dialog()).findByText("Ya hay una categoría de egresos con ese nombre.")).toBeInTheDocument();
     expect(name).toHaveAttribute("aria-invalid", "true");
     expect(name).toHaveAccessibleDescription("Ya hay una categoría de egresos con ese nombre.");
@@ -222,7 +223,7 @@ describe("crear y editar (sin código)", () => {
     renderManager();
     await userEvent.click(screen.getByRole("button", { name: "Editar Otros" }));
     expect(within(dialog()).getByLabelText("Nombre")).toHaveAttribute("readonly");
-    expect(within(dialog()).getByText('A "Otros" solo se le puede cambiar el emoji.')).toBeInTheDocument();
+    expect(within(dialog()).getByText('A "Otros" solo se le pueden cambiar el emoji y el nombre en inglés.')).toBeInTheDocument();
   });
 });
 
@@ -332,7 +333,7 @@ describe("en inglés", () => {
     const active = within(screen.getByRole("list", { name: "Expense categories" }));
     expect(active.getAllByRole("listitem")[0]).toHaveTextContent("Mercado124 transactions");
     expect(row("Café")).toHaveTextContent("No transactions");
-    expect(row("Otros")).toHaveTextContent("OtrosDefault57 transactions · only the emoji changes");
+    expect(row("Otros")).toHaveTextContent("OtrosDefault57 transactions · its name can't change");
     expect(screen.getByRole("button", { name: "Edit Mercado" })).toHaveTextContent("Edit");
     expect(screen.getByRole("heading", { name: "Archived" })).toBeInTheDocument();
     expect(within(screen.getByRole("list", { name: "Archived expense categories" })).getByRole("button", { name: "Restore Videojuegos" })).toBeInTheDocument();
@@ -370,7 +371,56 @@ describe("en inglés", () => {
     renderEnglish();
     await userEvent.click(screen.getByRole("button", { name: "Edit Otros" }));
     expect(dialog()).toHaveAccessibleName("Edit the category Otros");
-    expect(within(dialog()).getByText('Only the emoji of "Otros" can be changed.')).toBeInTheDocument();
+    expect(within(dialog()).getByText('Only the emoji and the English name of "Otros" can be changed.')).toBeInTheDocument();
     expect(within(dialog()).getByRole("button", { name: "Save" })).toBeInTheDocument();
+  });
+});
+
+describe("el nombre en inglés", () => {
+  it("la fila lo muestra; el formulario lo pide (opcional, en inglés) y lo envía", async () => {
+    actions.createCategoryAction.mockResolvedValue({ message: "Se creó la categoría 🐾 Mascotas." });
+    renderManager([cat({ id: "c1", nameEn: "Groceries" }), ...CATEGORIES.slice(1)]);
+    expect(row("Mercado")).toHaveTextContent("124 movimientos · en inglés: Groceries");
+    await userEvent.click(screen.getByRole("button", { name: "Nueva categoría" }));
+    const english = within(dialog()).getByRole("textbox", { name: "Nombre en inglés (opcional)" });
+    expect(english).toHaveAttribute("lang", "en");
+    expect(english).toHaveAttribute("maxlength", "40");
+    expect(english).not.toBeRequired();
+    expect(english).toHaveAccessibleDescription(
+      "Así se ve con la app en inglés. Si lo dejas vacío, en inglés se ve el nombre de arriba. El bot usa siempre el de arriba.",
+    );
+    await userEvent.type(within(dialog()).getByLabelText("Nombre"), "Mascotas");
+    await userEvent.type(english, "Pets");
+    await userEvent.click(within(dialog()).getByRole("button", { name: "Crear" }));
+    expect(Object.fromEntries(actions.createCategoryAction.mock.calls[0][1] as FormData)).toMatchObject({ name: "Mascotas", nameEn: "Pets" });
+  });
+
+  it("al editar trae el de ahora; el error del servidor va junto a su campo", async () => {
+    actions.updateCategoryAction.mockResolvedValue({ error: "Ya hay una categoría de egresos con ese nombre en inglés.", field: "nameEn" });
+    renderManager([cat({ id: "c1", nameEn: "Groceries" })]);
+    await userEvent.click(screen.getByRole("button", { name: "Editar Mercado" }));
+    const english = within(dialog()).getByRole("textbox", { name: "Nombre en inglés (opcional)" });
+    expect(english).toHaveValue("Groceries");
+    await userEvent.click(within(dialog()).getByRole("button", { name: "Guardar" }));
+    expect(await within(dialog()).findByText("Ya hay una categoría de egresos con ese nombre en inglés.")).toBeInTheDocument();
+    expect(english).toHaveAttribute("aria-invalid", "true");
+    expect(english).toHaveAccessibleDescription(expect.stringContaining("Ya hay una categoría de egresos con ese nombre en inglés."));
+    expect(within(dialog()).getByLabelText("Nombre")).not.toHaveAttribute("aria-invalid");
+  });
+
+  it("en Otros, el nombre no se edita pero el de inglés sí", async () => {
+    renderManager();
+    await userEvent.click(screen.getByRole("button", { name: "Editar Otros" }));
+    expect(within(dialog()).getByLabelText("Nombre")).toHaveAttribute("readonly");
+    expect(within(dialog()).getByRole("textbox", { name: "Nombre en inglés (opcional)" })).not.toHaveAttribute("readonly");
+  });
+
+  it("en inglés", async () => {
+    render(<CategoryManager type="expense" categories={[cat({ id: "c1", nameEn: "Groceries" })]} />, { english: true });
+    expect(row("Mercado")).toHaveTextContent("124 transactions · English: Groceries");
+    await userEvent.click(screen.getByRole("button", { name: "Edit Mercado" }));
+    expect(within(dialog()).getByRole("textbox", { name: "English name (optional)" })).toHaveAccessibleDescription(
+      "This is what you see with the app in English. If you leave it empty, English shows the name above. The bot always uses the name above.",
+    );
   });
 });

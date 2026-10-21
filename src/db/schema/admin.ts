@@ -21,6 +21,9 @@ export type CategoryChangeDetails = {
   /** Antes de editarla (updated). */
   previousName?: string;
   previousEmoji?: string;
+  /** El nombre en inglés, si cambió al editarla (updated; null: sin nombre en inglés). */
+  nameEn?: string | null;
+  previousNameEn?: string | null;
   /** Cuántos movimientos pasaron a "Otros" al eliminarla (deleted). */
   moved?: number;
 };

@@ -35,10 +35,13 @@ export function foldName(name: string): string {
 /** ¿Es "Otros", la categoría por defecto? */
 export const isDefaultCategory = (name: string) => foldName(name) === foldName(DEFAULT_CATEGORY);
 
-/** Alfabético (sin importar tildes ni mayúsculas), con "Otros" siempre al final. */
-export function sortCategories<T extends { name: string }>(categories: readonly T[]): T[] {
+/**
+ * Alfabético (sin importar tildes ni mayúsculas), con "Otros" siempre al final. `label`: el nombre a la vista
+ * (en inglés, el de `name_en`), por el que se ordena; "Otros" se reconoce siempre por `name`.
+ */
+export function sortCategories<T extends { name: string }>(categories: readonly T[], label: (category: T) => string = (c) => c.name): T[] {
   return [...categories].sort((a, b) => {
     const byDefault = Number(isDefaultCategory(a.name)) - Number(isDefaultCategory(b.name));
-    return byDefault || a.name.localeCompare(b.name, "es", { sensitivity: "base" });
+    return byDefault || label(a).localeCompare(label(b), "es", { sensitivity: "base" });
   });
 }

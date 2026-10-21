@@ -65,8 +65,8 @@ export async function TransactionsView({ type, params = {} }: { type: "income" |
   const range = selectedMonth(params.mes, current);
   const requested = noticeFrom(params);
   const [items, categories, notice, activeMonths, suggestions] = await Promise.all([
-    listTransactions(user.id, range, { type }),
-    listCategories(user.id, type),
+    listTransactions(user.id, range, { type, locale }),
+    listCategories(user.id, type, locale),
     requested ? getTransactionNotice(user.id, requested.id, requested.kind) : null,
     listActiveMonths(user.id),
     // Las descripciones de los últimos meses, para sugerirlas al escribir.

@@ -15,7 +15,7 @@ import {
 // "Otros", el código para archivar y eliminar, el registro de cambios) está en
 // src/modules/admin/categories/categories.ts.
 
-export type CategoryActionState = { error?: string; field?: "name" | "emoji" | "code"; message?: string };
+export type CategoryActionState = { error?: string; field?: "name" | "nameEn" | "emoji" | "code"; message?: string };
 
 const text = (formData: FormData, name: string) => String(formData.get(name) ?? "");
 
@@ -28,12 +28,16 @@ function settle(result: CategoryResult): CategoryActionState {
 
 export async function createCategoryAction(_prev: CategoryActionState, formData: FormData): Promise<CategoryActionState> {
   await requireAdmin();
-  return settle(await createCategory({ type: text(formData, "type"), name: text(formData, "name"), emoji: text(formData, "emoji") }));
+  return settle(
+    await createCategory({ type: text(formData, "type"), name: text(formData, "name"), nameEn: text(formData, "nameEn"), emoji: text(formData, "emoji") }),
+  );
 }
 
 export async function updateCategoryAction(_prev: CategoryActionState, formData: FormData): Promise<CategoryActionState> {
   await requireAdmin();
-  return settle(await updateCategory({ id: text(formData, "id"), name: text(formData, "name"), emoji: text(formData, "emoji") }));
+  return settle(
+    await updateCategory({ id: text(formData, "id"), name: text(formData, "name"), nameEn: text(formData, "nameEn"), emoji: text(formData, "emoji") }),
+  );
 }
 
 export async function archiveCategoryAction(_prev: CategoryActionState, formData: FormData): Promise<CategoryActionState> {

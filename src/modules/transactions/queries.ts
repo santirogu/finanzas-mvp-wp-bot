@@ -2,10 +2,12 @@ import "server-only";
 import { and, desc, eq, gte, isNull, lt, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { category, transaction, type TransactionType } from "@/db/schema";
+import { DEFAULT_LOCALE, type Locale } from "@/i18n/locales";
 import type { MonthRange } from "@/lib/dates";
 import { roundToCents } from "@/lib/money";
+import { categoryLabel, categoryNameIn } from "./category-name";
 import { sortCategories } from "./default-categories";
-import { NO_CATEGORY } from "./search";
+import { NO_CATEGORIES } from "./search";
 
 // Todas las consultas reciben el userId ya validado por el Data Access Layer
 // (src/lib/session.ts) y siempre filtran por él.
@@ -34,27 +36,31 @@ export async function getMonthlySummary(userId: string, range: MonthRange) {
   return { income, expense, balance: roundToCents(income - expense), count: row.count };
 }
 
-/** Cuánto suma cada categoría en el mes; los movimientos sin categoría van juntos, con el nombre `noCategory`. */
-export async function getTotalsByCategory(userId: string, type: TransactionType, range: MonthRange, noCategory = NO_CATEGORY) {
+/**
+ * Cuánto suma cada categoría en el mes, con su nombre en el idioma de la página; los movimientos sin
+ * categoría van juntos ("Sin categoría").
+ */
+export async function getTotalsByCategory(userId: string, type: TransactionType, range: MonthRange, locale: Locale = DEFAULT_LOCALE) {
   const rows = await db
     .select({
-      name: sql<string>`coalesce(${category.name}, ${noCategory})`,
+      name: sql<string>`coalesce(${categoryNameIn(locale)}, ${NO_CATEGORIES[locale]})`,
       emoji: sql<string>`coalesce(${category.emoji}, '•')`,
       total: sql<string>`sum(${transaction.amount})`,
     })
     .from(transaction)
     .leftJoin(category, eq(category.id, transaction.categoryId))
     .where(and(activeInMonth(userId, range), eq(transaction.type, type)))
-    .groupBy(category.name, category.emoji)
+    .groupBy(category.name, category.nameEn, category.emoji)
     .orderBy(desc(sql`sum(${transaction.amount})`));
 
   return rows.map((r) => ({ ...r, total: Number(r.total) }));
 }
 
+/** Los movimientos del mes, con el nombre de su categoría en el idioma de la página (`locale`). */
 export async function listTransactions(
   userId: string,
   range: MonthRange,
-  options: { type?: TransactionType; limit?: number } = {},
+  options: { type?: TransactionType; limit?: number; locale?: Locale } = {},
 ) {
   return db
     .select({
@@ -65,7 +71,7 @@ export async function listTransactions(
       description: transaction.description,
       occurredOn: transaction.occurredOn,
       source: transaction.source,
-      categoryName: category.name,
+      categoryName: categoryNameIn(options.locale),
       categoryEmoji: category.emoji,
     })
     .from(transaction)
@@ -178,11 +184,12 @@ export async function getTransactionNotice(userId: string, id: string, kind: "de
 
 /**
  * Las categorías que puede elegir el usuario (las globales y las suyas), sin las archivadas: las de
- * los formularios y las que conoce el bot. Alfabéticas, con "Otros" al final.
+ * los formularios y las que conoce el bot. Alfabéticas, con "Otros" al final, y con el nombre en el idioma
+ * de la página (el bot no pasa `locale`: las conoce en español).
  */
-export async function listCategories(userId: string, type: TransactionType) {
+export async function listCategories(userId: string, type: TransactionType, locale: Locale = DEFAULT_LOCALE) {
   const rows = await db
-    .select({ id: category.id, name: category.name, emoji: category.emoji })
+    .select({ id: category.id, name: category.name, nameEn: category.nameEn, emoji: category.emoji })
     .from(category)
     .where(
       and(
@@ -191,20 +198,21 @@ export async function listCategories(userId: string, type: TransactionType) {
         isNull(category.archivedAt),
       ),
     );
-  return sortCategories(rows);
+  const label = (row: (typeof rows)[number]) => categoryLabel(row, locale);
+  return sortCategories(rows, label).map((row) => ({ id: row.id, name: label(row), emoji: row.emoji }));
 }
 
 /**
  * La categoría de un movimiento, aunque esté archivada: para que al editarlo no se pierda sin querer.
  * null si no tiene o no es una que pueda ver el usuario.
  */
-export async function getCategoryOption(userId: string, categoryId: string | null) {
+export async function getCategoryOption(userId: string, categoryId: string | null, locale: Locale = DEFAULT_LOCALE) {
   if (!categoryId) return null;
   const [row] = await db
-    .select({ id: category.id, name: category.name, emoji: category.emoji, archivedAt: category.archivedAt })
+    .select({ id: category.id, name: category.name, nameEn: category.nameEn, emoji: category.emoji, archivedAt: category.archivedAt })
     .from(category)
     .where(and(eq(category.id, categoryId), or(isNull(category.userId), eq(category.userId, userId))));
-  return row ? { id: row.id, name: row.name, emoji: row.emoji, archived: row.archivedAt !== null } : null;
+  return row ? { id: row.id, name: categoryLabel(row, locale), emoji: row.emoji, archived: row.archivedAt !== null } : null;
 }
 
 /**

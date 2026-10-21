@@ -25,6 +25,8 @@ import {
 export type ManagedCategory = {
   id: string;
   name: string;
+  /** El nombre con la app en inglés (null: se ve `name`). */
+  nameEn: string | null;
   emoji: string;
   archived: boolean;
   movements: number;
@@ -64,7 +66,8 @@ const TEXTS = texts(
     deleteEmpty: "No tiene movimientos. La eliminación queda en el registro de cambios y no se puede deshacer.",
     movements: (n: number): string => (n === 0 ? "Sin movimientos" : `${n} ${n === 1 ? "movimiento" : "movimientos"}`),
     byDefault: "Por defecto",
-    onlyEmoji: " · solo se cambia el emoji",
+    onlyEmoji: " · su nombre no se cambia",
+    inEnglish: (name: string) => ` · en inglés: ${name}`,
     edit: "Editar",
     editLabel: (name: string) => `Editar ${name}`,
     more: (name: string) => `Más acciones para ${name}`,
@@ -77,7 +80,9 @@ const TEXTS = texts(
     formIntro: (typeName: string) => `${typeName} · se aplica de inmediato en los formularios y en el bot.`,
     renameNote: " Los movimientos que ya la usan pasan a verse con el nombre nuevo.",
     name: "Nombre",
-    defaultOnlyEmoji: `A "${DEFAULT_CATEGORY}" solo se le puede cambiar el emoji.`,
+    nameEn: "Nombre en inglés",
+    nameEnHelp: "Así se ve con la app en inglés. Si lo dejas vacío, en inglés se ve el nombre de arriba. El bot usa siempre el de arriba.",
+    defaultOnlyEmoji: `A "${DEFAULT_CATEGORY}" solo se le pueden cambiar el emoji y el nombre en inglés.`,
     emoji: "Emoji",
     optional: "(opcional)",
     emojiHelp: "Toca uno de los sugeridos o escribe otro. Si lo dejas vacío, la categoría se mostrará con un punto (•).",
@@ -115,7 +120,8 @@ const TEXTS = texts(
       deleteEmpty: "It has no transactions. The deletion stays in the change log and can't be undone.",
       movements: (n) => (n === 0 ? "No transactions" : `${n} ${n === 1 ? "transaction" : "transactions"}`),
       byDefault: "Default",
-      onlyEmoji: " · only the emoji changes",
+      onlyEmoji: " · its name can't change",
+      inEnglish: (name) => ` · English: ${name}`,
       edit: "Edit",
       editLabel: (name) => `Edit ${name}`,
       more: (name) => `More actions for ${name}`,
@@ -128,7 +134,9 @@ const TEXTS = texts(
       formIntro: (typeName) => `${typeName} · it applies right away in the forms and in the bot.`,
       renameNote: " The transactions that already use it will show the new name.",
       name: "Name",
-      defaultOnlyEmoji: `Only the emoji of "${DEFAULT_CATEGORY}" can be changed.`,
+      nameEn: "English name",
+      nameEnHelp: "This is what you see with the app in English. If you leave it empty, English shows the name above. The bot always uses the name above.",
+      defaultOnlyEmoji: `Only the emoji and the English name of "${DEFAULT_CATEGORY}" can be changed.`,
       emoji: "Emoji",
       optional: "(optional)",
       emojiHelp: "Tap one of the suggestions or type another. If you leave it empty, the category will show a dot (•).",
@@ -271,6 +279,7 @@ function CategoryRow({ category, onEdit, children }: { category: ManagedCategory
         </p>
         <p className="text-xs text-muted">
           {t.movements(category.movements)}
+          {category.nameEn && t.inEnglish(category.nameEn)}
           {category.isDefault && t.onlyEmoji}
         </p>
       </div>
@@ -407,6 +416,9 @@ function CategoryFormDialog({
   const { errors, formProps } = useFieldErrors({ name: { required: t.nameRequired } });
   // El del navegador (antes de enviar) o el del servidor (un nombre repetido, p. ej.).
   const nameMessage = errors.name ?? (state.field === "name" ? state.error : undefined);
+  const nameEnMessage = state.field === "nameEn" ? state.error : undefined;
+  const nameEnError = useId();
+  const nameEnHelp = useId();
   const [emoji, setEmoji] = useState(category?.emoji ?? "");
   const nameError = useId();
   const emojiError = useId();
@@ -440,6 +452,31 @@ function CategoryFormDialog({
             {nameMessage && (
               <p id={nameError} className="text-xs text-danger">
                 {nameMessage}
+              </p>
+            )}
+          </div>
+          <div className="space-y-1.5">
+            <label className="block space-y-1.5">
+              <span className="block text-sm font-medium">
+                {t.nameEn} <span className="font-normal text-muted">{t.optional}</span>
+              </span>
+              <input
+                name="nameEn"
+                lang="en"
+                maxLength={CATEGORY_NAME_MAX}
+                defaultValue={category?.nameEn ?? ""}
+                autoComplete="off"
+                aria-invalid={Boolean(nameEnMessage) || undefined}
+                aria-describedby={describedBy(nameEnHelp, nameEnMessage && nameEnError)}
+                className="input"
+              />
+            </label>
+            <p id={nameEnHelp} className="text-xs text-muted">
+              {t.nameEnHelp}
+            </p>
+            {nameEnMessage && (
+              <p id={nameEnError} className="text-xs text-danger">
+                {nameEnMessage}
               </p>
             )}
           </div>

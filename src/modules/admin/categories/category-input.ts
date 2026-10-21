@@ -60,6 +60,12 @@ export function parseCategoryName(raw: string, locale: Locale = DEFAULT_LOCALE):
 const PICTOGRAPH = new RegExp("\\p{Extended_Pictographic}|\\p{Regional_Indicator}", "u");
 const graphemes = (text: string) => [...new Intl.Segmenter("es").segment(text)].length;
 
+/** El nombre en inglés que escribió el admin (opcional): vacío es null (en inglés se ve el de siempre). */
+export function parseEnglishName(raw: string, locale: Locale = DEFAULT_LOCALE): Parsed<string | null> {
+  if (!raw.trim()) return { ok: true, value: null };
+  return parseCategoryName(raw, locale);
+}
+
 /** El emoji que escribió el admin; vacío es "•". */
 export function parseEmoji(raw: string, locale: Locale = DEFAULT_LOCALE): Parsed<string> {
   const emoji = raw.trim();
@@ -85,19 +91,40 @@ export function changeSentence(change: CategoryChangeEntry, locale: Locale = DEF
   return (locale === "es" ? spanishSentence : englishSentence)(change);
 }
 
+/** Qué cambió al editarla: el nombre, el emoji o (solo) el nombre en inglés. */
+function whatChanged(change: CategoryChangeEntry): "name" | "emoji" | "english" {
+  const { previousName, previousEmoji } = change.details;
+  if (previousName && previousName !== change.name) return "name";
+  if ("nameEn" in change.details && (previousEmoji ?? DEFAULT_EMOJI) === change.emoji) return "english";
+  return "emoji";
+}
+
+/** El detalle del nombre en inglés: al crearla, cuál; al editarla, el de antes y el de ahora ("—": sin). */
+function englishDetail(change: CategoryChangeEntry, prefix: string): string | null {
+  const { nameEn, previousNameEn } = change.details;
+  if (change.action === "created") return nameEn ? `${prefix}: ${nameEn}` : null;
+  if (!("nameEn" in change.details)) return null;
+  return `${prefix}: ${previousNameEn ?? "—"} → ${nameEn ?? "—"}`;
+}
+
 function spanishSentence(change: CategoryChangeEntry): { text: string; detail: string | null } {
   const admin = change.admin?.name ?? "Un admin";
   const label = `${change.emoji} ${change.name}`;
   const kind = CATEGORY_TYPE_LABELS[change.type].toLowerCase();
   const { previousName, previousEmoji, moved } = change.details;
+  const english = englishDetail(change, "en inglés");
   switch (change.action) {
     case "created":
-      return { text: `${admin} creó ${label} (${kind})`, detail: null };
+      return { text: `${admin} creó ${label} (${kind})`, detail: english };
     case "updated":
-      if (previousName && previousName !== change.name) {
-        return { text: `${admin} renombró ${previousName} a ${label} (${kind})`, detail: null };
+      switch (whatChanged(change)) {
+        case "name":
+          return { text: `${admin} renombró ${previousName} a ${label} (${kind})`, detail: english };
+        case "english":
+          return { text: `${admin} cambió el nombre en inglés de ${label} (${kind})`, detail: english };
+        case "emoji":
+          return { text: `${admin} cambió el emoji de ${change.name} (${kind}): ${previousEmoji ?? DEFAULT_EMOJI} → ${change.emoji}`, detail: english };
       }
-      return { text: `${admin} cambió el emoji de ${change.name} (${kind}): ${previousEmoji ?? DEFAULT_EMOJI} → ${change.emoji}`, detail: null };
     case "archived":
       return { text: `${admin} archivó ${label} (${kind})`, detail: null };
     case "restored":
@@ -115,14 +142,19 @@ function englishSentence(change: CategoryChangeEntry): { text: string; detail: s
   const label = `${change.emoji} ${change.name}`;
   const kind = CATEGORY_TYPE_TEXTS.en[change.type].toLowerCase();
   const { previousName, previousEmoji, moved } = change.details;
+  const english = englishDetail(change, "in English");
   switch (change.action) {
     case "created":
-      return { text: `${admin} created ${label} (${kind})`, detail: null };
+      return { text: `${admin} created ${label} (${kind})`, detail: english };
     case "updated":
-      if (previousName && previousName !== change.name) {
-        return { text: `${admin} renamed ${previousName} to ${label} (${kind})`, detail: null };
+      switch (whatChanged(change)) {
+        case "name":
+          return { text: `${admin} renamed ${previousName} to ${label} (${kind})`, detail: english };
+        case "english":
+          return { text: `${admin} changed the English name of ${label} (${kind})`, detail: english };
+        case "emoji":
+          return { text: `${admin} changed the emoji of ${change.name} (${kind}): ${previousEmoji ?? DEFAULT_EMOJI} → ${change.emoji}`, detail: english };
       }
-      return { text: `${admin} changed the emoji of ${change.name} (${kind}): ${previousEmoji ?? DEFAULT_EMOJI} → ${change.emoji}`, detail: null };
     case "archived":
       return { text: `${admin} archived ${label} (${kind})`, detail: null };
     case "restored":

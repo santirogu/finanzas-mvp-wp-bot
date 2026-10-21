@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { z } from "zod";
 import { TransactionForm } from "@/components/transaction-form";
-import { getTexts } from "@/i18n/server";
+import { getLocale, getTexts } from "@/i18n/server";
 import { texts } from "@/i18n/texts";
 import { currentMonthRange, monthOf, todayInTimezone } from "@/lib/dates";
 import { monthHref } from "@/lib/month-nav";
@@ -33,15 +33,16 @@ export default function EditTransactionPage({ params }: PageProps<"/[lang]/movim
 
 async function EditTransaction({ id }: { id: string }) {
   const user = await requireUser();
-  const t = await getTexts(TEXTS);
+  const locale = await getLocale();
+  const t = TEXTS[locale];
   // Un id inválido, un movimiento de otro usuario o uno eliminado: todos dan el mismo 404, sin
   // revelar si el movimiento existe.
   const transaction = z.uuid().safeParse(id).success ? await getTransaction(user.id, id) : null;
   if (!transaction) notFound();
 
   const [active, current] = await Promise.all([
-    listCategories(user.id, transaction.type),
-    getCategoryOption(user.id, transaction.categoryId),
+    listCategories(user.id, transaction.type, locale),
+    getCategoryOption(user.id, transaction.categoryId, locale),
   ]);
   // Si el admin archivó su categoría, se sigue ofreciendo (marcada) para no perderla al guardar.
   const categories = current?.archived ? [...active, current] : active;

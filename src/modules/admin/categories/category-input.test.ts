@@ -13,6 +13,7 @@ import {
   foldName,
   isDefaultCategory,
   parseCategoryName,
+  parseEnglishName,
   parseCategoryType,
   parseEmoji,
   sortCategories,
@@ -199,5 +200,51 @@ describe("en inglés", () => {
     [{ action: "deleted", admin: null }, "An admin deleted the category ☕ Café (expenses)", null],
   ] as const)("el cambio %j", (overrides, text, detail) => {
     expect(changeSentence(change(overrides as Partial<CategoryChangeEntry>), "en")).toEqual({ text, detail });
+  });
+});
+
+describe("el nombre en inglés", () => {
+  const change = (overrides: Partial<CategoryChangeEntry>): CategoryChangeEntry => ({
+    action: "updated",
+    type: "expense",
+    name: "Mercado",
+    emoji: "🛒",
+    details: { previousName: "Mercado", previousEmoji: "🛒" },
+    admin: { name: "Ana Admin" },
+    ...overrides,
+  });
+
+  it("es opcional: vacío es null; si no, las mismas reglas que el nombre", () => {
+    expect(parseEnglishName("")).toEqual({ ok: true, value: null });
+    expect(parseEnglishName("   ")).toEqual({ ok: true, value: null });
+    expect(parseEnglishName("  Groceries \n")).toEqual({ ok: true, value: "Groceries" });
+    expect(parseEnglishName("x".repeat(CATEGORY_NAME_MAX + 1))).toEqual({ ok: false, error: `Máximo ${CATEGORY_NAME_MAX} caracteres.` });
+    expect(parseEnglishName("x".repeat(CATEGORY_NAME_MAX + 1), "en")).toEqual({ ok: false, error: `${CATEGORY_NAME_MAX} characters at most.` });
+  });
+
+  it("al crearla con nombre en inglés, el detalle lo dice", () => {
+    const created = change({ action: "created", details: { nameEn: "Groceries" } });
+    expect(changeSentence(created)).toEqual({ text: "Ana Admin creó 🛒 Mercado (egresos)", detail: "en inglés: Groceries" });
+    expect(changeSentence(created, "en")).toEqual({ text: "Ana Admin created 🛒 Mercado (expenses)", detail: "in English: Groceries" });
+    expect(changeSentence(change({ action: "created", details: {} })).detail).toBeNull();
+  });
+
+  it("si solo cambió el nombre en inglés, la frase lo dice, con el de antes y el de ahora", () => {
+    const english = change({ details: { previousName: "Mercado", previousEmoji: "🛒", nameEn: "Groceries", previousNameEn: null } });
+    expect(changeSentence(english)).toEqual({ text: "Ana Admin cambió el nombre en inglés de 🛒 Mercado (egresos)", detail: "en inglés: — → Groceries" });
+    expect(changeSentence(english, "en")).toEqual({
+      text: "Ana Admin changed the English name of 🛒 Mercado (expenses)",
+      detail: "in English: — → Groceries",
+    });
+    const removed = change({ details: { previousName: "Mercado", previousEmoji: "🛒", nameEn: null, previousNameEn: "Groceries" } });
+    expect(changeSentence(removed).detail).toBe("en inglés: Groceries → —");
+  });
+
+  it("con otro cambio a la vez, la frase es la de ese cambio y el inglés va en el detalle; sin él, nada cambia", () => {
+    const renamed = change({ name: "Supermercado", details: { previousName: "Mercado", previousEmoji: "🛒", nameEn: "Supermarket", previousNameEn: "Groceries" } });
+    expect(changeSentence(renamed)).toEqual({ text: "Ana Admin renombró Mercado a 🛒 Supermercado (egresos)", detail: "en inglés: Groceries → Supermarket" });
+    const emoji = change({ emoji: "🧺", details: { previousName: "Mercado", previousEmoji: "🛒", nameEn: "Groceries", previousNameEn: null } });
+    expect(changeSentence(emoji).text).toBe("Ana Admin cambió el emoji de Mercado (egresos): 🛒 → 🧺");
+    expect(changeSentence(change({ emoji: "🧺" }))).toEqual({ text: "Ana Admin cambió el emoji de Mercado (egresos): 🛒 → 🧺", detail: null });
   });
 });

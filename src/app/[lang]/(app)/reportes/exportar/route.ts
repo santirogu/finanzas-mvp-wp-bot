@@ -13,7 +13,7 @@ export async function GET(request: Request) {
   // En el idioma de la página desde la que se descargó (la cookie: src/i18n/request.ts).
   const locale = await getRequestLocale();
   const period = reportPeriod(new URL(request.url).searchParams.get("periodo"), currentMonthRange(user.timezone), locale);
-  const rows = await listPeriodMovements(user.id, period.months[0], period.months[period.months.length - 1]);
+  const rows = await listPeriodMovements(user.id, period.months[0], period.months[period.months.length - 1], locale);
   return new Response(movementsCsv(rows, locale), {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",

@@ -27,6 +27,9 @@ export const category = pgTable(
     userId: text("user_id").references(() => user.id, { onDelete: "cascade" }),
     type: transactionType("type").notNull(),
     name: text("name").notNull(),
+    // El nombre en inglés de una categoría global (opcional, lo pone el admin en /admin/categorias): con la
+    // app en inglés se ve este; sin él, el de siempre. El bot usa siempre `name`.
+    nameEn: text("name_en"),
     emoji: text("emoji").notNull().default("•"),
     // Archivada por el admin: no aparece en los formularios ni la usa el bot, pero los movimientos
     // que ya la tienen la conservan.
@@ -37,6 +40,9 @@ export const category = pgTable(
     uniqueIndex("category_global_type_name_uq")
       .on(t.type, t.name)
       .where(sql`${t.userId} is null`),
+    uniqueIndex("category_global_type_name_en_uq")
+      .on(t.type, t.nameEn)
+      .where(sql`${t.userId} is null and ${t.nameEn} is not null`),
     uniqueIndex("category_user_type_name_uq")
       .on(t.userId, t.type, t.name)
       .where(sql`${t.userId} is not null`),

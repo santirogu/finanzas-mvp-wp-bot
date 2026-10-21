@@ -13,7 +13,6 @@ import { getUpcomingPayments } from "@/modules/reports/queries";
 import { upcomingItems, windowPhrase } from "@/modules/reports/upcoming";
 import { chartSlices } from "@/modules/transactions/category-chart";
 import { balanceChange, totalChange } from "@/modules/transactions/month-comparison";
-import { NO_CATEGORIES } from "@/modules/transactions/search";
 import {
   getMonthlySummary,
   getTotalsByCategory,
@@ -83,11 +82,11 @@ async function Dashboard({ month }: { month: string | string[] | undefined }) {
   const [summary, before, byCategory, recent, activeMonths, upcoming] = await Promise.all([
     getMonthlySummary(user.id, range),
     getMonthlySummary(user.id, monthRange(previous.year, previous.month)),
-    getTotalsByCategory(user.id, "expense", range, NO_CATEGORIES[locale]),
-    listTransactions(user.id, range, { limit: 6 }),
+    getTotalsByCategory(user.id, "expense", range, locale),
+    listTransactions(user.id, range, { limit: 6, locale }),
     listActiveMonths(user.id),
     // Los avisos de próximos pagos son de ahora: solo en el mes actual.
-    isCurrent ? getUpcomingPayments(user.id, current, today) : null,
+    isCurrent ? getUpcomingPayments(user.id, current, today, locale) : null,
   ]);
   const money = (n: number) => formatMoney(n, user.currency, locale);
   const firstName = user.name.split(" ")[0];

@@ -86,6 +86,7 @@ describe("listAdminCategories y categoriesSummary", () => {
       id: mercado.id,
       type: "expense",
       name: "Mercado",
+      nameEn: null,
       emoji: "🛒",
       archived: false,
       movements: 2,
@@ -170,7 +171,7 @@ describe("updateCategory", () => {
     expect(otros.emoji).not.toBe("🧩");
     expect(await updateCategory({ id: otros.id, name: "Varios", emoji: "🧩" })).toEqual({
       ok: false,
-      error: 'A "Otros" solo se le puede cambiar el emoji.',
+      error: 'A "Otros" solo se le pueden cambiar el emoji y el nombre en inglés.',
       field: "name",
     });
     // Ni el nombre ni el emoji: con el error no se guarda nada ni se registra.
@@ -432,10 +433,79 @@ describe("en inglés (el idioma de quien hace el pedido)", () => {
     const otros = await globalByName("expense", "Otros");
     expect(await updateCategory({ id: otros.id, name: "Varios", emoji: "📦" })).toEqual({
       ok: false,
-      error: 'Only the emoji of "Otros" can be changed.',
+      error: 'Only the emoji and the English name of "Otros" can be changed.',
       field: "name",
     });
     expect(await archiveCategory({ id: otros.id, code: codeAt(NOW) }, NOW)).toEqual({ ok: false, error: `"Otros" can't be archived: it's the default category.` });
     expect(await deleteCategory({ id: otros.id, code: codeAt(NOW) }, NOW)).toEqual({ ok: false, error: `"Otros" can't be deleted: it's the default category.` });
+  });
+});
+
+describe("el nombre en inglés de las globales", () => {
+  it("se pone al crearla y queda en el registro; vacío es sin nombre en inglés", async () => {
+    await adminReady();
+    expect(await createCategory({ type: "expense", name: "Mascotas", nameEn: " Pets ", emoji: "🐾" })).toMatchObject({ ok: true });
+    expect(await globalByName("expense", "Mascotas")).toMatchObject({ nameEn: "Pets" });
+    expect(await createCategory({ type: "expense", name: "Juegos", nameEn: "  ", emoji: "" })).toMatchObject({ ok: true });
+    expect(await globalByName("expense", "Juegos")).toMatchObject({ nameEn: null });
+    expect((await changes()).find((c) => c.name === "Mascotas")!.details).toEqual({ nameEn: "Pets" });
+    expect((await changes()).find((c) => c.name === "Juegos")!.details).toEqual({});
+    expect((await listAdminCategories()).find((c) => c.name === "Mascotas")).toMatchObject({ nameEn: "Pets" });
+  });
+
+  it("no se repite entre las del mismo tipo (sin importar mayúsculas ni tildes); entre tipos, sí", async () => {
+    await adminReady();
+    await createCategory({ type: "expense", name: "Mascotas", nameEn: "Pets", emoji: "" });
+    expect(await createCategory({ type: "expense", name: "Animales", nameEn: "pets", emoji: "" })).toEqual({
+      ok: false,
+      error: "Ya hay una categoría de egresos con ese nombre en inglés.",
+      field: "nameEn",
+    });
+    expect(await globalByName("expense", "Animales")).toBeUndefined();
+    expect(await createCategory({ type: "income", name: "Mascotas", nameEn: "Pets", emoji: "" })).toMatchObject({ ok: true });
+    expect(await createCategory({ type: "expense", name: "Algo", nameEn: "x".repeat(41), emoji: "" })).toEqual({
+      ok: false,
+      error: "Máximo 40 caracteres.",
+      field: "nameEn",
+    });
+  });
+
+  it("al editar: solo el nombre en inglés queda en el registro con el de antes y el de ahora; igual, nada cambia", async () => {
+    await adminReady();
+    const mercado = await globalByName("expense", "Mercado");
+    expect(await updateCategory({ id: mercado.id, name: "Mercado", nameEn: "Groceries", emoji: mercado.emoji })).toMatchObject({ ok: true });
+    expect(await globalByName("expense", "Mercado")).toMatchObject({ nameEn: "Groceries" });
+    expect(await updateCategory({ id: mercado.id, name: "Mercado", nameEn: "Groceries", emoji: mercado.emoji })).toEqual({
+      ok: true,
+      message: "No había nada que cambiar.",
+    });
+    expect(await updateCategory({ id: mercado.id, name: "Mercado", nameEn: "", emoji: mercado.emoji })).toMatchObject({ ok: true });
+    expect(await globalByName("expense", "Mercado")).toMatchObject({ nameEn: null });
+    expect((await changes()).map((c) => c.details)).toEqual([
+      { previousName: "Mercado", previousEmoji: mercado.emoji, nameEn: "Groceries", previousNameEn: null },
+      { previousName: "Mercado", previousEmoji: mercado.emoji, nameEn: null, previousNameEn: "Groceries" },
+    ]);
+    // Sin cambiarlo, el registro no lo menciona.
+    await updateCategory({ id: mercado.id, name: "Mercado", nameEn: "", emoji: "🧺" });
+    expect((await changes()).at(-1)!.details).toEqual({ previousName: "Mercado", previousEmoji: mercado.emoji });
+  });
+
+  it("a Otros se le puede poner, aunque su nombre no cambie", async () => {
+    await adminReady();
+    const otros = await globalByName("expense", "Otros");
+    expect(await updateCategory({ id: otros.id, name: "Otros", nameEn: "Other", emoji: otros.emoji })).toMatchObject({ ok: true });
+    expect(await globalByName("expense", "Otros")).toMatchObject({ name: "Otros", nameEn: "Other" });
+    expect(await updateCategory({ id: otros.id, name: "Varios", nameEn: "Other", emoji: otros.emoji })).toMatchObject({ ok: false, field: "name" });
+  });
+
+  it("otra con el mismo nombre en inglés al editar, no", async () => {
+    await adminReady();
+    const mercado = await globalByName("expense", "Mercado");
+    const alimentacion = await globalByName("expense", "Alimentación");
+    await updateCategory({ id: mercado.id, name: "Mercado", nameEn: "Food", emoji: mercado.emoji });
+    expect(await updateCategory({ id: alimentacion.id, name: "Alimentación", nameEn: "FOOD", emoji: alimentacion.emoji })).toMatchObject({
+      ok: false,
+      field: "nameEn",
+    });
   });
 });
