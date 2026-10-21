@@ -1,18 +1,19 @@
 #!/usr/bin/env node
-// Servidores falsos de WhatsApp (Graph API) y de Claude para las pruebas E2E del bot. La app los
-// usa en vez de los reales (WHATSAPP_API_URL y ANTHROPIC_BASE_URL apuntan aquí): nada sale a
-// internet ni gasta créditos. Lo levanta Playwright (webServer en playwright.config.ts).
+// Servidores falsos de WhatsApp (Graph API), de Claude y de GitHub para las pruebas E2E. La app los
+// usa en vez de los reales (WHATSAPP_API_URL, ANTHROPIC_BASE_URL y GITHUB_API_URL apuntan aquí): nada
+// sale a internet ni gasta créditos. Lo levanta Playwright (webServer en playwright.config.ts).
 //
 //   POST /graph/<versión>/<teléfono>/messages  → guarda el mensaje que "envió" el bot
 //   GET  /mensajes?to=<número>                 → los mensajes que recibió ese número
 //   POST /anthropic/v1/messages                → respuesta fija según el texto del usuario
 //   GET  /claude                               → los textos que la app le pidió interpretar
-//   GET  /graph/<versión>/<teléfono>           → el número del bot (Probar conexiones en /admin/bot)
+//   GET  /graph/<versión>/<teléfono>           → el número del bot (Probar conexiones en /admin/salud)
 //   GET  /anthropic/v1/models/<modelo>         → el modelo del bot (Probar conexiones)
 //   POST /fallar?servicio=whatsapp|claude      → la próxima consulta de ese servicio responde 401
 //   POST /fallar?servicio=envio&to=<número>     → el próximo mensaje a ese número no sale (400 de Meta)
 //   POST /restablecer                           → sin fallos pendientes de whatsapp ni claude (al empezar
 //                                                 la prueba que los usa: un intento anterior caído pudo dejar uno)
+//   GET  /github/repos/<dueño>/<repo>/releases → dos releases fijas (Despliegues recientes en /admin/salud)
 //   GET  /salud                                → para saber que ya arrancó
 
 import { createServer } from "node:http";
@@ -22,6 +23,26 @@ const sent = [];
 const claudeRequests = [];
 // Las consultas de Probar conexiones que deben fallar una vez (solo las usa esa prueba).
 const failNext = new Set();
+
+// Las releases del GitHub falso, como las devuelve la API (la más nueva primero).
+const RELEASES = [
+  {
+    tag_name: "v9.2.0",
+    published_at: "2026-10-20T15:00:00Z",
+    target_commitish: "e2e0000000000000000000000000000000000002",
+    html_url: "https://github.com/santirogu/finanzas-mvp-wp-bot/releases/tag/v9.2.0",
+    body: "### ✨ Funcionalidades\n\n- **web:** salud del sistema (#901)\n- **bot:** responder más rápido (#902)\n\n### 🐛 Correcciones\n\n- **web:** un detalle (#903)\n- **web:** otro detalle (#904)\n- **web:** el último (#905)\n",
+    draft: false,
+  },
+  {
+    tag_name: "v9.1.0",
+    published_at: "2026-10-18T15:00:00Z",
+    target_commitish: "e2e0000000000000000000000000000000000001",
+    html_url: "https://github.com/santirogu/finanzas-mvp-wp-bot/releases/tag/v9.1.0",
+    body: "### 🧰 Mantenimiento\n\n- **deps:** actualizar Next (#900)\n",
+    draft: false,
+  },
+];
 
 // Lo que "entiende" el Claude falso: frases fijas de las pruebas.
 const INTERPRETATIONS = [
@@ -140,6 +161,8 @@ const server = createServer(async (request, response) => {
       });
     }
 
+    if (request.method === "GET" && /^\/github\/repos\/[^/]+\/[^/]+\/releases$/.test(url.pathname)) return json(response, 200, RELEASES);
+
     if (request.method === "GET" && url.pathname.startsWith("/anthropic/v1/models/")) {
       if (failNext.delete("claude")) {
         return json(response, 401, { type: "error", error: { type: "authentication_error", message: "invalid x-api-key" } });
@@ -161,4 +184,4 @@ const server = createServer(async (request, response) => {
 // ("socket hang up", ECONNRESET) y la prueba falla de forma intermitente.
 server.keepAliveTimeout = 10 * 60_000;
 
-server.listen(PORT, () => console.log(`Servicios falsos (WhatsApp y Claude) en http://localhost:${PORT}`));
+server.listen(PORT, () => console.log(`Servicios falsos (WhatsApp, Claude y GitHub) en http://localhost:${PORT}`));

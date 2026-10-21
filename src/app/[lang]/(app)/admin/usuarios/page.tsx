@@ -17,16 +17,15 @@ import {
   withoutUserFilter,
   type UserFilters,
 } from "@/modules/admin/users/user-filters";
-import { adminModuleLabel, adminTitle } from "@/modules/admin/modules";
 import { listUsers, type UserRow } from "@/modules/admin/users/users";
 import { PageSkeleton } from "../../page-skeleton";
 import { ActiveFilters } from "../active-filters";
 import { AccountBadges, Initial } from "./account-badges";
 import { UsersFilterBar } from "./filter-bar";
+import { adminMetadata } from "../admin-metadata";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const locale = await getLocale();
-  return { title: adminTitle(adminModuleLabel("usuarios", locale), locale) };
+  return adminMetadata("usuarios");
 }
 
 const TEXTS = texts(

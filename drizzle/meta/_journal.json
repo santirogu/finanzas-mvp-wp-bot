@@ -162,6 +162,13 @@
       "when": 1792542195326,
       "tag": "0022_nombre-en-ingles-de-las-categorias",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1792549920940,
+      "tag": "0023_registro-de-las-tareas-programadas",
+      "breakpoints": true
     }
   ]
 }

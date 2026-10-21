@@ -3,10 +3,10 @@
 import { useActionState } from "react";
 import { useTexts } from "@/i18n/client";
 import { texts } from "@/i18n/texts";
-import type { ConnectionView } from "@/modules/admin/bot/bot-filters";
+import type { ConnectionView } from "@/modules/admin/health/connection-view";
 import { testConnectionsAction, type ConnectionsState } from "./actions";
 
-// Probar las conexiones del bot en /admin/bot: el token de WhatsApp y la API key de Claude (sin
+// Probar las conexiones del bot en /admin/salud: el token de WhatsApp y la API key de Claude (sin
 // enviar mensajes ni gastar créditos) y cuándo llegó el último mensaje al webhook. Solo lee: no pide
 // el código. El resultado se anuncia al lector de pantalla (role="status").
 

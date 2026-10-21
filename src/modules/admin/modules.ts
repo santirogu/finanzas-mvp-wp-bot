@@ -66,7 +66,7 @@ export const ADMIN_MODULES: readonly AdminModule[] = [
     label: "Salud del sistema",
     href: "/admin/salud",
     description: "Base de datos, despliegues y servicios",
-    status: "pronto",
+    status: "activo",
   },
   {
     id: "configuracion",

@@ -24,6 +24,8 @@ beforeEach(async () => {
   await db.execute(sql`delete from category_change`);
   // La configuración del bot (/admin/bot): sin fila, Claude activo y los topes de siempre.
   await db.execute(sql`delete from bot_setting`);
+  // Las corridas de la limpieza diaria (/admin/salud).
+  await db.execute(sql`delete from cron_run`);
   await resetGlobalCategories();
 });
 

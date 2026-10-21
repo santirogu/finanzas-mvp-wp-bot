@@ -1,16 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { getLocale, getTexts } from "@/i18n/server";
+import { getTexts } from "@/i18n/server";
 import { texts } from "@/i18n/texts";
 import { requireAdminRole } from "@/lib/session";
-import { adminModuleLabel, adminTitle } from "@/modules/admin/modules";
 import { PageSkeleton } from "../../page-skeleton";
 import { TwoFactorSetup } from "./two-factor-setup";
+import { adminMetadata } from "../admin-metadata";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const locale = await getLocale();
-  return { title: adminTitle(adminModuleLabel("seguridad", locale), locale) };
+  return adminMetadata("seguridad");
 }
 
 const TEXTS = texts(

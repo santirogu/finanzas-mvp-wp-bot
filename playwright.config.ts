@@ -83,6 +83,7 @@ export default defineConfig({
         ANTHROPIC_BASE_URL: `${FAKE_SERVICES_URL}/anthropic`,
         ANTHROPIC_API_KEY: "e2e-key-falsa",
         ANTHROPIC_AUTH_TOKEN: "",
+        GITHUB_API_URL: `${FAKE_SERVICES_URL}/github`,
         NEXT_TELEMETRY_DISABLED: "1",
       },
     },

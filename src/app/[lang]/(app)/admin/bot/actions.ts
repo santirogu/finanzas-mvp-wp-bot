@@ -1,13 +1,9 @@
 "use server";
 
 import { refresh } from "next/cache";
-import { getRequestLocale } from "@/i18n/request";
 import { requireAdmin } from "@/lib/session";
-import { connectionView, type ConnectionView } from "@/modules/admin/bot/bot-filters";
 import { setAiLimits, setClaudePaused, setMonthlyTokenLimit, type BotSettingResult } from "@/modules/admin/bot/bot-settings";
-import { testConnections } from "@/modules/admin/bot/connections";
 import { resendFailedReplies } from "@/modules/admin/bot/resend";
-import { formatDateTime, formatHour } from "@/modules/admin/shared/filters";
 
 // La configuración del bot desde /admin/bot. Cada acción valida el rol antes que nada; el código de
 // Google Authenticator, los datos y el registro en el historial se resuelven en
@@ -54,26 +50,4 @@ export async function changeMonthlyLimitAction(_prev: BotSettingState, formData:
 export async function resendRepliesAction(_prev: BotSettingState, formData: FormData): Promise<BotSettingState> {
   await requireAdmin();
   return settle(await resendFailedReplies({ code: code(formData) }));
-}
-
-export type ConnectionsState = {
-  whatsapp?: ConnectionView;
-  claude?: ConnectionView;
-  /** "16 de oct de 2026, 6:00 p. m.", o null si nunca llegó un mensaje al webhook. */
-  lastMessage?: string | null;
-  /** La hora de la prueba ("6:05 p. m."). */
-  checkedAt?: string;
-};
-
-/** Prueba WhatsApp y Claude sin enviar nada ni gastar créditos: solo lee, no pide el código. En el idioma de la página. */
-export async function testConnectionsAction(): Promise<ConnectionsState> {
-  await requireAdmin();
-  const locale = await getRequestLocale();
-  const report = await testConnections();
-  return {
-    whatsapp: connectionView("whatsapp", report.whatsapp, locale),
-    claude: connectionView("claude", report.claude, locale),
-    lastMessage: report.lastMessageAt && formatDateTime(report.lastMessageAt, locale),
-    checkedAt: formatHour(report.checkedAt, locale),
-  };
 }

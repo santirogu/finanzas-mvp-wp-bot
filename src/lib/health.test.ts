@@ -1,6 +1,16 @@
 import { describe, expect, it, vi } from "vitest";
 import journal from "../../drizzle/meta/_journal.json";
-import { ANTHROPIC_CREDENTIALS, LATEST_MIGRATION, REQUIRED_ENV, checkHealth } from "./health";
+import {
+  ANTHROPIC_CREDENTIALS,
+  LATEST_MIGRATION,
+  MIGRATION_COUNT,
+  REQUIRED_ENV,
+  appliedMigrationCount,
+  checkHealth,
+  healthReport,
+  migrationName,
+  migrationsUpToDate,
+} from "./health";
 
 const COMPLETE_ENV: Record<string, string> = Object.fromEntries(
   [...REQUIRED_ENV, "ANTHROPIC_API_KEY"].map((name) => [name, "valor"]),
@@ -121,6 +131,53 @@ describe("checkHealth", () => {
     } finally {
       vi.unstubAllEnvs();
     }
+  });
+});
+
+describe("healthReport", () => {
+  it("cada cosa por separado: las variables que faltan (por nombre) y las migraciones", async () => {
+    expect(await healthReport({ env: envFrom(without("CRON_SECRET", "ANTHROPIC_API_KEY")), latestAppliedMigration: async () => 100, expectedMigration: 200 })).toEqual({
+      missingEnv: ["CRON_SECRET", "ANTHROPIC_API_KEY o ANTHROPIC_AUTH_TOKEN"],
+      appliedMigration: 100,
+      expectedMigration: 200,
+      databaseError: null,
+    });
+  });
+
+  it("si la base no responde, guarda el error tal cual (o uno genérico si rechaza sin nada)", async () => {
+    const error = new Error("connect ECONNREFUSED");
+    expect(await healthReport({ env: envFrom(COMPLETE_ENV), latestAppliedMigration: () => Promise.reject(error) })).toMatchObject({
+      appliedMigration: null,
+      databaseError: error,
+    });
+    expect((await healthReport({ env: envFrom(COMPLETE_ENV), latestAppliedMigration: () => Promise.reject(null) })).databaseError).toBe("error desconocido");
+  });
+});
+
+describe("migrationsUpToDate", () => {
+  const report = { missingEnv: [], appliedMigration: 200, expectedMigration: 200, databaseError: null };
+  it("al día con la última o una más nueva; no sin ninguna, con una vieja o sin base", () => {
+    expect(migrationsUpToDate(report)).toBe(true);
+    expect(migrationsUpToDate({ ...report, appliedMigration: 201 })).toBe(true);
+    expect(migrationsUpToDate({ ...report, appliedMigration: 199 })).toBe(false);
+    expect(migrationsUpToDate({ ...report, appliedMigration: null })).toBe(false);
+    expect(migrationsUpToDate({ ...report, databaseError: new Error("x") })).toBe(false);
+  });
+});
+
+describe("las migraciones del código", () => {
+  it("cuántas hay, cuántas tiene una base y el nombre de cada una", () => {
+    const [first, second] = journal.entries;
+    expect(MIGRATION_COUNT).toBe(journal.entries.length);
+    expect(appliedMigrationCount(null)).toBe(0);
+    expect(appliedMigrationCount(first.when)).toBe(1);
+    expect(appliedMigrationCount(second.when)).toBe(2);
+    expect(appliedMigrationCount(LATEST_MIGRATION)).toBe(MIGRATION_COUNT);
+    expect(appliedMigrationCount(LATEST_MIGRATION + 1)).toBe(MIGRATION_COUNT);
+    expect(migrationName(first.when)).toBe("0000_init");
+    expect(migrationName(LATEST_MIGRATION)).toBe(journal.entries.at(-1)!.tag);
+    expect(migrationName(LATEST_MIGRATION + 1)).toBeNull();
+    expect(migrationName(null)).toBeNull();
   });
 });
 

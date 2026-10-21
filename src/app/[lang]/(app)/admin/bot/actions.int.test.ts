@@ -7,21 +7,11 @@ import { createAdminWithTwoFactor } from "../../../../../../test/integration/two
 
 // La configuración del bot desde /admin/bot: las Server Actions con la capa de datos y la base de
 // verdad, y los códigos como Google Authenticator. Se simulan la sesión y refresh().
-const mocks = vi.hoisted(() => ({ requireAdmin: vi.fn(), refresh: vi.fn(), whatsapp: vi.fn(), claude: vi.fn() }));
+const mocks = vi.hoisted(() => ({ requireAdmin: vi.fn(), refresh: vi.fn() }));
 vi.mock("@/lib/session", () => ({ requireAdmin: mocks.requireAdmin }));
 vi.mock("next/cache", () => ({ refresh: mocks.refresh }));
-// Las consultas a Meta y a Anthropic se prueban en sus módulos; aquí, lo que hace el admin con ellas.
-vi.mock("@/modules/whatsapp/client", async (original) => ({
-  ...(await original<typeof import("@/modules/whatsapp/client")>()),
-  checkWhatsAppConnection: mocks.whatsapp,
-}));
-vi.mock("@/modules/bot/claude-extractor", async (original) => ({
-  ...(await original<typeof import("@/modules/bot/claude-extractor")>()),
-  checkClaudeConnection: mocks.claude,
-}));
 
-const { changeAiLimitsAction, changeMonthlyLimitAction, pauseClaudeAction, resendRepliesAction, resumeClaudeAction, testConnectionsAction } =
-  await import("./actions");
+const { changeAiLimitsAction, changeMonthlyLimitAction, pauseClaudeAction, resendRepliesAction, resumeClaudeAction } = await import("./actions");
 const { pendingResends, resendFailedReplies } = await import("@/modules/admin/bot/resend");
 const { botSettingsForAdmin } = await import("@/modules/admin/bot/bot-settings");
 const { getBotSettings } = await import("@/modules/bot/settings");
@@ -32,8 +22,6 @@ async function seed() {
   const { admin, codeAt } = await createAdminWithTwoFactor();
   mocks.requireAdmin.mockReset().mockResolvedValue({ id: admin.id, role: "admin", twoFactorEnabled: true });
   mocks.refresh.mockReset();
-  mocks.whatsapp.mockReset();
-  mocks.claude.mockReset();
   step = 0;
   return { admin, code: () => codeAt(new Date(Date.now() + 30_000 * step++)) };
 }
@@ -162,44 +150,6 @@ describe("sin rol de admin", () => {
     await expect(botSettingsForAdmin()).rejects.toThrow("NEXT_NOT_FOUND");
     expect(await db.select().from(botSetting)).toEqual([]);
     expect(await events()).toEqual([]);
-  });
-});
-
-describe("probar las conexiones", () => {
-  it("muestra cada servicio legible y el último mensaje que llegó al webhook, sin cambiar nada", async () => {
-    await seed();
-    mocks.whatsapp.mockResolvedValue({ status: "ok", detail: "Finanzas MVP · +1 555-662-5913" });
-    mocks.claude.mockResolvedValue({ status: "error", error: '401 {"type":"error","error":{"type":"authentication_error","message":"invalid x-api-key"}}' });
-    await db.insert(whatsappMessage).values([
-      { id: "wamid.viejo", phone: "573001112233", body: "x", receivedAt: new Date("2026-10-15T15:00:00Z") },
-      { id: "wamid.nuevo", phone: "573001112233", body: "x", receivedAt: new Date("2026-10-16T23:00:00Z") },
-    ]);
-
-    const result = await testConnectionsAction();
-    expect(result.whatsapp).toEqual({ ok: true, title: "Conectado", detail: "Finanzas MVP · +1 555-662-5913", warning: null });
-    expect(result.claude).toMatchObject({ ok: false, title: "La API key de Claude no sirve: vencida, revocada o mal copiada", detail: "HTTP 401 · invalid x-api-key" });
-    // 23:00 UTC es 6:00 p. m. en Colombia.
-    expect(result.lastMessage).toBe("16 de oct de 2026, 6:00 p. m.");
-    expect(result.checkedAt).toMatch(/^\d{1,2}:\d{2}\s[ap]\.\s?m\.$/);
-    expect(mocks.refresh).not.toHaveBeenCalled();
-    expect(await events()).toEqual([]);
-  });
-
-  it("sin mensajes todavía, lo dice", async () => {
-    await seed();
-    mocks.whatsapp.mockResolvedValue({ status: "sin_configurar", missing: ["WHATSAPP_ACCESS_TOKEN"] });
-    mocks.claude.mockResolvedValue({ status: "ok", detail: "Claude Haiku 5.5 (claude-haiku-5-5)" });
-    const result = await testConnectionsAction();
-    expect(result.lastMessage).toBeNull();
-    expect(result.whatsapp).toMatchObject({ ok: false, title: "Falta configurar WHATSAPP_ACCESS_TOKEN" });
-  });
-
-  it("sin rol de admin no prueba nada", async () => {
-    await seed();
-    mocks.requireAdmin.mockRejectedValue(new Error("NEXT_NOT_FOUND"));
-    await expect(testConnectionsAction()).rejects.toThrow("NEXT_NOT_FOUND");
-    expect(mocks.whatsapp).not.toHaveBeenCalled();
-    expect(mocks.claude).not.toHaveBeenCalled();
   });
 });
 
@@ -419,22 +369,5 @@ describe("en inglés (el idioma de quien hace el pedido)", () => {
     expect(await resendFailedReplies({ code: code() }, now, rejectOne)).toEqual({ ok: true, message: "1 reply was resent; 1 didn't go out again." });
     const rejectAll = vi.fn(async () => ({ ok: false as const, error: "400 {}" }));
     expect(await resendFailedReplies({ code: code() }, now, rejectAll)).toEqual({ ok: false, error: "None went out: WhatsApp rejected the reply again." });
-  });
-
-  it("probar las conexiones: el resultado y las fechas en inglés", async () => {
-    await seed();
-    mocks.whatsapp.mockResolvedValue({ status: "ok", detail: "Finanzas MVP", warning: { kind: "low_quality", quality: "YELLOW" } });
-    mocks.claude.mockResolvedValue({ status: "sin_configurar", missing: ["ANTHROPIC_API_KEY"] });
-    await db.insert(whatsappMessage).values({ id: "wamid.en", phone: "573001112233", body: "x", receivedAt: new Date("2026-10-16T23:00:00Z") });
-    const result = await testConnectionsAction();
-    expect(result.whatsapp).toEqual({
-      ok: true,
-      title: "Connected",
-      detail: "Finanzas MVP",
-      warning: "Meta rates the number's quality as YELLOW: it could limit sending.",
-    });
-    expect(result.claude).toMatchObject({ ok: false, title: "ANTHROPIC_API_KEY isn't set up" });
-    expect(result.lastMessage).toBe("Oct 16, 2026, 6:00 PM");
-    expect(result.checkedAt).toMatch(/^\d{1,2}:\d{2} [AP]M$/);
   });
 });

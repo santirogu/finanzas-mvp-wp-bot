@@ -1,9 +1,9 @@
-// El resultado de probar la conexión con un servicio externo (/admin/bot → Conexiones): WhatsApp
+// El resultado de probar la conexión con un servicio externo (/admin/salud → Conexiones): WhatsApp
 // (src/modules/whatsapp/client.ts) y Claude (src/modules/bot/claude-extractor.ts). Sin dependencias.
 
 /**
  * `error` es lo que respondió el servicio, como lo guarda el bot ("401 {…}") o el tipo de la
- * excepción (describeError): el admin lo ve legible (src/modules/admin/bot/connections.ts). Nunca
+ * excepción (describeError): el admin lo ve legible (src/modules/admin/health/connection-view.ts). Nunca
  * lleva el token ni la API key. `detail` es lo que identifica la conexión (el nombre del número o del
  * modelo), o null si el servicio no lo dio.
  */

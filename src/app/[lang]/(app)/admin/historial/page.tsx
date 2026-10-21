@@ -21,15 +21,14 @@ import {
   withoutFilter,
   type LogFilters,
 } from "@/modules/admin/history/log-filters";
-import { adminModuleLabel, adminTitle } from "@/modules/admin/modules";
 import { PageSkeleton } from "../../page-skeleton";
 import { ActiveFilters } from "../active-filters";
 import { EventItem } from "./event-item";
 import { FilterBar } from "./filter-bar";
+import { adminMetadata } from "../admin-metadata";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const locale = await getLocale();
-  return { title: adminTitle(adminModuleLabel("historial", locale), locale) };
+  return adminMetadata("historial");
 }
 
 const TEXTS = texts(

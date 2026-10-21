@@ -850,7 +850,7 @@ actúa con permisos de admin.
 | Usuarios | `/admin/usuarios` | Activo: cuentas, sesiones y estado; desbloquear, cerrar sesiones, desvincular WhatsApp, suspender, reactivar y eliminar |
 | Bot de WhatsApp | `/admin/bot` | Activo: qué pasó con los mensajes, consumo de Claude y errores, sin el texto |
 | Categorías | `/admin/categorias` | Activo: crear, editar, archivar, restaurar y eliminar las de ingresos y egresos |
-| Salud del sistema | `/admin/salud` | Pronto |
+| Salud del sistema | `/admin/salud` | Activo: el estado de la app (lo mismo que `/api/health`), la versión, la base, la limpieza diaria, las conexiones del bot y los despliegues recientes |
 | Configuración | `/admin/configuracion` | Pronto |
 | Seguridad | `/admin/seguridad` | Activo: la verificación en dos pasos del admin |
 
@@ -939,13 +939,7 @@ la fecha de los mensajes, en hora de Colombia.
   (`src/modules/bot/settings.ts`), así que aplica desde el siguiente. Si Claude está en pausa, la
   tarjeta de Inicio lo dice.
 
-  **Conexiones:** "Probar conexiones" revisa el token de WhatsApp (lee el nombre, el número y la
-  calidad del número del bot en la Graph API; necesita el permiso `whatsapp_business_management`, el
-  mismo de `scripts/meta-subscribe.sh`) y la API key de Claude (consulta el modelo del bot en la API de
-  modelos), sin enviar mensajes ni gastar créditos. Dice por qué falla (token vencido, un permiso o una
-  variable que falta, un modelo que ya no existe) con lo que respondió el servicio, nunca la clave, y
-  cuándo llegó el último mensaje al webhook: si Meta dejó de enviar, se nota ahí. Solo lee: no pide el
-  código ni queda en el historial.
+  Las conexiones con WhatsApp y Claude se prueban en [Salud del sistema](#salud-del-sistema).
 - **Qué pasó con los mensajes:** cuántos llegaron y el resultado de cada uno: registró movimientos,
   comando, respuesta sin registrar nada, vinculó su número, llegó al tope de Claude, Claude en pausa,
   error, código de vinculación inválido, número sin vincular, no era texto, cuenta suspendida o sin
@@ -1007,6 +1001,41 @@ cuenta (`category.user_id`) no se administran aquí.
 ninguna global: si las creara siempre que faltan, volverían las que el admin renombró o eliminó. Una
 categoría nueva para todos se crea desde `/admin/categorias`.
 
+### Salud del sistema
+
+En **`/admin/salud`** el admin ve si la app está bien, sin datos de nadie (nombres de variables, nunca
+sus valores; tamaños y cantidades). Se revisa al abrir la página (`src/modules/admin/health/`):
+
+- **Estado:** "Todo en orden" o cuántos problemas, y cada revisión:
+  - el healthcheck, lo mismo que responde `/api/health`;
+  - las variables de entorno obligatorias (`REQUIRED_ENV`), por nombre;
+  - las migraciones (cuántas tiene la base de las del código, y la última);
+  - cuánto tarda la base en responder;
+  - la última corrida de la limpieza diaria.
+
+  Son problemas: una variable que falta, la base sin responder o sin todas las migraciones, y la
+  limpieza si falló o no corre desde hace más de 26 horas (un día y un margen). La tarjeta del Inicio
+  del admin lo muestra como un semáforo, con los mismos problemas.
+- **Versión:** el commit desplegado, cuándo se compiló, el entorno, la región de Vercel y la versión de
+  Node. El commit y la fecha los fija `next.config.ts` al compilar (`GITHUB_SHA`, que el CI define al
+  correr `vercel build`); en un build local no hay commit (`src/lib/build-info.ts`).
+- **Base de datos:** la versión de Postgres, cuánto ocupa y cada tabla con sus filas (las que estima
+  Postgres) y su tamaño, de la más grande a la más chica.
+- **Limpieza diaria:** cuándo corre y sus últimas 7 corridas, con lo que borró o el tipo del error
+  (`cron_run`; ver [Borrar datos a pedido](#borrar-datos-a-pedido)).
+- **Conexiones:** "Probar conexiones" revisa el token de WhatsApp (lee el nombre, el número y la
+  calidad del número del bot en la Graph API; necesita el permiso `whatsapp_business_management`, el
+  mismo de `scripts/meta-subscribe.sh`) y la API key de Claude (consulta el modelo del bot en la API de
+  modelos), sin enviar mensajes ni gastar créditos. Dice por qué falla (token vencido, un permiso o una
+  variable que falta, un modelo que ya no existe) con lo que respondió el servicio, nunca la clave, y
+  cuándo llegó el último mensaje al webhook: si Meta dejó de enviar, se nota ahí. Solo lee: no pide el
+  código ni queda en el historial.
+- **Despliegues recientes:** las últimas 5 releases de GitHub, con sus cambios y la que corre marcada
+  (`src/lib/releases.ts`). El repositorio es público: se consultan sin token, y la respuesta se guarda
+  10 minutos en la caché de Next (sin token, GitHub deja 60 pedidos por hora). Si GitHub no responde,
+  el resto de la página se ve igual, con un enlace a las releases. En las E2E, `GITHUB_API_URL` apunta
+  al GitHub falso (`e2e/fake-services.mjs`).
+
 ### Historial de las cuentas
 
 La tabla `account_event` (`src/modules/account/events.ts`) guarda el historial de registro y
@@ -1062,7 +1091,8 @@ a. m. en Bogotá; `vercel.json → crons`) a `GET /api/cron/limpieza`, que solo 
 - los mensajes e intentos fallidos de vinculación de números sin cuenta;
 - los movimientos eliminados (dejan de verse al eliminarlos y se borran del todo a los 30 días).
 
-En los logs deja solo las cantidades. `CRON_SECRET` es obligatoria (`REQUIRED_ENV`): sin ella, `/api/health`
+En los logs deja solo las cantidades, y cada corrida queda en `cron_run` (cuándo, si salió bien y qué
+borró, o el tipo del error), que se ve en [Salud del sistema](#salud-del-sistema). `CRON_SECRET` es obligatoria (`REQUIRED_ENV`): sin ella, `/api/health`
 falla y el despliegue se detiene, para que la limpieza nunca quede apagada sin que nadie lo note.
 
 `pnpm messages:cleanup` hace la limpieza de los datos **sin dueño** a mano, con otro plazo si hace

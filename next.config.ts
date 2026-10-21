@@ -3,6 +3,13 @@ import { securityHeaders } from "./src/lib/security-headers";
 
 const nextConfig: NextConfig = {
   cacheComponents: true,
+  // Qué versión está corriendo, para /admin/salud (src/lib/build-info.ts). El build de producción
+  // corre en GitHub Actions (vercel build), que define GITHUB_SHA; en local queda vacío. Se reemplaza
+  // en el código al compilar: no es secreto (el repositorio es público).
+  env: {
+    APP_COMMIT_SHA: process.env.GITHUB_SHA ?? process.env.VERCEL_GIT_COMMIT_SHA ?? "",
+    APP_BUILT_AT: new Date().toISOString(),
+  },
   // No anunciar "X-Powered-By: Next.js".
   poweredByHeader: false,
   async headers() {
