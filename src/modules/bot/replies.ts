@@ -69,7 +69,7 @@ export const tooOldMonthReply =
 
 /** "balance diciembre 2026" cuando todavía es octubre de 2026. */
 export const futureMonthReply = (month: Month) =>
-  `${formatMonthLabel(month)} todavía no llega 🙂 Prueba con *balance* (este mes) o *balance mes pasado*.`;
+  `${formatMonthLabel(month)} todavía no llega 🙂. Prueba con *balance* (este mes) o *balance mes pasado*.`;
 
 /** Cuántas categorías nombra el reporte ("En qué se te fue"). */
 export const REPORT_CATEGORIES = 3;
@@ -110,13 +110,13 @@ export function reportReply(
     ...(top.length > 0 ? [`En qué se te fue: ${top.join(" · ")}`] : []),
     ...(recurring.items.length > 0 ? [`Gastos fijos: ${money(recurring.total)} al mes`] : []),
     "",
-    `Más detalle: ${link}`,
+    `Más detalle en *Reportes*: ${link}`,
   ].join("\n");
 }
 
 /** "reporte 2027" cuando todavía es 2026. */
 export const futureYearReply = (year: number) =>
-  `${year} todavía no llega 🙂 Prueba con *reporte* (los últimos 12 meses) o *reporte* y un año que ya pasó.`;
+  `${year} todavía no llega 🙂. Prueba con *reporte* (los últimos 12 meses) o *reporte* y un año que ya pasó.`;
 
 /** "reporte 1999": antes del primer año que se puede ver (el mismo límite de la web). */
 export const tooOldYearReply = "Solo puedo darte reportes desde el 2000. Prueba con *reporte* (los últimos 12 meses) o *reporte 2025*.";
@@ -125,7 +125,7 @@ export function undoReply(
   removed: { description: string; amount: number; type: string }[],
   currency: string,
 ) {
-  if (removed.length === 0) return "No encontré registros hechos por WhatsApp para deshacer.";
+  if (removed.length === 0) return "No encontré movimientos registrados por WhatsApp para deshacer.";
   const lines = removed.map((t) => `🗑️ ${t.description} — ${formatMoney(t.amount, currency)}`);
   return [`Listo, eliminé:`, ...lines].join("\n");
 }
@@ -133,7 +133,8 @@ export function undoReply(
 // Los ejemplos y los comandos salen de src/modules/bot/help.ts (los mismos de la página Ayuda de la web).
 export const helpReply = (name?: string) =>
   [
-    `Hola${name ? ` ${name.split(" ")[0]}` : ""} 👋 Escríbeme tus ingresos y gastos como se los contarías a alguien:`,
+    `Hola${name ? `, ${name.split(" ")[0]}` : ""} 👋`,
+    "Escríbeme tus ingresos y gastos como se los contarías a alguien:",
     "",
     ...BOT_EXAMPLES.map((example) => `• _${example}_`),
     "",
@@ -144,31 +145,45 @@ export const helpReply = (name?: string) =>
     ),
   ].join("\n");
 
+// Se vincula con "VINCULAR 123456" (src/modules/bot/commands.ts): solo el código no sirve.
 export const notLinkedReply = (appUrl: string) =>
-  `Hola 👋 Este número aún no está vinculado a una cuenta. Entra a ${appUrl}/cuenta (Mi cuenta), toca *Conectar WhatsApp* y envíame el código que te aparece.`;
+  [
+    "Hola 👋",
+    `Este número aún no está vinculado a una cuenta. Entra a ${appUrl}/cuenta (*Mi cuenta*), toca *Conectar WhatsApp* y envíame el mensaje que te aparece: *VINCULAR* y el código.`,
+    "",
+    `Si no tienes cuenta, créala en ${appUrl}/registro.`,
+  ].join("\n");
 
 export const linkedReply = (name: string) =>
   `✅ ¡Listo${name ? `, ${name.split(" ")[0]}` : ""}! Tu WhatsApp quedó vinculado.\n\nPrueba escribiéndome: _gasté 20 mil en almuerzo_`;
 
-// Cuenta suspendida por el admin: no se registra nada y no se dice el motivo.
-export const suspendedReply = `Tu cuenta está suspendida, así que no puedo registrar movimientos. Si crees que es un error, escríbenos a ${CONTACT_EMAIL}.`;
+// Cuenta suspendida por el admin: no se registra nada, tampoco responde los comandos, y no se dice el motivo.
+export const suspendedReply = `Tu cuenta está suspendida, así que no puedo registrar movimientos ni responder tus consultas. Si crees que es un error, escríbenos a ${CONTACT_EMAIL}.`;
 
 export const linkInvalidReply =
-  "Ese código no es válido o ya venció. Genera uno nuevo en Mi cuenta.";
+  "Ese código no es válido o ya venció. Pide otro en *Mi cuenta*: toca *Conectar WhatsApp*.";
 export const linkRateLimitedReply =
-  "Demasiados intentos fallidos. Espera una hora antes de volver a intentar.";
+  "Recibí demasiados códigos equivocados desde este número. Espera una hora y vuelve a intentarlo.";
 export const unsupportedTypeReply = "Por ahora solo entiendo mensajes de texto ✍️";
+// El error puede llegar después de guardar (handle-message.ts): que revise antes de enviarlo de nuevo, para no
+// registrarlo dos veces.
 export const errorReply =
-  "Tuve un problema procesando tu mensaje 😕 Intenta de nuevo en un momento.";
+  "Tuve un problema con tu mensaje 😕. Revisa en la web si quedó y, si no, envíamelo de nuevo en un momento.";
+
+// Cuando el texto libre no se registra (tope, pausa, sin Claude): lo primero que dice es que no quedó, para que
+// la persona no crea que lo anotó.
+const STILL_WORKING = "Siguen funcionando *balance*, *reporte*, *deshacer* y *ayuda*.";
+const registerOnWeb = (appUrl: string) => `Regístralo en la web, en *Egresos* o *Ingresos*: ${appUrl}/egresos.`;
+
 export const aiRateLimitedReply =
-  "Recibí muchos mensajes en poco tiempo. Para cuidar el servicio, espera un rato antes de registrar más. Mientras tanto puedes escribir *balance*, *reporte* o *deshacer*, o usar la web.";
+  "No registré este mensaje: recibí muchos en poco tiempo. Espera un rato y envíamelo de nuevo. Mientras tanto, puedes escribir *balance*, *reporte*, *deshacer* o *ayuda*, o registrarlo en la web.";
 export const tooManyTransactionsReply = (max: number) =>
-  `Son muchos movimientos en un solo mensaje. Envíame máximo ${max} por mensaje y los registro.`;
+  `No registré ninguno: tu mensaje trae más de ${max} movimientos. Envíamelos en varios mensajes, hasta ${max} en cada uno.`;
 /** Cuando el admin pausó Claude en /admin/bot: los comandos siguen, el texto libre se registra en la web. */
 export const aiPausedReply = (appUrl: string) =>
-  `Por ahora no puedo entender mensajes escritos libremente 🛠️ Registra tus movimientos en la web: ${appUrl}/dashboard. *balance*, *reporte*, *deshacer* y *ayuda* siguen funcionando.`;
+  `No registré tu mensaje: por ahora no puedo entender mensajes escritos libremente 🛠️. ${registerOnWeb(appUrl)} ${STILL_WORKING}`;
 /** Cuando se usó el tope mensual de tokens de /admin/bot: hasta el mes siguiente, como en pausa. */
 export const aiMonthlyLimitReply = (appUrl: string) =>
-  `Este mes ya usé todo mi cupo para entender mensajes escritos libremente 🛠️ Registra tus movimientos en la web: ${appUrl}/dashboard. *balance*, *reporte*, *deshacer* y *ayuda* siguen funcionando.`;
+  `No registré tu mensaje: este mes ya usé todo mi cupo para entender mensajes escritos libremente 🛠️. ${registerOnWeb(appUrl)} ${STILL_WORKING}`;
 export const aiUnavailableReply =
-  "Por ahora solo entiendo *balance*, *reporte*, *deshacer* y *ayuda*. Muy pronto podrás registrar gastos escribiendo normal ✍️";
+  "No registré tu mensaje: por ahora solo entiendo *balance*, *reporte*, *deshacer* y *ayuda*. Muy pronto podrás registrar tus movimientos escribiendo como hablas ✍️.";

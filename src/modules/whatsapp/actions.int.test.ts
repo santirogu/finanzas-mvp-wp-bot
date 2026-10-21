@@ -56,7 +56,7 @@ describe("generateLinkCodeAction", () => {
 
     expect(await generateLinkCodeAction()).toEqual({
       ok: false,
-      error: "Ya generaste varios códigos en la última hora. Usa el último que generaste o espera un rato para pedir otro.",
+      error: "Ya pediste varios códigos en la última hora. Espera un rato para pedir otro.",
     });
     // El último código sigue sirviendo (no se reemplazó) y el intento no cuenta como un código más.
     expect(await db.select().from(whatsappLinkCode)).toEqual(pending);

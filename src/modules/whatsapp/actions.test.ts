@@ -51,7 +51,7 @@ describe("acciones de WhatsApp", () => {
     mocks.createLinkCode.mockRejectedValue(Object.assign(new LinkCodeLimitError(), { message: "Ya generaste varios códigos." }));
     expect(await generateLinkCodeAction()).toEqual({
       ok: false,
-      error: "You already got several codes in the last hour. Use the last one or wait a while to get another.",
+      error: "You already asked for several codes in the last hour. Wait a while to ask for another one.",
     });
   });
 

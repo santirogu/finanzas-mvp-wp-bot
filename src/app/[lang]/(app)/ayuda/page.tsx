@@ -133,7 +133,7 @@ function SpanishTopics() {
 
       <Topic title="El bot de WhatsApp">
         <p>
-          Conéctalo en <A href="/cuenta">Mi cuenta</A>: toca <strong>Conectar WhatsApp</strong> y envíale al bot el código que te aparece.
+          Conéctalo en <A href="/cuenta">Mi cuenta</A>: toca <strong>Conectar WhatsApp</strong> y envíale al bot el mensaje que te aparece (<strong>VINCULAR</strong> y el código).
         </p>
         <p>Después, escríbele tus ingresos y gastos como se los contarías a alguien:</p>
         <BotExamples />
@@ -210,7 +210,7 @@ function EnglishTopics() {
 
       <Topic title="The WhatsApp bot">
         <p>
-          Connect it in <A href="/cuenta">My account</A>: tap <strong>Connect WhatsApp</strong> and send the bot the code you get.
+          Connect it in <A href="/cuenta">My account</A>: tap <strong>Connect WhatsApp</strong> and send the bot the message you see (<strong>VINCULAR</strong> and the code).
         </p>
         <p>For now the bot answers in Spanish. Write your income and expenses the way you&apos;d tell someone, for example:</p>
         <BotExamples />

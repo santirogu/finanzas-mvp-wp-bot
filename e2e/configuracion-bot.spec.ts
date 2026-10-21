@@ -99,7 +99,7 @@ test("el admin pausa Claude: el bot pide usar la web, los comandos siguen y qued
   await test.step("en pausa, a lo escrito libremente responde que use la web; balance sigue", async () => {
     const reply = await beto("almuerzo 25.900,50");
     expect(reply).toContain("no puedo entender mensajes escritos libremente");
-    expect(reply).toContain("http://localhost:3100/dashboard");
+    expect(reply).toContain("http://localhost:3100/egresos");
     expect(await beto("balance")).toContain("Aún no tienes movimientos");
   });
 
@@ -155,7 +155,7 @@ test("cambiar los topes: fuera de rango avisa en su campo; con 1 por hora, el se
 
   await test.step("el primer mensaje se registra; el segundo, en la misma hora, espera", async () => {
     expect(await beto("almuerzo 25.900,50")).toMatch(/✅ Egreso Anotado/);
-    expect(await beto("almuerzo 25.900,50")).toContain("Recibí muchos mensajes en poco tiempo");
+    expect(await beto("almuerzo 25.900,50")).toContain("No registré este mensaje: recibí muchos en poco tiempo");
     expect(await beto("balance")).toMatch(/Egresos: \$25\.900,50/);
   });
 
@@ -194,7 +194,7 @@ test("el tope mensual de tokens: al alcanzarlo, el bot deja de usar Claude hasta
   });
 
   await test.step("el bot pide usar la web y los comandos siguen; Inicio lo avisa", async () => {
-    expect(await beto("almuerzo 25.900,50")).toContain("Este mes ya usé todo mi cupo");
+    expect(await beto("almuerzo 25.900,50")).toContain("No registré tu mensaje: este mes ya usé todo mi cupo");
     expect(await beto("balance")).toContain("Aún no tienes movimientos");
     await page.goto("/admin");
     const card = visible(page.getByRole("list", { name: "Módulos de administración" })).getByRole("listitem").filter({ hasText: "Bot de WhatsApp" });
