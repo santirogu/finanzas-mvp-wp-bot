@@ -97,9 +97,9 @@ export const DESCRIPTION_SUGGESTIONS = 300;
 
 /**
  * Las descripciones que el usuario ya usó en movimientos de ese tipo desde `since` (YYYY-MM-DD), para
- * sugerirlas al escribir: las más usadas primero (y, a igual uso, la más reciente). "Mercado" y
- * "mercado " cuentan como una sola, escrita como la última vez. Cada una trae la categoría de su
- * último movimiento (o null), para proponerla.
+ * sugerirlas al escribir (y para que el bot use la del historial): las más usadas primero (y, a igual uso,
+ * la más reciente). "Mercado" y "mercado " cuentan como una sola, escrita como la última vez. Cada una trae
+ * la categoría de su último movimiento (o null), para proponerla, y cuántas veces se usó.
  */
 export async function listDescriptionSuggestions(userId: string, type: TransactionType, since: string) {
   const key = sql`lower(trim(${transaction.description}))`;
@@ -108,6 +108,7 @@ export async function listDescriptionSuggestions(userId: string, type: Transacti
     .select({
       description: sql<string>`(array_agg(trim(${transaction.description}) order by ${latest}))[1]`,
       categoryId: sql<string | null>`(array_agg(${transaction.categoryId} order by ${latest}))[1]`,
+      uses: sql<number>`count(*)::int`,
     })
     .from(transaction)
     .where(

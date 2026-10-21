@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { describe, expect, it, vi } from "vitest";
 import { db } from "@/db";
 import {
@@ -10,7 +10,7 @@ import {
   whatsappLinkCode,
   whatsappMessage,
 } from "@/db/schema";
-import { formatMonthLabel, formatMonthName, monthOf, monthParam, shiftMonth, todayInTimezone } from "@/lib/dates";
+import { formatMonthLabel, formatMonthName, monthOf, monthParam, sameDayIn, shiftMonth, todayInTimezone } from "@/lib/dates";
 import { createLinkCode } from "@/modules/whatsapp/link";
 import {
   activeTransactions,
@@ -775,5 +775,89 @@ describe("handleIncomingMessage · errores", () => {
     expect(sender.sent[0].body).toBe(replies.unsupportedTypeReply);
     const [row] = await db.select().from(whatsappMessage).where(eq(whatsappMessage.id, msg.id));
     expect(row.body).toBe("[audio]");
+  });
+});
+
+describe("handleIncomingMessage · la descripción del historial", () => {
+  const today = () => todayInTimezone("America/Bogota");
+  /** El mismo día, `months` meses atrás. */
+  const monthsAgo = (months: number) => sameDayIn(shiftMonth(monthOf(today()), -months), today());
+  const globalCategory = async (type: "expense" | "income", name: string) =>
+    (await db.select().from(category).where(and(eq(category.type, type), eq(category.name, name), isNull(category.userId))))[0];
+  const addHistory = (values: Partial<typeof transaction.$inferInsert> & { userId: string; description: string }) =>
+    db.insert(transaction).values({ type: "expense", amount: 98000, occurredOn: monthsAgo(1), ...values });
+  const claroAmor = fakeExtractor([{ type: "expense", amount: 98000, description: "Pago claro amor", category: "Otros" }]);
+
+  it("'pago claro amor' se guarda como 'Claro Postpago Cata Amor', con su categoría, y la respuesta lo dice", async () => {
+    const user = await linkedUser();
+    const servicios = await globalCategory("expense", "Servicios");
+    await addHistory({ userId: user.id, description: "Claro Postpago Cata Amor", categoryId: servicios.id });
+    const { deps: d, sender } = deps(claroAmor);
+
+    await handleIncomingMessage(incoming("pago claro amor 98 mil"), d);
+
+    const saved = (await activeTransactions(user.id)).find((t) => t.source === "whatsapp")!;
+    expect(saved).toMatchObject({ description: "Claro Postpago Cata Amor", categoryId: servicios.id, amount: 98000 });
+    expect(sender.sent[0].body).toContain("Egreso registrado: *Claro Postpago Cata Amor*");
+    expect(sender.sent[0].body).toContain("(Servicios)");
+  });
+
+  it("solo su propio historial, del mismo tipo, sin lo eliminado y de los últimos 12 meses", async () => {
+    const user = await linkedUser();
+    const other = await createUser({ name: "Beto" });
+    await addHistory({ userId: other.id, description: "Claro Postpago Cata Amor" });
+    await addHistory({ userId: user.id, description: "Claro Postpago Cata Amor", type: "income" });
+    await addHistory({ userId: user.id, description: "Claro Postpago Cata Amor Viejo", occurredOn: monthsAgo(13) });
+    await addHistory({ userId: user.id, description: "Claro Postpago Borrado Amor", deletedAt: new Date() });
+    const { deps: d } = deps(claroAmor);
+
+    await handleIncomingMessage(incoming("pago claro amor 98 mil"), d);
+    expect((await activeTransactions(user.id)).find((t) => t.source === "whatsapp")).toMatchObject({ description: "Pago claro amor" });
+  });
+
+  it("hace 11 meses todavía cuenta", async () => {
+    const user = await linkedUser();
+    await addHistory({ userId: user.id, description: "Claro Postpago Cata Amor", occurredOn: monthsAgo(11) });
+    const { deps: d } = deps(claroAmor);
+    await handleIncomingMessage(incoming("pago claro amor 98 mil"), d);
+    expect((await activeTransactions(user.id)).find((t) => t.source === "whatsapp")).toMatchObject({ description: "Claro Postpago Cata Amor" });
+  });
+
+  it("con una sola palabra, solo la misma: 'Almuerzo' no se vuelve 'Almuerzo con Ana'", async () => {
+    const user = await linkedUser();
+    await addHistory({ userId: user.id, description: "Almuerzo con Ana" });
+    const { deps: d } = deps(fakeExtractor([{ type: "expense", amount: 25000, description: "Almuerzo", category: "Alimentación" }]));
+    await handleIncomingMessage(incoming("almuerzo 25 mil"), d);
+    expect((await activeTransactions(user.id)).find((t) => t.source === "whatsapp")).toMatchObject({ description: "Almuerzo" });
+  });
+
+  it("si la categoría de la última vez ya no se puede elegir (archivada), queda la de Claude", async () => {
+    const user = await linkedUser();
+    const salud = await globalCategory("expense", "Salud");
+    const servicios = await globalCategory("expense", "Servicios");
+    await addHistory({ userId: user.id, description: "Claro Postpago Cata Amor", categoryId: salud.id });
+    await db.update(category).set({ archivedAt: new Date() }).where(eq(category.id, salud.id));
+    const { deps: d } = deps(fakeExtractor([{ type: "expense", amount: 98000, description: "Pago claro amor", category: "Servicios" }]));
+    await handleIncomingMessage(incoming("pago claro amor 98 mil"), d);
+    expect((await activeTransactions(user.id)).find((t) => t.source === "whatsapp")).toMatchObject({
+      description: "Claro Postpago Cata Amor",
+      categoryId: servicios.id,
+    });
+  });
+
+  it("en un mensaje con varios, cada uno por su lado", async () => {
+    const user = await linkedUser();
+    await addHistory({ userId: user.id, description: "Claro Postpago Cata Amor" });
+    const { deps: d, sender } = deps(
+      fakeExtractor([
+        { type: "expense", amount: 98000, description: "Pago claro amor", category: "Servicios" },
+        { type: "expense", amount: 12000, description: "Taxi aeropuerto", category: "Transporte" },
+      ]),
+    );
+    await handleIncomingMessage(incoming("claro amor 98 mil y taxi 12 mil"), d);
+    const fromBot = (await activeTransactions(user.id)).filter((t) => t.source === "whatsapp").map((t) => t.description);
+    expect(fromBot.sort()).toEqual(["Claro Postpago Cata Amor", "Taxi aeropuerto"]);
+    expect(sender.sent[0].body).toContain("*Claro Postpago Cata Amor*");
+    expect(sender.sent[0].body).toContain("*Taxi aeropuerto*");
   });
 });

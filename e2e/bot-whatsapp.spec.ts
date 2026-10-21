@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { expect } from "@playwright/test";
 import { FAKE_SERVICES_URL } from "./fake-config";
 import { formatMonthLabel, formatMonthName, monthOf, monthParam, shiftMonth, todayInTimezone } from "../src/lib/dates";
-import { addTransaction, openTab, register, test, toast, visible } from "./helpers";
+import { addTransaction, goToWhatsApp, openTab, register, test, toast, visible } from "./helpers";
 import { newPhone, nthReply, sendWhatsApp, sentTo } from "./whatsapp";
 
 // El bot de WhatsApp de punta a punta: los mensajes llegan al webhook firmados igual que los manda
@@ -165,4 +165,25 @@ test("a un audio responde que por ahora solo entiende texto", async ({ request }
   const phone = newPhone();
   await sendWhatsApp(request, phone, null);
   expect(await nthReply(request, phone, 1)).toBe("Por ahora solo entiendo mensajes de texto ✍️");
+});
+
+test("el bot guarda la descripción que ya está en el historial, con su categoría @principal", async ({ page, request }) => {
+  const phone = newPhone();
+  await register(page, "Ana Pérez");
+  await openTab(page, "Egresos");
+  await addTransaction(page, { amount: "98000", description: "Claro Postpago Cata Amor", category: "Servicios" });
+  await expect(toast(page, "Egreso registrado")).toBeVisible();
+
+  await goToWhatsApp(page);
+  await page.getByRole("button", { name: "Conectar WhatsApp" }).click();
+  const code = (await visible(page.getByText(/^VINCULAR \d{6}$/)).textContent())!.replace("VINCULAR ", "");
+  await sendWhatsApp(request, phone, `VINCULAR ${code}`);
+  await nthReply(request, phone, 1);
+
+  await sendWhatsApp(request, phone, "pago claro amor 98 mil");
+  expect(await nthReply(request, phone, 2)).toMatch(/✅ Egreso registrado: \*Claro Postpago Cata Amor\* — \$98\.000,00 \(Servicios\)/);
+  await openTab(page, "Egresos");
+  const rows = visible(page.getByRole("listitem").filter({ hasText: "Claro Postpago Cata Amor" }));
+  await expect(rows).toHaveCount(2);
+  await expect(rows.filter({ hasText: "vía WhatsApp" })).toContainText("Servicios");
 });

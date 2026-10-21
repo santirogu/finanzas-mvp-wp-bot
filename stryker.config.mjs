@@ -19,7 +19,7 @@ const config = {
     "src/modules/auth/{two-factor-rules,http-routes,account-name}.ts",
     "src/modules/account/password-change.ts",
     "src/modules/admin/{modules,history/log-filters,shared/filters,shared/totp,users/user-filters,users/session-info,categories/category-input,bot/bot-filters}.ts",
-    "src/modules/bot/{commands,normalize,interpret,replies,prompt,claude-extractor,limits,pricing}.ts",
+    "src/modules/bot/{commands,normalize,interpret,replies,prompt,claude-extractor,limits,pricing,history-match}.ts",
     "src/modules/whatsapp/{signature,payload,phone,client,actions}.ts",
     "src/modules/transactions/{validation,default-categories,month-comparison,category-chart,search}.ts",
     "src/modules/reports/{period,summary,categories,recurring,biggest,csv,history,daily,upcoming,pdf/view}.ts",

@@ -252,8 +252,8 @@ describe("listDescriptionSuggestions", () => {
     await addTx({ userId: user.id, description: "MERCADO", categoryId: mercado.id, occurredOn: "2026-10-03" });
 
     expect(await listDescriptionSuggestions(user.id, "expense", since)).toEqual([
-      { description: "MERCADO", categoryId: mercado.id },
-      { description: "Mercado del barrio", categoryId: null },
+      { description: "MERCADO", categoryId: mercado.id, uses: 2 },
+      { description: "Mercado del barrio", categoryId: null, uses: 1 },
     ]);
   });
 
@@ -284,7 +284,8 @@ describe("listDescriptionSuggestions", () => {
 
     const suggestions = await listDescriptionSuggestions(user.id, "expense", since);
     expect(suggestions).toHaveLength(26);
-    expect(suggestions.at(-1)).toEqual({ description: "Arriendo Civita", categoryId: null });
+    expect(suggestions.at(-1)).toEqual({ description: "Arriendo Civita", categoryId: null, uses: 1 });
+    expect(suggestions[0].uses).toBe(2);
   });
 
   it(`llegan hasta ${DESCRIPTION_SUGGESTIONS}`, async () => {

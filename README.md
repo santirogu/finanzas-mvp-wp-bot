@@ -550,6 +550,20 @@ La app está en español (el de siempre) y en inglés, toda la web (el bot de Wh
 3. Se deduplica por el ID del mensaje, se resuelven los comandos fijos (`balance`, `reporte`,
    `deshacer`, `ayuda`) y el texto libre se interpreta con Claude. El bot responde por WhatsApp.
 
+**La descripción del historial** (`src/modules/bot/history-match.ts` y `history.ts`): antes de guardar lo
+que entendió Claude, el bot busca en el historial de la persona (del mismo tipo, sin lo eliminado, de los
+últimos 12 meses) la descripción que ya usa, y guarda esa con la categoría de la última vez (si sigue
+disponible; si no, la de Claude). La respuesta muestra lo que quedó guardado.
+- **Cómo compara:** palabra por palabra, en el servidor (no le manda el historial a Claude ni gasta
+  tokens), sin tildes, mayúsculas ni palabras como "de" o "la". Todas las palabras de lo que escribió
+  tienen que estar en la del historial, iguales, al comienzo de una ("net" → "netflix") o, con cuatro
+  letras o más, dentro de una ("pago" → "postpago"): "pago claro amor" se guarda como "Claro Postpago
+  Cata Amor".
+- **Con una sola palabra,** solo la que es igual ("almuerzo" → "Almuerzo"), nunca una más larga
+  ("Almuerzo con Ana").
+- **Entre varias,** la que tiene exactamente sus palabras y, si no, la más usada; si empatan, se deja la
+  de Claude. Sin sinónimos, a propósito ("internet de la casa" no es "Claro Hogar").
+
 **Balance de otro mes** (`src/modules/bot/commands.ts`): un comando fijo más, sin Claude (no gasta
 tokens y funciona con Claude en pausa).
 - **Qué entiende:**

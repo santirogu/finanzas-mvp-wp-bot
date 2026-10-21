@@ -17,6 +17,7 @@ import type { IncomingMessage } from "@/modules/whatsapp/payload";
 import { reserveAiCall } from "./ai-quota";
 import type { Extractor } from "./claude-extractor";
 import { balanceMonth, parseCommand, reportYear } from "./commands";
+import { withHistoryDescriptions } from "./history";
 import { interpretMessage, type BotIntent } from "./interpret";
 import { monthlyBudgetReached } from "./limits";
 import * as replies from "./replies";
@@ -164,17 +165,20 @@ async function respond(
 
   switch (intent.kind) {
     case "transactions": {
+      // Con la descripción (y la categoría) que ya usó en su historial: "pago claro amor" queda como
+      // "Claro Postpago Cata Amor". La respuesta muestra lo que quedó guardado.
+      const items = await withHistoryDescriptions(user.id, intent.items, categories, today);
       await createTransactionsFromMessage({
         userId: user.id,
         currency: user.currency,
         messageId: msg.id,
-        items: intent.items,
+        items,
         categories,
       });
       const summary = await getMonthlySummary(user.id, range);
       return {
         ...base,
-        reply: replies.registeredReply(intent.items, {
+        reply: replies.registeredReply(items, {
           today,
           currency: user.currency,
           balance: summary.balance,
