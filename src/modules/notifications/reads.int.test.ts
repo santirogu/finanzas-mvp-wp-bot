@@ -58,7 +58,7 @@ describe("getReadNotifications y markNotificationsRead", () => {
     "con %j no marca nada",
     async (ids) => {
       const user = await createUser();
-      expect(await markNotificationsRead(user.id, ids)).toEqual({ ok: false, error: "No se pudo marcar como leída." });
+      expect(await markNotificationsRead(user.id, ids)).toEqual({ ok: false, error: "No se pudo marcar como leída. Intenta de nuevo." });
       expect(await rowsOf(user.id)).toEqual([]);
     },
   );
@@ -88,7 +88,7 @@ describe("markNotificationsReadAction", () => {
 
   it("con un error lo devuelve, no marca nada y no refresca", async () => {
     const user = await signIn();
-    expect(await markNotificationsReadAction({}, form([]))).toEqual({ error: "No se pudo marcar como leída." });
+    expect(await markNotificationsReadAction({}, form([]))).toEqual({ error: "No se pudo marcar como leída. Intenta de nuevo." });
     expect(await rowsOf(user.id)).toEqual([]);
     expect(refresh).not.toHaveBeenCalled();
   });
@@ -99,6 +99,6 @@ describe("markNotificationsRead · en inglés", () => {
     const { id } = await createUser();
     expect(await markNotificationsRead(id, ["pago|2026-10|arriendo"], "en")).toEqual({ ok: true, message: "Marked as read", tone: "success" });
     expect(await markNotificationsRead(id, ["pago|2026-10|gimnasio", "pago|2026-10|netflix"], "en")).toMatchObject({ message: "2 marked as read" });
-    expect(await markNotificationsRead(id, ["otra cosa"], "en")).toEqual({ ok: false, error: "It couldn't be marked as read." });
+    expect(await markNotificationsRead(id, ["otra cosa"], "en")).toEqual({ ok: false, error: "It couldn't be marked as read. Try again." });
   });
 });

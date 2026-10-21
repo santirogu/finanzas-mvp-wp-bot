@@ -241,7 +241,7 @@ test("en pantallas táctiles las páginas caben y los campos no hacen zoom @tact
     // Agregar el que subió de $1 al máximo y abrir su historial, con una nota de 280 caracteres sin espacios.
     await fixed.getByLabel("Egreso", { exact: true }).selectOption(fixedDescription);
     await fixed.getByRole("button", { name: "Agregar", exact: true }).click();
-    await expect(toast(page, `Se agregó «${fixedDescription}» a los gastos fijos`)).toBeVisible();
+    await expect(toast(page, `Se agregó “${fixedDescription}” a los gastos fijos`)).toBeVisible();
     await closeToasts(page);
     await fixed.getByRole("button", { name: `Historial de ${fixedDescription}` }).click();
     // Abierto, la descripción se lee completa: no se corta.

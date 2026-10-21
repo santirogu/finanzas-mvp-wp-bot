@@ -155,5 +155,8 @@ export const formatDate = (date: Date, locale: Locale = DEFAULT_LOCALE) => forma
 /** Solo la hora en Colombia: "9:41 p. m." (en inglés, "9:41 PM"). */
 export const formatHour = (date: Date, locale: Locale = DEFAULT_LOCALE) => format(date, { hour: "numeric", minute: "2-digit" }, locale);
 
+/** La hora con su artículo, para las plantillas en español: "las 9:41 p. m.", pero "la 1:05 p. m." (DPD, s. v. hora). */
+export const withHourArticle = (hour: string) => `${/^1\D/.test(hour) ? "la" : "las"} ${hour}`;
+
 /** El día (YYYY-MM-DD) de un instante, en Colombia. */
 export const dayInBogota = (date: Date) => todayInTimezone(ADMIN_TIMEZONE, date);

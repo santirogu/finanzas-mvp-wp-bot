@@ -91,7 +91,7 @@ test("el admin desbloquea el inicio de sesión y cierra las sesiones de una cuen
     await expect(status(page)).toHaveText("Se desbloqueó el inicio de sesión de Beto Acciones.");
     await expect(dialog(page)).toHaveCount(0);
     await expect(actionsRegion(page).getByRole("button", { name: "Desbloquear" })).toHaveCount(0);
-    await expect(visible(page.getByText(/Bloqueada hasta las/))).toHaveCount(0);
+    await expect(visible(page.getByText(/Bloqueada hasta las? \d/))).toHaveCount(0);
   });
 
   await test.step("Beto ya puede entrar", async () => {
@@ -269,7 +269,7 @@ test("cinco códigos equivocados bloquean las acciones y también el inicio de s
     await expect(dialog(page).getByText(new RegExp(`Te quedan? ${left}\\.`))).toBeVisible();
   }
   await confirmWith(page, wrongCode(secret), "Desvincular");
-  await expect(dialog(page).getByText(/las acciones y tu inicio de sesión están bloqueados hasta las/)).toBeVisible();
+  await expect(dialog(page).getByText(/las acciones y tu inicio de sesión están bloqueados hasta las? \d/)).toBeVisible();
   // Ni el correcto pasa, y el WhatsApp de Dani sigue vinculado.
   await confirmWith(page, codeFor(secret), "Desvincular");
   await expect(dialog(page).getByText(/^Por demasiados códigos equivocados/)).toBeVisible();

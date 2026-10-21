@@ -12,6 +12,7 @@ import {
   formatDateTime,
   formatHour,
   parseSearch,
+  withHourArticle,
 } from "./filters";
 
 // Lo común de los listados de administración. El resto (fechas, búsqueda, formatos) se prueba con
@@ -78,6 +79,17 @@ describe("en inglés", () => {
     expect(formatDateTime(night, "en")).toBe("Oct 14, 2026, 4:41 PM");
     expect(formatHour(night, "en")).toBe("4:41 PM");
     expect(formatHour(night)).toBe("4:41 p. m.");
+  });
+
+  it.each([
+    ["2026-10-14T18:05:00Z", "la 1:05 p. m."],
+    ["2026-10-14T06:30:00Z", "la 1:30 a. m."],
+    ["2026-10-14T20:15:00Z", "las 3:15 p. m."],
+    ["2026-10-14T15:00:00Z", "las 10:00 a. m."],
+    ["2026-10-14T16:59:00Z", "las 11:59 a. m."],
+    ["2026-10-14T17:00:00Z", "las 12:00 p. m."],
+  ])("la hora de las %s con su artículo: “%s” (la 1, las demás)", (iso, expected) => {
+    expect(withHourArticle(formatHour(new Date(iso)))).toBe(expected);
   });
 
   it("los atajos de fecha", () => {

@@ -273,7 +273,7 @@ describe("AccountActions", () => {
       const box = await openDelete();
       expect(dialog()).toHaveAccessibleName("¿Eliminar la cuenta de Beto Ruiz?");
       expect(dialog()).toHaveAccessibleDescription(
-        "Se borran su cuenta, sus movimientos, sus categorías, su WhatsApp y su historial. No se puede deshacer. En el historial queda solo “se eliminó una cuenta”.",
+        "Se borran su cuenta, sus movimientos, sus categorías, su WhatsApp y su historial. No se puede deshacer. En el historial solo queda que eliminaste una cuenta, sin su nombre ni su correo.",
       );
       expect(box.getByLabelText(/Escribe su correo/)).toHaveAttribute("type", "email");
       expect(codeField()).toBeInTheDocument();
@@ -480,7 +480,7 @@ describe("en inglés", () => {
     await userEvent.click(screen.getByRole("button", { name: "Delete account" }));
     const box = within(dialog());
     expect(dialog()).toHaveAccessibleName("Delete Beto Ruiz's account?");
-    expect(dialog()).toHaveAccessibleDescription(expect.stringContaining("The history only keeps “an account was deleted”."));
+    expect(dialog()).toHaveAccessibleDescription(expect.stringContaining("The history only keeps that you deleted an account, without its name or email."));
     await userEvent.type(box.getByLabelText(/Type their email/), "beto@correo.com");
     await userEvent.click(box.getByRole("button", { name: "Delete account" }));
     expect(enCodeField()).toHaveAccessibleDescription("Enter the 6-digit code from Google Authenticator.");

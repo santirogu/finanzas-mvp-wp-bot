@@ -6,21 +6,21 @@ import { withoutControlChars } from "@/lib/text";
 
 const TEXTS = texts(
   {
-    amount: "Ingresa un monto mayor que cero",
-    tooMuch: (max: string) => `El monto no puede pasar de ${max}`,
-    description: "Agrega una descripción",
-    tooLong: "Máximo 140 caracteres",
-    category: "Selecciona una categoría",
-    date: "Fecha inválida",
+    amount: "Escribe un monto mayor que cero.",
+    tooMuch: (max: string) => `El monto no puede pasar de ${max}.`,
+    description: "Escribe una descripción.",
+    tooLong: "La descripción puede tener hasta 140 caracteres.",
+    category: "Elige una categoría.",
+    date: "Elige una fecha válida.",
   },
   {
     en: {
-      amount: "Enter an amount greater than zero",
-      tooMuch: (max) => `The amount can't be more than ${max}`,
-      description: "Add a description",
-      tooLong: "At most 140 characters",
-      category: "Pick a category",
-      date: "Invalid date",
+      amount: "Enter an amount greater than zero.",
+      tooMuch: (max) => `The amount can't be more than ${max}.`,
+      description: "Enter a description.",
+      tooLong: "The description can have up to 140 characters.",
+      category: "Choose a category.",
+      date: "Choose a valid date.",
     },
   },
 );

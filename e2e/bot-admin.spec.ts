@@ -60,7 +60,7 @@ test("el admin ve qué pasó con los mensajes de una cuenta y su consumo de Clau
     for (const label of ["Vinculó su número", "Registró movimientos", "Comandos (balance, reporte, deshacer, ayuda)", "Respuesta sin registrar nada", "No era texto (audio, foto…)"]) {
       await expect(outcome(page, label)).toContainText("1 · 20%");
     }
-    await expect(visible(page.getByText(/^Responde en .+ \(la mitad de las veces\)/))).toBeVisible();
+    await expect(visible(page.getByText(/^La mitad de las veces responde en menos de .+; el 95 %, en menos de/))).toBeVisible();
   });
 
   await test.step("el consumo de Claude: tokens, por modelo y nadie en el tope", async () => {

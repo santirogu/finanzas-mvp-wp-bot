@@ -93,7 +93,7 @@ test("cancelar no cambia nada y un error no pierde lo escrito", async ({ page })
   await visible(page.getByLabel("Monto")).fill("0");
   await visible(page.getByLabel("Descripción")).fill("Sueldo corregido");
   await visible(page.getByRole("button", { name: "Guardar cambios" })).click();
-  await expect(visible(page.getByText("Ingresa un monto mayor que cero"))).toBeVisible();
+  await expect(visible(page.getByText("Escribe un monto mayor que cero."))).toBeVisible();
   await expect(visible(page.getByLabel("Descripción"))).toHaveValue("Sueldo corregido");
 
   await visible(page.getByRole("link", { name: "Cancelar" })).click();

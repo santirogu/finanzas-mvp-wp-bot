@@ -168,7 +168,7 @@ for (const [colorScheme, scheme] of Object.entries(SCHEMES) as [keyof typeof SCH
 
       test("los errores del formulario tampoco", async ({ page }) => {
         await addTransaction(page, { amount: "0", description: "Inválido" });
-        await expect(visible(page.getByText("Ingresa un monto mayor que cero"))).toBeVisible();
+        await expect(visible(page.getByText("Escribe un monto mayor que cero."))).toBeVisible();
         expect(await seriousViolations(page)).toEqual([]);
       });
     });

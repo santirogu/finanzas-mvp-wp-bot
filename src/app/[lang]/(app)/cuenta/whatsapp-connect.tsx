@@ -20,7 +20,7 @@ const TEXTS = texts(
     toBot: "al número del bot",
     fromYours: "desde tu WhatsApp:",
     open: "Abrir WhatsApp",
-    expires: (n: number) => `Vence en ${n} ${n === 1 ? "minuto" : "minutos"}. Esta tarjeta se actualiza sola cuando quede vinculado.`,
+    expires: (n: number) => `Vence en ${n} ${n === 1 ? "minuto" : "minutos"}. Esta tarjeta se actualiza sola cuando tu WhatsApp quede vinculado.`,
     noWhatsApp: "¿Sin WhatsApp configurado aún?",
     simulator: "Pruébalo en el simulador",
   },

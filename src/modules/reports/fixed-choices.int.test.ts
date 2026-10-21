@@ -59,7 +59,7 @@ describe("chooseFixedExpense", () => {
     await addExpense(user.id, "Seguro del Carro Cívico");
     expect(await chooseFixedExpense(user.id, { description: "Seguro del Carro Cívico", action: "include" })).toEqual({
       ok: true,
-      message: "Se agregó «Seguro del Carro Cívico» a los gastos fijos",
+      message: "Se agregó “Seguro del Carro Cívico” a los gastos fijos",
       tone: "success",
     });
     expect(await choicesOf(user.id)).toEqual([{ key: "seguro del carro civico", choice: "include" }]);
@@ -94,7 +94,7 @@ describe("chooseFixedExpense", () => {
     await addExpense(user.id, "Netflix");
     expect(await chooseFixedExpense(user.id, { description: "Netflix", action: "exclude" })).toEqual({
       ok: true,
-      message: "Se quitó «Netflix» de los gastos fijos",
+      message: "Se quitó “Netflix” de los gastos fijos",
       tone: "removal",
     });
     expect(await choicesOf(user.id)).toEqual([{ key: "netflix", choice: "exclude" }]);
@@ -109,13 +109,13 @@ describe("chooseFixedExpense", () => {
     // "Volver a poner" no toca un agregado.
     expect(await chooseFixedExpense(user.id, { description: "Netflix", action: "restore" })).toEqual({
       ok: true,
-      message: "Volvió «Netflix» a los gastos fijos",
+      message: "Volvió “Netflix” a los gastos fijos",
       tone: "success",
     });
     expect(await choicesOf(user.id)).toEqual([{ key: "netflix", choice: "include" }]);
     expect(await chooseFixedExpense(user.id, { description: "Netflix", action: "unadd" })).toEqual({
       ok: true,
-      message: "Se quitó «Netflix» de los gastos fijos",
+      message: "Se quitó “Netflix” de los gastos fijos",
       tone: "removal",
     });
     expect(await choicesOf(user.id)).toEqual([]);
@@ -174,7 +174,7 @@ describe("chooseFixedExpenseAction", () => {
     const user = await signIn();
     await addExpense(user.id, "Netflix");
     expect(await chooseFixedExpenseAction({}, form({ description: "Netflix", action: "exclude" }))).toEqual({
-      message: "Se quitó «Netflix» de los gastos fijos",
+      message: "Se quitó “Netflix” de los gastos fijos",
       tone: "removal",
     });
     expect(refresh).toHaveBeenCalledOnce();

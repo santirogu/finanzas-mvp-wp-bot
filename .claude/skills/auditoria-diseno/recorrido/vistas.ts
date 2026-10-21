@@ -158,8 +158,8 @@ export const VISTAS: Vista[] = [
     ruta: fija("/dashboard"),
     preparar: async (page) => {
       const avisos = visible(page.getByRole("region", { name: "Próximos pagos" }));
-      await avisos.getByRole("button", { name: /^Registrar el pago de / }).first().click();
-      await expect(visible(page.getByRole("dialog", { name: /^Registrar el pago de / }))).toBeVisible();
+      await avisos.getByRole("button", { name: /^Registrar pago de / }).first().click();
+      await expect(visible(page.getByRole("dialog", { name: /^Registrar pago de / }))).toBeVisible();
     },
   },
   {

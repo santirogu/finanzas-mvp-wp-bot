@@ -37,7 +37,7 @@ const TEXTS = texts(
     // Los errores de los campos antes de enviar (en vez del globo del navegador).
     messages: {
       amount: { required: "Escribe el monto." },
-      description: { required: 'Escribe una descripción, por ejemplo "Almuerzo".' },
+      description: { required: "Escribe una descripción, por ejemplo “Almuerzo”." },
       occurredOn: { required: "Elige la fecha.", max: "La fecha no puede ser después de hoy." },
     } as Record<string, FieldMessages>,
     income: { new: "Nuevo ingreso", edit: "Editar ingreso", submit: "Registrar ingreso", placeholder: "Pago de nómina" },
@@ -60,7 +60,7 @@ const TEXTS = texts(
     en: {
       messages: {
         amount: { required: "Enter the amount." },
-        description: { required: 'Enter a description, for example "Lunch".' },
+        description: { required: "Enter a description, for example “Lunch”." },
         occurredOn: { required: "Pick the date.", max: "The date can't be after today." },
       },
       income: { new: "New income", edit: "Edit income", submit: "Add income", placeholder: "Paycheck" },

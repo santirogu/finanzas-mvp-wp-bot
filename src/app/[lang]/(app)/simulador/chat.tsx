@@ -89,7 +89,7 @@ export function Chat() {
         <div className="flex-1 space-y-2 overflow-y-auto bg-background px-4 py-4">
           {bubbles.length === 0 && (
             <p className="py-10 text-center text-sm text-muted">
-              Envía <strong>VINCULAR</strong> con el código del dashboard, o prueba una sugerencia.
+              Envía <strong>VINCULAR</strong> con el código de Mi cuenta, o prueba una sugerencia.
             </p>
           )}
           {bubbles.map((b, i) => (

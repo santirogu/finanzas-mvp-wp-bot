@@ -97,12 +97,12 @@ describe("deleteAccountAction", () => {
 
     expect(await deleteAccountAction({}, form({ password: "", confirmation: "borrar" }))).toEqual({
       fieldErrors: {
-        password: "Escribe tu contraseña",
-        confirmation: "Escribe ELIMINAR para confirmar",
+        password: "Escribe tu contraseña.",
+        confirmation: "Escribe ELIMINAR para confirmar.",
       },
     });
     expect(await deleteAccountAction({}, form({ password: "clave", confirmation: "" }))).toEqual({
-      fieldErrors: { confirmation: "Escribe ELIMINAR para confirmar" },
+      fieldErrors: { confirmation: "Escribe ELIMINAR para confirmar." },
     });
     expect(mocks.verifyPassword).not.toHaveBeenCalled();
     expect(await userExists(ana.id)).toBe(true);
@@ -115,7 +115,7 @@ describe("deleteAccountAction", () => {
     );
 
     expect(await deleteAccountAction({}, form({ password: "otra", confirmation: "ELIMINAR" }))).toEqual({
-      fieldErrors: { password: "Contraseña incorrecta" },
+      fieldErrors: { password: "Contraseña incorrecta." },
     });
     expect(mocks.signOut).not.toHaveBeenCalled();
     expect(await userExists(ana.id)).toBe(true);
@@ -180,11 +180,11 @@ describe("deleteAccountAction · en inglés", () => {
     requestLocale.value = "en";
 
     expect(await deleteAccountAction({}, form({ password: "", confirmation: "ELIMINAR" }))).toEqual({
-      fieldErrors: { password: "Enter your password", confirmation: "Type DELETE to confirm" },
+      fieldErrors: { password: "Enter your password.", confirmation: "Type DELETE to confirm." },
     });
     mocks.verifyPassword.mockRejectedValueOnce(new APIError("BAD_REQUEST", { code: "INVALID_PASSWORD", message: "Invalid password" }));
     expect(await deleteAccountAction({}, form({ password: "mala", confirmation: "delete" }))).toEqual({
-      fieldErrors: { password: "Wrong password" },
+      fieldErrors: { password: "Wrong password." },
     });
     expect(await userExists(ana.id)).toBe(true);
 

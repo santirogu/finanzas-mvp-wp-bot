@@ -25,7 +25,7 @@ test("eliminar la cuenta borra todo y permite empezar de cero con el mismo corre
     await visible(page.getByLabel("Tu contraseña")).fill("otra-clave-123");
     await visible(page.getByLabel(/Escribe ELIMINAR para confirmar/)).fill("ELIMINAR");
     await visible(page.getByRole("button", { name: "Eliminar mi cuenta para siempre" })).click();
-    await expect(visible(page.getByText("Contraseña incorrecta"))).toBeVisible();
+    await expect(visible(page.getByText("Contraseña incorrecta."))).toBeVisible();
     await expect(page).toHaveURL(/\/cuenta$/);
   });
 
@@ -33,7 +33,7 @@ test("eliminar la cuenta borra todo y permite empezar de cero con el mismo corre
     await visible(page.getByLabel("Tu contraseña")).fill(PASSWORD);
     await visible(page.getByRole("button", { name: "Eliminar mi cuenta para siempre" })).click();
     await expect(page).toHaveURL(/\/cuenta-eliminada$/);
-    await expect(page.getByRole("heading", { name: "Tu cuenta fue eliminada" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Se eliminó tu cuenta" })).toBeVisible();
 
     await page.goto("/dashboard");
     await expect(page).toHaveURL(/\/login$/);

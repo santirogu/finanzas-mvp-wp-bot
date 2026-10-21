@@ -70,7 +70,7 @@ test("probar las conexiones: WhatsApp y Claude sin gastar nada, y un token venci
     await expect(result("WhatsApp")).toContainText("Conectado");
     await expect(result("WhatsApp")).toContainText("Finanzas MVP (prueba) · +57 300 0000000");
     await expect(result("Claude")).toContainText("Claude falso (claude-haiku-5-5)");
-    await expect(connections.getByRole("status")).toContainText(/(Último mensaje que llegó al webhook: |Todavía no ha llegado ningún mensaje).* Probado a las /);
+    await expect(connections.getByRole("status")).toContainText(/(Último mensaje que llegó al webhook: |Todavía no ha llegado ningún mensaje).* Probado a las? \d/);
     expect(await seriousViolations(page)).toEqual([]);
   });
 

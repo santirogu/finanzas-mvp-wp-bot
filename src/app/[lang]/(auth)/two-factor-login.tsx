@@ -8,6 +8,7 @@ import { useLocale } from "@/i18n/client";
 import { texts } from "@/i18n/texts";
 import { authClient } from "@/lib/auth-client";
 import { authErrorMessage } from "@/lib/auth-errors";
+import { BRAND_NAME } from "@/lib/brand";
 import { FIELD_TEXTS, type FieldMessages } from "@/lib/field-errors";
 
 type Mode = "totp" | "backup";
@@ -23,7 +24,7 @@ const TEXTS = texts(
     totpMessages: { code: FIELD_TEXTS.es.totpCode } as Record<string, FieldMessages>,
     backupMessages: { code: { required: "Escribe uno de tus códigos de respaldo." } } as Record<string, FieldMessages>,
     title: "Verificación en dos pasos",
-    totpIntro: "Abre Google Authenticator y escribe el código de 6 dígitos de Anotado (antes, Finanzas MVP).",
+    totpIntro: `Abre Google Authenticator y escribe el código de 6 dígitos de ${BRAND_NAME} (antes, Finanzas MVP).`,
     backupIntro: "Escribe uno de los códigos de respaldo que guardaste. Cada uno sirve una sola vez.",
     totpLabel: "Código de 6 dígitos",
     backupLabel: "Código de respaldo",
@@ -38,7 +39,7 @@ const TEXTS = texts(
       totpMessages: { code: FIELD_TEXTS.en.totpCode },
       backupMessages: { code: { required: "Enter one of your backup codes." } },
       title: "Two-step verification",
-      totpIntro: "Open Google Authenticator and enter the 6-digit code for Anotado (formerly Finanzas MVP).",
+      totpIntro: `Open Google Authenticator and enter the 6-digit code for ${BRAND_NAME} (formerly Finanzas MVP).`,
       backupIntro: "Enter one of the backup codes you saved. Each one works only once.",
       totpLabel: "6-digit code",
       backupLabel: "Backup code",

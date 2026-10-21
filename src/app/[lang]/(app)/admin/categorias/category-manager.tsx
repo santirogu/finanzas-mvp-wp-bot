@@ -60,8 +60,8 @@ const TEXTS = texts(
     deleteQuestion: (name: string) => `¿Eliminar la categoría ${name}?`,
     deleteAndMove: `Eliminar y pasar a ${DEFAULT_CATEGORY}`,
     deleting: "Eliminando…",
-    deleteWarning: (movements: string, fallback: string) =>
-      `Tiene ${movements}. Si la eliminas, pasarán a ${fallback}. La eliminación queda en el registro de cambios y no se puede deshacer.`,
+    deleteWarning: (count: number, movements: string, fallback: string) =>
+      `Tiene ${movements}. Si la eliminas, ${count === 1 ? "pasará" : "pasarán"} a ${fallback}. La eliminación queda en el registro de cambios y no se puede deshacer.`,
     archiveInstead: "Si solo quieres que no se use más, archívala: los movimientos la conservan.",
     deleteEmpty: "No tiene movimientos. La eliminación queda en el registro de cambios y no se puede deshacer.",
     movements: (n: number): string => (n === 0 ? "Sin movimientos" : `${n} ${n === 1 ? "movimiento" : "movimientos"}`),
@@ -82,7 +82,7 @@ const TEXTS = texts(
     name: "Nombre",
     nameEn: "Nombre en inglés",
     nameEnHelp: "Así se ve con la app en inglés. Si lo dejas vacío, en inglés se ve el nombre de arriba. El bot usa siempre el de arriba.",
-    defaultOnlyEmoji: `A "${DEFAULT_CATEGORY}" solo se le pueden cambiar el emoji y el nombre en inglés.`,
+    defaultOnlyEmoji: `A “${DEFAULT_CATEGORY}” solo se le pueden cambiar el emoji y el nombre en inglés.`,
     emoji: "Emoji",
     optional: "(opcional)",
     emojiHelp: "Toca uno de los sugeridos o escribe otro. Si lo dejas vacío, la categoría se mostrará con un punto (•).",
@@ -114,8 +114,8 @@ const TEXTS = texts(
       deleteQuestion: (name) => `Delete the category ${name}?`,
       deleteAndMove: `Delete and move to ${DEFAULT_CATEGORY}`,
       deleting: "Deleting…",
-      deleteWarning: (movements, fallback) =>
-        `It has ${movements}. If you delete it, they'll move to ${fallback}. The deletion stays in the change log and can't be undone.`,
+      deleteWarning: (count, movements, fallback) =>
+        `It has ${movements}. If you delete it, ${count === 1 ? "it'll" : "they'll"} move to ${fallback}. The deletion stays in the change log and can't be undone.`,
       archiveInstead: "If you just want it not to be used anymore, archive it: the transactions keep it.",
       deleteEmpty: "It has no transactions. The deletion stays in the change log and can't be undone.",
       movements: (n) => (n === 0 ? "No transactions" : `${n} ${n === 1 ? "transaction" : "transactions"}`),
@@ -136,7 +136,7 @@ const TEXTS = texts(
       name: "Name",
       nameEn: "English name",
       nameEnHelp: "This is what you see with the app in English. If you leave it empty, English shows the name above. The bot always uses the name above.",
-      defaultOnlyEmoji: `Only the emoji and the English name of "${DEFAULT_CATEGORY}" can be changed.`,
+      defaultOnlyEmoji: `Only the emoji and the English name of “${DEFAULT_CATEGORY}” can be changed.`,
       emoji: "Emoji",
       optional: "(optional)",
       emojiHelp: "Tap one of the suggestions or type another. If you leave it empty, the category will show a dot (•).",
@@ -245,7 +245,7 @@ export function CategoryManager({ type, categories }: { type: CategoryType; cate
             open.category.movements > 0 ? (
               <>
                 <span className="block rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-danger">
-                  {t.deleteWarning(t.movements(open.category.movements), `${fallbackEmoji} ${DEFAULT_CATEGORY}`)}
+                  {t.deleteWarning(open.category.movements, t.movements(open.category.movements), `${fallbackEmoji} ${DEFAULT_CATEGORY}`)}
                 </span>
                 {/* El espacio separa las dos frases para los lectores de pantalla (los bloques no lo ponen). */}
                 {!open.category.archived && (

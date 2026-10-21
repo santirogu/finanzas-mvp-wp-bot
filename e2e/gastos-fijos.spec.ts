@@ -58,7 +58,7 @@ test("Fijos: los detectados solos, quitar, volver a poner, agregar y sacar (Repo
 
   await test.step("quitar el arriendo: pasa a Quitados y Reportes lo cuenta entre los más grandes", async () => {
     await fixedList(page).getByRole("button", { name: "Quitar arriendo de los gastos fijos" }).click();
-    await expect(toast(page, "Se quitó «arriendo» de los gastos fijos")).toHaveAttribute("data-tone", "removal");
+    await expect(toast(page, "Se quitó “arriendo” de los gastos fijos")).toHaveAttribute("data-tone", "removal");
     await expect(fixedList(page)).toContainText("Todavía no hay egresos que se repitan cada mes.");
     await closeToasts(page);
     await openTab(page, "Reportes");
@@ -69,7 +69,7 @@ test("Fijos: los detectados solos, quitar, volver a poner, agregar y sacar (Repo
     await openTab(page, "Fijos");
     await fixedList(page).getByText("Quitados (1)").click();
     await fixedList(page).getByRole("button", { name: "Volver a poner arriendo en los gastos fijos" }).click();
-    await expect(toast(page, "Volvió «arriendo» a los gastos fijos")).toHaveAttribute("data-tone", "success");
+    await expect(toast(page, "Volvió “arriendo” a los gastos fijos")).toHaveAttribute("data-tone", "success");
     await expect(fixedList(page).getByRole("listitem")).toHaveCount(1);
     await closeToasts(page);
   });
@@ -81,7 +81,7 @@ test("Fijos: los detectados solos, quitar, volver a poner, agregar y sacar (Repo
     expect(await seriousViolations(page)).toEqual([]);
     await select.selectOption({ label: "🍽️ Restaurante con amigos" });
     await fixedList(page).getByRole("button", { name: "Agregar", exact: true }).click();
-    await expect(toast(page, "Se agregó «Restaurante con amigos» a los gastos fijos")).toHaveAttribute("data-tone", "success");
+    await expect(toast(page, "Se agregó “Restaurante con amigos” a los gastos fijos")).toHaveAttribute("data-tone", "success");
     await expect(fixedList(page).getByRole("listitem").filter({ hasText: "Restaurante con amigos" })).toContainText("Agregado por ti");
     await closeToasts(page);
     await openTab(page, "Reportes");
@@ -91,7 +91,7 @@ test("Fijos: los detectados solos, quitar, volver a poner, agregar y sacar (Repo
   await test.step("sacarlo: vuelve a ser un gasto más (sin pasar por Quitados)", async () => {
     await openTab(page, "Fijos");
     await fixedList(page).getByRole("button", { name: "Quitar Restaurante con amigos de los gastos fijos" }).click();
-    await expect(toast(page, "Se quitó «Restaurante con amigos» de los gastos fijos")).toBeVisible();
+    await expect(toast(page, "Se quitó “Restaurante con amigos” de los gastos fijos")).toBeVisible();
     await expect(fixedList(page).getByRole("listitem")).toHaveCount(1);
     await expect(fixedList(page).getByText(/^Quitados/)).toHaveCount(0);
     await closeToasts(page);
@@ -153,7 +153,7 @@ test("el historial de un gasto fijo: cada cambio de valor, con su nota", async (
     await closeToasts(page);
 
     await fixed.getByRole("button", { name: `Editar nota del cambio del ${date}` }).click();
-    await fixed.getByRole("button", { name: "Borrar nota" }).click();
+    await fixed.getByRole("button", { name: "Eliminar nota" }).click();
     await expect(toast(page, "Se borró la nota")).toHaveAttribute("data-tone", "removal");
     await expect(fixed.getByText(/^“/)).toHaveCount(0);
     await expect(fixed.getByRole("button", { name: `Agregar nota del cambio del ${date}` })).toBeVisible();

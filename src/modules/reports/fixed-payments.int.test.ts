@@ -79,7 +79,7 @@ describe("registerFixedPayment", () => {
     await addExpense(user.id, { categoryId: salud.id });
     expect(await registerFixedPayment(user, { description: "gimnasio", amount: "125.000,50", occurredOn: "2026-10-18" }, TODAY)).toEqual({
       ok: true,
-      message: "Se registró el pago de «Gimnasio»: −$125.000,50",
+      message: "Se registró el pago de “Gimnasio”: −$125.000,50",
       tone: "success",
     });
     expect(await expensesOf(user.id, "Gimnasio")).toEqual([
@@ -100,11 +100,11 @@ describe("registerFixedPayment", () => {
   });
 
   it.each([
-    [{ amount: "", occurredOn: TODAY }, { error: "Ingresa un monto mayor que cero", field: "amount" }],
-    [{ amount: "0", occurredOn: TODAY }, { error: "Ingresa un monto mayor que cero", field: "amount" }],
+    [{ amount: "", occurredOn: TODAY }, { error: "Escribe un monto mayor que cero.", field: "amount" }],
+    [{ amount: "0", occurredOn: TODAY }, { error: "Escribe un monto mayor que cero.", field: "amount" }],
     [{ amount: "1000", occurredOn: "2026-10-21" }, { error: "La fecha no puede ser después de hoy.", field: "occurredOn" }],
-    [{ amount: "1000", occurredOn: "20/10/2026" }, { error: "Fecha inválida", field: "occurredOn" }],
-    [{ amount: null, occurredOn: null }, { error: "Ingresa un monto mayor que cero", field: "amount" }],
+    [{ amount: "1000", occurredOn: "20/10/2026" }, { error: "Elige una fecha válida.", field: "occurredOn" }],
+    [{ amount: null, occurredOn: null }, { error: "Escribe un monto mayor que cero.", field: "amount" }],
   ])("con %j no registra nada y dice qué campo revisar", async (values, error) => {
     const user = await createUser();
     await addExpense(user.id, {});
@@ -139,7 +139,7 @@ describe("registerFixedPaymentAction", () => {
     await addExpense(user.id, {});
     const today = new Intl.DateTimeFormat("en-CA", { timeZone: user.timezone }).format(new Date());
     expect(await registerFixedPaymentAction({}, form({ description: "Gimnasio", amount: "120.000,00", occurredOn: today }))).toEqual({
-      message: "Se registró el pago de «Gimnasio»: −$120.000,00",
+      message: "Se registró el pago de “Gimnasio”: −$120.000,00",
       tone: "success",
     });
     expect(refresh).toHaveBeenCalledOnce();
@@ -150,7 +150,7 @@ describe("registerFixedPaymentAction", () => {
     const user = await signIn();
     await addExpense(user.id, {});
     expect(await registerFixedPaymentAction({}, form({ description: "Gimnasio", amount: "", occurredOn: "2026-10-01" }))).toEqual({
-      error: "Ingresa un monto mayor que cero",
+      error: "Escribe un monto mayor que cero.",
       field: "amount",
     });
     expect(await expensesOf(user.id, "Gimnasio")).toHaveLength(1);

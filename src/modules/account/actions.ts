@@ -23,11 +23,11 @@ import { checkPasswordChange, PASSWORD_TEXTS, type PasswordChangeField } from ".
 // Los mensajes de eliminar la cuenta, en el idioma de quien usa la página (la cookie: src/i18n/request.ts).
 const DELETE_TEXTS = texts(
   {
-    password: "Escribe tu contraseña",
-    confirm: (word: string) => `Escribe ${word} para confirmar`,
-    wrong: "Contraseña incorrecta",
+    password: "Escribe tu contraseña.",
+    confirm: (word: string) => `Escribe ${word} para confirmar.`,
+    wrong: "Contraseña incorrecta.",
   },
-  { en: { password: "Enter your password", confirm: (word) => `Type ${word} to confirm`, wrong: "Wrong password" } },
+  { en: { password: "Enter your password.", confirm: (word) => `Type ${word} to confirm.`, wrong: "Wrong password." } },
 );
 
 export type DeleteAccountState = {

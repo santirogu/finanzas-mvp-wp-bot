@@ -101,8 +101,8 @@ describe("createTransactionAction", () => {
   });
 
   it.each([
-    ["45.900,505", "Ingresa un monto mayor que cero"],
-    ["100.000.000.000,01", "El monto no puede pasar de $100.000.000.000,00"],
+    ["45.900,505", "Escribe un monto mayor que cero."],
+    ["100.000.000.000,01", "El monto no puede pasar de $100.000.000.000,00."],
   ])("rechaza el monto %j sin guardar nada", async (amount, error) => {
     const user = await signIn();
 
@@ -139,7 +139,7 @@ describe("createTransactionAction", () => {
       form({ ...validExpense, categoryId: salario.id }),
     );
 
-    expect(state.fieldErrors?.categoryId).toBe("Categoría inválida");
+    expect(state.fieldErrors?.categoryId).toBe("Esa categoría ya no está disponible. Elige otra.");
     expect(await activeTransactions(user.id)).toEqual([]);
   });
 
@@ -150,7 +150,7 @@ describe("createTransactionAction", () => {
 
     const state = await createTransactionAction({ ok: false }, form({ ...validExpense, categoryId: ropa.id }));
 
-    expect(state.fieldErrors?.categoryId).toBe("Categoría inválida");
+    expect(state.fieldErrors?.categoryId).toBe("Esa categoría ya no está disponible. Elige otra.");
     expect(await activeTransactions(user.id)).toEqual([]);
   });
 
@@ -167,7 +167,7 @@ describe("createTransactionAction", () => {
       form({ ...validExpense, categoryId: secret.id }),
     );
 
-    expect(state.fieldErrors?.categoryId).toBe("Categoría inválida");
+    expect(state.fieldErrors?.categoryId).toBe("Esa categoría ya no está disponible. Elige otra.");
     expect(await activeTransactions(user.id)).toEqual([]);
   });
 
@@ -222,11 +222,11 @@ describe("createTransactionAction · en inglés", () => {
     requestLocale.value = "en";
 
     const state = await createTransactionAction({ ok: false }, form({ ...validExpense, type: "income", amount: "0", description: " " }));
-    expect(state.fieldErrors).toEqual({ amount: "Enter an amount greater than zero", description: "Add a description" });
+    expect(state.fieldErrors).toEqual({ amount: "Enter an amount greater than zero.", description: "Enter a description." });
     const tooMuch = await createTransactionAction({ ok: false }, form({ ...validExpense, amount: "100,000,000,000.01" }));
-    expect(tooMuch.fieldErrors).toEqual({ amount: "The amount can't be more than $100,000,000,000.00" });
+    expect(tooMuch.fieldErrors).toEqual({ amount: "The amount can't be more than $100,000,000,000.00." });
     // "500.000" en inglés serían 500 con tres decimales: no es un monto.
-    expect((await createTransactionAction({ ok: false }, form(validExpense))).fieldErrors).toEqual({ amount: "Enter an amount greater than zero" });
+    expect((await createTransactionAction({ ok: false }, form(validExpense))).fieldErrors).toEqual({ amount: "Enter an amount greater than zero." });
     const income = await createTransactionAction({ ok: false }, form({ ...validExpense, type: "income", amount: "500,000" }));
     expect(income).toMatchObject({ ok: true, message: "Income added" });
   });
@@ -413,7 +413,7 @@ describe("updateTransactionAction", () => {
 
     expect(state).toMatchObject({
       ok: false,
-      fieldErrors: { amount: "Ingresa un monto mayor que cero", description: "Agrega una descripción" },
+      fieldErrors: { amount: "Escribe un monto mayor que cero.", description: "Escribe una descripción." },
     });
     expect((await activeTransactions(user.id))[0]).toMatchObject({ amount: 500000, description: "Zapatos" });
   });
@@ -424,7 +424,7 @@ describe("updateTransactionAction", () => {
 
     const state = await updateTransactionAction({ ok: false }, editForm(tx.id));
 
-    expect(state).toMatchObject({ ok: false, message: "No encontramos ese movimiento" });
+    expect(state).toMatchObject({ ok: false, message: "No encontramos ese movimiento." });
     expect((await activeTransactions(owner.id))[0]).toMatchObject({ amount: 500000, description: "Zapatos" });
   });
 
@@ -433,7 +433,7 @@ describe("updateTransactionAction", () => {
 
     const state = await updateTransactionAction({ ok: false }, editForm(tx.id, { type: "income" }));
 
-    expect(state).toMatchObject({ ok: false, message: "No encontramos ese movimiento" });
+    expect(state).toMatchObject({ ok: false, message: "No encontramos ese movimiento." });
     expect((await activeTransactions(user.id))[0]).toMatchObject({ type: "expense", amount: 500000 });
   });
 
@@ -443,7 +443,7 @@ describe("updateTransactionAction", () => {
 
     const state = await updateTransactionAction({ ok: false }, editForm(tx.id));
 
-    expect(state).toMatchObject({ ok: false, message: "No encontramos ese movimiento" });
+    expect(state).toMatchObject({ ok: false, message: "No encontramos ese movimiento." });
     const [row] = await db.select().from(transaction).where(eq(transaction.id, tx.id));
     expect(row).toMatchObject({ amount: 500000, userId: user.id });
   });
@@ -452,7 +452,7 @@ describe("updateTransactionAction", () => {
     const { user, tx } = await ownExpense();
     expect(await updateTransactionAction({ ok: false }, editForm("no-es-un-uuid"))).toMatchObject({
       ok: false,
-      message: "No encontramos ese movimiento",
+      message: "No encontramos ese movimiento.",
     });
 
     const other = await createUser();
@@ -462,7 +462,7 @@ describe("updateTransactionAction", () => {
       .returning();
     expect(await updateTransactionAction({ ok: false }, editForm(tx.id, { categoryId: personal.id }))).toMatchObject({
       ok: false,
-      fieldErrors: { categoryId: "Categoría inválida" },
+      fieldErrors: { categoryId: "Esa categoría ya no está disponible. Elige otra." },
     });
     expect((await activeTransactions(user.id))[0]).toMatchObject({ categoryId: null });
   });
@@ -531,7 +531,7 @@ describe("updateTransactionAction", () => {
 
     expect(await updateTransactionAction({ ok: false }, editForm(tx.id, { categoryId: salud.id }))).toMatchObject({
       ok: false,
-      fieldErrors: { categoryId: "Categoría inválida" },
+      fieldErrors: { categoryId: "Esa categoría ya no está disponible. Elige otra." },
     });
   });
 });

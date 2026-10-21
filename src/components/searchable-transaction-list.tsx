@@ -145,7 +145,7 @@ export function SearchableTransactionList({
       {hits && hits.length === 0 ? (
         <div className="px-4 py-10 text-center text-sm text-muted">
           <p>
-            {t.nothing[type]} «{typed.trim()}» {inMonth}.
+            {t.nothing[type]} “{typed.trim()}” {inMonth}.
           </p>
           <button
             type="button"
