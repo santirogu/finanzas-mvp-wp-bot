@@ -133,7 +133,7 @@ describe("EventItem", () => {
   it("la hora lleva la fecha completa en su título", () => {
     const time = renderItem({ entry: entry({}) }).item.querySelector("time")!;
     expect(time).toHaveAttribute("datetime", "2026-10-15T02:41:00.000Z");
-    expect(time).toHaveAttribute("title", "14 de oct de 2026, 9:41 p. m.");
+    expect(time).toHaveAttribute("title", "14 de oct. de 2026, 9:41 p. m.");
   });
 
   it("en el detalle de una cuenta: fecha completa y sin repetir el correo", () => {
@@ -141,7 +141,7 @@ describe("EventItem", () => {
       entry: entry({ type: "sessions_revoked", details: { sessions: 1 }, admin: { name: "Ana Admin" } }),
       inAccount: true,
     });
-    expect(shown.meta).toBe("1 sesión · 14 de oct de 2026, 9:41 p. m.");
+    expect(shown.meta).toBe("1 sesión · 14 de oct. de 2026, 9:41 p. m.");
   });
 });
 

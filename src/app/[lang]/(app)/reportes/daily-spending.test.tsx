@@ -38,7 +38,7 @@ const props = (overrides: Partial<DailySpendingProps> = {}): DailySpendingProps 
     label,
     average: i === 5 ? 158600 : 21400,
   })),
-  insight: "Gastas más los sábados: 641% más que el promedio de los otros días.",
+  insight: "Gastas más los sábados: 641 % más que el promedio de los otros días.",
   halves: { first: 580000, second: 420000 },
   currency: "COP",
   empty: null,
@@ -80,7 +80,7 @@ describe("DailySpending", () => {
   it("empieza en el día de más gasto, con su total y sus egresos, que llevan a editarlos", () => {
     render(<DailySpending {...props()} />);
     expect(day(10)).toHaveAttribute("aria-pressed", "true");
-    expect(detail()).toHaveTextContent(/^Sábado 10 de oct−\$245\.000,002 egresos/);
+    expect(detail()).toHaveTextContent(/^Sábado 10 de oct.−\$245\.000,002 egresos/);
     const links = within(detail()).getAllByRole("link");
     expect(links.map((link) => link.getAttribute("href"))).toEqual(["/movimientos/cine/editar", "/movimientos/taxi/editar"]);
     expect(links[0]).toHaveTextContent("🎬 Cine y comidaEntretenimiento−$185.000,00");
@@ -93,9 +93,9 @@ describe("DailySpending", () => {
     await user.click(day(12));
     expect(day(12)).toHaveAttribute("aria-pressed", "true");
     expect(day(10)).toHaveAttribute("aria-pressed", "false");
-    expect(detail()).toHaveTextContent(/^Lunes 12 de oct−\$12\.000,001 egreso/);
+    expect(detail()).toHaveTextContent(/^Lunes 12 de oct.−\$12\.000,001 egreso/);
     await user.click(day(11));
-    expect(detail()).toHaveTextContent("Domingo 11 de octNo gastaste nada ese día (sin contar los gastos fijos).");
+    expect(detail()).toHaveTextContent("Domingo 11 de oct.No gastaste nada ese día (sin contar los gastos fijos).");
     expect(within(detail()).queryAllByRole("link")).toEqual([]);
   });
 
@@ -152,9 +152,9 @@ describe("DailySpending", () => {
     ]);
     expect(within(rows[5]).getByText("Sábado")).toHaveClass("font-medium");
     expect(within(rows[0]).getByText("Lunes")).toHaveClass("text-muted");
-    expect(section().getByText("Gastas más los sábados: 641% más que el promedio de los otros días.")).toBeInTheDocument();
-    expect(section().getByText("Del 1 al 15: 58%")).toBeInTheDocument();
-    expect(section().getByText("Del 16 al fin de mes: 42%")).toBeInTheDocument();
+    expect(section().getByText("Gastas más los sábados: 641 % más que el promedio de los otros días.")).toBeInTheDocument();
+    expect(section().getByText("Del 1 al 15: 58 %")).toBeInTheDocument();
+    expect(section().getByText("Del 16 al fin de mes: 42 %")).toBeInTheDocument();
   });
 
   it("sin promedios ni quincenas con gastos: sin frase, sin día resaltado y las barras en cero (no NaN)", () => {
@@ -163,7 +163,7 @@ describe("DailySpending", () => {
     );
     expect(section().queryByText(/^Gastas/)).toBeNull();
     expect(section().getByText("Lunes")).toHaveClass("text-muted");
-    expect(section().getByText("Del 1 al 15: 0%")).toBeInTheDocument();
+    expect(section().getByText("Del 1 al 15: 0 %")).toBeInTheDocument();
     // Las 7 de los días y las 2 de las quincenas, todas en 0 (un ancho "NaN%" no llegaría al estilo).
     const widths = [...container.querySelectorAll<HTMLElement>("[style*=width]")].map((bar) => bar.style.width);
     expect(widths).toEqual(Array(9).fill("0%"));

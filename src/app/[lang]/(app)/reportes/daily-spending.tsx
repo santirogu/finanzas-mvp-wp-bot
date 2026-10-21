@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useLocale } from "@/i18n/client";
 import { texts } from "@/i18n/texts";
-import { formatShare, formatMoney } from "@/lib/money";
+import { formatMoney, formatPercent, formatShare } from "@/lib/money";
 import type { ExpenseRow } from "@/modules/reports/biggest";
 import type { CalendarDay, HeatLevel } from "@/modules/reports/daily";
 import { NO_CATEGORIES } from "@/modules/transactions/search";
@@ -24,8 +24,8 @@ const TEXTS = texts(
     byWeekday: "Por día de la semana",
     byWeekdayIntro: "Lo que gastas en promedio cada día, contando los días sin gastos.",
     byHalf: "Por quincena",
-    firstHalf: (pct: string) => `Del 1 al 15: ${pct}%`,
-    secondHalf: (pct: string) => `Del 16 al fin de mes: ${pct}%`,
+    firstHalf: (pct: string) => `Del 1 al 15: ${formatPercent(pct, "es")}`,
+    secondHalf: (pct: string) => `Del 16 al fin de mes: ${formatPercent(pct, "es")}`,
     edit: "Editar ",
     pick: "Toca un día para ver qué gastaste.",
     nothing: "No gastaste nada ese día (sin contar los gastos fijos).",
@@ -241,7 +241,7 @@ function DayDetail({ day, money }: { day: CalendarDay | null; money: (n: number)
           </div>
           <p className="text-xs text-muted">{day.total > 0 ? t.count(day.count) : t.nothing}</p>
           {day.expenses.length > 0 && <ul className="mt-1 divide-y divide-border">{day.expenses.slice(0, DAY_SHOWN).map(row)}</ul>}
-          {/* Un día con muchos: los demás, como en "Los gastos más grandes" (cerrados de nuevo en cada día). */}
+          {/* Un día con muchos: los demás, como en "Los egresos más grandes" (cerrados de nuevo en cada día). */}
           {day.expenses.length > DAY_SHOWN && (
             <details key={day.date}>
               <summary className="inline-flex min-h-11 cursor-pointer items-center font-medium text-brand pointer-fine:min-h-8">

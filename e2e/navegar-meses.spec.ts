@@ -26,7 +26,7 @@ const nameOf = (month: Month) => formatMonthName(month, { withYear: month.year !
 const text = (page: Page, value: string | RegExp) => visible(page.getByText(value));
 /**
  * La tarjeta del Resumen con ese título ("Balance del mes", "Ingresos", "Egresos"). El título es un
- * párrafo: el "Egresos" del centro de la dona de "Gastos por categoría" no cuenta.
+ * párrafo: el "Egresos" del centro de la dona de "Egresos por categoría" no cuenta.
  */
 const card = (page: Page, title: string) =>
   visible(page.locator(".card").filter({ has: page.locator(`p:text-is("${title}")`) }));
@@ -65,8 +65,8 @@ test("ver otros meses en el Resumen, Ingresos y Egresos @principal", async ({ pa
     const before = nameOf(previous);
     await expect(card(page, "Balance del mes")).toContainText("−$575.000,00");
     await expect(card(page, "Balance del mes")).toContainText(`$2.075.000,00 menos que ${before}`);
-    await expect(card(page, "Ingresos")).toContainText(`100% menos que ${before}`);
-    await expect(card(page, "Egresos")).toContainText(`15% más que ${before}`);
+    await expect(card(page, "Ingresos")).toContainText(`100 % menos que ${before}`);
+    await expect(card(page, "Egresos")).toContainText(`15 % más que ${before}`);
     // En el mes actual, la flecha siguiente está apagada y no hace falta "Volver al mes actual".
     await expect(visible(page.getByRole("link", { name: "Mes siguiente", exact: true }))).toHaveAttribute(
       "aria-disabled",
@@ -86,7 +86,7 @@ test("ver otros meses en el Resumen, Ingresos y Egresos @principal", async ({ pa
     const before = nameOf(twoBefore);
     await expect(card(page, "Balance del mes")).toContainText(`$1.600.000,00 más que ${before}`);
     await expect(card(page, "Ingresos")).toContainText(`Sin ingresos en ${before}`);
-    await expect(card(page, "Egresos")).toContainText(`400% más que ${before}`);
+    await expect(card(page, "Egresos")).toContainText(`400 % más que ${before}`);
   });
 
   await test.step("las pestañas siguen en ese mes, y el formulario propone una fecha de ese mes", async () => {

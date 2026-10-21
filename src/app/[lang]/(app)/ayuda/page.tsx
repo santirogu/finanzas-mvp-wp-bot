@@ -178,7 +178,7 @@ function SpanishTopics() {
         <ul className="list-disc space-y-1 pl-5">
           <li>tus cifras y los ingresos y egresos de cada mes;</li>
           <li>cuánto suma cada categoría, y cómo le fue el último mes frente a su promedio;</li>
-          <li>tus {BIGGEST_SHOWN} gastos más grandes y qué días gastas más.</li>
+          <li>tus {BIGGEST_SHOWN} egresos más grandes y qué días gastas más.</li>
         </ul>
         <p>Los gastos fijos no cuentan entre los más grandes ni en los días.</p>
         <p>

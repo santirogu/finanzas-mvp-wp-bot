@@ -35,7 +35,7 @@ const TEXTS = texts(
   {
     en: {
       heading: "Text your expense on WhatsApp. It's noted.",
-      body: "Write to the bot as you would to anyone, and it records the amount, the description and the category. On the web you see your month, your reports and your bills.",
+      body: "Write to the bot as you would to anyone, and it adds the transaction with its amount, description and category. On the web you see your month, your reports and your bills.",
       register: "Create account",
       login: "Sign in",
       example: "An example conversation with the bot",

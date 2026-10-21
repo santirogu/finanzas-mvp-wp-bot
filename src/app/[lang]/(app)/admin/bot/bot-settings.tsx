@@ -7,6 +7,7 @@ import { useFieldErrors } from "@/components/use-field-errors";
 import { useLocale } from "@/i18n/client";
 import { INTL_LOCALES, type Locale } from "@/i18n/locales";
 import { texts } from "@/i18n/texts";
+import { formatPercent } from "@/lib/money";
 import { FIELD_TEXTS, type FieldMessages } from "@/lib/field-errors";
 import { AI_LIMIT_BOUNDS, MONTHLY_TOKEN_BOUNDS, type AiLimits } from "@/modules/bot/limits";
 import { type ToastTone, useToast } from "@/components/toaster";
@@ -35,7 +36,7 @@ export type BotSettingsProps = {
   month: { used: number; reached: boolean; resetsOn: string };
   /** Tokens por llamada, en promedio (para estimar cuánto alcanza un tope); null sin llamadas. */
   averageTokensPerCall: number | null;
-  /** "Ana Admin · 16 de oct de 2026, 6:00 p. m.", o null si nadie la ha cambiado. */
+  /** "Ana Admin · 16 de oct. de 2026, 6:00 p. m.", o null si nadie la ha cambiado. */
   lastChange: string | null;
 };
 
@@ -63,7 +64,7 @@ const TEXTS = texts(
     monthlyTitle: "Tope mensual de tokens",
     noMonthly: (used: string) => `Sin tope. Este mes van ${used} tokens.`,
     reached: (used: string, limit: string, date: string) => `Alcanzado: ${used} de ${limit}. Claude vuelve el ${date}.`,
-    monthly: (limit: string, used: string, share: string) => `${limit} al mes, de todas las cuentas. Este mes van ${used} (${share} %).`,
+    monthly: (limit: string, used: string, share: string) => `${limit} al mes, de todas las cuentas. Este mes van ${used} (${formatPercent(share, "es")}).`,
     changeMonthly: "Cambiar el tope mensual de tokens",
     lastChange: (change: string) => `Último cambio: ${change}`,
     noChanges: "Sin cambios: valen los de siempre.",

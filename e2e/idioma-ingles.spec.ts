@@ -108,7 +108,7 @@ test("en inglés: registrar un egreso con el formato de EE. UU. y verlo en la li
   await expect(visible(page.getByText("Balance for the month"))).toBeVisible();
   await expect(visible(page.getByText("−$1,250.50")).first()).toBeVisible();
   await expect(visible(page.getByRole("heading", { name: "Latest transactions" }))).toBeVisible();
-  await expect(visible(page.getByRole("heading", { name: "Spending by category" }))).toBeVisible();
+  await expect(visible(page.getByRole("heading", { name: "Expenses by category" }))).toBeVisible();
   expect(await seriousViolations(page)).toEqual([]);
 
   await page.goto("/gastos-fijos");
@@ -129,7 +129,7 @@ test("en inglés: Reportes, con la descarga del CSV para el Excel en inglés @pr
   await expect(visible(page.getByRole("heading", { level: 1, name: "Reports" }))).toBeVisible();
   await expect(visible(page.getByRole("navigation", { name: "Period" }).getByRole("link", { name: "Last 12 months" }))).toHaveAttribute("aria-current", "page");
   await expect(visible(page.getByRole("region", { name: "Period summary" }))).toContainText("$1,250.50");
-  await expect(visible(page.getByRole("heading", { name: "Spending by category" }))).toBeVisible();
+  await expect(visible(page.getByRole("heading", { name: "Expenses by category" }))).toBeVisible();
   await expect(visible(page.getByRole("heading", { name: "Which days do you spend the most?" }))).toBeVisible();
   expect(await seriousViolations(page)).toEqual([]);
 

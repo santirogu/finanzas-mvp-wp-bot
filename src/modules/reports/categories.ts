@@ -1,10 +1,10 @@
 import { DEFAULT_LOCALE, INTL_LOCALES, type Locale } from "@/i18n/locales";
 import { texts } from "@/i18n/texts";
 import { compareMonths, formatMonthName, type Month, monthParam, shiftMonth } from "@/lib/dates";
-import { roundToCents, sumAmounts } from "@/lib/money";
+import { formatPercent, roundToCents, sumAmounts } from "@/lib/money";
 import { MAX_SLICES } from "@/modules/transactions/category-chart";
 
-// "Gastos por categoría" de Reportes: cuánto se fue en cada una en el período y cómo le fue a cada una
+// "Egresos por categoría" de Reportes: cuánto se fue en cada una en el período y cómo le fue a cada una
 // en el último mes completo frente a su promedio de los meses anteriores.
 
 /** Cuántos meses antes del comparado se promedian. */
@@ -51,8 +51,8 @@ const TEXTS = texts(
     isNew: (month: string) => `Nueva en ${month}`,
     none: (month: string) => `Sin gastos en ${month}`,
     same: (month: string) => `En ${month}, igual que su promedio`,
-    more: (month: string, pct: string) => `En ${month}, ${pct}% más que su promedio`,
-    less: (month: string, pct: string) => `En ${month}, ${pct}% menos que su promedio`,
+    more: (month: string, pct: string) => `En ${month}, ${formatPercent(pct, "es")} más que su promedio`,
+    less: (month: string, pct: string) => `En ${month}, ${formatPercent(pct, "es")} menos que su promedio`,
   },
   {
     en: {

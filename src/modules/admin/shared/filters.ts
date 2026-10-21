@@ -108,13 +108,23 @@ export function dateRange(f: DateFilter, today: string): { from: string | null; 
   }
 }
 
+/**
+ * Las partes de una fecha con el mes corto en español, con su punto ("14 de oct." y no "14 de oct", RAE): Intl no
+ * se lo pone. En inglés, tal cual ("Oct 14").
+ */
+const joinParts = (parts: Intl.DateTimeFormatPart[], locale: Locale) =>
+  parts.map((p) => (locale === "es" && p.type === "month" && !p.value.endsWith(".") ? `${p.value}.` : p.value)).join("");
+
 const shortDay = (day: string, locale: Locale) =>
-  new Intl.DateTimeFormat(INTL_LOCALES[locale], { day: "numeric", month: "short", timeZone: "UTC" }).format(
-    new Date(`${day}T00:00:00Z`),
+  joinParts(
+    new Intl.DateTimeFormat(INTL_LOCALES[locale], { day: "numeric", month: "short", timeZone: "UTC" }).formatToParts(
+      new Date(`${day}T00:00:00Z`),
+    ),
+    locale,
   );
 
 /**
- * El texto de la etiqueta del filtro de fecha: "Hoy", "Últimos 7 días", "1 de oct – 15 de oct"… (en inglés,
+ * El texto de la etiqueta del filtro de fecha: "Hoy", "Últimos 7 días", "1 de oct. – 15 de oct."… (en inglés,
  * "Today", "Oct 1 – Oct 15", "From Oct 1").
  */
 export function dateFilterLabel(f: DateFilter, locale: Locale = DEFAULT_LOCALE): string {
@@ -143,13 +153,13 @@ export { formatPhone } from "@/modules/whatsapp/phone";
 export const normalizeSpaces = (text: string) => text.replace(/[\u00a0\u202f]/g, " ");
 
 const format = (date: Date, options: Intl.DateTimeFormatOptions, locale: Locale) =>
-  normalizeSpaces(new Intl.DateTimeFormat(INTL_LOCALES[locale], { timeZone: ADMIN_TIMEZONE, ...options }).format(date));
+  normalizeSpaces(joinParts(new Intl.DateTimeFormat(INTL_LOCALES[locale], { timeZone: ADMIN_TIMEZONE, ...options }).formatToParts(date), locale));
 
-/** Fecha y hora completas en Colombia: "14 de oct de 2026, 9:41 p. m." (en inglés, "Oct 14, 2026, 9:41 PM"). */
+/** Fecha y hora completas en Colombia: "14 de oct. de 2026, 9:41 p. m." (en inglés, "Oct 14, 2026, 9:41 PM"). */
 export const formatDateTime = (date: Date, locale: Locale = DEFAULT_LOCALE) =>
   format(date, { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" }, locale);
 
-/** Solo la fecha en Colombia: "14 de oct de 2026" (en inglés, "Oct 14, 2026"). */
+/** Solo la fecha en Colombia: "14 de oct. de 2026" (en inglés, "Oct 14, 2026"). */
 export const formatDate = (date: Date, locale: Locale = DEFAULT_LOCALE) => format(date, { day: "numeric", month: "short", year: "numeric" }, locale);
 
 /** Solo la hora en Colombia: "9:41 p. m." (en inglés, "9:41 PM"). */

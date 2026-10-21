@@ -506,10 +506,10 @@ describe("handleIncomingMessage · reporte", () => {
       `📊 *Reporte de ${from} a ${formatMonthName(current, { withYear: true })}*`,
       "Ingresos: $2.000.000,00",
       "Egresos: $800.000,00",
-      "Balance: *$1.200.000,00* (ahorraste el 60%)",
+      "Balance: *$1.200.000,00* (ahorraste el 60 %)",
       "Gasto promedio por mes: $500.000,00",
       `Mes de más gasto: ${formatMonthName(previous, { withYear: true })} ($500.000,00)`,
-      "En qué se te fue: • Sin categoría 100%",
+      "En qué se te fue: • Sin categoría 100 %",
       "",
       `Más detalle en *Reportes*: ${APP_URL}/reportes`,
     ]);

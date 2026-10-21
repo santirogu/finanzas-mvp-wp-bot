@@ -1,6 +1,6 @@
 import { searchKey } from "@/lib/suggestions";
 
-// "Los gastos más grandes" de Reportes: los egresos más altos del período, sin contar los gastos fijos
+// "Los egresos más grandes" de Reportes: los egresos más altos del período, sin contar los gastos fijos
 // (si no, el arriendo llenaría la lista todos los meses y taparía lo que de verdad sorprende).
 
 /** Cuántos se ven de entrada; los demás, hasta BIGGEST_MAX, con "Ver los N siguientes". */

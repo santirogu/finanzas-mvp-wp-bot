@@ -320,7 +320,7 @@ export const VISTAS: Vista[] = [
     persona: "admin",
     ruta: fija("/reportes"),
     preparar: async (page) => {
-      const seccion = visible(page.getByRole("region", { name: "Los gastos más grandes" }));
+      const seccion = visible(page.getByRole("region", { name: "Los egresos más grandes" }));
       await seccion.getByText(/^Ver (el|los \d+) siguientes?$/).click();
       await expect(seccion.locator("details[open]")).toBeVisible();
       await seccion.scrollIntoViewIfNeeded();

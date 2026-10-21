@@ -29,7 +29,7 @@ describe("reportPdfData", () => {
     expect(period.range).toBe("De noviembre de 2025 a octubre de 2026");
     expect(view).toMatchObject({ name: "Ana Pérez", generated: "Generado el 20 de octubre de 2026", currency: "Montos en pesos colombianos (COP)" });
     expect(view.stats.slice(0, 3).map((stat) => stat.value)).toEqual(["$4.000.000,00", "$1.150.000,00", "$2.850.000,00"]);
-    expect(view.biggest.rows).toEqual([{ description: "Lavadora", detail: "12 de sept · Sin categoría", amount: "−$1.150.000,00" }]);
+    expect(view.biggest.rows).toEqual([{ description: "Lavadora", detail: "12 de sept. · Sin categoría", amount: "−$1.150.000,00" }]);
     expect(JSON.stringify(view)).not.toMatch(/Secreto de Beto|Borrado|De hace más de un año|\$5\.000\.000|\$9\.000\.000/);
   });
 

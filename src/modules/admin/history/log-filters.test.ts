@@ -292,10 +292,10 @@ describe("fechas", () => {
     [f({ date: "hoy" }), "Hoy"],
     [f({ date: "7d" }), "Últimos 7 días"],
     [f({ date: "30d" }), "Últimos 30 días"],
-    [f({ date: "personalizado", from: "2026-10-01", to: "2026-10-15" }), "1 de oct – 15 de oct"],
-    [f({ date: "personalizado", from: "2026-10-05", to: "2026-10-05" }), "5 de oct"],
-    [f({ date: "personalizado", from: "2026-10-05", to: null }), "Desde el 5 de oct"],
-    [f({ date: "personalizado", from: null, to: "2026-10-05" }), "Hasta el 5 de oct"],
+    [f({ date: "personalizado", from: "2026-10-01", to: "2026-10-15" }), "1 de oct. – 15 de oct."],
+    [f({ date: "personalizado", from: "2026-10-05", to: "2026-10-05" }), "5 de oct."],
+    [f({ date: "personalizado", from: "2026-10-05", to: null }), "Desde el 5 de oct."],
+    [f({ date: "personalizado", from: null, to: "2026-10-05" }), "Hasta el 5 de oct."],
   ])("dateFilterLabel(%j) = %j", (filters, expected) => {
     expect(dateFilterLabel(filters)).toBe(expected);
   });
@@ -363,7 +363,7 @@ describe("formatos", () => {
 
   it("formatEventTime y formatEventHour: en la hora de Colombia", () => {
     // 02:41 UTC del 15 de octubre = 9:41 p. m. del 14 en Bogotá.
-    expect(formatEventTime(new Date("2026-10-15T02:41:00Z"))).toBe("14 de oct de 2026, 9:41 p. m.");
+    expect(formatEventTime(new Date("2026-10-15T02:41:00Z"))).toBe("14 de oct. de 2026, 9:41 p. m.");
     expect(formatEventHour(new Date("2026-10-15T02:41:00Z"))).toBe("9:41 p. m.");
     expect(formatEventHour(new Date("2026-10-15T14:05:00Z"))).toBe("9:05 a. m.");
   });

@@ -1,7 +1,7 @@
 import { DEFAULT_LOCALE, type Locale } from "@/i18n/locales";
 import { texts } from "@/i18n/texts";
 import { compareMonths, formatShortDate, type Month, monthParam, monthRange, parseMonthParam } from "@/lib/dates";
-import { roundToCents, sumAmounts } from "@/lib/money";
+import { formatPercent, roundToCents, sumAmounts } from "@/lib/money";
 import { searchKey } from "@/lib/suggestions";
 import type { ExpenseRow } from "./biggest";
 import { LAST_12_MONTHS, type ReportPeriod } from "./period";
@@ -105,7 +105,7 @@ const TEXTS = texts(
     weekdays: ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"],
     most: (days: string) => `Gastas más ${days}.`,
     even: "Gastas parecido todos los días de la semana.",
-    mostBy: (days: string, pct: number) => `Gastas más ${days}: ${pct}% más que el promedio de los otros días.`,
+    mostBy: (days: string, pct: number) => `Gastas más ${days}: ${formatPercent(pct, "es")} más que el promedio de los otros días.`,
   },
   {
     en: {
@@ -164,7 +164,7 @@ export function weekdayPlural(weekday: number, locale: Locale = DEFAULT_LOCALE):
 export type CalendarDay = {
   date: string;
   day: number;
-  /** "Sábado 10 de oct" (en inglés, "Saturday, Oct 10"): el título del detalle. */
+  /** "Sábado 10 de oct." (en inglés, "Saturday, Oct 10"): el título del detalle. */
   title: string;
   total: number;
   count: number;

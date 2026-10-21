@@ -15,7 +15,7 @@ export const BOT_COMMANDS = [
     description: { es: "tus últimos 12 meses", en: "your last 12 months" },
     also: { command: "reporte 2025", description: { es: "un año", en: "a year" } },
   },
-  { command: "deshacer", description: { es: "borra lo último que registré", en: "deletes the last thing I recorded" } },
+  { command: "deshacer", description: { es: "borra lo último que registré", en: "deletes the last thing I added" } },
 ] as const;
 
 /** "ayuda" va aparte: su respuesta es la lista de arriba. */

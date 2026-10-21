@@ -16,7 +16,7 @@ import {
   monthParam,
   todayInTimezone,
 } from "@/lib/dates";
-import { formatMoney, formatShare } from "@/lib/money";
+import { formatMoney, formatPercent, formatShare } from "@/lib/money";
 import { monthHref } from "@/lib/month-nav";
 import { requireUser } from "@/lib/session";
 import { BIGGEST_SHOWN, type ExpenseRow, withoutFixed } from "@/modules/reports/biggest";
@@ -71,10 +71,10 @@ const TEXTS = texts(
     inProgress: "(en curso)",
     month: "Mes",
     balanceShort: "Balance",
-    categories: "Gastos por categoría",
+    categories: "Egresos por categoría",
     categoriesIntro: "Lo que sumó cada una en el período",
     categoriesCompared: (month: string, averaged: string) => `, y cómo le fue en ${month} frente a su promedio de ${averaged}.`,
-    biggest: "Los gastos más grandes",
+    biggest: "Los egresos más grandes",
     biggestIntro: "Los egresos más altos del período, sin contar los gastos fijos. Toca uno para editarlo.",
     edit: "Editar ",
     seeMore: (n: number) => (n === 1 ? "Ver el siguiente" : `Ver los ${n} siguientes`),
@@ -100,7 +100,7 @@ const TEXTS = texts(
       inProgress: "(in progress)",
       month: "Month",
       balanceShort: "Balance",
-      categories: "Spending by category",
+      categories: "Expenses by category",
       categoriesIntro: "What each one added up to in the period",
       categoriesCompared: (month, averaged) => `, and how you did in ${month} compared with its average for ${averaged}.`,
       biggest: "The biggest expenses",
@@ -409,7 +409,7 @@ function Categories({ categories, money, locale }: { categories: CategoryReport;
                   {row.emoji} {row.name}
                 </span>
                 <span className="shrink-0 whitespace-nowrap tabular-nums text-muted">
-                  <span className="text-foreground">{money(row.total)}</span> · {formatShare(row.total, categories.total)}%
+                  <span className="text-foreground">{money(row.total)}</span> · {formatPercent(formatShare(row.total, categories.total), locale)}
                 </span>
               </div>
               <div aria-hidden className="mt-1.5 h-1.5 rounded-full bg-background">

@@ -113,18 +113,22 @@ const SHORT_MONTHS: Readonly<Record<Locale, readonly string[]>> = {
 };
 
 /**
- * "2026-10-13" → "13 de oct" (igual en el servidor y en cualquier navegador). Con el año, "13 de oct de
+ * "2026-10-13" → "13 de oct." (igual en el servidor y en cualquier navegador). Con el año, "13 de oct. de
  * 2026": para una lista de varios meses (los gastos más grandes de Reportes). En inglés, "Oct 13" y
- * "Oct 13, 2026".
+ * "Oct 13, 2026". La abreviatura lleva punto (RAE); sin punto solo en los ejes de los gráficos y el
+ * selector de meses (`formatShortMonth`).
  */
 export function formatShortDate(isoDate: string, { withYear = false, locale = DEFAULT_LOCALE }: { withYear?: boolean; locale?: Locale } = {}): string {
   const [y, m, d] = isoDate.split("-").map(Number);
   const month = SHORT_MONTHS[locale][m - 1];
   if (locale === "en") return `${month} ${d}${withYear ? `, ${y}` : ""}`;
-  return `${d} de ${month}${withYear ? ` de ${y}` : ""}`;
+  return `${d} de ${month}.${withYear ? ` de ${y}` : ""}`;
 }
 
-/** Septiembre → "sept" (en inglés, "Sep"; igual en el servidor y en cualquier navegador): debajo de cada barra de Reportes. */
+/**
+ * Septiembre → "sept" (en inglés, "Sep"; igual en el servidor y en cualquier navegador): debajo de cada barra de
+ * Reportes y en el selector de meses. Sin punto, como en los ejes de los gráficos (decisión del glosario).
+ */
 export function formatShortMonth({ month }: Month, locale: Locale = DEFAULT_LOCALE): string {
   return SHORT_MONTHS[locale][month - 1];
 }

@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { amountInputValue, completeAmountDecimals, formatAmountTyping, formatMoney, formatShare, parseAmountInput, roundToCents, sumAmounts } from "./money";
+import {
+  amountInputValue,
+  completeAmountDecimals,
+  formatAmountTyping,
+  formatMoney,
+  formatPercent,
+  formatShare,
+  parseAmountInput,
+  roundToCents,
+  sumAmounts,
+} from "./money";
 
 describe("parseAmountInput", () => {
   it.each([
@@ -235,6 +245,19 @@ describe("formatShare", () => {
     [-5, 100, "0"],
   ])("%d de %d → %s", (part, total, expected) => {
     expect(formatShare(part, total)).toBe(expected);
+  });
+});
+
+describe("formatPercent", () => {
+  it("en español, con un espacio duro antes del signo (RAE): no se separa del número al partir la línea", () => {
+    expect(formatPercent(45)).toBe("45\u00a0%");
+    expect(formatPercent("<1", "es")).toBe("<1\u00a0%");
+    expect(formatPercent("1.500", "es")).toBe("1.500\u00a0%");
+  });
+
+  it("en inglés, pegado", () => {
+    expect(formatPercent(45, "en")).toBe("45%");
+    expect(formatPercent("<1", "en")).toBe("<1%");
   });
 });
 

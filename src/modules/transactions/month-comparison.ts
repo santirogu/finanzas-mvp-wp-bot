@@ -1,6 +1,6 @@
 import { DEFAULT_LOCALE, INTL_LOCALES, type Locale } from "@/i18n/locales";
 import { texts } from "@/i18n/texts";
-import { formatMoney, roundToCents } from "@/lib/money";
+import { formatMoney, formatPercent, roundToCents } from "@/lib/money";
 
 /** Cómo le fue a un total frente al mes anterior: la flecha que lo acompaña y la frase. */
 export type MonthChange = { direction: "up" | "down" | "same"; text: string };
@@ -63,7 +63,7 @@ export function totalChange(
   if (previous === 0) return { direction, text: t.none[kind](previousMonth) };
   const pct = Math.round((Math.abs(diff) / previous) * 100);
   if (pct === 0) return { direction, text: t.almostSame(previousMonth) };
-  const share = `${percents[locale].format(pct)}%`;
+  const share = formatPercent(percents[locale].format(pct), locale);
   // Stryker disable next-line EqualityOperator: ídem
   return { direction, text: diff > 0 ? t.more(share, previousMonth) : t.less(share, previousMonth) };
 }

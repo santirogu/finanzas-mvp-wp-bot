@@ -11,7 +11,7 @@ import { formatDateTime, formatHour } from "@/modules/admin/shared/filters";
 export type ConnectionsState = {
   whatsapp?: ConnectionView;
   claude?: ConnectionView;
-  /** "16 de oct de 2026, 6:00 p. m.", o null si nunca llegó un mensaje al webhook. */
+  /** "16 de oct. de 2026, 6:00 p. m.", o null si nunca llegó un mensaje al webhook. */
   lastMessage?: string | null;
   /** La hora de la prueba ("6:05 p. m."). */
   checkedAt?: string;

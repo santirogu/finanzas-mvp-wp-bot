@@ -35,7 +35,7 @@ const entry = (month: string, amount: number, previous: number | null, note: str
 const HISTORIES = {
   arriendo: {
     entries: [entry("2026-03", 1890000, 1800000, "Subió con el IPC."), entry("2025-11", 1800000, null)],
-    summary: { direction: "up" as const, text: "5% desde marzo" },
+    summary: { direction: "up" as const, text: "5 % desde marzo" },
   },
   "seguro del carro": { entries: [entry("2026-10", 950000, null)], summary: null },
 };
@@ -63,17 +63,17 @@ describe("FixedExpenses", () => {
     render(<FixedExpenses {...props} />);
     const rows = section().getAllByRole("listitem").filter((li) => li.parentElement?.tagName === "UL");
     // (El emoji está en el texto, pero oculto para el lector de pantalla.)
-    expect(rows[0]).toHaveTextContent(/^Historial de 🏠 Arriendo En 4 de 12 meses 5% desde marzo−\$1\.800\.000,00/);
+    expect(rows[0]).toHaveTextContent(/^Historial de 🏠 Arriendo En 4 de 12 meses 5 % desde marzo−\$1\.800\.000,00/);
     expect(rows[1]).toHaveTextContent(/^Historial de 🏠 Seguro del carro En 1 de 12 meses · Agregado por ti−\$950\.000,00/);
     expect(section().getByText("Total al mes").parentElement).toHaveTextContent("−$2.750.000,00");
-    expect(section().getByText("Son el 100% de tu gasto promedio por mes.")).toBeVisible();
+    expect(section().getByText("Son el 100 % de tu gasto promedio por mes.")).toBeVisible();
     // El título y qué cuenta como fijo los pone la página (/gastos-fijos).
     expect(section().queryByRole("heading")).toBeNull();
   });
 
   it("de un período de un mes, dice \"mes\"; sin gasto promedio, no dice qué parte es", () => {
     render(<FixedExpenses {...props} periodMonths={1} averageExpense={0} />);
-    expect(section().getAllByRole("listitem")[0]).toHaveTextContent(/En 4 de 1 mes 5%/);
+    expect(section().getAllByRole("listitem")[0]).toHaveTextContent(/En 4 de 1 mes 5 %/);
     expect(section().queryByText(/de tu gasto promedio/)).toBeNull();
   });
 
@@ -220,7 +220,7 @@ describe("FixedExpenses · historial", () => {
   it("cerrado, cada gasto dice su último cambio; uno que nunca cambió, no", () => {
     render(<FixedExpenses {...props} />);
     expect(toggle(/^Historial de Arriendo/)).toHaveAttribute("aria-expanded", "false");
-    expect(toggle(/^Historial de Arriendo/)).toHaveTextContent("5% desde marzo");
+    expect(toggle(/^Historial de Arriendo/)).toHaveTextContent("5 % desde marzo");
     expect(toggle(/^Historial de Seguro del carro/)).not.toHaveTextContent("desde");
     for (const panel of section().getAllByText("Historial del valor")) expect(panel).not.toBeVisible();
   });
@@ -232,8 +232,8 @@ describe("FixedExpenses · historial", () => {
     expect(toggle(/^Historial de Arriendo/)).toHaveAttribute("aria-expanded", "true");
     const panel = document.getElementById(toggle(/^Historial de Arriendo/).getAttribute("aria-controls")!)!;
     const entries = within(panel).getAllByRole("listitem");
-    expect(entries[0]).toHaveTextContent("5 de mar de 2026+$90.000,00 (+5%)$1.800.000,00 → $1.890.000,00“Subió con el IPC.”Editar nota del cambio del 5 de mar de 2026");
-    expect(entries[1]).toHaveTextContent("5 de nov de 2025Primer pago$1.800.000,00");
+    expect(entries[0]).toHaveTextContent("5 de mar. de 2026+$90.000,00 (+5 %)$1.800.000,00 → $1.890.000,00“Subió con el IPC.”Editar nota del cambio del 5 de mar. de 2026");
+    expect(entries[1]).toHaveTextContent("5 de nov. de 2025Primer pago$1.800.000,00");
     expect(within(entries[1]).queryByRole("button")).toBeNull();
     // Abierto, la descripción se lee completa (cerrado se corta con "…").
     expect(section().getByText("Arriendo")).toHaveClass("break-words");
@@ -245,10 +245,10 @@ describe("FixedExpenses · historial", () => {
 
   it("una baja, con el signo menos y el porcentaje", async () => {
     const user = userEvent.setup();
-    const down = { arriendo: { entries: [entry("2026-03", 1700000, 1800000)], summary: { direction: "down" as const, text: "6% desde marzo" } } };
+    const down = { arriendo: { entries: [entry("2026-03", 1700000, 1800000)], summary: { direction: "down" as const, text: "6 % desde marzo" } } };
     render(<FixedExpenses {...props} histories={down} />);
     await user.click(toggle(/^Historial de Arriendo/));
-    expect(section().getByText(/^−\$100\.000,00/)).toHaveTextContent("−$100.000,00 (−6%)");
+    expect(section().getByText(/^−\$100\.000,00/)).toHaveTextContent("−$100.000,00 (−6 %)");
   });
 
   it("agregar una nota: el campo con el foco, se envía con el gasto y el mes, se cierra y avisa", async () => {
@@ -257,8 +257,8 @@ describe("FixedExpenses · historial", () => {
     const noNote = { ...HISTORIES, arriendo: { ...HISTORIES.arriendo, entries: [entry("2026-03", 1890000, 1800000), entry("2025-11", 1800000, null)] } };
     render(<FixedExpenses {...props} histories={noNote} />);
     await user.click(toggle(/^Historial de Arriendo/));
-    await user.click(section().getByRole("button", { name: "Agregar nota del cambio del 5 de mar de 2026" }));
-    const field = section().getByLabelText("Nota del cambio del 5 de mar de 2026");
+    await user.click(section().getByRole("button", { name: "Agregar nota del cambio del 5 de mar. de 2026" }));
+    const field = section().getByLabelText("Nota del cambio del 5 de mar. de 2026");
     expect(field).toHaveFocus();
     expect(field).toHaveAttribute("maxlength", "280");
     expect(field).toHaveClass("input");
@@ -278,14 +278,14 @@ describe("FixedExpenses · historial", () => {
     const user = userEvent.setup();
     render(<FixedExpenses {...props} />);
     await user.click(toggle(/^Historial de Arriendo/));
-    await user.click(section().getByRole("button", { name: "Editar nota del cambio del 5 de mar de 2026" }));
+    await user.click(section().getByRole("button", { name: "Editar nota del cambio del 5 de mar. de 2026" }));
     await user.click(section().getByRole("button", { name: "Guardar nota" }));
     const busy = await section().findByRole("button", { name: "Guardando…" });
     expect(busy).toBeDisabled();
     await user.click(busy);
     await user.keyboard("{Escape}");
     expect(noteAction).toHaveBeenCalledTimes(1);
-    expect(section().getByLabelText("Nota del cambio del 5 de mar de 2026")).toBeInTheDocument();
+    expect(section().getByLabelText("Nota del cambio del 5 de mar. de 2026")).toBeInTheDocument();
     finish({ error: "No se pudo guardar la nota." });
     expect(await section().findByRole("button", { name: "Guardar nota" })).toBeEnabled();
   });
@@ -295,8 +295,8 @@ describe("FixedExpenses · historial", () => {
     const user = userEvent.setup();
     render(<FixedExpenses {...props} />);
     await user.click(toggle(/^Historial de Arriendo/));
-    await user.click(section().getByRole("button", { name: "Editar nota del cambio del 5 de mar de 2026" }));
-    expect(section().getByLabelText("Nota del cambio del 5 de mar de 2026")).toHaveValue("Subió con el IPC.");
+    await user.click(section().getByRole("button", { name: "Editar nota del cambio del 5 de mar. de 2026" }));
+    expect(section().getByLabelText("Nota del cambio del 5 de mar. de 2026")).toHaveValue("Subió con el IPC.");
     await user.click(section().getByRole("button", { name: "Eliminar nota" }));
     expect(Object.fromEntries(noteAction.mock.calls[0][1])).toMatchObject({ note: "" });
     expect(await findToast()).toHaveAttribute("data-tone", "removal");
@@ -307,7 +307,7 @@ describe("FixedExpenses · historial", () => {
     const noNote = { ...HISTORIES, arriendo: { ...HISTORIES.arriendo, entries: [entry("2026-03", 1890000, 1800000)] } };
     render(<FixedExpenses {...props} histories={noNote} />);
     await user.click(toggle(/^Historial de Arriendo/));
-    const add = () => section().getByRole("button", { name: "Agregar nota del cambio del 5 de mar de 2026" });
+    const add = () => section().getByRole("button", { name: "Agregar nota del cambio del 5 de mar. de 2026" });
     await user.click(add());
     expect(section().queryByRole("button", { name: "Eliminar nota" })).toBeNull();
     await user.click(section().getAllByRole("button", { name: "Cancelar" })[0]);
@@ -315,7 +315,7 @@ describe("FixedExpenses · historial", () => {
     expect(add()).toHaveFocus();
 
     await user.click(add());
-    await user.type(section().getByLabelText("Nota del cambio del 5 de mar de 2026"), "A medias{Escape}");
+    await user.type(section().getByLabelText("Nota del cambio del 5 de mar. de 2026"), "A medias{Escape}");
     expect(section().queryByLabelText(/^Nota del cambio/)).toBeNull();
     expect(add()).toHaveFocus();
     expect(noteAction).not.toHaveBeenCalled();
@@ -326,9 +326,9 @@ describe("FixedExpenses · historial", () => {
     const user = userEvent.setup();
     render(<FixedExpenses {...props} />);
     await user.click(toggle(/^Historial de Arriendo/));
-    await user.click(section().getByRole("button", { name: "Editar nota del cambio del 5 de mar de 2026" }));
+    await user.click(section().getByRole("button", { name: "Editar nota del cambio del 5 de mar. de 2026" }));
     await user.click(section().getByRole("button", { name: "Guardar nota" }));
-    const field = section().getByLabelText("Nota del cambio del 5 de mar de 2026");
+    const field = section().getByLabelText("Nota del cambio del 5 de mar. de 2026");
     expect(await section().findByText("Máximo 280 caracteres.")).toBeVisible();
     expect(field).toHaveAttribute("aria-invalid", "true");
     expect(field).toHaveAccessibleDescription("Máximo 280 caracteres.");

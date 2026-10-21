@@ -116,7 +116,7 @@ describe("weekdayInsight e insightPhrase", () => {
   it("el día de más gasto y cuánto más que el promedio de los otros seis", () => {
     const insight = weekdayInsight([100, 100, 100, 100, 100, 300, 100]);
     expect(insight).toEqual({ weekday: 5, pct: 200 });
-    expect(insightPhrase(insight)).toBe("Gastas más los sábados: 200% más que el promedio de los otros días.");
+    expect(insightPhrase(insight)).toBe("Gastas más los sábados: 200\u00a0% más que el promedio de los otros días.");
   });
 
   it("si empatan, el primero de la semana", () => {
@@ -178,14 +178,14 @@ describe("calendarDays", () => {
     expect(calendar[9]).toEqual({
       date: "2026-10-10",
       day: 10,
-      title: "Sábado 10 de oct",
+      title: "Sábado 10 de oct.",
       total: 300,
       count: 1,
       level: 4,
       future: false,
       expenses: expenses.slice(0, 2),
     });
-    expect(calendar[0]).toMatchObject({ date: "2026-10-01", title: "Jueves 1 de oct", total: 0, count: 0, level: 0, expenses: [] });
+    expect(calendar[0]).toMatchObject({ date: "2026-10-01", title: "Jueves 1 de oct.", total: 0, count: 0, level: 0, expenses: [] });
     expect(calendar.filter((day) => !day.future).map((day) => day.day)).toEqual(Array.from({ length: 12 }, (_, i) => i + 1));
   });
 
@@ -207,6 +207,6 @@ describe("los textos del gasto por día en inglés", () => {
   it("el título de cada día del calendario", () => {
     const [first] = calendarDays({ year: 2026, month: 10 }, new Map(), () => 0, [], "2026-10-20", "en");
     expect(first.title).toBe("Thursday, Oct 1");
-    expect(calendarDays({ year: 2026, month: 10 }, new Map(), () => 0, [], "2026-10-20")[0].title).toBe("Jueves 1 de oct");
+    expect(calendarDays({ year: 2026, month: 10 }, new Map(), () => 0, [], "2026-10-20")[0].title).toBe("Jueves 1 de oct.");
   });
 });

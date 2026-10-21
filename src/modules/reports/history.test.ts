@@ -71,10 +71,10 @@ describe("fixedHistories", () => {
 });
 
 describe("pctLabel y changeDirection", () => {
-  it("el porcentaje sin signo, o <1% si redondeado da cero", () => {
-    expect(pctLabel(11)).toBe("11%");
-    expect(pctLabel(-3)).toBe("3%");
-    expect(pctLabel(0)).toBe("<1%");
+  it("el porcentaje sin signo, o <1 % si redondeado da cero", () => {
+    expect(pctLabel(11)).toBe("11\u00a0%");
+    expect(pctLabel(-3)).toBe("3\u00a0%");
+    expect(pctLabel(0)).toBe("<1\u00a0%");
   });
 
   it("sube o baja según la diferencia", () => {
@@ -103,11 +103,11 @@ describe("lastChangeSummary (el último cambio en una línea, en la página y en
   it("cuánto cambió y desde qué mes; con el año si no es el actual", () => {
     expect(lastChangeSummary(entries([row("2026-01", "Arriendo", 1000), row("2026-03", "Arriendo", 1100)]), october)).toEqual({
       direction: "up",
-      text: "10% desde marzo",
+      text: "10\u00a0% desde marzo",
     });
     expect(lastChangeSummary(entries([row("2025-01", "Arriendo", 1000), row("2025-11", "Arriendo", 900)]), october)).toEqual({
       direction: "down",
-      text: "10% desde noviembre de 2025",
+      text: "10\u00a0% desde noviembre de 2025",
     });
   });
 

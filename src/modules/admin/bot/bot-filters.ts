@@ -151,9 +151,9 @@ export const OUTCOME_TEXTS: Readonly<Record<Locale, Record<Outcome, string>>> = 
   },
   // Los comandos van como se escriben en el bot, que responde en español.
   en: {
-    registrado: "Recorded transactions",
+    registrado: "Added transactions",
     comando: "Commands (balance, reporte, deshacer, ayuda)",
-    respuesta: "Reply without recording anything",
+    respuesta: "Reply without adding anything",
     vinculado: "Linked their number",
     tope_claude: "Hit the Claude limit",
     tope_mensual: "Monthly token limit reached (asked to use the web)",
@@ -282,7 +282,7 @@ export const formatCount = (n: number, locale: Locale = DEFAULT_LOCALE) => new I
 export function formatShortDay(day: string, locale: Locale = DEFAULT_LOCALE): string {
   const date = new Date(`${day}T00:00:00Z`);
   if (locale === "en") return new Intl.DateTimeFormat(INTL_LOCALES.en, { day: "numeric", month: "short", timeZone: "UTC" }).format(date);
-  // Por partes: el formato completo de es-CO dice "12 de oct".
+  // Por partes (es un eje, sin punto): el formato completo de es-CO dice "12 de oct".
   const parts = new Intl.DateTimeFormat(INTL_LOCALES.es, { day: "numeric", month: "short", timeZone: "UTC" }).formatToParts(date);
   const part = (type: "day" | "month") => parts.find((p) => p.type === type)!.value;
   return `${part("day")} ${part("month")}`;

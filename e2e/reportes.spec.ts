@@ -61,7 +61,7 @@ test("Reportes: las cifras del período, el gráfico, las categorías y los gast
     await expect(stat(page, "Ingresos")).toContainText("$8.000.000,00");
     await expect(stat(page, "Egresos")).toContainText("$7.300.000,00");
     await expect(stat(page, "Balance del período")).toContainText("$700.000,00");
-    await expect(stat(page, "Balance del período")).toContainText("Ahorraste el 9% de tus ingresos");
+    await expect(stat(page, "Balance del período")).toContainText("Ahorraste el 9 % de tus ingresos");
     // Los tres meses completos (el actual va en curso): (1.800.000 + 1.800.000 + 1.900.000) / 3.
     await expect(stat(page, "Gasto promedio por mes")).toContainText("$1.833.333,33");
     await expect(stat(page, "Gasto promedio por mes")).toContainText(`En 3 meses, sin ${name(current)} (va en curso)`);
@@ -70,12 +70,12 @@ test("Reportes: las cifras del período, el gráfico, las categorías y los gast
   });
 
   await test.step("cada categoría, frente a su promedio", async () => {
-    const categories = section(page, "Gastos por categoría");
+    const categories = section(page, "Egresos por categoría");
     await expect(categories).toContainText(`cómo le fue en ${name(m1)} frente a su promedio de ${name(m3)} y ${name(m2)}`);
     const rows = categories.getByRole("listitem");
     await expect(rows).toHaveCount(2);
     await expect(rows.nth(0)).toContainText("Vivienda");
-    await expect(rows.nth(0)).toContainText("$7.200.000,00 · 99%");
+    await expect(rows.nth(0)).toContainText("$7.200.000,00 · 99 %");
     await expect(rows.nth(0)).toContainText(`En ${name(m1)}, igual que su promedio`);
     await expect(rows.nth(1)).toContainText("Alimentación");
     await expect(rows.nth(1)).toContainText(`Nueva en ${name(m1)}`);
@@ -115,7 +115,7 @@ test("Reportes: las cifras del período, el gráfico, las categorías y los gast
   });
 
   await test.step("los gastos más grandes, sin el arriendo (es fijo); tocar uno lleva a editarlo", async () => {
-    const biggest = section(page, "Los gastos más grandes");
+    const biggest = section(page, "Los egresos más grandes");
     const items = biggest.getByRole("listitem");
     await expect(items).toHaveCount(1);
     const date = formatShortDate(dayOf(m1, 10), { withYear: m1.year !== current.year });
@@ -125,7 +125,7 @@ test("Reportes: las cifras del período, el gráfico, las categorías y los gast
     await expect(visible(page.getByLabel("Descripción"))).toHaveValue("Restaurante con amigos");
     await page.goBack();
     await expect(page).toHaveURL(/\/reportes$/);
-    await expect(section(page, "Los gastos más grandes")).toBeVisible();
+    await expect(section(page, "Los egresos más grandes")).toBeVisible();
   });
 
   await test.step("la tabla mes a mes y, al tocar un mes del gráfico, su Resumen", async () => {
@@ -211,8 +211,8 @@ test("¿Qué días gastas más?: el calendario de un mes (sin los fijos), el det
 
   await test.step("el día de la semana de más gasto y las quincenas, sin el arriendo", async () => {
     await expect(daily).toContainText(`Gastas más los ${weekdayOn(dayOf(m1, 10))}`);
-    await expect(daily.getByText("Del 1 al 15: 80%")).toBeVisible();
-    await expect(daily.getByText("Del 16 al fin de mes: 20%")).toBeVisible();
+    await expect(daily.getByText("Del 1 al 15: 80 %")).toBeVisible();
+    await expect(daily.getByText("Del 16 al fin de mes: 20 %")).toBeVisible();
   });
 });
 
@@ -228,7 +228,7 @@ test("con más de 10 gastos, los demás se abren con «Ver los N siguientes»", 
   await sql.end();
 
   await openTab(page, "Reportes");
-  const biggest = section(page, "Los gastos más grandes");
+  const biggest = section(page, "Los egresos más grandes");
   const links = biggest.getByRole("link", { name: /^Editar / });
   await expect(visible(links)).toHaveCount(10);
   await expect(visible(links).first()).toContainText("Gasto número 13");

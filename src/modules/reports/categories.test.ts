@@ -37,7 +37,7 @@ describe("categoryReport", () => {
     );
     expect(report.rows.map((r) => [r.name, r.total])).toEqual([["Mercado", 150]]);
     // Septiembre (100) frente al promedio de junio a agosto ((0 + 100 + 0) / 3).
-    expect(report.rows[0].change?.text).toBe("En septiembre, 200% más que su promedio");
+    expect(report.rows[0].change?.text).toBe("En septiembre, 200\u00a0% más que su promedio");
   });
 
   it("junta las filas de la misma categoría en un mes", () => {
@@ -69,7 +69,7 @@ describe("categoryReport", () => {
       const report = categoryReport(data, months(1, 10), october, allActive);
       expect(report.compared).toEqual(m(9));
       expect(report.averaged).toEqual([m(6), m(7), m(8)]);
-      expect(report.rows[0].change).toEqual({ direction: "up", text: "En septiembre, 40% más que su promedio" });
+      expect(report.rows[0].change).toEqual({ direction: "up", text: "En septiembre, 40\u00a0% más que su promedio" });
     });
 
     it("en un año pasado, la de diciembre", () => {
@@ -80,13 +80,13 @@ describe("categoryReport", () => {
         new Set(["2025-09", "2025-10", "2025-11", "2025-12"]),
       );
       expect(report.compared).toEqual(m(12, 2025));
-      expect(report.rows[0].change?.text).toBe("En diciembre, 25% menos que su promedio");
+      expect(report.rows[0].change?.text).toBe("En diciembre, 25\u00a0% menos que su promedio");
     });
 
     it("el promedio usa solo los meses con movimientos (antes de empezar a usar la app no cuenta)", () => {
       const report = categoryReport(data, months(1, 10), october, new Set(["2026-08", "2026-09", "2026-10"]));
       expect(report.averaged).toEqual([m(8)]);
-      expect(report.rows[0].change?.text).toBe("En septiembre, 40% más que su promedio");
+      expect(report.rows[0].change?.text).toBe("En septiembre, 40\u00a0% más que su promedio");
     });
 
     it("sin meses con movimientos antes del comparado, no hay comparación", () => {
@@ -109,12 +109,12 @@ describe("categoryReport", () => {
 
 describe("categoryChange", () => {
   it("más o menos que su promedio, en porcentaje", () => {
-    expect(categoryChange(140, 100, "septiembre")).toEqual({ direction: "up", text: "En septiembre, 40% más que su promedio" });
-    expect(categoryChange(75, 100, "septiembre")).toEqual({ direction: "down", text: "En septiembre, 25% menos que su promedio" });
+    expect(categoryChange(140, 100, "septiembre")).toEqual({ direction: "up", text: "En septiembre, 40\u00a0% más que su promedio" });
+    expect(categoryChange(75, 100, "septiembre")).toEqual({ direction: "down", text: "En septiembre, 25\u00a0% menos que su promedio" });
   });
 
   it("con el punto de los miles", () => {
-    expect(categoryChange(1600, 100, "septiembre")?.text).toBe("En septiembre, 1.500% más que su promedio");
+    expect(categoryChange(1600, 100, "septiembre")?.text).toBe("En septiembre, 1.500\u00a0% más que su promedio");
   });
 
   it("igual (o casi: menos de medio por ciento)", () => {

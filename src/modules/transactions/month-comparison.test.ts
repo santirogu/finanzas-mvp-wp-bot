@@ -20,17 +20,17 @@ describe("totalChange", () => {
   it("dice cuánto más o menos que el mes anterior, en porcentaje redondeado", () => {
     expect(totalChange(3350000, 2913043, "agosto", "expense")).toEqual({
       direction: "up",
-      text: "15% más que agosto",
+      text: "15\u00a0% más que agosto",
     });
     expect(totalChange(920000, 1000000, "agosto", "income")).toEqual({
       direction: "down",
-      text: "8% menos que agosto",
+      text: "8\u00a0% menos que agosto",
     });
-    expect(totalChange(0, 1000, "agosto", "expense")).toEqual({ direction: "down", text: "100% menos que agosto" });
+    expect(totalChange(0, 1000, "agosto", "expense")).toEqual({ direction: "down", text: "100\u00a0% menos que agosto" });
   });
 
   it("con miles, el punto de los miles", () => {
-    expect(totalChange(250000, 2000, "agosto", "expense").text).toBe("12.400% más que agosto");
+    expect(totalChange(250000, 2000, "agosto", "expense").text).toBe("12.400\u00a0% más que agosto");
   });
 
   it("igual si no cambió, y 'casi igual' si cambió menos del medio por ciento", () => {
@@ -38,7 +38,7 @@ describe("totalChange", () => {
     expect(totalChange(0, 0, "agosto", "income")).toEqual({ direction: "same", text: "Igual que agosto" });
     expect(totalChange(1004, 1000, "agosto", "expense")).toEqual({ direction: "up", text: "Casi igual que agosto" });
     expect(totalChange(996, 1000, "agosto", "expense")).toEqual({ direction: "down", text: "Casi igual que agosto" });
-    expect(totalChange(1005, 1000, "agosto", "expense").text).toBe("1% más que agosto");
+    expect(totalChange(1005, 1000, "agosto", "expense").text).toBe("1\u00a0% más que agosto");
   });
 
   it("si el mes anterior no tuvo, no hay porcentaje: lo dice", () => {
