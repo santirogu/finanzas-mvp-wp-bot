@@ -33,13 +33,19 @@ const categories = {
   income: DEFAULT_CATEGORIES.income.map((c) => c.name),
 };
 
+// El bot tutea, como toda la app (glosario de textos): estas formas son de usted.
+const USTED = /\b(usted|ustedes|escriba|envíe|envíeme|intente|indíqueme|dígame|cuénteme|disculpe|tenga)\b/i;
+
 function grade(c: EvalCase, intent: BotIntent): string[] {
   const problems: string[] = [];
   if (c.expect.kind === "reply") {
-    if (intent.kind !== "reply") problems.push(`esperaba una respuesta sin registrar, obtuvo ${intent.kind}`);
-    else if (c.expect.mentions && !c.expect.mentions.test(intent.text)) {
-      problems.push(`la respuesta no dice ${c.expect.mentions}: "${intent.text}"`);
+    if (intent.kind !== "reply") {
+      problems.push(`esperaba una respuesta sin registrar, obtuvo ${intent.kind}`);
+      return problems;
     }
+    if (c.expect.mentions && !c.expect.mentions.test(intent.text)) problems.push(`la respuesta no dice ${c.expect.mentions}: "${intent.text}"`);
+    if (c.expect.noQuestion && intent.text.includes("?")) problems.push(`pregunta en vez de pedir el movimiento completo: "${intent.text}"`);
+    if (USTED.test(intent.text)) problems.push(`trata de usted: "${intent.text}"`);
     return problems;
   }
   if (intent.kind !== "transactions") {
