@@ -2,6 +2,7 @@ import { readdirSync } from "node:fs";
 import { isValidElement, type ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 import type { Month } from "@/lib/dates";
+import { BRAND_NAME } from "@/lib/brand";
 import { sampleMovements, sampleReport } from "../../../../test/report-sample";
 import { ReportDocument } from "./document";
 import nextConfig from "../../../../next.config";
@@ -60,6 +61,10 @@ describe("ReportDocument", () => {
 
   it("sin la sección de gastos fijos (tienen su pestaña)", () => {
     expect(textOf(ReportDocument({ view }))).not.toContain("Gastos fijos");
+  });
+
+  it("el encabezado lleva el nombre de la app junto al logo, antes del título (no una «F»)", () => {
+    expect(textOf(ReportDocument({ view }))).toMatch(new RegExp(`^${BRAND_NAME}Reporte de tus finanzas`));
   });
 
   it("sin movimientos, solo el encabezado y el aviso", () => {

@@ -1,8 +1,8 @@
-import { Document, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
+import { Document, Page, Path, Rect, StyleSheet, Svg, Text, View } from "@react-pdf/renderer";
 import type { ReactNode } from "react";
 import { PDF_COLORS as C } from "./colors";
 import type { ReportPdfView } from "./view";
-import { BRAND_NAME } from "@/lib/brand";
+import { BRAND_MARK, BRAND_NAME } from "@/lib/brand";
 
 // La hoja del "Reporte (PDF)": tamaño carta, en el modo claro de la app. Página 1: el resumen, el gráfico
 // y la tabla mes a mes; página 2: las categorías a la izquierda, y los gastos más grandes y los días de
@@ -27,7 +27,7 @@ const s = StyleSheet.create({
   muted: { color: C.muted },
   strong: { fontWeight: 600 },
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", paddingBottom: 10, borderBottomWidth: 2, borderBottomColor: C.brand },
-  logo: { width: 24, height: 24, borderRadius: 5, backgroundColor: C.brand, color: "#ffffff", fontSize: 13, fontWeight: 600, textAlign: "center", paddingTop: 4 },
+  brandName: { fontSize: 9, fontWeight: 600, color: C.brand },
   title: { fontSize: 14, fontWeight: 600 },
   section: { marginTop: 16 },
   h2: { fontSize: 10.5, fontWeight: 600, marginBottom: 2 },
@@ -68,12 +68,31 @@ function Section({ title, intro, children }: { title: string; intro?: string; ch
 
 const Empty = ({ text }: { text: string }) => <Text style={[s.muted, { paddingVertical: 10 }]}>{text}</Text>;
 
+/** El logo de la app, el mismo dibujo de la web y de los íconos (src/lib/brand-mark.json), en el modo claro. */
+function LogoMark({ size }: { size: number }) {
+  return (
+    <Svg viewBox={BRAND_MARK.viewBox} style={{ width: size, height: size }}>
+      <Rect x={0} y={0} width={32} height={32} rx={BRAND_MARK.radius} fill={BRAND_MARK.brand} />
+      <Path d={BRAND_MARK.bubble} fill={BRAND_MARK.brandForeground} />
+      <Path
+        d={BRAND_MARK.check}
+        fill="none"
+        stroke={BRAND_MARK.brand}
+        strokeWidth={BRAND_MARK.checkWidth}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
 function Header({ view }: { view: ReportPdfView }) {
   return (
     <View style={s.header}>
       <View style={{ flexDirection: "row", alignItems: "center" }}>
-        <Text style={s.logo}>F</Text>
+        <LogoMark size={30} />
         <View style={{ marginLeft: 8 }}>
+          <Text style={s.brandName}>{BRAND_NAME}</Text>
           <Text style={s.title}>{view.labels.title}</Text>
           <Text style={s.muted}>{view.range}</Text>
         </View>
