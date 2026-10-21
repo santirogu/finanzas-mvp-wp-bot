@@ -11,6 +11,8 @@ textos.
   `BRAND_NAME` (`src/lib/brand.ts`).
 - No usar "Finanzas MVP", "Finanzas" ni "Finanzas Bot", los nombres de antes. Hay una excepción: donde
   se explica el cambio, como en Google Authenticator: "Anotado (antes, Finanzas MVP)".
+- **Al registrar, el bot responde "✅ Egreso Anotado: …" o "✅ Ingreso Anotado: …"**, con la A
+  mayúscula de la marca. Es una decisión del dueño: no es un error de mayúsculas.
 - **Eslogan:** "Escribe tu gasto por WhatsApp. Queda anotado." (en inglés, "Text your expense on WhatsApp.
   It's noted.").
 
