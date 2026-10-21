@@ -19,7 +19,7 @@ export type Problema = {
  * Corre dentro de la página (todo lo que usa tiene que estar aquí adentro): lo que se sale de la
  * pantalla o queda tapado, textos cortados, campos y zonas táctiles chicas y la estructura de títulos.
  */
-export function medirDiseno({ tactil }: { tactil: boolean }): Problema[] {
+export function medirDiseno({ tactil, idioma = "es" }: { tactil: boolean; idioma?: "es" | "en" }): Problema[] {
   const problemas: Problema[] = [];
   const ancho = document.documentElement.clientWidth;
   const alto = window.innerHeight;
@@ -224,8 +224,8 @@ export function medirDiseno({ tactil }: { tactil: boolean }): Problema[] {
   }
 
   // 7. Estructura: idioma, un solo h1, títulos sin saltos de nivel y la región principal.
-  if (!document.documentElement.lang.startsWith("es")) {
-    problemas.push({ tipo: "estructura", nivel: "defecto", detalle: "La página no declara el idioma español (lang)", medida: document.documentElement.lang || "sin lang" });
+  if (!document.documentElement.lang.startsWith(idioma)) {
+    problemas.push({ tipo: "estructura", nivel: "defecto", detalle: `La página no declara su idioma (lang="${idioma}")`, medida: document.documentElement.lang || "sin lang" });
   }
   const titulos = [...document.querySelectorAll("h1, h2, h3, h4, h5, h6")].filter(seVe);
   const h1 = titulos.filter((t) => t.tagName === "H1").length;

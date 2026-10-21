@@ -252,15 +252,23 @@ scripts/seed.ts                     Categorías por defecto
 
 ### Idiomas
 
-La app tiene español (el de siempre) e inglés, que se pasa por partes: todavía no se puede elegir, pero
-con la cookie `idioma=en` ya se ve lo que está traducido (la navegación, el login y el registro, el
-Resumen con la campana y los próximos pagos, Ingresos, Egresos, Fijos, Reportes con sus descargas, Mi
-cuenta, la Ayuda, la 404 y toda la administración).
+La app está en español (el de siempre) y en inglés, toda la web (el bot de WhatsApp sigue en español).
+
+- **Cuál ve cada quien:**
+  1. el que eligió en **Mi cuenta → Idioma** (`saveLanguageAction`): se guarda en su cuenta
+     (`user.locale`) y en la cookie `idioma` de ese navegador, por un año;
+  2. si no eligió en ese navegador, el de su cuenta: al iniciar sesión (también tras el segundo paso de un
+     admin), Better Auth le pone la cookie (`hooks.after` en `src/lib/auth.ts`);
+  3. si no, el que pide el navegador (`Accept-Language`, `negotiateLocale` en `src/i18n/locales.ts`), sin
+     guardar nada: la primera visita sale en inglés si el navegador lo prefiere antes que el español.
+
+  `user.locale` es `null` hasta que la persona elige (la base solo acepta `es` o `en`), y nadie más lo
+  cambia: Better Auth lo tiene con `input: false`. La política de privacidad lo explica.
 
 - **Las direcciones no llevan el idioma.** Las páginas están en `src/app/[lang]/` y el proxy
-  (`src/proxy.ts`) arma cada una, por dentro, en el idioma de la cookie `idioma`: `/dashboard` se arma
-  como `/es/dashboard` (o `/en/dashboard`), y el navegador sigue viendo `/dashboard`. Sin la cookie, o
-  con un valor que no es un idioma de la app, en español (`src/i18n/locales.ts`).
+  (`src/proxy.ts`) arma cada una, por dentro, en el idioma de la cookie `idioma` (o, sin ella, en el del
+  navegador): `/dashboard` se arma como `/es/dashboard` (o `/en/dashboard`), y el navegador sigue viendo
+  `/dashboard`. Sin ninguno de los dos, en español (`src/i18n/locales.ts`).
 - **Por qué así:** el `<html lang>` y los textos salen del segmento (`next/root-params`), sin leer
   cookies al armar la página. Las páginas públicas (inicio, login, registro, privacidad) siguen
   prearmadas, una vez por idioma.
@@ -269,8 +277,8 @@ cuenta, la Ayuda, la 404 y toda la administración).
   datos es una función. Se leen con `getTexts()` en el servidor (`src/i18n/server.ts`, que también da
   `getLocale()`) y con `useTexts()` en el cliente (`src/i18n/client.tsx`: el layout raíz pone el idioma).
   Un componente que usan el servidor y el cliente (`TransactionList`) recibe el idioma por prop.
-- **En las Server Actions** no hay segmento `[lang]`: el idioma sale de la cookie con
-  `getRequestLocale()` (`src/i18n/request.ts`) y se pasa a la función del módulo que arma el mensaje
+- **En las Server Actions** no hay segmento `[lang]`: el idioma sale de la cookie (o del navegador, como
+  en el proxy) con `getRequestLocale()` (`src/i18n/request.ts`) y se pasa a la función del módulo que arma el mensaje
   (`skipFixedPayment(…, locale)`). El monto del formulario se lee con los separadores de ese idioma
   (`transactionSchema(locale)`). Las acciones del admin leen la cookie dentro del módulo
   (`confirmAdminCode` y las de `src/modules/admin/users/account-actions.ts`): las Server Actions de la
@@ -278,7 +286,9 @@ cuenta, la Ayuda, la 404 y toda la administración).
 - **En las pruebas:** los componentes, `render(ui, { wrapper: InEnglish })` (`test/locale.tsx`) o
   `renderWithToaster(ui, { english: true })`; las acciones en integración, `requestLocale.value = "en"`
   (`test/integration/locale.ts`). `next/root-params` y `getRequestLocale` se simulan en los archivos de
-  configuración de cada proyecto de Vitest (español por defecto).
+  configuración de cada proyecto de Vitest (español por defecto). Las E2E en inglés están en
+  `e2e/idioma-ingles.spec.ts` (las demás corren con el navegador en `es-CO`), y el recorrido de la
+  auditoría de diseño tiene su modo en inglés (`AUDITORIA_IDIOMA=en`).
 - **Montos y fechas:** `formatMoney`, `parseAmountInput`, `formatAmountTyping`, `formatMonthName`,
   `formatShortDate`… reciben el idioma (por defecto, español). En inglés, con el formato de EE. UU.:
   "$1,000,000.00" (en el campo de monto, la coma separa los miles) y "Oct 13". El bot sigue en español.
