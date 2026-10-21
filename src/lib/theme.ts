@@ -47,6 +47,17 @@ export function readTheme(): Theme {
   }
 }
 
+/**
+ * Pone el tema guardado en <html data-theme>, lo mismo que THEME_SCRIPT al cargar la página. Lo usa ThemeSync
+ * (src/components/theme-sync.tsx) cuando el layout raíz se vuelve a montar sin recargar.
+ */
+export function applySavedTheme() {
+  const theme = readTheme();
+  const root = document.documentElement;
+  if (theme === "system") delete root.dataset.theme;
+  else root.dataset.theme = theme;
+}
+
 /** Guarda el tema en este navegador y lo aplica de inmediato. */
 export function saveTheme(theme: Theme) {
   const root = document.documentElement;

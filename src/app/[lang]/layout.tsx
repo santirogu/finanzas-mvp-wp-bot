@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { ThemeSync } from "@/components/theme-sync";
 import { LocaleProvider } from "@/i18n/client";
 import { LOCALES } from "@/i18n/locales";
 import { getLocale, getTexts } from "@/i18n/server";
@@ -44,6 +45,8 @@ export default async function RootLayout({ children }: LayoutProps<"/[lang]">) {
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>
       <body className="min-h-full flex flex-col font-sans">
+        {/* Si el layout raíz cambia sin recargar (otro idioma), vuelve a poner el tema elegido. */}
+        <ThemeSync />
         <LocaleProvider locale={locale}>{children}</LocaleProvider>
         {/* Vercel Web Analytics y Speed Insights: visitas y velocidad de carga, anónimas y sin
             cookies (ver /privacidad). */}

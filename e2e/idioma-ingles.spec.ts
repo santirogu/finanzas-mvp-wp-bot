@@ -370,3 +370,39 @@ test("la primera visita, sin elegir, en el idioma del navegador @principal", asy
     await context.close();
   }
 });
+
+test("cambiar de idioma no cambia la apariencia elegida (ni al elegirlo ni al entrar con la cuenta) @principal", async ({ page, browser }) => {
+  // El sistema en oscuro y la apariencia en Claro: si se perdiera, se vería oscura.
+  await page.emulateMedia({ colorScheme: "dark" });
+  const email = uniqueEmail();
+  await register(page, "Ana Pérez", email);
+  await page.goto("/cuenta");
+  await visible(page.getByRole("group", { name: "Apariencia" })).locator("label", { hasText: "Claro" }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+
+  await test.step("al elegir English en Mi cuenta", async () => {
+    await visible(page.getByRole("group", { name: "Idioma" })).locator("label", { hasText: "English" }).click();
+    await expect(page.locator("html")).toHaveAttribute("lang", "en");
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+    const appearance = visible(page.getByRole("group", { name: "Appearance" }));
+    await expect(appearance.getByRole("radio", { name: "Light" })).toBeChecked();
+    // El selector sigue funcionando.
+    await appearance.locator("label", { hasText: "Dark" }).click();
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+    await appearance.locator("label", { hasText: "Light" }).click();
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  });
+
+  await test.step("al entrar en otro navegador (en español) con la cuenta en inglés", async () => {
+    const other = await newPerson(browser);
+    await other.emulateMedia({ colorScheme: "dark" });
+    await other.goto("/login");
+    await other.evaluate(() => localStorage.setItem("tema", "light"));
+    await other.reload();
+    await expect(other.locator("html")).toHaveAttribute("data-theme", "light");
+    await logIn(other, email);
+    await expect(other.locator("html")).toHaveAttribute("lang", "en");
+    await expect(other.locator("html")).toHaveAttribute("data-theme", "light");
+    await other.context().close();
+  });
+});
