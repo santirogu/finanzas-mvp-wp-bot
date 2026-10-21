@@ -204,6 +204,12 @@ de Vercel ni muevas las migraciones fuera del job `deploy`.
     cliente), corre `/auditoria-pruebas cambios`.
   - Una vez al mes, `/auditoria-pruebas completa`.
   - Su informe va a `reports/pruebas/` y no se sube.
+- **Auditoría de textos:** usa el skill `/auditoria-textos` (README → Pruebas y CI).
+  - Antes de abrir un PR que agregue o cambie textos que ve la persona (páginas, componentes, errores,
+    avisos, el bot, el PDF o las páginas legales), corre `/auditoria-textos cambios`.
+  - Al escribir un texto nuevo, sigue su glosario (`.claude/skills/auditoria-textos/glosario.md`): el
+    tuteo, las palabras de la app en los dos idiomas y los formatos.
+  - Su informe va a `reports/textos/` y no se sube.
 - **Avisos emergentes** (README → Decisiones importantes): la confirmación de algo que ya pasó va con
   `useToast()` (`src/components/toaster.tsx`): `tone: "success"` (verde) si se guardó o se activó,
   `"removal"` (rojo) si se borró o se desactivó; con `focus: true` si lo que se tocó ya no está (una

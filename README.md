@@ -158,6 +158,30 @@ pnpm dev                        # http://localhost:3000 (antes, copia la base lo
     - `cambios`: antes de un PR que agregue o cambie lógica;
     - un área, por ejemplo `/auditoria-pruebas e2e` o `/auditoria-pruebas mutacion`.
   - **El informe** queda en `reports/pruebas/` (ignorado por git). Los arreglos van en ramas `test/…`.
+- **Auditoría de textos** (`/auditoria-textos`, un skill de Claude Code en
+  `.claude/skills/auditoria-textos/`): revisa cómo está escrito lo que ve la persona, en español según
+  la RAE y en inglés.
+  - **Qué revisa:**
+    - la ortografía, la gramática y la puntuación;
+    - las expresiones censuradas, las redundancias y los textos largos o poco claros;
+    - que se usen las mismas palabras para lo mismo, según su glosario (`glosario.md`, que también
+      sirve al escribir un texto nuevo);
+    - que el inglés diga lo mismo que el español y no suene traducido.
+  - **Dónde:** pantallas, botones, errores, avisos, `aria-label` y `alt`, los mensajes del bot, el PDF
+    y las páginas legales. El prompt del bot queda fuera: cambiarlo pide `pnpm bot:eval`.
+  - **Cómo trabaja:**
+    - un inventario automático (`textos.mjs`, solo lee archivos) extrae todos los textos con su
+      archivo y su línea, y marca lo mecánico: tildes, signos sin pareja, comillas rectas, frases
+      largas, palabras repetidas, claves cuyo inglés no tiene los mismos datos que el español;
+    - Claude y sus subagentes leen los textos con un checklist;
+    - cada hallazgo se verifica con su regla y su fuente (el DLE, el DPD, la FundéuRAE o el glosario).
+      Lo que no tiene regla va aparte, como sugerencia.
+  - **Modos:**
+    - `completa`: una vez al mes o después de una funcionalidad grande;
+    - `cambios`: antes de un PR que agregue o cambie textos;
+    - un área o una página, por ejemplo `/auditoria-textos en` o `/auditoria-textos /egresos`.
+  - **El informe**, con los textos extraídos, queda en `reports/textos/` (ignorado por git). Los
+    arreglos van en ramas `fix/…`.
 - **Errores de los formularios**: en español, debajo de cada campo y nunca el globo del navegador
   (que sale en su idioma, "Please fill out this field."). Los traduce `src/lib/field-errors.ts` y
   los muestra `useFieldErrors`; `src/forms.test.ts` exige que todo formulario con campos validados lo
