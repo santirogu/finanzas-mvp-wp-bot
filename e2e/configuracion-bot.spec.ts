@@ -119,7 +119,7 @@ test("el admin pausa Claude: el bot pide usar la web, los comandos siguen y qued
     await confirmWith(page, codeFor(secret, 1), "Reanudar");
     await expect(toast(page, "Claude volvió a funcionar")).toHaveAttribute("data-tone", "success");
     await expect(settings(page)).toContainText("Activo: entiende los mensajes escritos libremente.");
-    expect(await beto("almuerzo 25.900,50")).toMatch(/✅ Egreso registrado: \*Almuerzo\*/);
+    expect(await beto("almuerzo 25.900,50")).toMatch(/✅ Egreso Anotado: \*Almuerzo\*/);
     expect(await seriousViolations(page)).toEqual([]);
   });
 });
@@ -154,7 +154,7 @@ test("cambiar los topes: fuera de rango avisa en su campo; con 1 por hora, el se
   });
 
   await test.step("el primer mensaje se registra; el segundo, en la misma hora, espera", async () => {
-    expect(await beto("almuerzo 25.900,50")).toMatch(/✅ Egreso registrado/);
+    expect(await beto("almuerzo 25.900,50")).toMatch(/✅ Egreso Anotado/);
     expect(await beto("almuerzo 25.900,50")).toContain("Recibí muchos mensajes en poco tiempo");
     expect(await beto("balance")).toMatch(/Egresos: \$25\.900,50/);
   });
@@ -207,7 +207,7 @@ test("el tope mensual de tokens: al alcanzarlo, el bot deja de usar Claude hasta
     await dialog(page).getByLabel("Tokens al mes").fill("");
     await confirmWith(page, codeFor(secret, 1), "Guardar tope");
     await expect(toast(page, "Se quitó el tope mensual de tokens.")).toBeVisible();
-    expect(await beto("almuerzo 25.900,50")).toMatch(/✅ Egreso registrado/);
+    expect(await beto("almuerzo 25.900,50")).toMatch(/✅ Egreso Anotado/);
     await page.goto("/admin/historial?tipo=admin");
     await expect(visible(page.getByRole("listitem").filter({ hasText: "cambió el tope mensual de tokens" })).first()).toContainText(
       "ahora sin tope (antes 10.000 tokens al mes)",
@@ -236,7 +236,7 @@ test("reenviar una respuesta que no salió: le llega a la persona y no se regist
     await confirmWith(page, codeFor(secret), "Reenviar");
     await expect(toast(page, "Se reenvió 1 respuesta.")).toBeVisible();
     await expect(errors).not.toContainText("no salió en las últimas 24 horas");
-    expect(await beto.resentReply()).toMatch(/✅ Egreso registrado: \*Almuerzo\*/);
+    expect(await beto.resentReply()).toMatch(/✅ Egreso Anotado: \*Almuerzo\*/);
     // El movimiento se registró una sola vez (al llegar el mensaje), no al reenviar.
     expect(await beto("balance")).toMatch(/Egresos: \$25\.900,50/);
   });

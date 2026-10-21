@@ -129,7 +129,7 @@ async function main() {
       heading: "Escribe tu gasto por WhatsApp. Queda anotado.",
       body: "Tus ingresos y egresos con un mensaje, y tu mes claro en la web.",
       message: "gasté 25 mil en almuerzo",
-      reply: "✅ Anotado: <b>Almuerzo</b> — $25.000,00 (Alimentación)",
+      reply: "✅ Egreso Anotado: <b>Almuerzo</b> — $25.000,00 (Alimentación)",
     }),
   );
   await page.evaluate(() => document.fonts.ready);

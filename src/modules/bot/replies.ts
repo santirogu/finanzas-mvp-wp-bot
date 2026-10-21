@@ -1,6 +1,7 @@
 // Textos que el bot envía por WhatsApp. WhatsApp usa *negrita* y _cursiva_.
 import { CONTACT_EMAIL } from "@/lib/contact";
 import { formatMonthLabel, formatMonthName, formatShortDate, type Month, type MonthRange } from "@/lib/dates";
+import { BRAND_NAME } from "@/lib/brand";
 import { formatMoney, formatShare } from "@/lib/money";
 import type { CategoryReport } from "@/modules/reports/categories";
 import { periodHref, type ReportPeriod } from "@/modules/reports/period";
@@ -20,7 +21,9 @@ export function registeredReply(
     const extras = [t.category, t.occurredOn !== ctx.today ? formatShortDate(t.occurredOn) : null]
       .filter(Boolean)
       .join(" · ");
-    return `✅ ${label} registrado: *${t.description}* — ${money(t.amount)}${extras ? ` (${extras})` : ""}`;
+    // "Egreso Anotado": con la marca (y su mayúscula, por decisión del dueño) y el tipo, que es como se nota si
+    // Claude tomó un ingreso por un egreso.
+    return `✅ ${label} ${BRAND_NAME}: *${t.description}* — ${money(t.amount)}${extras ? ` (${extras})` : ""}`;
   });
   return [
     ...lines,

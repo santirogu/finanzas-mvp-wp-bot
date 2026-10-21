@@ -285,7 +285,7 @@ describe("handleIncomingMessage · registro de movimientos", () => {
       externalId: `${msg.id}:0`,
       categoryId: ropa[0].id,
     });
-    expect(sender.sent[0].body).toContain("Egreso registrado: *Zapatos*");
+    expect(sender.sent[0].body).toContain("Egreso Anotado: *Zapatos*");
     expect(sender.sent[0].body.replace(/ /g, " ")).toContain("*$1.500.000,00*");
     expect(await loggedMessage(msg.id)).toMatchObject({ status: "processed", userId: user.id });
   });
@@ -798,7 +798,7 @@ describe("handleIncomingMessage · la descripción del historial", () => {
 
     const saved = (await activeTransactions(user.id)).find((t) => t.source === "whatsapp")!;
     expect(saved).toMatchObject({ description: "Claro Postpago Cata Amor", categoryId: servicios.id, amount: 98000 });
-    expect(sender.sent[0].body).toContain("Egreso registrado: *Claro Postpago Cata Amor*");
+    expect(sender.sent[0].body).toContain("Egreso Anotado: *Claro Postpago Cata Amor*");
     expect(sender.sent[0].body).toContain("(Servicios)");
   });
 

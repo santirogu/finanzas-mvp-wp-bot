@@ -128,11 +128,11 @@ function ChatExample({ label, note }: { label: string; note: string | null }) {
       <ol lang="es" className="mt-4 space-y-3 text-sm">
         <li className={sent}>gasté 25 mil en almuerzo</li>
         <li className={received}>
-          ✅ Anotado: <strong>Almuerzo</strong> — $25.000,00 (Alimentación)
+          ✅ Egreso {BRAND_NAME}: <strong>Almuerzo</strong> — $25.000,00 (Alimentación)
         </li>
         <li className={sent}>y 12 mil de taxi</li>
         <li className={received}>
-          ✅ Anotado: <strong>Taxi</strong> — $12.000,00 (Transporte)
+          ✅ Egreso {BRAND_NAME}: <strong>Taxi</strong> — $12.000,00 (Transporte)
           <span className="mt-1 block text-muted">
             Balance del mes: <strong className="text-foreground">$1.284.500,00</strong>
           </span>
