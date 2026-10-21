@@ -9,7 +9,7 @@ import { texts } from "@/i18n/texts";
 import { FIELD_TEXTS, type FieldMessages } from "@/lib/field-errors";
 import { type ToastTone, useToast } from "@/components/toaster";
 import { Buttons, CODE_FIELD_TEXTS, CodeField, Dialog, FormError } from "../../admin-dialog";
-import { NOTE_MAX_LENGTH } from "@/modules/admin/shared/filters";
+import { NOTE_MAX_LENGTH, withHourArticle } from "@/modules/admin/shared/filters";
 import {
   deleteAccountByAdminAction,
   grantAdminAction,
@@ -63,7 +63,7 @@ const TEXTS = texts(
     reactivating: "Reactivando…",
     reactivateBody: "Podrá volver a entrar y a usar el bot de WhatsApp.",
     unlockTitle: "Desbloquear el inicio de sesión",
-    lockedUntil: (hour: string) => `Bloqueado por contraseñas equivocadas hasta las ${hour}`,
+    lockedUntil: (hour: string) => `Bloqueado por contraseñas equivocadas hasta ${withHourArticle(hour)}`,
     unlock: "Desbloquear",
     unlockQuestion: (name: string) => `¿Desbloquear el inicio de sesión de ${name}?`,
     unlocking: "Desbloqueando…",
@@ -97,7 +97,7 @@ const TEXTS = texts(
     deleteQuestion: (name: string) => `¿Eliminar la cuenta de ${name}?`,
     deleting: "Eliminando…",
     deleteBody:
-      "Se borran su cuenta, sus movimientos, sus categorías, su WhatsApp y su historial. No se puede deshacer. En el historial queda solo “se eliminó una cuenta”.",
+      "Se borran su cuenta, sus movimientos, sus categorías, su WhatsApp y su historial. No se puede deshacer. En el historial solo queda que eliminaste una cuenta, sin su nombre ni su correo.",
     typeEmail: "Escribe su correo:",
     emailRequired: "Escribe el correo de la cuenta.",
     grantTitle: "Darle el rol de admin",
@@ -159,7 +159,7 @@ const TEXTS = texts(
       deleteQuestion: (name) => `Delete ${name}'s account?`,
       deleting: "Deleting…",
       deleteBody:
-        "Their account, transactions, categories, WhatsApp and history are deleted. This can't be undone. The history only keeps “an account was deleted”.",
+        "Their account, transactions, categories, WhatsApp and history are deleted. This can't be undone. The history only keeps that you deleted an account, without its name or email.",
       typeEmail: "Type their email:",
       emailRequired: "Type the account's email.",
       grantTitle: "Make them an admin",

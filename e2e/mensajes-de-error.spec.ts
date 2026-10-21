@@ -48,7 +48,7 @@ for (const colorScheme of ["light", "dark"] as const) {
       await date.fill("2099-01-01");
       await form.getByRole("button", { name: "Registrar egreso" }).click();
       await describedAs(form.getByLabel(/^Monto/), "Escribe el monto.");
-      await describedAs(form.getByLabel("Descripción"), 'Escribe una descripción, por ejemplo "Almuerzo".');
+      await describedAs(form.getByLabel("Descripción"), "Escribe una descripción, por ejemplo “Almuerzo”.");
       await describedAs(date, "La fecha no puede ser después de hoy.");
       await expect(form.getByLabel(/^Monto/)).toBeFocused();
       await expect(toasts(page)).toHaveCount(0);

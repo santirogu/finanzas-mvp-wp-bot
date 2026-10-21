@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { useTexts } from "@/i18n/client";
 import { texts } from "@/i18n/texts";
 import type { ConnectionView } from "@/modules/admin/health/connection-view";
+import { withHourArticle } from "@/modules/admin/shared/filters";
 import { testConnectionsAction, type ConnectionsState } from "./actions";
 
 // Probar las conexiones del bot en /admin/salud: el token de WhatsApp y la API key de Claude (sin
@@ -20,7 +21,7 @@ const TEXTS = texts(
     test: "Probar conexiones",
     lastMessage: (date: string) => `Último mensaje que llegó al webhook: ${date}`,
     noMessage: "Todavía no ha llegado ningún mensaje al webhook.",
-    checkedAt: (hour: string) => `Probado a las ${hour}`,
+    checkedAt: (hour: string) => `Probado a ${withHourArticle(hour)}`,
   },
   {
     en: {

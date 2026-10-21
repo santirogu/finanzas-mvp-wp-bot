@@ -36,7 +36,7 @@ const TEXTS = texts(
     password: "Contraseña",
     didYouMean: "¿Quisiste decir",
     fix: "Sí, corregir",
-    keepEmail: "Si tu correo está bien escrito, presiona “Crear cuenta” de nuevo.",
+    keepEmail: "Si tu correo está bien escrito, toca “Crear cuenta” de nuevo.",
     pending: "Un momento…",
   },
   {
@@ -59,7 +59,7 @@ const TEXTS = texts(
       password: "Password",
       didYouMean: "Did you mean",
       fix: "Yes, fix it",
-      keepEmail: "If your email is spelled right, press “Create account” again.",
+      keepEmail: "If your email is spelled right, tap “Create account” again.",
       pending: "One moment…",
     },
   },

@@ -225,7 +225,7 @@ describe("AuthForm · registro", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Crear cuenta" }));
     expect(mocks.signUp).not.toHaveBeenCalled();
-    expect(screen.getByText(/presiona “Crear cuenta” de nuevo/)).toBeVisible();
+    expect(screen.getByText(/toca “Crear cuenta” de nuevo/)).toBeVisible();
 
     await userEvent.click(screen.getByRole("button", { name: "Crear cuenta" }));
     expect(mocks.signUp).toHaveBeenCalledWith(expect.objectContaining({ email: "ana@gmal.com" }));

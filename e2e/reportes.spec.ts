@@ -71,7 +71,7 @@ test("Reportes: las cifras del período, el gráfico, las categorías y los gast
 
   await test.step("cada categoría, frente a su promedio", async () => {
     const categories = section(page, "Gastos por categoría");
-    await expect(categories).toContainText(`cómo te fue en ${name(m1)} frente a su promedio de ${name(m3)} y ${name(m2)}`);
+    await expect(categories).toContainText(`cómo le fue en ${name(m1)} frente a su promedio de ${name(m3)} y ${name(m2)}`);
     const rows = categories.getByRole("listitem");
     await expect(rows).toHaveCount(2);
     await expect(rows.nth(0)).toContainText("Vivienda");

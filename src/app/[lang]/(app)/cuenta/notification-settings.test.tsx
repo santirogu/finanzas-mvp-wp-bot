@@ -28,7 +28,7 @@ describe("NotificationSettings", () => {
     expect(days()).toHaveAttribute("min", "0");
     expect(days()).toHaveAttribute("max", "10");
     expect(days()).toHaveAccessibleDescription(/días antes de cada pago \(0 = el mismo día\)/);
-    expect(section().getByText(/Los atrasados se avisan siempre/)).toBeVisible();
+    expect(section().getByText(/Los atrasados se avisan sin importar los días de anticipación/)).toBeVisible();
   });
 
   it("apagados, el campo de los días queda inactivo; al prenderlos, vuelve", async () => {

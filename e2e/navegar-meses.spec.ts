@@ -99,12 +99,12 @@ test("ver otros meses en el Resumen, Ingresos y Egresos @principal", async ({ pa
 
   await test.step("borrar y deshacer dejan la lista en ese mes", async () => {
     await visible(page.getByRole("button", { name: "Eliminar Mercado anterior" })).click();
-    await expect(toast(page, "Se borró «Mercado anterior»")).toBeFocused();
+    await expect(toast(page, "Se borró “Mercado anterior”")).toBeFocused();
     // El aviso venía en la URL (?borrado=) y se quita: queda la lista de ese mes.
     await expect(page).toHaveURL(new RegExp(`/egresos\\?mes=${monthParam(previous)}$`));
     await expect(text(page, `No registraste egresos en ${nameOf(previous)}.`)).toBeVisible();
     await toast(page, "Se borró").getByRole("button", { name: "Deshacer" }).click();
-    await expect(toast(page, "Se restauró «Mercado anterior»")).toBeFocused();
+    await expect(toast(page, "Se restauró “Mercado anterior”")).toBeFocused();
     await expectMonth(page, previous, "/egresos");
     await expect(row(page, "Mercado anterior")).toBeVisible();
   });

@@ -582,7 +582,7 @@ describe("TransactionForm · errores de los campos en español", () => {
     await userEvent.click(screen.getByRole("button", { name: "Registrar egreso" }));
     expect(action).not.toHaveBeenCalled();
     expect(screen.getByLabelText(/^Monto/)).toHaveAccessibleDescription("Escribe el monto.");
-    expect(screen.getByLabelText(/^Descripción/)).toHaveAccessibleDescription('Escribe una descripción, por ejemplo "Almuerzo".');
+    expect(screen.getByLabelText(/^Descripción/)).toHaveAccessibleDescription("Escribe una descripción, por ejemplo “Almuerzo”.");
     expect(screen.getByLabelText(/^Monto/)).toHaveFocus();
   });
 

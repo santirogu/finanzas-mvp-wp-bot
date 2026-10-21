@@ -18,8 +18,8 @@ import { transactionSchema } from "./validation";
 
 // Los mensajes, en el idioma de quien usa la página (la cookie: src/i18n/server.ts).
 const TEXTS = texts(
-  { invalidCategory: "Categoría inválida", notFound: "No encontramos ese movimiento", income: "Ingreso registrado", expense: "Egreso registrado" },
-  { en: { invalidCategory: "Invalid category", notFound: "We couldn't find that transaction", income: "Income added", expense: "Expense added" } },
+  { invalidCategory: "Esa categoría ya no está disponible. Elige otra.", notFound: "No encontramos ese movimiento.", income: "Ingreso registrado", expense: "Egreso registrado" },
+  { en: { invalidCategory: "That category isn't available anymore. Choose another one.", notFound: "We couldn't find that transaction.", income: "Income added", expense: "Expense added" } },
 );
 
 export type FormState = {

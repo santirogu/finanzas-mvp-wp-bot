@@ -223,7 +223,7 @@ describe("crear y editar (sin código)", () => {
     renderManager();
     await userEvent.click(screen.getByRole("button", { name: "Editar Otros" }));
     expect(within(dialog()).getByLabelText("Nombre")).toHaveAttribute("readonly");
-    expect(within(dialog()).getByText('A "Otros" solo se le pueden cambiar el emoji y el nombre en inglés.')).toBeInTheDocument();
+    expect(within(dialog()).getByText("A “Otros” solo se le pueden cambiar el emoji y el nombre en inglés.")).toBeInTheDocument();
   });
 });
 
@@ -371,7 +371,7 @@ describe("en inglés", () => {
     renderEnglish();
     await userEvent.click(screen.getByRole("button", { name: "Edit Otros" }));
     expect(dialog()).toHaveAccessibleName("Edit the category Otros");
-    expect(within(dialog()).getByText('Only the emoji and the English name of "Otros" can be changed.')).toBeInTheDocument();
+    expect(within(dialog()).getByText("Only the emoji and the English name of “Otros” can be changed.")).toBeInTheDocument();
     expect(within(dialog()).getByRole("button", { name: "Save" })).toBeInTheDocument();
   });
 });

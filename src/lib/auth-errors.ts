@@ -36,7 +36,7 @@ export const AUTH_ERROR_TEXTS = texts(
     // El nombre que rechaza el registro (src/modules/auth/account-name.ts): el servidor lo explica en
     // español; este es el del inglés.
     invalidName: null as string | null,
-    fallback: "Algo salió mal.",
+    fallback: "Algo salió mal. Intenta de nuevo en unos minutos.",
   },
   {
     en: {
@@ -61,7 +61,7 @@ export const AUTH_ERROR_TEXTS = texts(
       accountLocked: "For security, the account was locked after several failed attempts. Try again later.",
       accountSuspended: `Your account is suspended. If you think this is a mistake, write to us at ${CONTACT_EMAIL}.`,
       invalidName: "Check your name: it has characters that aren't allowed, or it's too long.",
-      fallback: "Something went wrong.",
+      fallback: "Something went wrong. Try again in a few minutes.",
     },
   },
 );

@@ -290,14 +290,14 @@ describe("FixedExpenses · historial", () => {
     expect(await section().findByRole("button", { name: "Guardar nota" })).toBeEnabled();
   });
 
-  it("editar: trae la nota; \"Borrar nota\" la manda vacía y avisa en rojo", async () => {
+  it("editar: trae la nota; \"Eliminar nota\" la manda vacía y avisa en rojo", async () => {
     noteAction.mockResolvedValue({ message: "Se borró la nota", tone: "removal" });
     const user = userEvent.setup();
     render(<FixedExpenses {...props} />);
     await user.click(toggle(/^Historial de Arriendo/));
     await user.click(section().getByRole("button", { name: "Editar nota del cambio del 5 de mar de 2026" }));
     expect(section().getByLabelText("Nota del cambio del 5 de mar de 2026")).toHaveValue("Subió con el IPC.");
-    await user.click(section().getByRole("button", { name: "Borrar nota" }));
+    await user.click(section().getByRole("button", { name: "Eliminar nota" }));
     expect(Object.fromEntries(noteAction.mock.calls[0][1])).toMatchObject({ note: "" });
     expect(await findToast()).toHaveAttribute("data-tone", "removal");
   });
@@ -309,7 +309,7 @@ describe("FixedExpenses · historial", () => {
     await user.click(toggle(/^Historial de Arriendo/));
     const add = () => section().getByRole("button", { name: "Agregar nota del cambio del 5 de mar de 2026" });
     await user.click(add());
-    expect(section().queryByRole("button", { name: "Borrar nota" })).toBeNull();
+    expect(section().queryByRole("button", { name: "Eliminar nota" })).toBeNull();
     await user.click(section().getAllByRole("button", { name: "Cancelar" })[0]);
     expect(section().queryByLabelText(/^Nota del cambio/)).toBeNull();
     expect(add()).toHaveFocus();

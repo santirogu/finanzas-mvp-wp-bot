@@ -174,7 +174,7 @@ describe("updateCategory", () => {
     expect(otros.emoji).not.toBe("🧩");
     expect(await updateCategory({ id: otros.id, name: "Varios", emoji: "🧩" })).toEqual({
       ok: false,
-      error: 'A "Otros" solo se le pueden cambiar el emoji y el nombre en inglés.',
+      error: "A “Otros” solo se le pueden cambiar el emoji y el nombre en inglés.",
       field: "name",
     });
     // Ni el nombre ni el emoji: con el error no se guarda nada ni se registra.
@@ -262,7 +262,7 @@ describe("archiveCategory y restoreCategory", () => {
     const otros = await globalByName("income", "Otros");
     expect(await archiveCategory({ id: otros.id, code: codeAt(NOW) }, NOW)).toEqual({
       ok: false,
-      error: '"Otros" no se puede archivar: es la categoría por defecto.',
+      error: "“Otros” no se puede archivar: es la categoría por defecto.",
     });
     expect(await db.$count(adminCodeUse)).toBe(0);
   });
@@ -332,13 +332,13 @@ describe("deleteCategory", () => {
     const otros = await globalByName("expense", "Otros");
     expect(await deleteCategory({ id: otros.id, code: codeAt(NOW) }, NOW)).toEqual({
       ok: false,
-      error: '"Otros" no se puede eliminar: es la categoría por defecto.',
+      error: "“Otros” no se puede eliminar: es la categoría por defecto.",
     });
     await db.delete(category).where(eq(category.id, otros.id));
     const ropa = await globalByName("expense", "Ropa");
     expect(await deleteCategory({ id: ropa.id, code: codeAt(NOW) }, NOW)).toEqual({
       ok: false,
-      error: 'Falta la categoría "Otros": créala antes de eliminar otra.',
+      error: 'Falta la categoría “Otros”: créala antes de eliminar otra.',
     });
     expect(await db.$count(adminCodeUse)).toBe(0);
   });
@@ -436,11 +436,11 @@ describe("en inglés (el idioma de quien hace el pedido)", () => {
     const otros = await globalByName("expense", "Otros");
     expect(await updateCategory({ id: otros.id, name: "Varios", emoji: "📦" })).toEqual({
       ok: false,
-      error: 'Only the emoji and the English name of "Otros" can be changed.',
+      error: "Only the emoji and the English name of “Otros” can be changed.",
       field: "name",
     });
-    expect(await archiveCategory({ id: otros.id, code: codeAt(NOW) }, NOW)).toEqual({ ok: false, error: `"Otros" can't be archived: it's the default category.` });
-    expect(await deleteCategory({ id: otros.id, code: codeAt(NOW) }, NOW)).toEqual({ ok: false, error: `"Otros" can't be deleted: it's the default category.` });
+    expect(await archiveCategory({ id: otros.id, code: codeAt(NOW) }, NOW)).toEqual({ ok: false, error: `“Otros” can't be archived: it's the default category.` });
+    expect(await deleteCategory({ id: otros.id, code: codeAt(NOW) }, NOW)).toEqual({ ok: false, error: `“Otros” can't be deleted: it's the default category.` });
   });
 });
 

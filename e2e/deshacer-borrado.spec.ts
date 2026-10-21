@@ -18,7 +18,7 @@ test("borrar un movimiento y deshacerlo @principal", async ({ page }) => {
 
   await test.step("borrar: el aviso (rojo) recibe el foco y ofrece deshacer", async () => {
     await visible(page.getByRole("button", { name: "Eliminar Almuerzo con el equipo" })).click();
-    const deleted = toast(page, "Se borró «Almuerzo con el equipo»");
+    const deleted = toast(page, "Se borró “Almuerzo con el equipo”");
     await expect(deleted).toBeFocused();
     await expect(deleted).toHaveAttribute("data-tone", "removal");
     // El aviso venía en la URL (?borrado=<id>) y se quita al mostrarlo: al recargar no vuelve.
@@ -29,7 +29,7 @@ test("borrar un movimiento y deshacerlo @principal", async ({ page }) => {
 
   await test.step("deshacer: el movimiento vuelve a la lista, con su aviso verde; la X lo cierra", async () => {
     await toast(page, "Se borró").getByRole("button", { name: "Deshacer" }).click();
-    const restored = toast(page, "Se restauró «Almuerzo con el equipo»");
+    const restored = toast(page, "Se restauró “Almuerzo con el equipo”");
     await expect(restored).toBeFocused();
     await expect(restored).toHaveAttribute("data-tone", "success");
     // Antes de que se vaya solo (4 segundos): con la X se cierra y el foco vuelve al contenido.
@@ -53,7 +53,7 @@ test("los avisos se van solos: 4 segundos los de confirmación, 10 los que tiene
   // Con el reloj simulado: el tiempo avanza a mano y la prueba no espera 10 segundos de verdad.
   await page.clock.install();
   await visible(page.getByRole("button", { name: "Eliminar Café" })).click();
-  const deleted = toast(page, "Se borró «Café»");
+  const deleted = toast(page, "Se borró “Café”");
   await expect(deleted).toBeVisible();
   // A los 6 segundos sigue (un aviso común ya se habría ido); a los 10, se va.
   await page.clock.runFor(6_000);
@@ -69,7 +69,7 @@ test("el aviso de otra persona no se muestra ni se puede deshacer", async ({ pag
   await expect(toast(page, /^Ingreso registrado$/)).toBeVisible();
   const id = await row(page, "Quincena de Ana").locator('input[name="id"]').getAttribute("value");
   await visible(page.getByRole("button", { name: "Eliminar Quincena de Ana" })).click();
-  await expect(toast(page, "Se borró «Quincena de Ana»")).toBeVisible();
+  await expect(toast(page, "Se borró “Quincena de Ana”")).toBeVisible();
 
   // Beto abre el enlace que pide ese aviso: no lo ve (ni la descripción de Ana).
   const beto = await newPerson(browser);

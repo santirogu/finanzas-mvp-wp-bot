@@ -17,7 +17,7 @@ const TEXTS = texts(
     title: "Verificación en dos pasos",
     on: "✓ Está activa",
     onBody:
-      "Cada vez que inicies sesión te pediremos el código de Google Authenticator. Si pierdes el celular, usa un código de respaldo; si tampoco los tienes, se reinicia desde la terminal con",
+      "Cada vez que inicies sesión te pediremos el código de Google Authenticator. Si pierdes el celular, usa uno de tus códigos de respaldo; si tampoco los tienes, se reinicia desde la terminal con",
     onBodyEnd: "(README → Roles).",
     goToAdmin: "Ir a Administración",
     intro:
@@ -28,7 +28,7 @@ const TEXTS = texts(
       title: "Two-step verification",
       on: "✓ It's on",
       onBody:
-        "Every time you sign in we'll ask for the Google Authenticator code. If you lose your phone, use a backup code; if you don't have those either, it's reset from the terminal with",
+        "Every time you sign in we'll ask for the Google Authenticator code. If you lose your phone, use one of your backup codes; if you don't have those either, it's reset from the terminal with",
       onBodyEnd: "(README → Roles).",
       goToAdmin: "Go to Administration",
       intro:

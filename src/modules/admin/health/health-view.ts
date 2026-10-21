@@ -1,6 +1,6 @@
 import { DEFAULT_LOCALE, INTL_LOCALES, type Locale } from "@/i18n/locales";
 import { appliedMigrationCount, migrationsUpToDate, MIGRATION_COUNT, type HealthReport } from "@/lib/health";
-import { formatDateTime, formatHour } from "@/modules/admin/shared/filters";
+import { formatDateTime, formatHour, withHourArticle } from "@/modules/admin/shared/filters";
 import vercel from "../../../../vercel.json";
 
 // Lo que se decide y se lee en /admin/salud, sin base de datos: qué cuenta como problema (también para
@@ -107,7 +107,7 @@ export function cronScheduleLabel(path: string, locale: Locale = DEFAULT_LOCALE,
   const daily = schedule.match(/^(\d{1,2}) (\d{1,2}) \* \* \*$/);
   if (!daily) return `Cron: ${schedule}`;
   const hour = formatHour(new Date(Date.UTC(2026, 0, 1, Number(daily[2]), Number(daily[1]))), locale);
-  return locale === "es" ? `Todos los días a las ${hour} (hora de Colombia)` : `Every day at ${hour} (Colombia time)`;
+  return locale === "es" ? `Todos los días a ${withHourArticle(hour)} (hora de Colombia)` : `Every day at ${hour} (Colombia time)`;
 }
 
 const BYTE_UNITS = ["B", "kB", "MB", "GB", "TB"];

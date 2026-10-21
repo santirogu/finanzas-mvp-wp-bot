@@ -73,7 +73,7 @@ const TEXTS = texts(
     balanceShort: "Balance",
     categories: "Gastos por categoría",
     categoriesIntro: "Lo que sumó cada una en el período",
-    categoriesCompared: (month: string, averaged: string) => `, y cómo te fue en ${month} frente a su promedio de ${averaged}.`,
+    categoriesCompared: (month: string, averaged: string) => `, y cómo le fue en ${month} frente a su promedio de ${averaged}.`,
     biggest: "Los gastos más grandes",
     biggestIntro: "Los egresos más altos del período, sin contar los gastos fijos. Toca uno para editarlo.",
     edit: "Editar ",

@@ -40,7 +40,7 @@ const TEXTS = texts(
     ofChange: (date: string) => `del cambio del ${date}`,
     noteLabel: (date: string) => `Nota del cambio del ${date}`,
     notePlaceholder: "Por qué cambió, por ejemplo",
-    deleteNote: "Borrar nota",
+    deleteNote: "Eliminar nota",
     cancel: "Cancelar",
     saving: "Guardando…",
     saveNote: "Guardar nota",

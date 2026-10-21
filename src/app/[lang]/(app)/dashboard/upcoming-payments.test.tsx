@@ -90,7 +90,7 @@ describe("UpcomingPayments", () => {
     action.mockResolvedValue({ message: "No se avisará del pago de octubre de «Arriendo»", tone: "removal" });
     const user = userEvent.setup();
     render(<UpcomingPayments items={SEVEN.slice(0, 2)} span="de los próximos 3 días" today={TODAY} />);
-    await user.click(card().getByRole("button", { name: "El pago de octubre de Arriendo ya no aplica" }));
+    await user.click(card().getByRole("button", { name: "Este pago ya no aplica: Arriendo, octubre" }));
     expect(Object.fromEntries(action.mock.calls[0][1])).toEqual({ description: "Arriendo", month: "2026-10" });
     const toast = await findToast();
     expect(toast).toHaveTextContent("No se avisará del pago de octubre de «Arriendo»");
@@ -103,9 +103,9 @@ describe("UpcomingPayments", () => {
     action.mockReturnValue(new Promise((resolve) => (finish = resolve)));
     const user = userEvent.setup();
     render(<UpcomingPayments items={SEVEN.slice(0, 1)} span="de los próximos 3 días" today={TODAY} />);
-    await user.click(card().getByRole("button", { name: /ya no aplica$/ }));
-    await waitFor(() => expect(card().getByRole("button", { name: /ya no aplica$/ })).toHaveTextContent("Ocultando…"));
-    expect(card().getByRole("button", { name: /ya no aplica$/ })).toBeDisabled();
+    await user.click(card().getByRole("button", { name: /^Este pago ya no aplica:/ }));
+    await waitFor(() => expect(card().getByRole("button", { name: /^Este pago ya no aplica:/ })).toHaveTextContent("Ocultando…"));
+    expect(card().getByRole("button", { name: /^Este pago ya no aplica:/ })).toBeDisabled();
     finish({ error: "No se pudo ocultar el aviso." });
     expect(await card().findByRole("alert")).toHaveTextContent("No se pudo ocultar el aviso.");
     expect(screen.queryByRole("status")).toBeNull();
@@ -113,16 +113,16 @@ describe("UpcomingPayments", () => {
 });
 
 describe("UpcomingPayments · Registrar pago", () => {
-  const dialog = () => within(screen.getByRole("dialog", { name: "Registrar el pago de Arriendo" }));
+  const dialog = () => within(screen.getByRole("dialog", { name: "Registrar pago de Arriendo" }));
   const open = async (user: ReturnType<typeof userEvent.setup>) => {
     render(<UpcomingPayments items={SEVEN.slice(0, 2)} span="de los próximos 3 días" today={TODAY} />);
-    await user.click(card().getByRole("button", { name: "Registrar el pago de Arriendo" }));
+    await user.click(card().getByRole("button", { name: "Registrar pago de Arriendo" }));
   };
 
   it("abre la ventana con la categoría del último pago, su monto y la fecha de hoy (el foco, en el monto)", async () => {
     const user = userEvent.setup();
     await open(user);
-    expect(screen.getByRole("dialog", { name: "Registrar el pago de Arriendo" })).toHaveAccessibleDescription(
+    expect(screen.getByRole("dialog", { name: "Registrar pago de Arriendo" })).toHaveAccessibleDescription(
       "Categoría: 🏠 Vivienda · como el último pago.",
     );
     expect(dialog().getByLabelText("Monto")).toHaveValue("1.800.000,00");
@@ -207,9 +207,9 @@ describe("UpcomingPayments · en inglés", () => {
     expect(upcoming.getByText("Your bills for the next 3 days and the ones you haven't added yet.")).toBeVisible();
     expect(upcoming.getByRole("link", { name: "See bills" })).toHaveAttribute("href", "/gastos-fijos");
     await userEvent.click(upcoming.getByRole("button", { name: "Show 2 more" }));
-    expect(upcoming.getByRole("button", { name: "The October payment of Rent doesn't apply" })).toHaveTextContent("This payment doesn't apply");
-    await userEvent.click(upcoming.getByRole("button", { name: "Add the payment of Rent" }));
-    const dialog = within(screen.getByRole("dialog", { name: "Add the payment of Rent" }));
+    expect(upcoming.getByRole("button", { name: "This payment doesn't apply: Rent, October" })).toHaveTextContent("This payment doesn't apply");
+    await userEvent.click(upcoming.getByRole("button", { name: "Add payment for Rent" }));
+    const dialog = within(screen.getByRole("dialog", { name: "Add payment for Rent" }));
     expect(dialog.getByText("Category: No category · same as the last payment.")).toBeVisible();
     const amount = dialog.getByLabelText("Amount");
     expect(amount).toHaveValue("1,800,000.00");
@@ -223,7 +223,7 @@ describe("UpcomingPayments · en inglés", () => {
 
   it("los mensajes de los campos de la ventana, en inglés", async () => {
     render(<UpcomingPayments items={[english]} span="for today" today={TODAY} />, { english: true });
-    await userEvent.click(screen.getByRole("button", { name: "Add the payment of Rent" }));
+    await userEvent.click(screen.getByRole("button", { name: "Add payment for Rent" }));
     const dialog = within(screen.getByRole("dialog"));
     await userEvent.clear(dialog.getByLabelText("Amount"));
     await userEvent.click(dialog.getByRole("button", { name: "Add payment" }));

@@ -8,6 +8,7 @@ import { useLocale } from "@/i18n/client";
 import { texts } from "@/i18n/texts";
 import { authClient } from "@/lib/auth-client";
 import { authErrorMessage } from "@/lib/auth-errors";
+import { BRAND_NAME } from "@/lib/brand";
 import { FIELD_TEXTS, type FieldMessages } from "@/lib/field-errors";
 import { manualKeyFromUri } from "@/modules/auth/two-factor-rules";
 import { finishTwoFactorSetupAction } from "./actions";
@@ -30,7 +31,7 @@ const TEXTS = texts(
     next: "Continuar",
     step2: "Paso 2 de 3: escanea el código",
     step2Intro: { tap: "En Google Authenticator toca", scan: "Escanear un código QR", rest: "y apunta la cámara aquí. Luego escribe el código de 6 dígitos que aparece." },
-    qr: "Código QR para agregar Anotado a Google Authenticator",
+    qr: `Código QR para agregar ${BRAND_NAME} a Google Authenticator`,
     manual: "¿No puedes escanearlo? Elige “Ingresar una clave de configuración” y escribe:",
     manualLabel: "Clave de configuración",
     code: "Código de 6 dígitos",

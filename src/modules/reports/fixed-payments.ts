@@ -60,7 +60,7 @@ const TEXTS = texts(
   {
     notFound: "No encontramos ese gasto entre tus egresos.",
     future: "La fecha no puede ser después de hoy.",
-    registered: (description: string, amount: string) => `Se registró el pago de «${description}»: −${amount}`,
+    registered: (description: string, amount: string) => `Se registró el pago de “${description}”: −${amount}`,
   },
   {
     en: {

@@ -142,7 +142,7 @@ describe("SearchableTransactionList", () => {
     renderList();
     await user.type(search(), "  zzz ");
     expect(screen.queryByRole("list")).toBeNull();
-    expect(screen.getByText("Ningún egreso coincide con «zzz» en septiembre.")).toBeVisible();
+    expect(screen.getByText("Ningún egreso coincide con “zzz” en septiembre.")).toBeVisible();
     expect(heading()).toHaveTextContent("0 de 6 movimientos en septiembre");
     expect(screen.getByRole("status")).toHaveTextContent("Ninguno coincide");
     expect(screen.queryByText(/^−\$/, { selector: "p" })).toBeNull();
@@ -180,7 +180,7 @@ describe("SearchableTransactionList", () => {
     expect(screen.getByText("+$6.000.000,00")).toHaveClass("text-income");
     await user.clear(box);
     await user.type(box, "nada");
-    expect(screen.getByText("Ningún ingreso coincide con «nada» en septiembre.")).toBeVisible();
+    expect(screen.getByText("Ningún ingreso coincide con “nada” en septiembre.")).toBeVisible();
   });
 });
 
@@ -202,7 +202,7 @@ describe("SearchableTransactionList · en inglés", () => {
     expect(screen.getByRole("heading", { name: "1 of 7 transactions in September" })).toBeVisible();
     await userEvent.clear(search);
     await userEvent.type(search, "zzz");
-    expect(screen.getByText(/No expense matches «zzz» in September\./)).toBeVisible();
+    expect(screen.getByText(/No expense matches “zzz” in September\./)).toBeVisible();
     await userEvent.click(screen.getAllByRole("button", { name: "Clear the search" })[0]);
     expect(search).toHaveValue("");
   });
