@@ -6,7 +6,7 @@ import { ThemeSync } from "@/components/theme-sync";
 import { LocaleProvider } from "@/i18n/client";
 import { LOCALES } from "@/i18n/locales";
 import { getLocale, getTexts } from "@/i18n/server";
-import { getPublicUrl } from "@/lib/app-url";
+import { getAppUrl } from "@/lib/app-url";
 import { THEME_SCRIPT } from "@/lib/theme";
 import "../globals.css";
 import { APP_TEXTS } from "./app-texts";
@@ -29,8 +29,8 @@ export async function generateMetadata(): Promise<Metadata> {
     description: t.description,
     applicationName: t.name,
     // Para que la imagen para compartir vaya con la dirección completa. La portada se arma al compilar:
-    // la URL sale del build (getPublicUrl), no del pedido.
-    metadataBase: new URL(getPublicUrl()),
+    // la URL sale del build (APP_PUBLIC_URL, en getAppUrl), no del pedido.
+    metadataBase: new URL(getAppUrl()),
     // La vista previa al compartir el enlace (WhatsApp, redes), con la imagen de src/app/opengraph-image.png
     // (scripts/brand-assets.mjs): Next no la agrega sola porque el layout raíz está en [lang]. Los íconos y
     // el manifest sí salen solos de los archivos de src/app (icon.svg, apple-icon.png, favicon.ico, manifest.ts).

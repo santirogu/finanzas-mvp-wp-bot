@@ -296,8 +296,7 @@ logo es un globo de chat con un ✓, con el verde azulado de la app (`--brand`).
   Una prueba exige que `icon.svg` esté al día con el dibujo y que sus colores sean los de `--brand`.
   La portada se arma al compilar: la imagen para compartir lleva la URL de producción que el job de
   despliegue pasa al build (`PRODUCTION_URL`, que `next.config.ts` fija como `APP_PUBLIC_URL`). Un
-  smoke test revisa que no diga `localhost`. Si se suma un dominio propio, cambia `PRODUCTION_URL` en
-  `.github/workflows/ci.yml`.
+  smoke test revisa que no diga `localhost`. Para cambiar el dominio: Despliegue → Cambiar el dominio.
 - **Google Authenticator** muestra la app como "Anotado". Quien lo configuró antes la ve como "Finanzas
   MVP", y sus códigos sirven igual.
 - **Fuera del repo:**
@@ -1245,7 +1244,28 @@ Los chequeos (segundos, sin costo, sin iniciar sesión ni guardar datos): `/logi
 `/eliminar-datos` cargan; `/api/health` confirma la conexión a la base, que tiene todas las
 migraciones y que no falta ninguna variable de entorno (responde solo `ok`/`error`; el detalle
 queda en los logs de Vercel); y el webhook rechaza un token y una firma falsos. Para correrlos a
-mano: `pnpm smoke https://finanzas-mvp-wp-bot.vercel.app`.
+mano: `pnpm smoke https://anotadoapp.vercel.app`.
+
+**Cambiar el dominio.** El dominio de producción está en un solo lugar: `PRODUCTION_URL`, en el job
+`deploy` de `.github/workflows/ci.yml`. El build lo guarda como `APP_PUBLIC_URL` (`next.config.ts`), y
+de ahí lo toman el inicio de sesión, los enlaces que manda el bot, el sitemap y la imagen para compartir
+(`src/lib/app-url.ts`). Para cambiarlo, en este orden (si no, el bot o el inicio de sesión se cortan):
+
+1. **Vercel:** en el proyecto, *Settings → Domains → Add*, el dominio nuevo, para producción. El viejo
+   sigue respondiendo: los dos sirven la misma versión.
+2. **Meta:**
+   - en la app, *WhatsApp → Configuration*, la *Callback URL* del webhook con el dominio nuevo
+     (`/api/whatsapp/webhook`, el mismo token de verificación);
+   - en *Settings → Basic*, la política de privacidad (`/privacidad`), la eliminación de datos
+     (`/eliminar-datos`) y *App Domains*.
+
+   Meta no sigue redirecciones: hay que cambiarlo antes del paso 4.
+3. **Un PR que cambie `PRODUCTION_URL`** y despliegue. Los smoke tests corren contra el dominio nuevo,
+   que ya tiene que existir (paso 1).
+4. **Vercel:** el dominio viejo redirige al nuevo (*Domains* → el viejo → *Redirect to*, 308).
+
+Las sesiones abiertas son del dominio viejo: todos vuelven a iniciar sesión una vez. El dominio actual
+es `anotadoapp.vercel.app`; antes, `finanzas-mvp-wp-bot.vercel.app`.
 
 > **Las migraciones no se deshacen con el rollback**: corren en el build, antes de los smoke tests.
 > Por eso deben ser compatibles con la versión anterior del código (ver CLAUDE.md).
@@ -1278,7 +1298,8 @@ Secretos necesarios en GitHub (*Settings → Secrets and variables → Actions*)
 
 Variables de la app en Vercel (*Settings → Environment Variables*): `DATABASE_URL` y
 `DATABASE_URL_UNPOOLED` (las crea Neon), `BETTER_AUTH_SECRET`, `ANTHROPIC_API_KEY` y las
-`WHATSAPP_*` de `.env.example`. `BETTER_AUTH_URL` solo hace falta con dominio propio.
+`WHATSAPP_*` de `.env.example`. `BETTER_AUTH_URL` no hace falta: el dominio sale de `PRODUCTION_URL`
+(ver Cambiar el dominio).
 
 Webhook en Meta: `https://<tu-app>.vercel.app/api/whatsapp/webhook`, el mismo
 `WHATSAPP_VERIFY_TOKEN` y suscripción al campo `messages`. La cuenta de WhatsApp Business debe

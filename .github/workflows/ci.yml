@@ -447,7 +447,7 @@ jobs:
       deployments: write
     environment:
       name: production
-      url: https://finanzas-mvp-wp-bot.vercel.app
+      url: https://anotadoapp.vercel.app
     # Un despliegue a la vez; uno nuevo espera a que termine el anterior (no lo cancela a mitad).
     concurrency:
       group: deploy-production
@@ -455,7 +455,9 @@ jobs:
     # Los secretos de Vercel van solo en los pasos que los usan: no quedan a la vista de la
     # instalación de dependencias ni de las acciones de terceros.
     env:
-      PRODUCTION_URL: https://finanzas-mvp-wp-bot.vercel.app
+      # El dominio de producción, el único lugar donde está (lo usa la app: src/lib/app-url.ts). Para
+      # cambiarlo, ver README → Despliegue → Cambiar el dominio.
+      PRODUCTION_URL: https://anotadoapp.vercel.app
       # El CLI de Vercel con su versión y la de todas sus dependencias fijas (.github/vercel-cli/).
       VERCEL: .github/vercel-cli/node_modules/.bin/vercel
 
