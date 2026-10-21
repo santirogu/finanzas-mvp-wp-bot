@@ -187,7 +187,7 @@ export const showMore = (f: LogFilters): LogFilters => ({
   limit: Math.min(ADMIN_LOG_MAX, f.limit + ADMIN_LOG_PAGE_SIZE),
 });
 
-/** Fecha y hora completas en Colombia: "14 de oct de 2026, 9:41 p. m." (en inglés, "Oct 14, 2026, 9:41 PM"). */
+/** Fecha y hora completas en Colombia: "14 de oct. de 2026, 9:41 p. m." (en inglés, "Oct 14, 2026, 9:41 PM"). */
 export const formatEventTime = formatDateTime;
 
 /** Solo la hora en Colombia: "9:41 p. m." (el día va en el título del grupo). */

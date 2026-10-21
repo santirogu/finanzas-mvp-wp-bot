@@ -21,7 +21,7 @@ async function addExpense(page: Page, movement: Movement, month?: Month) {
 }
 
 const fixedList = (page: Page) => visible(page.getByRole("region", { name: "Gastos fijos" }));
-const biggest = (page: Page) => visible(page.getByRole("region", { name: "Los gastos más grandes" }));
+const biggest = (page: Page) => visible(page.getByRole("region", { name: "Los egresos más grandes" }));
 
 async function seriousViolations(page: Page) {
   const { violations } = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
@@ -53,7 +53,7 @@ test("Fijos: los detectados solos, quitar, volver a poner, agregar y sacar (Repo
     await expect(items.first()).toContainText("−$1.800.000,00");
     await expect(fixedList(page)).toContainText("Total al mes−$1.800.000,00");
     // Los tres meses completos: (1.800.000 + 1.800.000 + 1.900.000) / 3 = 1.833.333,33.
-    await expect(fixedList(page)).toContainText("Son el 98% de tu gasto promedio por mes.");
+    await expect(fixedList(page)).toContainText("Son el 98 % de tu gasto promedio por mes.");
   });
 
   await test.step("quitar el arriendo: pasa a Quitados y Reportes lo cuenta entre los más grandes", async () => {
@@ -115,12 +115,12 @@ test("el historial de un gasto fijo: cada cambio de valor, con su nota", async (
 
   await test.step("cerrado dice su último cambio; al tocarlo, el cambio y el primer pago", async () => {
     await expect(history).toHaveAttribute("aria-expanded", "false");
-    await expect(history).toContainText(`8% desde ${formatMonthName(current)}`);
+    await expect(history).toContainText(`8 % desde ${formatMonthName(current)}`);
     await history.click();
     await expect(history).toHaveAttribute("aria-expanded", "true");
     const entries = fixed.locator(`[id="${await history.getAttribute("aria-controls")}"]`).getByRole("listitem");
     await expect(entries).toHaveCount(2);
-    await expect(entries.nth(0)).toContainText(`${date}+$20.000,00 (+8%)$250.000,00 → $270.000,00`);
+    await expect(entries.nth(0)).toContainText(`${date}+$20.000,00 (+8 %)$250.000,00 → $270.000,00`);
     await expect(entries.nth(1)).toContainText(`${formatShortDate(dayOf(m2, 8), { withYear: true })}Primer pago$250.000,00`);
   });
 

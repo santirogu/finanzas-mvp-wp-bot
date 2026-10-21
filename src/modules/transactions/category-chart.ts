@@ -1,6 +1,6 @@
 import { sumAmounts } from "@/lib/money";
 
-// Las tajadas de la dona de "Gastos por categoría" (el Resumen). Los colores van por puesto (la más
+// Las tajadas de la dona de "Egresos por categoría" (el Resumen). Los colores van por puesto (la más
 // grande, el primero de la paleta), no por categoría: así nunca se repiten en una misma dona, aunque
 // una categoría cambie de color de un mes a otro.
 

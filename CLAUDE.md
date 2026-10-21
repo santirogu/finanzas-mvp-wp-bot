@@ -235,7 +235,9 @@ de Vercel ni muevas las migraciones fuera del job `deploy`.
   monto grande en pantalla va con `whitespace-nowrap` (que no se parta). Los montos
   tienen centavos (`numeric(18, 2)`): súmalos con `sumAmounts` (o en SQL) y redondea las restas con
   `roundToCents`. Un campo de monto lee con `parseAmountInput` y formatea
-  con `formatAmountTyping` (punto = miles, coma = centavos).
+  con `formatAmountTyping` (punto = miles, coma = centavos). Un porcentaje, con `formatPercent` ("45 %"
+  en español, con espacio duro; "45%" en inglés), y una fecha corta, con `formatShortDate` ("13 de oct.",
+  con punto; sin punto solo en los ejes de los gráficos).
 - **Historial de la cuenta** (`account_event`, README → Historial de las cuentas): si agregas o cambias
   algo del registro o la vinculación de WhatsApp, registra su evento con `recordEvent` en la misma
   transacción, con su prueba.

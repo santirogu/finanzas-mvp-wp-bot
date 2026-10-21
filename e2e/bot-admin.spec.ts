@@ -58,9 +58,9 @@ test("el admin ve qué pasó con los mensajes de una cuenta y su consumo de Clau
     await expect(stat(page, "Errores")).toHaveText("0");
     await expect(stat(page, "Llamadas a Claude")).toHaveText("2");
     for (const label of ["Vinculó su número", "Registró movimientos", "Comandos (balance, reporte, deshacer, ayuda)", "Respuesta sin registrar nada", "No era texto (audio, foto…)"]) {
-      await expect(outcome(page, label)).toContainText("1 · 20%");
+      await expect(outcome(page, label)).toContainText("1 · 20 %");
     }
-    await expect(visible(page.getByText(/^La mitad de las veces responde en menos de .+; el 95 %, en menos de/))).toBeVisible();
+    await expect(visible(page.getByText(/^La mitad de las veces responde en menos de .+; el 95\s%, en menos de/))).toBeVisible();
   });
 
   await test.step("el consumo de Claude: tokens, por modelo y nadie en el tope", async () => {
@@ -145,7 +145,7 @@ test("un número sin vincular cuenta aparte, y sin mensajes la página lo dice",
   await setUpTwoFactor(page);
   await page.goto(`/admin/bot?q=${phone}`);
   await expect(stat(page, "Mensajes")).toHaveText("1");
-  await expect(outcome(page, "Número sin vincular")).toContainText("1 · 100%");
+  await expect(outcome(page, "Número sin vincular")).toContainText("1 · 100 %");
   await expect(stat(page, "Llamadas a Claude")).toHaveText("0");
 
   await page.goto(`/admin/bot?q=${newPhone()}`);

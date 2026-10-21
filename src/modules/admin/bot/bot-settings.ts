@@ -57,7 +57,7 @@ const TEXTS = texts(
     en: {
       alreadyPaused: "Claude is already paused.",
       alreadyActive: "Claude is already on.",
-      paused: "Claude is paused: the bot answers the commands and asks to record everything else on the web.",
+      paused: "Claude is paused: the bot answers the commands and asks to add everything else on the web.",
       resumed: "Claude is working again: the bot understands freely written messages again.",
       sameLimits: "Those are already the limits: change one.",
       limits: (perHour, perDay) => `The limits are now ${perHour} per hour and ${perDay} per day, per account.`,

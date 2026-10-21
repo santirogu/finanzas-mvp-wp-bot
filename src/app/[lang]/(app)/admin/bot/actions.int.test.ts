@@ -313,7 +313,7 @@ describe("en inglés (el idioma de quien hace el pedido)", () => {
   it("pausar y reanudar Claude", async () => {
     const { code } = await seed();
     expect(await pauseClaudeAction({}, form({ code: code() }))).toEqual({
-      message: "Claude is paused: the bot answers the commands and asks to record everything else on the web.",
+      message: "Claude is paused: the bot answers the commands and asks to add everything else on the web.",
     });
     // Si no hay nada que cambiar, no se mira el código (cada prueba tiene dos válidos: el de ahora y el siguiente).
     expect(await pauseClaudeAction({}, form({ code: "000000" }))).toEqual({ error: "Claude is already paused." });

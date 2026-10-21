@@ -48,7 +48,7 @@ describe("TransactionList", () => {
     const [expense, income] = screen.getAllByRole("listitem");
     expect(expense).toHaveTextContent("👟");
     expect(expense).toHaveTextContent("Zapatos");
-    expect(expense).toHaveTextContent("13 de oct · Ropa");
+    expect(expense).toHaveTextContent("13 de oct. · Ropa");
     expect(within(expense).getByText(/^−\$500\.000,00$/)).toHaveClass("text-expense");
     expect(within(income).getByText(/^\+\$2\.000\.000,00$/)).toHaveClass("text-income");
   });

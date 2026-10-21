@@ -41,8 +41,8 @@ test("registrarse, llevar ingresos y egresos, ver el balance y salir @principal"
     const recent = visible(page.locator("section", { hasText: "Últimos movimientos" }));
     await expect(recent).toContainText("Pago de nómina");
     await expect(recent).toContainText("Zapatos");
-    const byCategory = visible(page.locator("section", { hasText: "Gastos por categoría" }));
-    await expect(byCategory).toContainText(/Ropa\s*\$500\.000,00 · 100%/);
+    const byCategory = visible(page.locator("section", { hasText: "Egresos por categoría" }));
+    await expect(byCategory).toContainText(/Ropa\s*\$500\.000,00 · 100\s%/);
     // Tocar la categoría en la lista resalta su tajada de la dona; otra vez, lo quita.
     const ropa = byCategory.getByRole("button", { name: /Ropa/ });
     await ropa.click();

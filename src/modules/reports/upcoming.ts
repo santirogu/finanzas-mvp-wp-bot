@@ -201,7 +201,7 @@ export function whenLabel(days: number, locale: Locale = DEFAULT_LOCALE): string
   return when.days(days);
 }
 
-/** La fecha y de dónde sale: "5 de oct · lo sueles pagar el 5" (con "aprox." si son pocos pagos; con el año si no es el actual). */
+/** La fecha y de dónde sale: "5 de oct. · lo sueles pagar el 5" (con "aprox." si son pocos pagos; con el año si no es el actual). */
 export function dateLine(payment: UpcomingPayment, today: string, locale: Locale = DEFAULT_LOCALE): string {
   const t = TEXTS[locale];
   const date = formatShortDate(payment.date, { withYear: payment.date.slice(0, 4) !== today.slice(0, 4), locale });
@@ -224,7 +224,7 @@ export type UpcomingItem = {
   amount: string;
   /** "Atrasado", "Hoy", "Mañana" o "En 3 días". */
   when: string;
-  /** "5 de oct · lo sueles pagar el 5 (aprox.)". */
+  /** "5 de oct. · lo sueles pagar el 5 (aprox.)". */
   dateLine: string;
   overdue: boolean;
   /** La categoría del último pago ("🩺 Salud"): con la que se registra el pago. */

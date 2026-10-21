@@ -259,7 +259,7 @@ describe("privacidad de las consultas del bot", () => {
 describe("en inglés", () => {
   it("los resultados y el orden, con las mismas claves", () => {
     expect(Object.keys(OUTCOME_TEXTS.en)).toEqual(Object.keys(OUTCOME_TEXTS.es));
-    expect(OUTCOME_TEXTS.en.registrado).toBe("Recorded transactions");
+    expect(OUTCOME_TEXTS.en.registrado).toBe("Added transactions");
     expect(OUTCOME_TEXTS.en.tope_mensual).toBe("Monthly token limit reached (asked to use the web)");
     expect(OUTCOME_LABELS).toBe(OUTCOME_TEXTS.es);
     expect(ACCOUNT_SORTS.map((s) => ACCOUNT_SORT_TEXTS.en[s])).toEqual(["Tokens", "Messages", "Errors", "Last message"]);

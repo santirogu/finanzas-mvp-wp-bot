@@ -8,7 +8,7 @@ import { useFieldErrors } from "@/components/use-field-errors";
 import { useLocale, useTexts } from "@/i18n/client";
 import { texts } from "@/i18n/texts";
 import { formatShortDate } from "@/lib/dates";
-import { formatMoney, formatShare } from "@/lib/money";
+import { formatMoney, formatPercent, formatShare } from "@/lib/money";
 import { chooseFixedExpenseAction, type FixedExpenseState, type FixedNoteState, saveFixedNoteAction } from "@/modules/reports/actions";
 import { changeDirection, type FixedHistoryEntry, NOTE_MAX_LENGTH, pctLabel } from "@/modules/reports/history";
 import type { FixedOption, RecurringExpense } from "@/modules/reports/recurring";
@@ -23,7 +23,7 @@ const TEXTS = texts(
     section: "Gastos fijos",
     none: "Todavía no hay egresos que se repitan cada mes.",
     total: "Total al mes",
-    share: (pct: string) => `Son el ${pct}% de tu gasto promedio por mes.`,
+    share: (pct: string) => `Son el ${formatPercent(pct, "es")} de tu gasto promedio por mes.`,
     removed: (n: number) => `Quitados (${n})`,
     restoreName: (description: string) => `Volver a poner ${description} en los gastos fijos`,
     restore: "Volver a poner",
@@ -279,7 +279,7 @@ function HistoryItem({ description, entry, money }: { description: string; entry
           <span className="flex items-center gap-1 whitespace-nowrap text-xs text-muted">
             <ChangeIcon direction={changeDirection(entry.diff!)} />
             {signed(entry.diff!, money)} ({entry.pct! > 0 ? "+" : "−"}
-            {pctLabel(entry.pct!)})
+            {pctLabel(entry.pct!, locale)})
           </span>
         )}
       </div>

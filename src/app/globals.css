@@ -33,7 +33,7 @@
   --success-border: #9ccdaa;
   --danger-surface: #fcecec;
   --danger-border: #efb1b1;
-  /* La dona de "Gastos por categoría" (src/app/(app)/dashboard/category-chart.tsx): un color por puesto
+  /* La dona de "Egresos por categoría" (src/app/(app)/dashboard/category-chart.tsx): un color por puesto
      (la categoría más grande, el primero) y el gris de las chicas juntas. Cada uno, al menos 3:1 contra
      la tarjeta (WCAG 1.4.11): src/color-contrast.test.ts. Sin el verde de los ingresos ni el rojo de
      los errores, que dicen otra cosa. */

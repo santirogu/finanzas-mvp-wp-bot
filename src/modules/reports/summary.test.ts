@@ -110,7 +110,7 @@ describe("periodSummary", () => {
 
 describe("savedNote y averageNote (las notas de las cifras, en la página y en el PDF)", () => {
   it("cuánto ahorró, o que gastó más de lo que ganó; sin balance, nada", () => {
-    expect(savedNote("28")).toBe("Ahorraste el 28% de tus ingresos");
+    expect(savedNote("28")).toBe("Ahorraste el 28\u00a0% de tus ingresos");
     expect(savedNote("overspent")).toBe("Gastaste más de lo que ganaste");
     expect(savedNote(null)).toBeUndefined();
   });

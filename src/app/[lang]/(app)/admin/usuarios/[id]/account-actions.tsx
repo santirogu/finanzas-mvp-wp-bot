@@ -41,7 +41,7 @@ export type ActionTarget = {
   openSessions: number;
   /** Su número de WhatsApp, ya con formato, o null si no tiene. */
   phone: string | null;
-  /** Desde cuándo está suspendida ("15 de oct de 2026, 3:00 p. m.", "Oct 15, 2026, 3:00 PM"), o null si no lo está. */
+  /** Desde cuándo está suspendida ("15 de oct. de 2026, 3:00 p. m.", "Oct 15, 2026, 3:00 PM"), o null si no lo está. */
   suspendedSince: string | null;
   /** El motivo que escribió el admin al suspenderla (interno). */
   suspensionReason: string | null;
@@ -143,14 +143,14 @@ const TEXTS = texts(
       unlink: "Unlink",
       unlinkQuestion: (name) => `Unlink ${name}'s WhatsApp?`,
       unlinking: "Unlinking…",
-      unlinkBody: (phone) => <>The bot will stop recording what they write from {phone}. They can link it again from My account.</>,
+      unlinkBody: (phone) => <>The bot will stop adding what they write from {phone}. They can link it again from My account.</>,
       suspendTitle: "Suspend the account",
       suspendDescription: "They won't be able to sign in or use the bot until you reactivate it. Their data is kept.",
       suspend: "Suspend",
       suspendQuestion: (name) => `Suspend ${name}'s account?`,
       suspending: "Suspending…",
       suspendBody:
-        "They won't be able to sign in on the web or record transactions by WhatsApp until you reactivate it. Their sessions are signed out and their data is kept. When they try to sign in, they'll see their account is suspended, without the reason.",
+        "They won't be able to sign in on the web or add transactions on WhatsApp until you reactivate it. Their sessions are signed out and their data is kept. When they try to sign in, they'll see their account is suspended, without the reason.",
       reason: "Reason",
       reasonHint: "(optional, only you see it)",
       deleteTitle: "Delete the account",

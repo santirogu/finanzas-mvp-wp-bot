@@ -175,8 +175,8 @@ describe("whenLabel y dateLine (los textos del aviso)", () => {
 
   it("la fecha, el día de siempre y si es aproximada; con el año si no es el actual", () => {
     const [payment] = upcomingPayments([rent], paid("Arriendo", "2026-08-04", "2026-09-06"), NONE, "2026-10-04");
-    expect(dateLine(payment, "2026-10-04")).toBe("5 de oct · lo sueles pagar el 5 (aprox.)");
-    expect(dateLine({ ...payment, approximate: false, date: "2027-01-05" }, "2026-12-30")).toBe("5 de ene de 2027 · lo sueles pagar el 5");
+    expect(dateLine(payment, "2026-10-04")).toBe("5 de oct. · lo sueles pagar el 5 (aprox.)");
+    expect(dateLine({ ...payment, approximate: false, date: "2027-01-05" }, "2026-12-30")).toBe("5 de ene. de 2027 · lo sueles pagar el 5");
   });
 });
 
@@ -193,7 +193,7 @@ describe("upcomingItems (los avisos listos para mostrar)", () => {
         monthName: "octubre",
         amount: "≈ −$1.800.000,00",
         when: "Atrasado",
-        dateLine: "5 de oct · lo sueles pagar el 5",
+        dateLine: "5 de oct. · lo sueles pagar el 5",
         overdue: true,
         category: "Sin categoría",
         amountInput: "1.800.000,00",

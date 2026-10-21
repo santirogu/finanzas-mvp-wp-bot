@@ -71,7 +71,7 @@ describe("ReportDocument", () => {
     const text = textOf(ReportDocument({ view: empty }));
     expect(text).toContain("Reporte de tus finanzas");
     expect(text).toContain("Aún no tienes movimientos.");
-    expect(text).not.toContain("Gastos por categoría");
+    expect(text).not.toContain("Egresos por categoría");
     expect(text).not.toContain("Mes a mes");
   });
 

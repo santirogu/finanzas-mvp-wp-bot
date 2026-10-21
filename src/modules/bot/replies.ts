@@ -2,7 +2,7 @@
 import { CONTACT_EMAIL } from "@/lib/contact";
 import { formatMonthLabel, formatMonthName, formatShortDate, type Month, type MonthRange } from "@/lib/dates";
 import { BRAND_NAME } from "@/lib/brand";
-import { formatMoney, formatShare } from "@/lib/money";
+import { formatMoney, formatPercent, formatShare } from "@/lib/money";
 import type { CategoryReport } from "@/modules/reports/categories";
 import { periodHref, type ReportPeriod } from "@/modules/reports/period";
 import type { RecurringReport } from "@/modules/reports/recurring";
@@ -94,10 +94,10 @@ export function reportReply(
     return `No tienes movimientos ${single ? `en ${range}` : range}. Escríbeme algo como “gasté 20 mil en almuerzo” y aquí verás cómo te va.`;
   }
   const saved =
-    summary.saved === "overspent" ? " (gastaste más de lo que ganaste)" : summary.saved ? ` (ahorraste el ${summary.saved}%)` : "";
+    summary.saved === "overspent" ? " (gastaste más de lo que ganaste)" : summary.saved ? ` (ahorraste el ${formatPercent(summary.saved)})` : "";
   const top = categories.rows
     .slice(0, REPORT_CATEGORIES)
-    .map((row) => `${row.emoji} ${row.name} ${formatShare(row.total, categories.total)}%`);
+    .map((row) => `${row.emoji} ${row.name} ${formatPercent(formatShare(row.total, categories.total))}`);
   return [
     `📊 *Reporte ${single ? `de ${range}` : range}*`,
     `Ingresos: ${money(summary.income)}`,

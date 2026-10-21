@@ -1,6 +1,6 @@
 import { DEFAULT_LOCALE, type Locale } from "@/i18n/locales";
 import { formatMonthName, type Month, monthOf } from "@/lib/dates";
-import { roundToCents, sumAmounts } from "@/lib/money";
+import { formatPercent, roundToCents, sumAmounts } from "@/lib/money";
 import { searchKey } from "@/lib/suggestions";
 
 // El historial del valor de cada gasto fijo (Reportes): sale de los movimientos. Cada mes en que el
@@ -74,8 +74,8 @@ export function fixedHistories(rows: HistoryMonth[], keys: Iterable<string>): Ma
   return histories;
 }
 
-/** El porcentaje de un cambio para mostrar, sin signo: "11%", o "<1%" si cambió poco (redondeado da 0). */
-export const pctLabel = (pct: number) => (pct === 0 ? "<1%" : `${Math.abs(pct)}%`);
+/** El porcentaje de un cambio para mostrar, sin signo: "11 %", o "<1 %" si cambió poco (redondeado da 0). */
+export const pctLabel = (pct: number, locale: Locale = DEFAULT_LOCALE) => formatPercent(pct === 0 ? "<1" : Math.abs(pct), locale);
 
 /** Si subió o bajó (un cambio siempre es distinto de cero, aunque el porcentaje redondeado lo sea). */
 // Stryker disable next-line EqualityOperator: un cambio nunca es cero (fixedHistories solo registra los meses en que el total cambió)
@@ -103,6 +103,6 @@ export function lastChangeSummary(
   const since = formatMonthName(month, { withYear: month.year !== current.year, locale });
   return {
     direction: changeDirection(change.diff!),
-    text: `${pctLabel(change.pct!)} ${locale === "es" ? "desde" : "since"} ${since}`,
+    text: `${pctLabel(change.pct!, locale)} ${locale === "es" ? "desde" : "since"} ${since}`,
   };
 }

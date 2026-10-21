@@ -88,7 +88,7 @@ describe("registeredReply", () => {
         { today: "2026-10-13", currency: "COP", balance: 70000, range },
       ),
     );
-    expect(text).toContain("Egreso Anotado: *Gasolina* — $30.000,00 (Transporte · 12 de oct)");
+    expect(text).toContain("Egreso Anotado: *Gasolina* — $30.000,00 (Transporte · 12 de oct.)");
     expect(text).toContain("Ingreso Anotado: *Venta* — $100.000,00\n");
   });
 });
@@ -300,10 +300,10 @@ describe("reportReply", () => {
         "📊 *Reporte de noviembre de 2025 a octubre de 2026*",
         "Ingresos: $33.350.000,00",
         "Egresos: $10.977.000,00",
-        "Balance: *$22.373.000,00* (ahorraste el 67%)",
+        "Balance: *$22.373.000,00* (ahorraste el 67\u00a0%)",
         "Gasto promedio por mes: $3.748.000,00",
         "Mes de más gasto: octubre de 2026 ($7.229.000,00)",
-        "En qué se te fue: 🏠 Vivienda 64% · 💳 Deudas 14% · 📚 Educación 11%",
+        "En qué se te fue: 🏠 Vivienda 64\u00a0% · 💳 Deudas 14\u00a0% · 📚 Educación 11\u00a0%",
         "Gastos fijos: $1.800.000,50 al mes",
         "",
         "Más detalle en *Reportes*: https://finanzas.app/reportes",
@@ -314,7 +314,7 @@ describe("reportReply", () => {
   it(`nombra hasta ${REPORT_CATEGORIES} categorías, las que llegan`, () => {
     const two = { ...categories, rows: categories.rows.slice(0, 1) };
     expect(reportReply({ summary, categories: two, recurring }, reportPeriod(undefined, october), ctx)).toContain(
-      "En qué se te fue: 🏠 Vivienda 64%\n",
+      "En qué se te fue: 🏠 Vivienda 64\u00a0%\n",
     );
   });
 

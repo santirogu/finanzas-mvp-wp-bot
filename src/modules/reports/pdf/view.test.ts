@@ -70,7 +70,7 @@ describe("reportPdfView", () => {
     expect(year.stats).toEqual([
       { label: "Ingresos", value: "$60.400.000,00", note: null, tone: "income" },
       { label: "Egresos", value: "$57.272.600,00", note: null, tone: "expense" },
-      { label: "Balance del período", value: "$3.127.400,00", note: "Ahorraste el 5% de tus ingresos", tone: "default" },
+      { label: "Balance del período", value: "$3.127.400,00", note: "Ahorraste el 5\u00a0% de tus ingresos", tone: "default" },
       { label: "Gasto promedio por mes", value: "$4.872.254,55", note: "En 11 meses, sin octubre (va en curso)", tone: "default" },
       { label: "El mes de más gasto", value: "Diciembre de 2025", note: "$6.186.800,00", tone: "default" },
     ]);
@@ -85,7 +85,7 @@ describe("reportPdfView", () => {
     const view = viewOf([income("2026-10-01", 1000000)]);
     expect(view.stats[3]).toEqual({ label: "Gasto promedio por mes", value: "—", note: "Se calcula cuando termine tu primer mes", tone: "default" });
     expect(view.stats[4]).toEqual({ label: "El mes de más gasto", value: "—", note: "Sin egresos en el período", tone: "default" });
-    expect(view.stats[2].note).toBe("Ahorraste el 100% de tus ingresos");
+    expect(view.stats[2].note).toBe("Ahorraste el 100\u00a0% de tus ingresos");
   });
 
   it("el gráfico: un par de barras por mes, el año debajo del primero y de enero, y un eje redondo", () => {
@@ -120,12 +120,12 @@ describe("reportPdfView", () => {
     expect(rows[0]).toEqual({
       name: "Vivienda",
       amount: "$24.950.000,00",
-      share: "44%",
+      share: "44\u00a0%",
       width: 1,
       color: PDF_COLORS.chart[0],
-      change: "↘ En septiembre, 16% menos que su promedio",
+      change: "↘ En septiembre, 16\u00a0% menos que su promedio",
     });
-    expect(rows[2]).toMatchObject({ name: "Restaurantes", color: PDF_COLORS.chart[2], change: "↗ En septiembre, 89% más que su promedio" });
+    expect(rows[2]).toMatchObject({ name: "Restaurantes", color: PDF_COLORS.chart[2], change: "↗ En septiembre, 89\u00a0% más que su promedio" });
     expect(rows.find((row) => row.name === "Servicios")?.change).toBe("= En septiembre, igual que su promedio");
     expect(rows[1].width).toBeCloseTo(18700000 / 24950000);
     // De la octava en adelante, en gris; sin con qué comparar, sin la línea.
@@ -135,7 +135,7 @@ describe("reportPdfView", () => {
   it("sin un mes completo con qué comparar, las categorías solo dicen lo que sumaron", () => {
     const view = viewOf([expense("2026-10-02", "Mercado", 100000)]);
     expect(view.categories.intro).toBe("Lo que sumó cada una en el período.");
-    expect(view.categories.rows).toEqual([{ name: "Mercado", amount: "$100.000,00", share: "100%", width: 1, color: PDF_COLORS.chart[0], change: null }]);
+    expect(view.categories.rows).toEqual([{ name: "Mercado", amount: "$100.000,00", share: "100\u00a0%", width: 1, color: PDF_COLORS.chart[0], change: null }]);
   });
 
   it("no trae los gastos fijos (tienen su pestaña), aunque los descuenta de los gastos más grandes", () => {
@@ -147,11 +147,11 @@ describe("reportPdfView", () => {
     const { rows, empty } = year.biggest;
     expect(empty).toBeNull();
     expect(rows).toHaveLength(10);
-    expect(rows[0]).toEqual({ description: "Tiquetes a Cartagena", detail: "12 de dic de 2025 · Entretenimiento", amount: "−$1.240.000,00" });
-    expect(rows[1]).toEqual({ description: "Lavadora", detail: "3 de jun · Vivienda", amount: "−$1.150.000,00" });
+    expect(rows[0]).toEqual({ description: "Tiquetes a Cartagena", detail: "12 de dic. de 2025 · Entretenimiento", amount: "−$1.240.000,00" });
+    expect(rows[1]).toEqual({ description: "Lavadora", detail: "3 de jun. · Vivienda", amount: "−$1.150.000,00" });
     expect(rows.map((row) => row.description)).not.toContain("Arriendo");
     const noCategory = viewOf([expense("2026-10-02", "Taxi", 30000, null)]);
-    expect(noCategory.biggest.rows).toEqual([{ description: "Taxi", detail: "2 de oct · Sin categoría", amount: "−$30.000,00" }]);
+    expect(noCategory.biggest.rows).toEqual([{ description: "Taxi", detail: "2 de oct. · Sin categoría", amount: "−$30.000,00" }]);
   });
 
   it("qué días gasta más: el promedio de cada día de la semana, la frase y las quincenas", () => {
@@ -160,10 +160,10 @@ describe("reportPdfView", () => {
     expect(weekdays.map((day) => day.label)).toEqual(["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]);
     expect(weekdays[4]).toEqual({ label: "Viernes", amount: "$125.620,00", width: 1 });
     expect(weekdays[0].width).toBeCloseTo(89137.25 / 125620);
-    expect(insight).toBe("Gastas más los viernes: 64% más que el promedio de los otros días.");
+    expect(insight).toBe("Gastas más los viernes: 64\u00a0% más que el promedio de los otros días.");
     expect(halves).toEqual([
-      { label: "Del 1 al 15", amount: "$15.433.000,00", share: "52% del gasto" },
-      { label: "Del 16 a fin de mes", amount: "$14.050.000,00", share: "48% del gasto" },
+      { label: "Del 1 al 15", amount: "$15.433.000,00", share: "52\u00a0% del gasto" },
+      { label: "Del 16 a fin de mes", amount: "$14.050.000,00", share: "48\u00a0% del gasto" },
     ]);
   });
 
@@ -191,7 +191,7 @@ describe("reportPdfView", () => {
     const view = viewOf([income("2026-09-01", 1000000)]);
     expect(view.empty).toBeNull();
     expect(view.biggest.empty).toBe("Sin egresos en el período.");
-    expect(view.daily.halves.map((half) => half.share)).toEqual(["0% del gasto", "0% del gasto"]);
+    expect(view.daily.halves.map((half) => half.share)).toEqual(["0\u00a0% del gasto", "0\u00a0% del gasto"]);
   });
 });
 

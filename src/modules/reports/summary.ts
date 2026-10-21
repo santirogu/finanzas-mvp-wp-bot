@@ -1,7 +1,7 @@
 import { DEFAULT_LOCALE, type Locale } from "@/i18n/locales";
 import { texts } from "@/i18n/texts";
 import { compareMonths, formatMonthName, type Month, monthParam } from "@/lib/dates";
-import { formatShare, roundToCents, sumAmounts } from "@/lib/money";
+import { formatPercent, formatShare, roundToCents, sumAmounts } from "@/lib/money";
 
 // El resumen de un período en Reportes: los totales de cada mes (las barras) y los del período (las
 // tarjetas de arriba).
@@ -78,7 +78,7 @@ export function periodSummary(series: MonthPoint[], current: Month, firstActive:
 const TEXTS = texts(
   {
     overspent: "Gastaste más de lo que ganaste",
-    saved: (pct: string) => `Ahorraste el ${pct}% de tus ingresos`,
+    saved: (pct: string) => `Ahorraste el ${formatPercent(pct, "es")} de tus ingresos`,
     noAverage: "Se calcula cuando termine tu primer mes",
     average: (months: number) => `En ${months} ${months === 1 ? "mes" : "meses"}`,
     withoutCurrent: (month: string) => `, sin ${month} (va en curso)`,

@@ -1,7 +1,7 @@
 import { DEFAULT_LOCALE, INTL_LOCALES, type Locale } from "@/i18n/locales";
 import { texts } from "@/i18n/texts";
 import { compareMonths, formatMonthLabel, formatMonthName, formatShortDate, formatShortMonth, type Month, monthOf } from "@/lib/dates";
-import { formatMoney, formatShare } from "@/lib/money";
+import { formatMoney, formatPercent, formatShare } from "@/lib/money";
 import { NO_CATEGORIES } from "@/modules/transactions/search";
 import { BIGGEST_SHOWN } from "../biggest";
 import { averagedPhrase } from "../categories";
@@ -30,8 +30,8 @@ const TEXTS = texts(
       month: "Mes",
       balance: "Balance",
       inProgress: " (en curso)",
-      categories: "Gastos por categoría",
-      biggest: "Los gastos más grandes",
+      categories: "Egresos por categoría",
+      biggest: "Los egresos más grandes",
       biggestIntro: "Los egresos más altos del período, sin contar los gastos fijos.",
       daily: "¿Qué días gastas más?",
       dailyIntro: "El gasto promedio de cada día de la semana, sin los gastos fijos y contando los días sin gastos.",
@@ -52,7 +52,7 @@ const TEXTS = texts(
     categoriesCompared: (month: string, averaged: string) => `, y cómo te fue en ${month} frente a su promedio de ${averaged}.`,
     firstHalf: "Del 1 al 15",
     secondHalf: "Del 16 a fin de mes",
-    halfShare: (pct: string) => `${pct}% del gasto`,
+    halfShare: (pct: string) => `${formatPercent(pct, "es")} del gasto`,
     thousand: "mil",
   },
   {
@@ -66,7 +66,7 @@ const TEXTS = texts(
         month: "Month",
         balance: "Balance",
         inProgress: " (in progress)",
-        categories: "Spending by category",
+        categories: "Expenses by category",
         biggest: "The biggest expenses",
         biggestIntro: "The highest expenses in the period, not counting your bills.",
         daily: "Which days do you spend the most?",
@@ -245,7 +245,7 @@ export function reportPdfView({
       rows: categories.rows.map((row) => ({
         name: row.name,
         amount: money(row.total),
-        share: `${formatShare(row.total, categories.total)}%`,
+        share: formatPercent(formatShare(row.total, categories.total), locale),
         width: row.share / biggestCategory,
         color: row.color === null ? PDF_COLORS.chartRest : PDF_COLORS.chart[row.color],
         change: row.change && `${ARROWS[row.change.direction]} ${row.change.text}`,

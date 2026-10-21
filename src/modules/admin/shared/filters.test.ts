@@ -51,9 +51,9 @@ describe("parseSearch", () => {
 
 describe("formatDate", () => {
   it("la fecha en Colombia, sin la hora", () => {
-    expect(formatDate(new Date("2026-10-14T21:41:00Z"))).toBe("14 de oct de 2026");
+    expect(formatDate(new Date("2026-10-14T21:41:00Z"))).toBe("14 de oct. de 2026");
     // 11:30 p. m. del 9 en Colombia, aunque en UTC ya es el 10.
-    expect(formatDate(new Date("2026-10-10T04:30:00Z"))).toBe("9 de oct de 2026");
+    expect(formatDate(new Date("2026-10-10T04:30:00Z"))).toBe("9 de oct. de 2026");
   });
 });
 
@@ -98,10 +98,10 @@ describe("en inglés", () => {
   });
 
   it.each([
-    [{ from: "2026-10-01", to: "2026-10-15" }, "Oct 1 – Oct 15", "1 de oct – 15 de oct"],
-    [{ from: "2026-10-01", to: "2026-10-01" }, "Oct 1", "1 de oct"],
-    [{ from: "2026-10-01", to: null }, "From Oct 1", "Desde el 1 de oct"],
-    [{ from: null, to: "2026-10-15" }, "Until Oct 15", "Hasta el 15 de oct"],
+    [{ from: "2026-10-01", to: "2026-10-15" }, "Oct 1 – Oct 15", "1 de oct. – 15 de oct."],
+    [{ from: "2026-10-01", to: "2026-10-01" }, "Oct 1", "1 de oct."],
+    [{ from: "2026-10-01", to: null }, "From Oct 1", "Desde el 1 de oct."],
+    [{ from: null, to: "2026-10-15" }, "Until Oct 15", "Hasta el 15 de oct."],
   ])("un rango personalizado %j: %s", (range, en, es) => {
     expect(dateFilterLabel({ date: "personalizado", ...range }, "en")).toBe(en);
     expect(dateFilterLabel({ date: "personalizado", ...range })).toBe(es);
