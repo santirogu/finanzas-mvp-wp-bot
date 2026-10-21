@@ -37,6 +37,11 @@ const INTERPRETATIONS = [
     match: /quincena/i,
     transactions: [{ type: "income", amount: 2100000, description: "Quincena", category: "Salario" }],
   },
+  // Para la descripción del historial: Claude lo entiende así, y el bot guarda la que ya estaba.
+  {
+    match: /claro amor/i,
+    transactions: [{ type: "expense", amount: 98000, description: "Pago claro amor", category: "Otros" }],
+  },
 ];
 
 function readBody(request) {
