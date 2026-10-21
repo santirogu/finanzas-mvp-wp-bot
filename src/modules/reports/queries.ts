@@ -5,7 +5,8 @@ import { category, transaction } from "@/db/schema";
 import { DEFAULT_LOCALE, type Locale } from "@/i18n/locales";
 import { compareMonths, type Month, monthOf, monthRange, shiftMonth } from "@/lib/dates";
 import { listActiveMonths } from "@/modules/transactions/queries";
-import { NO_CATEGORIES, NO_CATEGORY } from "@/modules/transactions/search";
+import { categoryNameIn } from "@/modules/transactions/category-name";
+import { NO_CATEGORIES } from "@/modules/transactions/search";
 import { BIGGEST_CANDIDATES, biggestExpenses, type ExpenseRow } from "./biggest";
 import { AVERAGE_MONTHS, type CategoryMonthTotal, categoryReport } from "./categories";
 import type { CsvMovement } from "./csv";
@@ -57,19 +58,22 @@ export async function getMonthlyTotals(userId: string, first: Month, last: Month
   return rows.map((row) => ({ month: row.month, income: Number(row.income), expense: Number(row.expense) }));
 }
 
-/** Los egresos de cada categoría en cada mes, de `first` a `last`; los sin categoría, con el nombre `noCategory`. */
-export async function getCategoryMonthlyTotals(userId: string, first: Month, last: Month, noCategory = NO_CATEGORY): Promise<CategoryMonthTotal[]> {
+/**
+ * Los egresos de cada categoría en cada mes, de `first` a `last`, con su nombre en el idioma de la página;
+ * los sin categoría, juntos ("Sin categoría").
+ */
+export async function getCategoryMonthlyTotals(userId: string, first: Month, last: Month, locale: Locale = DEFAULT_LOCALE): Promise<CategoryMonthTotal[]> {
   const rows = await db
     .select({
       month: monthOfTransaction,
-      name: sql<string>`coalesce(${category.name}, ${noCategory})`,
+      name: sql<string>`coalesce(${categoryNameIn(locale)}, ${NO_CATEGORIES[locale]})`,
       emoji: sql<string>`coalesce(${category.emoji}, '•')`,
       total: sql<string>`sum(${transaction.amount})`,
     })
     .from(transaction)
     .leftJoin(category, eq(category.id, transaction.categoryId))
     .where(and(activeBetween(userId, first, last), eq(transaction.type, "expense")))
-    .groupBy(monthOfTransaction, category.name, category.emoji);
+    .groupBy(monthOfTransaction, category.name, category.nameEn, category.emoji);
   return rows.map((row) => ({ ...row, total: Number(row.total) }));
 }
 
@@ -96,14 +100,14 @@ export async function getExpenseDescriptionsByMonth(userId: string, first: Month
 }
 
 /** Los egresos más altos de `first` a `last` (hasta BIGGEST_CANDIDATES); si empatan, el más reciente primero. */
-export async function getLargestExpenses(userId: string, first: Month, last: Month): Promise<ExpenseRow[]> {
+export async function getLargestExpenses(userId: string, first: Month, last: Month, locale: Locale = DEFAULT_LOCALE): Promise<ExpenseRow[]> {
   return db
     .select({
       id: transaction.id,
       description: transaction.description,
       amount: transaction.amount,
       occurredOn: transaction.occurredOn,
-      categoryName: category.name,
+      categoryName: categoryNameIn(locale),
       categoryEmoji: category.emoji,
     })
     .from(transaction)
@@ -132,14 +136,14 @@ export async function getExpensesByDay(userId: string, first: Month, last: Month
 }
 
 /** Los egresos de un mes, por día y, en el mismo día, del más alto al más bajo: el detalle del calendario. */
-export async function getMonthExpenses(userId: string, month: Month): Promise<ExpenseRow[]> {
+export async function getMonthExpenses(userId: string, month: Month, locale: Locale = DEFAULT_LOCALE): Promise<ExpenseRow[]> {
   return db
     .select({
       id: transaction.id,
       description: transaction.description,
       amount: transaction.amount,
       occurredOn: transaction.occurredOn,
-      categoryName: category.name,
+      categoryName: categoryNameIn(locale),
       categoryEmoji: category.emoji,
     })
     .from(transaction)
@@ -148,14 +152,14 @@ export async function getMonthExpenses(userId: string, month: Month): Promise<Ex
     .orderBy(asc(transaction.occurredOn), desc(transaction.amount), asc(transaction.createdAt));
 }
 
-/** Los movimientos de `first` a `last`, del más antiguo al más reciente: los del CSV de Reportes. */
-export async function listPeriodMovements(userId: string, first: Month, last: Month): Promise<CsvMovement[]> {
+/** Los movimientos de `first` a `last`, del más antiguo al más reciente: los del CSV de Reportes (en su idioma). */
+export async function listPeriodMovements(userId: string, first: Month, last: Month, locale: Locale = DEFAULT_LOCALE): Promise<CsvMovement[]> {
   return db
     .select({
       occurredOn: transaction.occurredOn,
       type: transaction.type,
       description: transaction.description,
-      categoryName: category.name,
+      categoryName: categoryNameIn(locale),
       amount: transaction.amount,
       source: transaction.source,
     })
@@ -178,9 +182,9 @@ export async function getReport(userId: string, period: ReportPeriod, current: M
   const [activeMonths, monthly, categories, descriptions, largest, choices] = await Promise.all([
     listActiveMonths(userId),
     getMonthlyTotals(userId, first, last),
-    getCategoryMonthlyTotals(userId, compareMonths(categoriesFrom, first) < 0 ? categoriesFrom : first, last, NO_CATEGORIES[locale]),
+    getCategoryMonthlyTotals(userId, compareMonths(categoriesFrom, first) < 0 ? categoriesFrom : first, last, locale),
     getExpenseDescriptionsByMonth(userId, recurringFrom(period.months), last),
-    getLargestExpenses(userId, first, last),
+    getLargestExpenses(userId, first, last, locale),
     getFixedChoices(userId),
   ]);
   // Los gastos fijos (con lo que la persona agregó o quitó a mano) no se muestran en Reportes (tienen su
@@ -240,6 +244,7 @@ export async function getUpcomingPayments(
   userId: string,
   current: Month,
   today: string,
+  locale: Locale = DEFAULT_LOCALE,
 ): Promise<{ enabled: boolean; days: number; payments: (UpcomingPayment & { category: string | null })[] }> {
   const settings = await getUpcomingSettings(userId);
   if (!settings.enabled) return { ...settings, payments: [] };
@@ -249,7 +254,7 @@ export async function getUpcomingPayments(
     getFixedChoices(userId),
     getExpenseHistoryMonths(userId),
     getPaymentSkips(userId),
-    getLastPayments(userId),
+    getLastPayments(userId, locale),
   ]);
   const { items } = recurringExpenses(descriptions, period.months, choices);
   // Con la categoría del último pago: la que lleva "Registrar pago" (null, sin categoría: el aviso lo dice

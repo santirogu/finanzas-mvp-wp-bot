@@ -464,6 +464,47 @@ describe("getTotalsByCategory · los movimientos sin categoría", () => {
     await addTx({ userId: user.id, amount: 1000 });
     await addTx({ userId: user.id, amount: 2000 });
     expect(await getTotalsByCategory(user.id, "expense", october)).toEqual([{ name: "Sin categoría", emoji: "•", total: 3000 }]);
-    expect(await getTotalsByCategory(user.id, "expense", october, "No category")).toEqual([{ name: "No category", emoji: "•", total: 3000 }]);
+    expect(await getTotalsByCategory(user.id, "expense", october, "en")).toEqual([{ name: "No category", emoji: "•", total: 3000 }]);
+  });
+});
+
+describe("en inglés: el nombre que el admin le puso a cada categoría global", () => {
+  const setEnglish = (name: string, nameEn: string) =>
+    db.update(category).set({ nameEn }).where(sql`${category.userId} is null and ${category.type} = 'expense' and ${category.name} = ${name}`);
+
+  it("los formularios lo muestran, alfabético y con Otros al final; el bot y el español siguen igual", async () => {
+    const user = await createUser();
+    await setEnglish("Mercado", "Groceries");
+    await setEnglish("Otros", "Other");
+    const english = await listCategories(user.id, "expense", "en");
+    expect(english.map((c) => c.name)).toContain("Groceries");
+    expect(english.at(-1)!.name).toBe("Other");
+    expect(english.map((c) => c.name)).toEqual([...english.map((c) => c.name)].slice(0, -1).sort((a, b) => a.localeCompare(b, "es")).concat("Other"));
+    const spanish = await listCategories(user.id, "expense");
+    expect(spanish.map((c) => c.name)).toContain("Mercado");
+    expect(spanish.at(-1)!.name).toBe("Otros");
+    // El mismo id: lo que se guarda no cambia.
+    expect(english.find((c) => c.name === "Groceries")!.id).toBe(spanish.find((c) => c.name === "Mercado")!.id);
+  });
+
+  it("los movimientos, los totales y la categoría al editar, en inglés; sin nombre en inglés, el de siempre", async () => {
+    const user = await createUser();
+    await setEnglish("Mercado", "Groceries");
+    const mercado = await globalCategory("expense", "Mercado");
+    const transporte = await globalCategory("expense", "Transporte");
+    await addTx({ userId: user.id, amount: 5000, categoryId: mercado.id });
+    await addTx({ userId: user.id, amount: 2000, categoryId: transporte.id });
+
+    expect((await getTotalsByCategory(user.id, "expense", october, "en")).map((t) => t.name)).toEqual(["Groceries", "Transporte"]);
+    expect((await getTotalsByCategory(user.id, "expense", october)).map((t) => t.name)).toEqual(["Mercado", "Transporte"]);
+    expect((await listTransactions(user.id, october, { locale: "en" })).map((t) => t.categoryName).sort()).toEqual(["Groceries", "Transporte"]);
+    expect((await listTransactions(user.id, october)).map((t) => t.categoryName).sort()).toEqual(["Mercado", "Transporte"]);
+    expect(await getCategoryOption(user.id, mercado.id, "en")).toMatchObject({ name: "Groceries" });
+    expect(await getCategoryOption(user.id, mercado.id)).toMatchObject({ name: "Mercado" });
+  });
+
+  it("la base no deja repetir un nombre en inglés entre las globales del mismo tipo", async () => {
+    await setEnglish("Mercado", "Groceries");
+    await expect(setEnglish("Alimentación", "Groceries")).rejects.toThrow();
   });
 });

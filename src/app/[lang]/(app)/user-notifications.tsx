@@ -15,10 +15,10 @@ import { NotificationBell } from "./notification-bell";
 export async function UserNotifications() {
   const user = await requireUser();
   const today = todayInTimezone(user.timezone);
-  const [upcoming, read, locale] = await Promise.all([
-    getUpcomingPayments(user.id, currentMonthRange(user.timezone), today),
+  const locale = await getLocale();
+  const [upcoming, read] = await Promise.all([
+    getUpcomingPayments(user.id, currentMonthRange(user.timezone), today, locale),
     getReadNotifications(user.id),
-    getLocale(),
   ]);
   if (!upcoming.enabled) return null;
   return <NotificationBell notifications={unreadNotifications(upcomingItems(upcoming.payments, today, user.currency, locale), read)} today={today} />;

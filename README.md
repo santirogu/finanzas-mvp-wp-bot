@@ -294,10 +294,14 @@ La app está en español (el de siempre) y en inglés, toda la web (el bot de Wh
   "$1,000,000.00" (en el campo de monto, la coma separa los miles) y "Oct 13". El bot sigue en español.
   Los topes del bot en `/admin/bot` también se escriben con los miles del idioma ("1.000" o "1,000"):
   los campos y el servidor (`parseAiLimits`, `parseMonthlyTokenLimit`) aceptan ese separador y no el otro.
-- **En la administración** quedan como están los nombres de las categorías (también "Otros") y los
-  comandos del bot (balance, reporte, deshacer, ayuda), que se escriben en español. Los avisos de la prueba
-  de conexiones son datos (`ServiceWarning`, `src/lib/service-check.ts`): la frase la arma `connectionView`
-  en el idioma de la página.
+- **Las categorías** se ven en inglés con el nombre que les puso el admin (`category.name_en`, opcional,
+  en `/admin/categorias`); sin él, con el de siempre. Lo resuelven las consultas (`categoryNameIn` y
+  `categoryLabel`, `src/modules/transactions/category-name.ts`), que reciben el idioma: las que no lo
+  reciben, como las del bot, dan el nombre en español. Lo que se guarda y lo que conoce el bot es siempre
+  `name`.
+- **En la administración** quedan en español los comandos del bot (balance, reporte, deshacer, ayuda),
+  que se escriben así. Los avisos de la prueba de conexiones son datos (`ServiceWarning`,
+  `src/lib/service-check.ts`): la frase la arma `connectionView` en el idioma de la página.
 - **Las descargas de Reportes** salen en el idioma de la página (la cookie). El CSV en inglés va como lo
   abre el Excel en inglés: separado por "," y con el punto de los centavos (en español, ";" y la coma), y
   los archivos se llaman `transactions-…csv` y `report-…pdf`. Los textos fijos del PDF van en la vista
@@ -951,13 +955,13 @@ de inmediato en los formularios y en el bot (`src/modules/admin/categories/`).
 
 | Acción | Código | Qué hace |
 |---|---|---|
-| Crear, editar | No | Nombre (hasta 40 caracteres, sin repetir dentro del tipo: no importan mayúsculas ni tildes, ni las archivadas) y un emoji (vacío es "•") |
+| Crear, editar | No | Nombre (hasta 40 caracteres, sin repetir dentro del tipo: no importan mayúsculas ni tildes, ni las archivadas), nombre en inglés (opcional, con las mismas reglas; vacío: en inglés se ve el nombre) y un emoji (vacío es "•") |
 | Archivar | Sí | Sale de los formularios y el bot no la usa; los movimientos que ya la tienen la conservan (al editar uno, se sigue ofreciendo marcada "(archivada)") |
 | Restaurar | No | Vuelve a los formularios y al bot |
 | Eliminar | Sí | Si tiene movimientos, avisa: pasan a "Otros" de su tipo (los de todas las cuentas, también los eliminados), en la misma transacción |
 
-**"Otros"** es la que usa el bot si ninguna encaja: solo se le cambia el emoji (no se renombra, archiva
-ni elimina). Cada cambio queda en `category_change` con el admin y el nombre y emoji de ese momento
+**"Otros"** es la que usa el bot si ninguna encaja: solo se le cambian el emoji y el nombre en inglés (no
+se renombra, archiva ni elimina). Cada cambio queda en `category_change` con el admin y el nombre y emoji de ese momento
 (así una eliminada se sigue leyendo) y se ve en "Cambios recientes". Las categorías propias de cada
 cuenta (`category.user_id`) no se administran aquí.
 

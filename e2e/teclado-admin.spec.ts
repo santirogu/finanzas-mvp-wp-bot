@@ -24,7 +24,7 @@ test("en la administración el foco no se pierde con las ventanas, el menú ⋯ 
   await test.step("crear con el teclado: el foco va al aviso", async () => {
     await visible(page.getByRole("button", { name: "Nueva categoría" })).focus();
     await page.keyboard.press("Enter");
-    await dialog.getByLabel("Nombre").fill(name);
+    await dialog.getByLabel("Nombre", { exact: true }).fill(name);
     await page.keyboard.press("Enter");
     await expect(toast(page, name)).toBeFocused();
   });

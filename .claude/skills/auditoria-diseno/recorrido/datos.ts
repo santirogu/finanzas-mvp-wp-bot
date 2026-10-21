@@ -180,7 +180,7 @@ async function admin(browser: Browser, baseURL: string, datos: Datos) {
   datos.categoriaLarga = categoria;
   await page.goto("/admin/categorias");
   await visible(page.getByRole("button", { name: "Nueva categoría" })).click();
-  await page.getByRole("dialog").getByLabel("Nombre").fill(categoria);
+  await page.getByRole("dialog").getByLabel("Nombre", { exact: true }).fill(categoria);
   await page.getByRole("dialog").getByRole("button", { name: "Crear" }).click();
   await expect(toast(page, categoria)).toBeVisible();
 

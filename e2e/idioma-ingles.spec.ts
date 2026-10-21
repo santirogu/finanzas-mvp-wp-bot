@@ -259,6 +259,7 @@ test("en inglés: la administración (Seguridad, el inicio, Usuarios y una acci�
 });
 
 test("en inglés: el Historial, el Bot y Categorías de la administración @principal", async ({ page }) => {
+  const id = Date.now() % 100_000;
   const email = await newAdmin(page);
   await setUpTwoFactor(page);
   await inEnglish(page);
@@ -297,14 +298,24 @@ test("en inglés: el Historial, el Bot y Categorías de la administración @prin
     await expect(page).toHaveTitle("Categories · Administration · Finanzas");
     await expect(visible(page.getByRole("navigation", { name: "Category type" }).getByRole("link", { name: /^Expenses · \d+$/ }))).toBeVisible();
     expect(await seriousViolations(page)).toEqual([]);
-    const name = `Juegos ${Date.now() % 100_000}`;
+    const name = `Juegos ${id}`;
     await visible(page.getByRole("button", { name: "New category" })).click();
     const dialog = page.getByRole("dialog", { name: "New expense category" });
-    await dialog.getByLabel("Name").fill(name);
+    await dialog.getByLabel("Name", { exact: true }).fill(name);
+    await dialog.getByRole("textbox", { name: "English name (optional)" }).fill(`Games ${id}`);
     await dialog.getByRole("button", { name: "Use 🎬" }).click();
     await dialog.getByRole("button", { name: "Create" }).click();
     await expect(page.getByRole("region", { name: "Notices" }).getByText(`The category 🎬 ${name} was created.`)).toBeVisible();
-    await expect(visible(page.getByRole("list", { name: "Recent changes" }))).toContainText(`Ana Admin created 🎬 ${name} (expenses)`);
+    const changes = visible(page.getByRole("list", { name: "Recent changes" }));
+    await expect(changes).toContainText(`Ana Admin created 🎬 ${name} (expenses)`);
+    await expect(changes).toContainText(`in English: Games ${id}`);
+  });
+
+  await test.step("con la app en inglés, la categoría se ve con su nombre en inglés", async () => {
+    await page.goto("/egresos");
+    const options = visible(page.locator("form").getByLabel("Category")).locator("option");
+    await expect(options.filter({ hasText: `Games ${id}` })).toHaveCount(1);
+    await expect(options.filter({ hasText: `Juegos ${id}` })).toHaveCount(0);
   });
 });
 

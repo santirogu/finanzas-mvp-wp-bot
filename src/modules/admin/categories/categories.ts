@@ -15,6 +15,7 @@ import {
   isDefaultCategory,
   parseCategoryName,
   parseEmoji,
+  parseEnglishName,
   sortCategories,
   type CategoryChangeEntry,
   type CategoryType,
@@ -30,17 +31,20 @@ export type AdminCategory = {
   id: string;
   type: CategoryType;
   name: string;
+  /** El nombre con la app en inglés (null: se ve `name`). */
+  nameEn: string | null;
   emoji: string;
   archived: boolean;
   /** En cuántos movimientos (no eliminados) se usa, sumando todas las cuentas. */
   movements: number;
-  /** "Otros": la que usa el bot si ninguna encaja; solo se le cambia el emoji. */
+  /** "Otros": la que usa el bot si ninguna encaja; solo se le cambian el emoji y el nombre en inglés. */
   isDefault: boolean;
 };
 
 export type CategoryChange = CategoryChangeEntry & { id: string; createdAt: Date };
 
-export type CategoryResult = { ok: true; message: string } | { ok: false; error: string; field?: "name" | "emoji" | "code" };
+type Field = "name" | "nameEn" | "emoji" | "code";
+export type CategoryResult = { ok: true; message: string } | { ok: false; error: string; field?: Field };
 
 const CHANGES_SHOWN = 20;
 
@@ -49,14 +53,14 @@ const adminUser = alias(user, "admin_user");
 // Los movimientos vigentes de cada categoría (con una unión y no una subconsulta: con una sola tabla,
 // Drizzle escribe las columnas sin su tabla y la subconsulta las confundiría).
 const usage = sql<number>`count(${transaction.id}) filter (where ${transaction.deletedAt} is null)`.mapWith(Number);
-const fail = (error: string, field?: "name" | "emoji" | "code"): CategoryResult => ({ ok: false, error, ...(field && { field }) });
+const fail = (error: string, field?: Field): CategoryResult => ({ ok: false, error, ...(field && { field }) });
 const label = (c: { emoji: string; name: string }) => `${c.emoji} ${c.name}`;
 
 const TEXTS = texts(
   {
     created: (label: string) => `Se creó la categoría ${label}.`,
     gone: "Esta categoría ya no existe.",
-    defaultOnlyEmoji: `A "${DEFAULT_CATEGORY}" solo se le puede cambiar el emoji.`,
+    defaultOnlyEmoji: `A "${DEFAULT_CATEGORY}" solo se le pueden cambiar el emoji y el nombre en inglés.`,
     nothing: "No había nada que cambiar.",
     saved: (label: string) => `Se guardó la categoría ${label}.`,
     cannotArchive: `"${DEFAULT_CATEGORY}" no se puede archivar: es la categoría por defecto.`,
@@ -69,12 +73,13 @@ const TEXTS = texts(
     deleted: (label: string, moved: number) =>
       `Se eliminó la categoría ${label}${moved ? `; ${moved} ${moved === 1 ? "movimiento pasó" : "movimientos pasaron"} a ${DEFAULT_CATEGORY}` : ""}.`,
     taken: (type: CategoryType) => `Ya hay una categoría de ${type === "expense" ? "egresos" : "ingresos"} con ese nombre.`,
+    takenEn: (type: CategoryType) => `Ya hay una categoría de ${type === "expense" ? "egresos" : "ingresos"} con ese nombre en inglés.`,
   },
   {
     en: {
       created: (label) => `The category ${label} was created.`,
       gone: "This category no longer exists.",
-      defaultOnlyEmoji: `Only the emoji of "${DEFAULT_CATEGORY}" can be changed.`,
+      defaultOnlyEmoji: `Only the emoji and the English name of "${DEFAULT_CATEGORY}" can be changed.`,
       nothing: "There was nothing to change.",
       saved: (label) => `The category ${label} was saved.`,
       cannotArchive: `"${DEFAULT_CATEGORY}" can't be archived: it's the default category.`,
@@ -87,6 +92,7 @@ const TEXTS = texts(
       deleted: (label, moved) =>
         `The category ${label} was deleted${moved ? `; ${moved} ${moved === 1 ? "transaction" : "transactions"} moved to ${DEFAULT_CATEGORY}` : ""}.`,
       taken: (type) => `There's already ${type === "expense" ? "an expense" : "an income"} category with that name.`,
+      takenEn: (type) => `There's already ${type === "expense" ? "an expense" : "an income"} category with that English name.`,
     },
   },
 );
@@ -95,7 +101,7 @@ const TEXTS = texts(
 async function loadCategory(id: string) {
   if (!z.uuid().safeParse(id).success) return null;
   const [row] = await db
-    .select({ id: category.id, type: category.type, name: category.name, emoji: category.emoji, archivedAt: category.archivedAt })
+    .select({ id: category.id, type: category.type, name: category.name, nameEn: category.nameEn, emoji: category.emoji, archivedAt: category.archivedAt })
     .from(category)
     .where(and(eq(category.id, id), isNull(category.userId)));
   return row ?? null;
@@ -110,6 +116,15 @@ async function nameTaken(type: CategoryType, name: string, exceptId?: string) {
   return rows.some((row) => row.id !== exceptId && foldName(row.name) === foldName(name));
 }
 
+/** ¿Ya hay otra global de ese tipo con ese nombre en inglés (igual que nameTaken)? */
+async function englishNameTaken(type: CategoryType, nameEn: string, exceptId?: string) {
+  const rows = await db
+    .select({ id: category.id, nameEn: category.nameEn })
+    .from(category)
+    .where(and(eq(category.type, type), isNull(category.userId)));
+  return rows.some((row) => row.id !== exceptId && row.nameEn !== null && foldName(row.nameEn) === foldName(nameEn));
+}
+
 
 /** Todas las categorías globales, de los dos tipos, en orden alfabético con "Otros" al final. */
 export async function listAdminCategories(): Promise<AdminCategory[]> {
@@ -119,6 +134,7 @@ export async function listAdminCategories(): Promise<AdminCategory[]> {
       id: category.id,
       type: category.type,
       name: category.name,
+      nameEn: category.nameEn,
       emoji: category.emoji,
       archivedAt: category.archivedAt,
       movements: usage,
@@ -177,28 +193,40 @@ function logChange(
   return tx.insert(categoryChange).values({ ...change, details: change.details ?? {} });
 }
 
-/** Crea una categoría global: aparece de inmediato en los formularios y el bot puede usarla. */
-export async function createCategory(input: { type: string; name: string; emoji: string }): Promise<CategoryResult> {
+/** Crea una categoría global: aparece de inmediato en los formularios y el bot puede usarla. `nameEn`, opcional. */
+export async function createCategory(input: { type: string; name: string; nameEn?: string; emoji: string }): Promise<CategoryResult> {
   const admin = await requireAdmin();
   const locale = await getRequestLocale();
   const t = TEXTS[locale];
   const type: CategoryType = input.type === "income" ? "income" : "expense";
   const name = parseCategoryName(input.name, locale);
   if (!name.ok) return fail(name.error, "name");
+  const nameEn = parseEnglishName(input.nameEn ?? "", locale);
+  if (!nameEn.ok) return fail(nameEn.error, "nameEn");
   const emoji = parseEmoji(input.emoji, locale);
   if (!emoji.ok) return fail(emoji.error, "emoji");
   if (await nameTaken(type, name.value)) return fail(t.taken(type), "name");
+  if (nameEn.value && (await englishNameTaken(type, nameEn.value))) return fail(t.takenEn(type), "nameEn");
 
   const created = { type, name: name.value, emoji: emoji.value };
   await db.transaction(async (tx) => {
-    const [row] = await tx.insert(category).values(created).returning({ id: category.id });
-    await logChange(tx, { adminId: admin.id, categoryId: row.id, action: "created", ...created });
+    const [row] = await tx.insert(category).values({ ...created, nameEn: nameEn.value }).returning({ id: category.id });
+    await logChange(tx, {
+      adminId: admin.id,
+      categoryId: row.id,
+      action: "created",
+      ...created,
+      details: nameEn.value ? { nameEn: nameEn.value } : {},
+    });
   });
   return { ok: true, message: t.created(label(created)) };
 }
 
-/** Cambia el nombre o el emoji. A "Otros" solo el emoji. Los movimientos que la usan pasan a verse con el nombre nuevo. */
-export async function updateCategory(input: { id: string; name: string; emoji: string }): Promise<CategoryResult> {
+/**
+ * Cambia el nombre, el nombre en inglés o el emoji. A "Otros", solo el emoji y el nombre en inglés. Los
+ * movimientos que la usan pasan a verse con el nombre nuevo.
+ */
+export async function updateCategory(input: { id: string; name: string; nameEn?: string; emoji: string }): Promise<CategoryResult> {
   const admin = await requireAdmin();
   const locale = await getRequestLocale();
   const t = TEXTS[locale];
@@ -206,24 +234,32 @@ export async function updateCategory(input: { id: string; name: string; emoji: s
   if (!current) return fail(t.gone);
   const name = parseCategoryName(input.name, locale);
   if (!name.ok) return fail(name.error, "name");
+  const nameEn = parseEnglishName(input.nameEn ?? "", locale);
+  if (!nameEn.ok) return fail(nameEn.error, "nameEn");
   const emoji = parseEmoji(input.emoji, locale);
   if (!emoji.ok) return fail(emoji.error, "emoji");
   if (isDefaultCategory(current.name) && name.value !== current.name) {
     return fail(t.defaultOnlyEmoji, "name");
   }
-  if (name.value === current.name && emoji.value === current.emoji) return { ok: true, message: t.nothing };
+  const englishChanged = nameEn.value !== current.nameEn;
+  if (name.value === current.name && emoji.value === current.emoji && !englishChanged) return { ok: true, message: t.nothing };
   if (await nameTaken(current.type, name.value, current.id)) return fail(t.taken(current.type), "name");
+  if (nameEn.value && (await englishNameTaken(current.type, nameEn.value, current.id))) return fail(t.takenEn(current.type), "nameEn");
 
   const updated = { name: name.value, emoji: emoji.value };
   await db.transaction(async (tx) => {
-    await tx.update(category).set(updated).where(eq(category.id, current.id));
+    await tx.update(category).set({ ...updated, nameEn: nameEn.value }).where(eq(category.id, current.id));
     await logChange(tx, {
       adminId: admin.id,
       categoryId: current.id,
       action: "updated",
       type: current.type,
       ...updated,
-      details: { previousName: current.name, previousEmoji: current.emoji },
+      details: {
+        previousName: current.name,
+        previousEmoji: current.emoji,
+        ...(englishChanged && { nameEn: nameEn.value, previousNameEn: current.nameEn }),
+      },
     });
   });
   return { ok: true, message: t.saved(label(updated)) };

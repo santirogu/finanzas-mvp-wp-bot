@@ -38,7 +38,7 @@ async function person(browser: Browser) {
 
 async function createCategory(page: Page, name: string, emoji: string) {
   await visible(page.getByRole("button", { name: "Nueva categoría" })).click();
-  await dialog(page).getByLabel("Nombre").fill(name);
+  await dialog(page).getByLabel("Nombre", { exact: true }).fill(name);
   await dialog(page).getByRole("textbox", { name: /^Emoji \(/ }).fill(emoji);
   await dialog(page).getByRole("button", { name: "Crear" }).click();
   await expect(statusMessage(page)).toHaveText(`Se creó la categoría ${emoji} ${name}.`);
@@ -76,7 +76,7 @@ test("el admin crea, renombra, archiva y restaura una categoría, y las personas
     await page.reload();
     await expect(row(page, `Café ${id}`)).toContainText("1 movimiento");
     await row(page, `Café ${id}`).getByRole("button", { name: `Editar Café ${id}` }).click();
-    await dialog(page).getByLabel("Nombre").fill(`Cafetería ${id}`);
+    await dialog(page).getByLabel("Nombre", { exact: true }).fill(`Cafetería ${id}`);
     await dialog(page).getByRole("button", { name: "Guardar" }).click();
     await expect(statusMessage(page)).toHaveText(`Se guardó la categoría ☕ Cafetería ${id}.`);
     await ana.reload();
@@ -168,14 +168,14 @@ test("Otros no se archiva, no se elimina ni se renombra; los nombres no se repit
   await expect(otros).toContainText("Por defecto");
   await expect(otros.getByRole("button", { name: /Más acciones/ })).toHaveCount(0);
   await otros.getByRole("button", { name: "Editar Otros" }).click();
-  await expect(dialog(page).getByLabel("Nombre")).toHaveAttribute("readonly", "");
+  await expect(dialog(page).getByLabel("Nombre", { exact: true })).toHaveAttribute("readonly", "");
   await dialog(page).getByRole("button", { name: "Cancelar" }).click();
 
   await visible(page.getByRole("button", { name: "Nueva categoría" })).click();
-  await dialog(page).getByLabel("Nombre").fill("MÉRCADO");
+  await dialog(page).getByLabel("Nombre", { exact: true }).fill("MÉRCADO");
   await dialog(page).getByRole("button", { name: "Crear" }).click();
   await expect(dialog(page).getByText("Ya hay una categoría de egresos con ese nombre.")).toBeVisible();
-  await expect(dialog(page).getByLabel("Nombre")).toHaveAttribute("aria-invalid", "true");
+  await expect(dialog(page).getByLabel("Nombre", { exact: true })).toHaveAttribute("aria-invalid", "true");
 });
 
 test("las pestañas llevan a ingresos y egresos; Otros va al final en las dos", async ({ page }) => {

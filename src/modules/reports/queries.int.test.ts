@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { db } from "@/db";
-import { fixedExpenseChoice, fixedExpenseNote, fixedPaymentSkip, notificationSetting, transaction } from "@/db/schema";
+import { category, fixedExpenseChoice, fixedExpenseNote, fixedPaymentSkip, notificationSetting, transaction } from "@/db/schema";
 import { listCategories } from "@/modules/transactions/queries";
 import { createUser } from "../../../test/integration/factories";
 import { reportPeriod } from "./period";
@@ -428,5 +428,20 @@ describe("getUpcomingPayments (los avisos del Resumen)", () => {
     await db.update(notificationSetting).set({ upcomingEnabled: false }).where(eq(notificationSetting.userId, ana.id));
     // Apagados, tampoco los atrasados.
     expect(await getUpcomingPayments(ana.id, october, "2026-10-20")).toEqual({ enabled: false, days: 7, payments: [] });
+  });
+});
+
+describe("en inglés: el nombre en inglés de la categoría (el que le puso el admin)", () => {
+  it("el calendario, los más altos y el CSV; en español, el de siempre", async () => {
+    const user = await createUser();
+    const mercado = await globalCategory("Mercado");
+    await db.update(category).set({ nameEn: "Groceries" }).where(eq(category.id, mercado.id));
+    await addTx({ userId: user.id, categoryId: mercado.id, amount: 90000 });
+
+    expect((await getMonthExpenses(user.id, october, "en"))[0].categoryName).toBe("Groceries");
+    expect((await getMonthExpenses(user.id, october))[0].categoryName).toBe("Mercado");
+    expect((await getLargestExpenses(user.id, october, october, "en"))[0].categoryName).toBe("Groceries");
+    expect((await listPeriodMovements(user.id, october, october, "en"))[0].categoryName).toBe("Groceries");
+    expect((await listPeriodMovements(user.id, october, october))[0].categoryName).toBe("Mercado");
   });
 });

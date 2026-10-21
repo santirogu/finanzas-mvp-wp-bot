@@ -137,7 +137,7 @@ async function Reports({ period: param, calendar: calendarParam }: { period: Par
   const [report, byDay, monthExpenses] = await Promise.all([
     getReport(user.id, period, current, locale),
     getExpensesByDay(user.id, period.months[0], period.months[period.months.length - 1]),
-    getMonthExpenses(user.id, calendar),
+    getMonthExpenses(user.id, calendar, locale),
   ]);
   const money = (n: number) => formatMoney(n, user.currency, locale);
 

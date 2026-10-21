@@ -7,6 +7,7 @@ import { texts } from "@/i18n/texts";
 import { formatMoney } from "@/lib/money";
 import { searchKey } from "@/lib/suggestions";
 import type { ToastTone } from "@/lib/toasts";
+import { categoryNameIn } from "@/modules/transactions/category-name";
 import { isCategoryAvailable } from "@/modules/transactions/queries";
 import { transactionSchema } from "@/modules/transactions/validation";
 
@@ -25,13 +26,16 @@ export type LastPayment = {
   category: string | null;
 };
 
-/** El último pago de cada gasto (por su clave, `searchKey` de la descripción), entre los egresos recientes. */
-export async function getLastPayments(userId: string): Promise<Map<string, LastPayment>> {
+/**
+ * El último pago de cada gasto (por su clave, `searchKey` de la descripción), entre los egresos recientes,
+ * con el nombre de su categoría en el idioma de la página.
+ */
+export async function getLastPayments(userId: string, locale: Locale = DEFAULT_LOCALE): Promise<Map<string, LastPayment>> {
   const rows = await db
     .select({
       description: transaction.description,
       categoryId: transaction.categoryId,
-      name: category.name,
+      name: categoryNameIn(locale),
       emoji: category.emoji,
     })
     .from(transaction)
@@ -84,7 +88,7 @@ export async function registerFixedPayment(
   locale: Locale = DEFAULT_LOCALE,
 ): Promise<RegisterPaymentResult> {
   const t = TEXTS[locale];
-  const last = typeof raw.description === "string" ? (await getLastPayments(user.id)).get(searchKey(raw.description)) : undefined;
+  const last = typeof raw.description === "string" ? (await getLastPayments(user.id, locale)).get(searchKey(raw.description)) : undefined;
   if (!last) return { ok: false, error: t.notFound };
   const parsed = transactionSchema(locale).safeParse({
     type: "expense",

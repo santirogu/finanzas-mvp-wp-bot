@@ -1,0 +1,2 @@
+ALTER TABLE "category" ADD COLUMN "name_en" text;--> statement-breakpoint
+CREATE UNIQUE INDEX "category_global_type_name_en_uq" ON "category" USING btree ("type","name_en") WHERE "category"."user_id" is null and "category"."name_en" is not null;

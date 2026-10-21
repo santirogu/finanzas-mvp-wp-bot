@@ -173,7 +173,7 @@ test("en pantallas táctiles las páginas caben y los campos no hacen zoom @tact
     await visible(page.getByRole("button", { name: "Nueva categoría" })).click();
     const dialog = page.getByRole("dialog");
     await expectFitsOnScreens(page, "ventana de nueva categoría");
-    await dialog.getByLabel("Nombre").fill(category);
+    await dialog.getByLabel("Nombre", { exact: true }).fill(category);
     await dialog.getByRole("button", { name: "Crear" }).click();
     await expect(toast(page, category)).toBeVisible();
     await expectFitsOnScreens(page, "/admin/categorias");
