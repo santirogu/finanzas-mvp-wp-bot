@@ -181,6 +181,15 @@ describe("normalizeReply", () => {
     expect(normalizeReply("  ¿Cuánto   fue?\n¿Y en qué?  ")).toBe("¿Cuánto fue? ¿Y en qué?");
   });
 
+  it.each([
+    ['Envíame el movimiento completo, por ejemplo "almuerzo 20 mil".', "Envíame el movimiento completo, por ejemplo “almuerzo 20 mil”."],
+    ['Escribe "balance" o "balance septiembre".', "Escribe “balance” o “balance septiembre”."],
+    ['Una sola comilla: 5" queda igual.', 'Una sola comilla: 5" queda igual.'],
+    ['Pares y una suelta: "uno" y 2"', 'Pares y una suelta: “uno” y 2"'],
+  ])("las comillas rectas, en pareja, pasan a “ ”: %j", (text, expected) => {
+    expect(normalizeReply(text)).toBe(expected);
+  });
+
   it.each([null, undefined, "", "   \n "])("sin texto (%j) devuelve null", (text) => {
     expect(normalizeReply(text)).toBeNull();
   });
