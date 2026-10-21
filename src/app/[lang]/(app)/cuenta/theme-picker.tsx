@@ -1,6 +1,6 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useId, useSyncExternalStore } from "react";
 import { useTexts } from "@/i18n/client";
 import { texts } from "@/i18n/texts";
 import { THEME_EVENT, THEME_KEY, THEME_LABELS, THEMES, readTheme, saveTheme } from "@/lib/theme";
@@ -28,6 +28,10 @@ function subscribe(onChange: () => void) {
 export function ThemePicker() {
   const theme = useSyncExternalStore(subscribe, readTheme, () => "system" as const);
   const t = useTexts(TEXTS);
+  // Un grupo de radios propio: fuera de un formulario, los que tienen el mismo `name` son un solo grupo en
+  // todo el documento. Next deja montada (oculta) la página anterior, y al cambiar de idioma quedan dos Mi
+  // cuenta (/es y /en): con un nombre fijo, el selector oculto desmarcaba el visible.
+  const name = useId();
 
   return (
     <fieldset>
@@ -40,7 +44,7 @@ export function ThemePicker() {
           >
             <input
               type="radio"
-              name="tema"
+              name={name}
               value={option}
               checked={theme === option}
               onChange={() => saveTheme(option)}

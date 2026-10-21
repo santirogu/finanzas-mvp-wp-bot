@@ -43,6 +43,21 @@ describe("ThemePicker", () => {
     expect(screen.getByRole("radio", { name: "Sistema" })).toBeChecked();
   });
 
+  it("dos a la vez (la página de antes queda montada, oculta) no se desmarcan entre sí", async () => {
+    localStorage.setItem(THEME_KEY, "light");
+    render(
+      <>
+        <ThemePicker />
+        <ThemePicker />
+      </>,
+    );
+    const light = screen.getAllByRole("radio", { name: "Claro" });
+    expect(light).toHaveLength(2);
+    for (const radio of light) expect(radio).toBeChecked();
+    await userEvent.click(screen.getAllByRole("radio", { name: "Oscuro" })[1]);
+    for (const radio of screen.getAllByRole("radio", { name: "Oscuro" })) expect(radio).toBeChecked();
+  });
+
   it("al elegir Oscuro lo guarda y lo aplica; Sistema lo quita", async () => {
     render(<ThemePicker />);
     await userEvent.click(screen.getByRole("radio", { name: "Oscuro" }));
