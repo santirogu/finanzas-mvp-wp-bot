@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { getAppUrl, getVercelOrigins } from "./app-url";
+import { getAppUrl, getPublicUrl, getVercelOrigins } from "./app-url";
 
 beforeEach(() => {
   for (const name of [
@@ -27,6 +27,23 @@ describe("getAppUrl", () => {
 
   it("en local usa localhost:3000", () => {
     expect(getAppUrl()).toBe("http://localhost:3000");
+  });
+});
+
+describe("getPublicUrl", () => {
+  it("la que fijó el build desde PRODUCTION_URL, sin la barra final", () => {
+    expect(getPublicUrl("https://finanzas-mvp-wp-bot.vercel.app/")).toBe("https://finanzas-mvp-wp-bot.vercel.app");
+  });
+
+  it("sin ella (en local, en las E2E), la de getAppUrl", () => {
+    expect(getPublicUrl("")).toBe("http://localhost:3000");
+    vi.stubEnv("BETTER_AUTH_URL", "https://finanzas.co");
+    expect(getPublicUrl(undefined)).toBe("https://finanzas.co");
+  });
+
+  it("por defecto lee APP_PUBLIC_URL (lo que fija next.config.ts)", () => {
+    vi.stubEnv("APP_PUBLIC_URL", "https://anotado.co");
+    expect(getPublicUrl()).toBe("https://anotado.co");
   });
 });
 
