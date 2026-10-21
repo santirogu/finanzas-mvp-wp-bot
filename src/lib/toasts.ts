@@ -16,6 +16,8 @@ export const URL_TOASTS = {
   guardado: { tone: "success", message: { es: "Cambios guardados", en: "Changes saved" }, paths: ["/ingresos", "/egresos"] },
   // Después de eliminar una cuenta desde su detalle en el admin.
   "cuenta-eliminada": { tone: "removal", message: { es: "Se eliminó la cuenta", en: "The account was deleted" }, paths: ["/admin/usuarios"] },
+  // Después de elegir el idioma en Mi cuenta (saveLanguageAction): el aviso ya sale en el idioma nuevo.
+  "idioma-guardado": { tone: "success", message: { es: "Idioma guardado", en: "Language saved" }, paths: ["/cuenta"] },
 } as const satisfies Record<string, { tone: ToastTone; message: Record<Locale, string>; paths: readonly string[] }>;
 
 export type UrlToastCode = keyof typeof URL_TOASTS;

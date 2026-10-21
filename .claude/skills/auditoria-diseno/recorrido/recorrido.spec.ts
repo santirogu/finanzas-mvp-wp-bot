@@ -14,6 +14,8 @@ import { personasNecesarias, vistasPedidas, type Vista } from "./vistas";
 // Uso (desde la raíz del repo):
 //   pnpm exec playwright test -c .claude/skills/auditoria-diseno/recorrido/playwright.config.ts
 // Filtros: AUDITORIA_VISTAS=id1,id2 · AUDITORIA_GRUPOS=celular,tableta · --project chromium
+// En inglés: AUDITORIA_IDIOMA=en (cada vista con la cookie `idioma=en`; las cuentas se crean igual, en
+// español). Solo las vistas sin `preparar`: sus pasos tocan textos en español.
 
 export type Resultado = {
   motor: string;
@@ -29,7 +31,8 @@ export type Resultado = {
 };
 
 const SALIDA = path.resolve(process.env.AUDITORIA_SALIDA!);
-const vistas = vistasPedidas();
+const IDIOMA: "es" | "en" = process.env.AUDITORIA_IDIOMA === "en" ? "en" : "es";
+const vistas = vistasPedidas().filter((vista) => IDIOMA === "es" || !vista.preparar);
 const grupos = (process.env.AUDITORIA_GRUPOS ?? "").split(",").map((g) => g.trim()).filter(Boolean);
 
 /** Espera a que la página termine de cargar y de animarse (las capturas y axe ven el estado final). */
@@ -78,6 +81,7 @@ async function recorrerVista(browser: Browser, baseURL: string, motor: string, v
     colorScheme: "light",
     storageState: vista.persona ? datos.sesiones[vista.persona] : undefined,
   });
+  if (IDIOMA === "en") await context.addCookies([{ name: "idioma", value: "en", url: baseURL }]);
   await context.addInitScript(instalarMedidorDeSaltos);
   const page = await context.newPage();
   page.on("console", (mensaje) => {
@@ -96,7 +100,7 @@ async function recorrerVista(browser: Browser, baseURL: string, motor: string, v
     await vista.preparar?.(page, datos);
     await esperarEstable(page);
 
-    resultado.problemas.push(...(await page.evaluate(medirDiseno, { tactil: dispositivo.tactil })), ...(await medirSaltos(page)));
+    resultado.problemas.push(...(await page.evaluate(medirDiseno, { tactil: dispositivo.tactil, idioma: IDIOMA })), ...(await medirSaltos(page)));
     const carpeta = path.join(SALIDA, "capturas", motor, vista.id);
     resultado.capturas.claro = await capturar(page, path.join(carpeta, `${dispositivo.id}-claro.jpg`));
 

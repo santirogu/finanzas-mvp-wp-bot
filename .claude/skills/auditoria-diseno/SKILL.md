@@ -68,7 +68,12 @@ Combina dos cosas:
    ```
 
    Filtros: `AUDITORIA_VISTAS=egresos,resumen` · `AUDITORIA_GRUPOS=celular,tableta` ·
-   `--project chromium` o `--project webkit`. Para revisar lo del super admin (el dorado), agrega
+   `--project chromium` o `--project webkit`.
+
+   **En inglés:** `AUDITORIA_IDIOMA=en` (con su propia `AUDITORIA_SALIDA`). Cada vista se abre con la
+   cookie `idioma=en`; las cuentas de prueba se crean igual. Recorre solo las vistas sin `preparar` (sus
+   pasos tocan textos en español): las ventanas en inglés las cubren las pruebas de componentes y
+   `e2e/idioma-ingles.spec.ts`. Córrelo en los PRs que cambian textos en inglés o el diseño de toda la app. Para revisar lo del super admin (el dorado), agrega
    `--workers=1`: cada grupo crea su propio admin y la marca de super admin es una sola, así que en
    paralelo se la quitan entre ellos y algunas capturas salen en violeta.
 4. Deja en la carpeta de salida:

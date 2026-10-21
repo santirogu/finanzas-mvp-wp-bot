@@ -12,8 +12,8 @@ const ORIGIN = "https://finanzas.test";
 const SESSION_COOKIES = ["better-auth.session_token", "__Secure-better-auth.session_token"];
 
 /** Adónde lo manda (la dirección de la redirección) o, si sigue, qué página arma ("sigue a …"). */
-function visit(path: string, cookie?: string, extra = "") {
-  const headers = new Headers();
+function visit(path: string, cookie?: string, extra = "", acceptLanguage?: string) {
+  const headers = new Headers(acceptLanguage ? { "accept-language": acceptLanguage } : {});
   const cookies = [cookie && `${cookie}=token-de-prueba`, extra].filter(Boolean).join("; ");
   if (cookies) headers.set("cookie", cookies);
   const response = proxy(new NextRequest(`${ORIGIN}${path}`, { headers }));
@@ -71,6 +71,17 @@ describe("proxy · idioma", () => {
   it("sin la cookie, o con un idioma que la app no tiene, en español", () => {
     expect(visit("/dashboard", cookie)).toBe(inSpanish("/dashboard"));
     for (const value of ["fr", "", "ES", "EN", "es-CO", "en-US"]) expect(visit("/dashboard", cookie, `idioma=${value}`), value).toBe(inSpanish("/dashboard"));
+  });
+
+  it("sin la cookie, en el idioma del navegador (sin guardar nada); la cookie manda sobre el navegador", () => {
+    expect(visit("/", undefined, "", "en-US,en;q=0.9")).toBe(`sigue a ${ORIGIN}/en`);
+    expect(visit("/login", undefined, "", "en-US,en;q=0.9")).toBe(`sigue a ${ORIGIN}/en/login`);
+    expect(visit("/dashboard", cookie, "", "fr-FR,fr;q=0.9,en;q=0.8")).toBe(`sigue a ${ORIGIN}/en/dashboard`);
+    expect(visit("/dashboard", cookie, "", "pt-BR")).toBe(inSpanish("/dashboard"));
+    expect(visit("/dashboard", cookie, "idioma=es", "en-US")).toBe(inSpanish("/dashboard"));
+    expect(visit("/privacidad", undefined, "", "en")).toBe(`sigue a ${ORIGIN}/en/privacidad`);
+    const response = proxy(new NextRequest(`${ORIGIN}/login`, { headers: { "accept-language": "en" } }));
+    expect(response.headers.get("set-cookie")).toBeNull();
   });
 
   it("una dirección que ya trae el idioma no es una página: se arma como otra cualquiera (y da 404)", () => {

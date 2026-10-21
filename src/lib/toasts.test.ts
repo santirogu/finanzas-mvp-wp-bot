@@ -7,7 +7,8 @@ describe("urlToast", () => {
     expect(urlToast("guardado", "/egresos")).toEqual({ tone: "success", message: "Cambios guardados" });
     expect(urlToast("guardado", "/ingresos")).toEqual({ tone: "success", message: "Cambios guardados" });
     expect(urlToast("cuenta-eliminada", "/admin/usuarios")).toEqual({ tone: "removal", message: "Se eliminó la cuenta" });
-    expect(Object.keys(URL_TOASTS)).toEqual(["guardado", "cuenta-eliminada"]);
+    expect(urlToast("idioma-guardado", "/cuenta")).toEqual({ tone: "success", message: "Idioma guardado" });
+    expect(Object.keys(URL_TOASTS)).toEqual(["guardado", "cuenta-eliminada", "idioma-guardado"]);
   });
 
   it.each([
@@ -16,6 +17,8 @@ describe("urlToast", () => {
     ["cuenta-eliminada", "/admin/usuarios/123"],
     ["guardado", "/dashboard"],
     ["guardado", "/admin/usuarios"],
+    ["idioma-guardado", "/dashboard"],
+    ["idioma-guardado", "/cuenta/otra"],
   ])("en otra página no muestra nada (un enlace no puede inventar un aviso): %s en %s", (code, pathname) => {
     expect(urlToast(code, pathname)).toBeNull();
   });
@@ -41,6 +44,7 @@ describe("urlToast · en inglés", () => {
   it("el mismo aviso, con su texto en inglés", () => {
     expect(urlToast("guardado", "/egresos", "en")).toEqual({ tone: "success", message: "Changes saved" });
     expect(urlToast("cuenta-eliminada", "/admin/usuarios", "en")).toEqual({ tone: "removal", message: "The account was deleted" });
+    expect(urlToast("idioma-guardado", "/cuenta", "en")).toEqual({ tone: "success", message: "Language saved" });
     expect(urlToast("guardado", "/egresos")).toEqual({ tone: "success", message: "Cambios guardados" });
   });
 });

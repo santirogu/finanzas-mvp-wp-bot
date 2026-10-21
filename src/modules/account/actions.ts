@@ -1,19 +1,23 @@
 "use server";
 
 import { isAPIError } from "better-auth/api";
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { localeCookieOptions } from "@/i18n/cookie";
+import { LOCALE_COOKIE, isLocale } from "@/i18n/locales";
 import { getRequestLocale } from "@/i18n/request";
 import { texts } from "@/i18n/texts";
 import { auth } from "@/lib/auth";
 import { AUTH_ERROR_TEXTS } from "@/lib/auth-errors";
 import { hasRole } from "@/lib/roles";
 import { requireUser } from "@/lib/session";
+import { TOAST_PARAM } from "@/lib/toasts";
 import { confirmAdminCode } from "@/modules/admin/shared/confirm-code";
 import { normalizeEmail, releaseAttempt, reserveAttempt } from "@/modules/auth/lockout";
 import { CONFIRMATION_WORDS } from "./confirmation";
 import { deleteAccountData } from "./delete-account";
 import { recordEvent } from "./events";
+import { saveAccountLocale } from "./language";
 import { checkPasswordChange, PASSWORD_TEXTS, type PasswordChangeField } from "./password-change";
 
 // Los mensajes de eliminar la cuenta, en el idioma de quien usa la página (la cookie: src/i18n/request.ts).
@@ -130,4 +134,18 @@ export async function changePasswordAction(_prev: ChangePasswordState, formData:
   await auth.api.revokeOtherSessions({ headers: requestHeaders });
   await recordEvent({ type: "password_changed", userId: user.id });
   return { ok: true };
+}
+
+/**
+ * Mi cuenta → Idioma: lo guarda en la cuenta (para los demás navegadores donde inicie sesión) y en este
+ * navegador, y vuelve a Mi cuenta, ya en ese idioma, con el aviso. Un valor que no es un idioma de la app
+ * no cambia nada.
+ */
+export async function saveLanguageAction(formData: FormData): Promise<void> {
+  const user = await requireUser();
+  const locale = formData.get("locale");
+  if (!isLocale(locale)) return;
+  await saveAccountLocale(user.id, locale);
+  (await cookies()).set(LOCALE_COOKIE, locale, localeCookieOptions());
+  redirect(`/cuenta?${TOAST_PARAM}=idioma-guardado`);
 }

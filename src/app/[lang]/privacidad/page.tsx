@@ -82,6 +82,12 @@ export default function PrivacyPage() {
               No llega a nuestros servidores.
             </li>
             <li>
+              <strong>Tu idioma:</strong> si eliges el idioma en Mi cuenta, se guarda en tu cuenta
+              (hasta que la elimines), para mostrarte la app en ese idioma en cualquier dispositivo donde
+              inicies sesión, y en una cookie de tu navegador (<code>idioma</code>) que dura un año. Si no
+              lo eliges, usamos el idioma que pide tu navegador, sin guardarlo.
+            </li>
+            <li>
               <strong>Estadísticas de uso anónimas:</strong> con Vercel Web Analytics contamos qué
               páginas se visitan, desde qué país y ciudad, con qué tipo de dispositivo, sistema
               operativo y navegador, y desde qué sitio llegaste. No usa cookies, no guarda tu

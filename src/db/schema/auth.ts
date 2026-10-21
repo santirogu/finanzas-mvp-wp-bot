@@ -2,7 +2,7 @@
 // de verificación en dos pasos (twoFactor).
 // Si cambias la configuración de Better Auth, revisa que estos campos sigan coincidiendo.
 import { sql } from "drizzle-orm";
-import { bigint, boolean, index, integer, pgEnum, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { bigint, boolean, check, index, integer, pgEnum, pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 import { ROLES } from "../../lib/roles";
 
 // Rol de cada cuenta (src/lib/roles.ts). La base solo acepta estos valores.
@@ -31,14 +31,21 @@ export const user = pgTable(
     // reactive (src/modules/account/suspension.ts). El motivo es interno: solo lo ve el admin.
     suspendedAt: timestamp("suspended_at", { withTimezone: true }),
     suspensionReason: text("suspension_reason"),
+    // El idioma que eligió en Mi cuenta ("es" o "en"); null si no eligió: ve la app en el idioma de su
+    // navegador. Al iniciar sesión en otro navegador, se le pone ahí también (src/lib/auth.ts).
+    locale: text("locale"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
       .defaultNow()
       .$onUpdate(() => new Date()),
   },
-  // A lo sumo un super admin: la base rechaza marcar un segundo.
-  (t) => [uniqueIndex("user_one_super_admin_idx").on(t.superAdmin).where(sql`${t.superAdmin}`)],
+  (t) => [
+    // A lo sumo un super admin: la base rechaza marcar un segundo.
+    uniqueIndex("user_one_super_admin_idx").on(t.superAdmin).where(sql`${t.superAdmin}`),
+    // Solo los idiomas de la app (src/i18n/locales.ts).
+    check("user_locale_check", sql`${t.locale} in ('es', 'en')`),
+  ],
 );
 
 export const session = pgTable(

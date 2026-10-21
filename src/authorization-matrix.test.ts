@@ -64,6 +64,7 @@ const SERVER_ACTIONS = {
   simulateMessageAction: "solo en desarrollo + requireUser",
   signOutAction: "sin sesión no hay nada que cerrar",
   deleteAccountAction: "requireUser + contraseña + palabra de confirmación; solo la cuenta propia",
+  saveLanguageAction: "requireUser; solo el idioma de la cuenta propia (y la cookie de este navegador)",
   changePasswordAction:
     "requireUser + contraseña actual (con el bloqueo por intentos) + código de Google Authenticator si es admin; solo la cuenta propia; cierra las otras sesiones",
   finishTwoFactorSetupAction: "requireAdmin (con la verificación ya activa); cierra las demás sesiones propias",

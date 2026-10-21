@@ -4,11 +4,11 @@ import { expect, type Page } from "@playwright/test";
 import { monthOf, monthParam, shiftMonth, todayInTimezone } from "../src/lib/dates";
 import { totp } from "../test/totp";
 import { newAdmin, setUpTwoFactor, wrongCode } from "./admin";
-import { PASSWORD, addTransaction, newPerson, register, test, toast, uniqueEmail, visible } from "./helpers";
+import { PASSWORD, addTransaction, logIn, newPerson, register, test, toast, uniqueEmail, visible } from "./helpers";
 
-// El inglés, con la cookie `idioma=en` (todavía no se elige desde la app): lo que ya está traducido —las
-// páginas públicas, la navegación, el menú de la cuenta, el selector de meses y la 404—, con la misma
-// dirección de siempre y el <html lang="en">.
+// El inglés: casi todas las pruebas lo ponen directo con la cookie `idioma=en`; al final, cómo se elige
+// (Mi cuenta, que viaja con la cuenta a otro navegador) y la primera visita en el idioma del navegador.
+// Siempre con la misma dirección de siempre y el <html lang="en">.
 
 const inEnglish = (page: Page) => page.context().addCookies([{ name: "idioma", value: "en", domain: "localhost", path: "/" }]);
 
@@ -306,4 +306,56 @@ test("en inglés: el Historial, el Bot y Categorías de la administración @prin
     await expect(page.getByRole("region", { name: "Notices" }).getByText(`The category 🎬 ${name} was created.`)).toBeVisible();
     await expect(visible(page.getByRole("list", { name: "Recent changes" }))).toContainText(`Ana Admin created 🎬 ${name} (expenses)`);
   });
+});
+
+test("elegir el idioma en Mi cuenta: la app cambia, y la cuenta lo lleva a otro navegador @principal", async ({ page, browser }) => {
+  const email = uniqueEmail();
+  await register(page, "Ana Pérez", email);
+
+  await test.step("en Mi cuenta, English: Mi cuenta vuelve en inglés, con el aviso", async () => {
+    await page.goto("/cuenta");
+    await expect(page.locator("html")).toHaveAttribute("lang", "es");
+    const language = visible(page.getByRole("group", { name: "Idioma" }));
+    await expect(language.getByRole("radio", { name: "Español" })).toBeChecked();
+    expect(await seriousViolations(page)).toEqual([]);
+    await language.locator("label", { hasText: "English" }).click();
+    await expect(page.locator("html")).toHaveAttribute("lang", "en");
+    await expect(page).toHaveURL(/\/cuenta$/);
+    await expect(visible(page.getByRole("heading", { level: 1, name: "My account" }))).toBeVisible();
+    await expect(page.getByRole("region", { name: "Notices" }).getByText("Language saved")).toBeVisible();
+    await expect(visible(page.getByRole("group", { name: "Language" })).getByRole("radio", { name: "English" })).toBeChecked();
+    await page.goto("/dashboard");
+    await expect(visible(page.getByRole("navigation").getByRole("link", { name: "Overview" }))).toBeVisible();
+  });
+
+  await test.step("en otro navegador (en español), al entrar con la cuenta queda en inglés", async () => {
+    const other = await newPerson(browser);
+    await other.goto("/login");
+    await expect(other.locator("html")).toHaveAttribute("lang", "es");
+    await logIn(other, email);
+    await expect(other).toHaveURL(/\/dashboard$/);
+    await expect(other.locator("html")).toHaveAttribute("lang", "en");
+
+    // De vuelta a español desde ese navegador.
+    await other.goto("/cuenta");
+    await visible(other.getByRole("group", { name: "Language" })).locator("label", { hasText: "Español" }).click();
+    await expect(other.locator("html")).toHaveAttribute("lang", "es");
+    await expect(other.getByRole("region", { name: "Avisos" }).getByText("Idioma guardado")).toBeVisible();
+    await other.context().close();
+  });
+});
+
+test("la primera visita, sin elegir, en el idioma del navegador @principal", async ({ browser }) => {
+  for (const [locale, lang, heading] of [
+    ["en-US", "en", "Sign in"],
+    ["fr-FR", "es", "Inicia sesión"],
+  ] as const) {
+    const context = await browser.newContext({ locale });
+    const page = await context.newPage();
+    await page.goto("/login");
+    await expect(page.locator("html")).toHaveAttribute("lang", lang);
+    await expect(visible(page.getByRole("heading", { level: 1, name: heading }))).toBeVisible();
+    expect((await context.cookies()).map((c) => c.name)).not.toContain("idioma");
+    await context.close();
+  }
 });
