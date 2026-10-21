@@ -44,7 +44,7 @@ test("vincular el número desde Mi cuenta y llevar las cuentas por WhatsApp", as
   await test.step("un gasto escrito como a una persona queda registrado en la web", async () => {
     await sendWhatsApp(request, phone, "me compré unos zapatos de $500.000");
     const reply = await nthReply(request, phone, 2);
-    expect(reply).toMatch(/✅ Egreso registrado: \*Zapatos\* — \$500\.000,00 \(Ropa\)/);
+    expect(reply).toMatch(/✅ Egreso Anotado: \*Zapatos\* — \$500\.000,00 \(Ropa\)/);
     expect(reply).toMatch(/Balance de [a-z]+: \*−\$500\.000,00\*/);
 
     await openTab(page, "Egresos");
@@ -69,7 +69,7 @@ test("vincular el número desde Mi cuenta y llevar las cuentas por WhatsApp", as
 
   await test.step("un monto con centavos se guarda con sus centavos", async () => {
     await sendWhatsApp(request, phone, "almuerzo 25.900,50");
-    expect(await nthReply(request, phone, 5)).toMatch(/✅ Egreso registrado: \*Almuerzo\* — \$25\.900,50 \(Alimentación\)/);
+    expect(await nthReply(request, phone, 5)).toMatch(/✅ Egreso Anotado: \*Almuerzo\* — \$25\.900,50 \(Alimentación\)/);
     await page.reload();
     await expect(visible(page.getByRole("listitem").filter({ hasText: "Almuerzo" }))).toContainText(/−\$25\.900,50/);
   });
@@ -181,7 +181,7 @@ test("el bot guarda la descripción que ya está en el historial, con su categor
   await nthReply(request, phone, 1);
 
   await sendWhatsApp(request, phone, "pago claro amor 98 mil");
-  expect(await nthReply(request, phone, 2)).toMatch(/✅ Egreso registrado: \*Claro Postpago Cata Amor\* — \$98\.000,00 \(Servicios\)/);
+  expect(await nthReply(request, phone, 2)).toMatch(/✅ Egreso Anotado: \*Claro Postpago Cata Amor\* — \$98\.000,00 \(Servicios\)/);
   await openTab(page, "Egresos");
   const rows = visible(page.getByRole("listitem").filter({ hasText: "Claro Postpago Cata Amor" }));
   await expect(rows).toHaveCount(2);

@@ -13,9 +13,9 @@ test("la portada: qué es Anotado, un ejemplo con el bot y para qué sirve @prin
   const example = visible(page.getByRole("figure", { name: /Una conversación de ejemplo con el bot/ }));
   await expect(example.getByRole("listitem")).toHaveText([
     "gasté 25 mil en almuerzo",
-    /✅ Anotado: Almuerzo — \$25\.000,00 \(Alimentación\)/,
+    /✅ Egreso Anotado: Almuerzo — \$25\.000,00 \(Alimentación\)/,
     "y 12 mil de taxi",
-    /✅ Anotado: Taxi — \$12\.000,00 \(Transporte\)\s*Balance del mes: \$1\.284\.500,00/,
+    /✅ Egreso Anotado: Taxi — \$12\.000,00 \(Transporte\)\s*Balance del mes: \$1\.284\.500,00/,
   ]);
   await expect(page.getByRole("region", { name: "Qué hace Anotado" }).getByRole("heading", { level: 3 })).toHaveText([
     "Por WhatsApp",

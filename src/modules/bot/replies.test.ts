@@ -49,7 +49,7 @@ describe("registeredReply", () => {
     );
     expect(nbsp(text)).toBe(
       [
-        "✅ Egreso registrado: *Zapatos* — $500.000,00 (Ropa)",
+        "✅ Egreso Anotado: *Zapatos* — $500.000,00 (Ropa)",
         "",
         "Balance de octubre: *$2.700.000,00*",
         "_Escribe *deshacer* si me equivoqué._",
@@ -62,7 +62,7 @@ describe("registeredReply", () => {
       [{ type: "expense", amount: 25900.5, description: "Almuerzo", category: "Alimentación", occurredOn: "2026-10-13" }],
       { today: "2026-10-13", currency: "COP", balance: -25900.5, range },
     );
-    expect(text).toContain("✅ Egreso registrado: *Almuerzo* — $25.900,50 (Alimentación)");
+    expect(text).toContain("✅ Egreso Anotado: *Almuerzo* — $25.900,50 (Alimentación)");
     expect(text).toContain("Balance de octubre: *−$25.900,50*");
   });
 
@@ -88,8 +88,8 @@ describe("registeredReply", () => {
         { today: "2026-10-13", currency: "COP", balance: 70000, range },
       ),
     );
-    expect(text).toContain("Egreso registrado: *Gasolina* — $30.000,00 (Transporte · 12 de oct)");
-    expect(text).toContain("Ingreso registrado: *Venta* — $100.000,00\n");
+    expect(text).toContain("Egreso Anotado: *Gasolina* — $30.000,00 (Transporte · 12 de oct)");
+    expect(text).toContain("Ingreso Anotado: *Venta* — $100.000,00\n");
   });
 });
 
