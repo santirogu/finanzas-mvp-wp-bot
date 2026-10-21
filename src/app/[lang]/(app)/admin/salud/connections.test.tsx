@@ -56,7 +56,8 @@ describe("Connections", () => {
     render(<Connections />);
     await userEvent.click(section().getByRole("button", { name: "Probar conexiones" }));
 
-    expect(section().getByText("El token de WhatsApp no sirve")).toHaveClass("text-danger");
+    // Con find: la respuesta de la acción puede llegar después del clic (con la máquina cargada, fallaba a veces).
+    expect(await section().findByText("El token de WhatsApp no sirve")).toHaveClass("text-danger");
     expect(section().getByText("HTTP 401 · (#190) Session has expired.")).toBeInTheDocument();
     expect(section().getByText("Anthropic marcó el modelo como obsoleto.")).toHaveClass("text-danger");
     expect(section().getByRole("status")).toHaveTextContent("Todavía no ha llegado ningún mensaje al webhook.");

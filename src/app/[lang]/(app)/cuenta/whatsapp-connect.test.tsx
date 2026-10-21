@@ -88,7 +88,7 @@ describe("WhatsAppConnect", () => {
   });
 
   it("si ya pidió muchos códigos, muestra el aviso y deja el botón para intentar más tarde", async () => {
-    const error = "Ya generaste varios códigos en la última hora. Usa el último que generaste o espera un rato para pedir otro.";
+    const error = "Ya pediste varios códigos en la última hora. Espera un rato para pedir otro.";
     mocks.generate.mockResolvedValue({ ok: false, error });
     await generateCode({ botNumber: null });
 

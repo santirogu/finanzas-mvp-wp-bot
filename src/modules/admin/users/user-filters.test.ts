@@ -169,7 +169,7 @@ describe("filtros activos", () => {
       { key: "whatsapp", label: "WhatsApp: sin vincular" },
       { key: "locked", label: "Inicio de sesión bloqueado" },
       { key: "suspended", label: "Suspendidas" },
-      { key: "date", label: "Registro: 1 de oct – 15 de oct" },
+      { key: "date", label: "Registro: 1 de oct. – 15 de oct." },
       { key: "search", label: "“ana”" },
     ]);
     expect(activeUserFilters(f({ role: "user", whatsapp: true, date: "hoy" })).map((i) => i.label)).toEqual([

@@ -308,7 +308,7 @@ describe("getReport", () => {
     const report = await getReport(user.id, reportPeriod("2026", m(2)), m(2));
     expect(report.categories.compared).toEqual(m(1));
     expect(report.categories.averaged).toEqual([m(12, 2025)]);
-    expect(report.categories.rows[0]).toMatchObject({ total: 160, change: { text: "En enero, 50% más que su promedio" } });
+    expect(report.categories.rows[0]).toMatchObject({ total: 160, change: { text: "En enero, 50\u00a0% más que su promedio" } });
   });
 });
 

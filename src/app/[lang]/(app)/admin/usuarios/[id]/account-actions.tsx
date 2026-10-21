@@ -9,7 +9,7 @@ import { texts } from "@/i18n/texts";
 import { FIELD_TEXTS, type FieldMessages } from "@/lib/field-errors";
 import { type ToastTone, useToast } from "@/components/toaster";
 import { Buttons, CODE_FIELD_TEXTS, CodeField, Dialog, FormError } from "../../admin-dialog";
-import { NOTE_MAX_LENGTH } from "@/modules/admin/shared/filters";
+import { NOTE_MAX_LENGTH, withHourArticle } from "@/modules/admin/shared/filters";
 import {
   deleteAccountByAdminAction,
   grantAdminAction,
@@ -41,7 +41,7 @@ export type ActionTarget = {
   openSessions: number;
   /** Su número de WhatsApp, ya con formato, o null si no tiene. */
   phone: string | null;
-  /** Desde cuándo está suspendida ("15 de oct de 2026, 3:00 p. m.", "Oct 15, 2026, 3:00 PM"), o null si no lo está. */
+  /** Desde cuándo está suspendida ("15 de oct. de 2026, 3:00 p. m.", "Oct 15, 2026, 3:00 PM"), o null si no lo está. */
   suspendedSince: string | null;
   /** El motivo que escribió el admin al suspenderla (interno). */
   suspensionReason: string | null;
@@ -63,7 +63,7 @@ const TEXTS = texts(
     reactivating: "Reactivando…",
     reactivateBody: "Podrá volver a entrar y a usar el bot de WhatsApp.",
     unlockTitle: "Desbloquear el inicio de sesión",
-    lockedUntil: (hour: string) => `Bloqueado por contraseñas equivocadas hasta las ${hour}`,
+    lockedUntil: (hour: string) => `Bloqueado por contraseñas equivocadas hasta ${withHourArticle(hour)}`,
     unlock: "Desbloquear",
     unlockQuestion: (name: string) => `¿Desbloquear el inicio de sesión de ${name}?`,
     unlocking: "Desbloqueando…",
@@ -97,7 +97,7 @@ const TEXTS = texts(
     deleteQuestion: (name: string) => `¿Eliminar la cuenta de ${name}?`,
     deleting: "Eliminando…",
     deleteBody:
-      "Se borran su cuenta, sus movimientos, sus categorías, su WhatsApp y su historial. No se puede deshacer. En el historial queda solo “se eliminó una cuenta”.",
+      "Se borran su cuenta, sus movimientos, sus categorías, su WhatsApp y su historial. No se puede deshacer. En el historial solo queda que eliminaste una cuenta, sin su nombre ni su correo.",
     typeEmail: "Escribe su correo:",
     emailRequired: "Escribe el correo de la cuenta.",
     grantTitle: "Darle el rol de admin",
@@ -143,14 +143,14 @@ const TEXTS = texts(
       unlink: "Unlink",
       unlinkQuestion: (name) => `Unlink ${name}'s WhatsApp?`,
       unlinking: "Unlinking…",
-      unlinkBody: (phone) => <>The bot will stop recording what they write from {phone}. They can link it again from My account.</>,
+      unlinkBody: (phone) => <>The bot will stop adding what they write from {phone}. They can link it again from My account.</>,
       suspendTitle: "Suspend the account",
       suspendDescription: "They won't be able to sign in or use the bot until you reactivate it. Their data is kept.",
       suspend: "Suspend",
       suspendQuestion: (name) => `Suspend ${name}'s account?`,
       suspending: "Suspending…",
       suspendBody:
-        "They won't be able to sign in on the web or record transactions by WhatsApp until you reactivate it. Their sessions are signed out and their data is kept. When they try to sign in, they'll see their account is suspended, without the reason.",
+        "They won't be able to sign in on the web or add transactions on WhatsApp until you reactivate it. Their sessions are signed out and their data is kept. When they try to sign in, they'll see their account is suspended, without the reason.",
       reason: "Reason",
       reasonHint: "(optional, only you see it)",
       deleteTitle: "Delete the account",
@@ -159,7 +159,7 @@ const TEXTS = texts(
       deleteQuestion: (name) => `Delete ${name}'s account?`,
       deleting: "Deleting…",
       deleteBody:
-        "Their account, transactions, categories, WhatsApp and history are deleted. This can't be undone. The history only keeps “an account was deleted”.",
+        "Their account, transactions, categories, WhatsApp and history are deleted. This can't be undone. The history only keeps that you deleted an account, without its name or email.",
       typeEmail: "Type their email:",
       emailRequired: "Type the account's email.",
       grantTitle: "Make them an admin",

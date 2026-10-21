@@ -119,22 +119,22 @@ describe("compareMonths", () => {
 
 describe("formatShortDate", () => {
   it("da el día y el mes corto, sin el punto de la abreviatura", () => {
-    expect(formatShortDate("2026-10-13")).toBe("13 de oct");
-    expect(formatShortDate("2026-09-05")).toBe("5 de sept");
+    expect(formatShortDate("2026-10-13")).toBe("13 de oct.");
+    expect(formatShortDate("2026-09-05")).toBe("5 de sept.");
   });
 
   it("los doce meses, sin depender de cómo abrevie cada motor (Safari diría \"sep.\")", () => {
     const months = Array.from({ length: 12 }, (_, i) => formatShortDate(`2026-${String(i + 1).padStart(2, "0")}-01`));
     expect(months).toEqual([
-      "1 de ene", "1 de feb", "1 de mar", "1 de abr", "1 de may", "1 de jun",
-      "1 de jul", "1 de ago", "1 de sept", "1 de oct", "1 de nov", "1 de dic",
+      "1 de ene.", "1 de feb.", "1 de mar.", "1 de abr.", "1 de may.", "1 de jun.",
+      "1 de jul.", "1 de ago.", "1 de sept.", "1 de oct.", "1 de nov.", "1 de dic.",
     ]);
-    expect(formatShortDate("2026-12-31")).toBe("31 de dic");
+    expect(formatShortDate("2026-12-31")).toBe("31 de dic.");
   });
 
   it("con el año, si se pide", () => {
-    expect(formatShortDate("2025-12-28", { withYear: true })).toBe("28 de dic de 2025");
-    expect(formatShortDate("2025-12-28", { withYear: false })).toBe("28 de dic");
+    expect(formatShortDate("2025-12-28", { withYear: true })).toBe("28 de dic. de 2025");
+    expect(formatShortDate("2025-12-28", { withYear: false })).toBe("28 de dic.");
   });
 });
 
@@ -172,7 +172,7 @@ describe("fechas en inglés", () => {
   it("la fecha corta: el mes primero, y la coma antes del año", () => {
     expect(formatShortDate("2026-10-13", { locale: "en" })).toBe("Oct 13");
     expect(formatShortDate("2026-09-01", { withYear: true, locale: "en" })).toBe("Sep 1, 2026");
-    expect(formatShortDate("2026-10-13")).toBe("13 de oct");
+    expect(formatShortDate("2026-10-13")).toBe("13 de oct.");
   });
 
   it("el mes corto de las barras", () => {

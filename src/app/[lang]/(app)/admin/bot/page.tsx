@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
+import { BotCommandsText } from "@/components/bot-commands-text";
 import type { Locale } from "@/i18n/locales";
 import { getLocale } from "@/i18n/server";
 import { texts } from "@/i18n/texts";
 import { todayInTimezone } from "@/lib/dates";
-import { formatShare } from "@/lib/money";
+import { formatPercent, formatShare } from "@/lib/money";
 import { requireAdmin } from "@/lib/session";
 import { botAccounts, botActivity, type AccountRow } from "@/modules/admin/bot/bot-activity";
 import { botSettingsForAdmin } from "@/modules/admin/bot/bot-settings";
@@ -54,7 +55,7 @@ const TEXTS = texts(
     recorded: "Registraron movimientos",
     errors: "Errores",
     calls: "Llamadas a Claude",
-    response: (median: string, p95: string) => `Responde en ${median} (la mitad de las veces); el 95 % en menos de ${p95}.`,
+    response: (median: string, p95: string) => `La mitad de las veces responde en menos de ${median}; el ${formatPercent(95, "es")}, en menos de ${p95}.`,
     someAdmin: "Un admin",
     outcomesTitle: "Qué pasó con los mensajes",
     outcomesHint: "Toca uno para ver solo esos mensajes (otra vez, para quitarlo).",
@@ -108,10 +109,10 @@ const TEXTS = texts(
       title: "WhatsApp bot",
       intro: "Every account · Colombia time. Without the text of the messages: only what happened with each one.",
       messages: "Messages",
-      recorded: "Recorded transactions",
+      recorded: "Added transactions",
       errors: "Errors",
       calls: "Claude calls",
-      response: (median, p95) => `It answers in ${median} (half of the time); 95% in under ${p95}.`,
+      response: (median, p95) => `Half of the time it answers in under ${median}; 95%, in under ${p95}.`,
       someAdmin: "An admin",
       outcomesTitle: "What happened with the messages",
       outcomesHint: "Tap one to see only those messages (again, to remove it).",
@@ -143,13 +144,13 @@ const TEXTS = texts(
       byAccountIntro: "Only counts, with the filters above; the cost, estimated in US dollars. Each name leads to its detail in Users.",
       noAccounts: "No accounts with these filters.",
       sortBy: "Sort by",
-      columns: { account: "Account", messages: "Messages", registered: "Recorded", tokens: "Tokens", cost: "Cost", errors: "Errors", last: "Last" },
+      columns: { account: "Account", messages: "Messages", registered: "Added", tokens: "Tokens", cost: "Cost", errors: "Errors", last: "Last" },
       accounts: "Accounts",
       noAccount: "Numbers without an account",
       phones: (n, count) => (n === 1 ? "1 number" : `${count} numbers`),
       figures: {
         messages: (n) => (n === 1 ? "message" : "messages"),
-        registered: "recorded transactions",
+        registered: "added transactions",
         tokens: "tokens",
         cost: "estimated cost",
         errors: (n) => (n === 1 ? "error" : "errors"),
@@ -268,11 +269,11 @@ async function Bot({ params }: { params: Record<string, string | string[] | unde
                   >
                     <span className="flex justify-between gap-2 text-sm">
                       <span className={problem ? "font-medium text-danger" : selected ? "font-medium" : ""}>
-                        {OUTCOME_TEXTS[locale][o]}
+                        <BotCommandsText text={OUTCOME_TEXTS[locale][o]} locale={locale} />
                         {selected && <span className="font-normal text-muted">{t.filtering}</span>}
                       </span>
                       <span className="shrink-0 tabular-nums text-muted">
-                        {count(activity.outcomes[o])} · {formatShare(activity.outcomes[o], allMessages)}%
+                        {count(activity.outcomes[o])} · {formatPercent(formatShare(activity.outcomes[o], allMessages), locale)}
                       </span>
                     </span>
                     <span className="mt-1.5 block h-2 overflow-hidden rounded-full bg-background">
@@ -296,7 +297,9 @@ async function Bot({ params }: { params: Record<string, string | string[] | unde
           <h2 id="claude" className="font-semibold">
             {t.claudeTitle}
           </h2>
-          <p className="text-sm text-muted">{t.claudeIntro(formatPriceDate(PRICES_CHECKED_ON, locale))}</p>
+          <p className="text-sm text-muted">
+            <BotCommandsText text={t.claudeIntro(formatPriceDate(PRICES_CHECKED_ON, locale))} locale={locale} />
+          </p>
         </div>
         {/* Las llamadas ya están arriba. Dos columnas desde 352 px: un total de cientos de millones de
             tokens no cabe en una más angosta (e2e/diseno-tactil.spec.ts); tres desde sm. */}
@@ -534,7 +537,7 @@ function Accounts({
   );
 }
 
-/** El día en que se revisaron los precios ("2026-10-19"), como "19 de oct de 2026" (a mediodía en Colombia). */
+/** El día en que se revisaron los precios ("2026-10-19"), como "19 de oct. de 2026" (a mediodía en Colombia). */
 const formatPriceDate = (day: string, locale: Locale) => formatDate(new Date(`${day}T12:00:00-05:00`), locale);
 
 /** Una cifra de "Por cuenta": en celular, con su nombre a la vista ("14 mensajes"); desde md, solo para el lector. */

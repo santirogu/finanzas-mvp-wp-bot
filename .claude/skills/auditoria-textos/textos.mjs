@@ -286,7 +286,8 @@ const ES_RULES = [
   [/\b(guión|guiónes|truhán|rió|lió|fié|guié|crié|frió|huí)\b/iu, "monosílabo a efectos ortográficos: sin tilde", "ortografía"],
   [/\d\s+ó\s+\d/u, "«o» entre cifras va sin tilde", "ortografía"],
   [/¿\s*(que|como|cuando|donde|cuanto|cuanta|cuantos|cuantas|cual|cuales|quien|quienes)\b/iu, "interrogativo sin tilde", "ortografía"],
-  [/(\d|\})%/u, "el signo % va separado de la cifra (RAE: «45 %»)", "ortografía"],
+  [/(\d|\})%/u, "el signo % va separado de la cifra (RAE: «45 %»): usa formatPercent", "ortografía"],
+  [/\b\d{1,2} de (ene|feb|mar|abr|may|jun|jul|ago|sept|oct|nov|dic)\b(?!\.)/u, "el mes abreviado lleva punto («13 de oct.»); sin punto solo en los ejes de los gráficos", "ortografía"],
   [/\b(am|pm|a\.m\.|p\.m\.)(?=[\s.,;)]|$)/iu, "«a. m.», «p. m.» (con espacio)", "ortografía"],
   [/(\bNo\.\s?\d|Nº|\bnro\.?|\bnúm\.)/u, "«n.º»", "ortografía"],
   [/(\bEj\.?:|\bej:|\bEj\.)/u, "«p. ej.» o «por ejemplo»", "ortografía"],
@@ -358,7 +359,8 @@ function checks(entry) {
   }
   const n = wordCount(plain);
   if (n > KIND_LIMITS[kind]) out.push(["largo", `${kind} de ${n} palabras (más de ${KIND_LIMITS[kind]})`]);
-  if (kind === "título" && /[^.]\.$/.test(plain)) out.push(["puntuación", "título con punto final"]);
+  // Un título de dos frases (el eslogan de la portada) conserva sus puntos: decisión del glosario.
+  if (kind === "título" && /[^.]\.$/.test(plain) && !/\.\s+\p{Lu}/u.test(plain)) out.push(["puntuación", "título con punto final"]);
   const rest = (plain.match(/\p{L}{4,}/gu) ?? []).slice(1).filter((w) => !PROPER.has(w.toLowerCase()));
   if (rest.length >= 2 && rest.every((w) => /^\p{Lu}\p{Ll}/u.test(w))) out.push(["mayúsculas", "mayúscula en cada palabra (estilo de título en inglés): solo la primera y los nombres propios"]);
   if (locale === "es") {
@@ -455,7 +457,8 @@ const VARIANTS = {
     ["sign out", "log out"],
     ["sign up", "register", "create an account"],
     ["email", "e-mail"],
-    ["tap", "click", "press", "select", "choose"],
+    ["tap", "click", "press", "select", "choose", "pick"],
+    ["add", "record", "track"],
     ["transaction", "movement", "entry"],
     ["expense", "spending", "outflow"],
     ["unlink", "disconnect"],

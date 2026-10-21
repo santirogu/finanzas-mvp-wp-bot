@@ -1,7 +1,7 @@
 import { AdminBadge } from "@/components/admin-badge";
 import { DEFAULT_LOCALE, type Locale } from "@/i18n/locales";
 import { hasRole, isSuperAdmin, type Role } from "@/lib/roles";
-import { formatHour } from "@/modules/admin/shared/filters";
+import { formatHour, withHourArticle } from "@/modules/admin/shared/filters";
 
 /** Junto al nombre de una cuenta en Usuarios: si es admin (o el super admin), si está suspendida y si tiene el inicio de sesión bloqueado. */
 export function AccountBadges({
@@ -29,7 +29,7 @@ export function AccountBadges({
       )}
       {lockedUntil && (
         <span className="rounded-full border border-danger/40 bg-danger/10 px-2 py-0.5 text-xs font-medium text-danger">
-          {es ? `Bloqueada hasta las ${formatHour(lockedUntil, locale)}` : `Locked until ${formatHour(lockedUntil, locale)}`}
+          {es ? `Bloqueada hasta ${withHourArticle(formatHour(lockedUntil, locale))}` : `Locked until ${formatHour(lockedUntil, locale)}`}
         </span>
       )}
     </>

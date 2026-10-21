@@ -21,7 +21,7 @@ async function addExpense(page: Page, movement: Movement, month?: Month) {
 }
 
 const fixedList = (page: Page) => visible(page.getByRole("region", { name: "Gastos fijos" }));
-const biggest = (page: Page) => visible(page.getByRole("region", { name: "Los gastos más grandes" }));
+const biggest = (page: Page) => visible(page.getByRole("region", { name: "Los egresos más grandes" }));
 
 async function seriousViolations(page: Page) {
   const { violations } = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
@@ -53,12 +53,12 @@ test("Fijos: los detectados solos, quitar, volver a poner, agregar y sacar (Repo
     await expect(items.first()).toContainText("−$1.800.000,00");
     await expect(fixedList(page)).toContainText("Total al mes−$1.800.000,00");
     // Los tres meses completos: (1.800.000 + 1.800.000 + 1.900.000) / 3 = 1.833.333,33.
-    await expect(fixedList(page)).toContainText("Son el 98% de tu gasto promedio por mes.");
+    await expect(fixedList(page)).toContainText("Son el 98 % de tu gasto promedio por mes.");
   });
 
   await test.step("quitar el arriendo: pasa a Quitados y Reportes lo cuenta entre los más grandes", async () => {
     await fixedList(page).getByRole("button", { name: "Quitar arriendo de los gastos fijos" }).click();
-    await expect(toast(page, "Se quitó «arriendo» de los gastos fijos")).toHaveAttribute("data-tone", "removal");
+    await expect(toast(page, "Se quitó “arriendo” de los gastos fijos")).toHaveAttribute("data-tone", "removal");
     await expect(fixedList(page)).toContainText("Todavía no hay egresos que se repitan cada mes.");
     await closeToasts(page);
     await openTab(page, "Reportes");
@@ -69,7 +69,7 @@ test("Fijos: los detectados solos, quitar, volver a poner, agregar y sacar (Repo
     await openTab(page, "Fijos");
     await fixedList(page).getByText("Quitados (1)").click();
     await fixedList(page).getByRole("button", { name: "Volver a poner arriendo en los gastos fijos" }).click();
-    await expect(toast(page, "Volvió «arriendo» a los gastos fijos")).toHaveAttribute("data-tone", "success");
+    await expect(toast(page, "Volvió “arriendo” a los gastos fijos")).toHaveAttribute("data-tone", "success");
     await expect(fixedList(page).getByRole("listitem")).toHaveCount(1);
     await closeToasts(page);
   });
@@ -81,7 +81,7 @@ test("Fijos: los detectados solos, quitar, volver a poner, agregar y sacar (Repo
     expect(await seriousViolations(page)).toEqual([]);
     await select.selectOption({ label: "🍽️ Restaurante con amigos" });
     await fixedList(page).getByRole("button", { name: "Agregar", exact: true }).click();
-    await expect(toast(page, "Se agregó «Restaurante con amigos» a los gastos fijos")).toHaveAttribute("data-tone", "success");
+    await expect(toast(page, "Se agregó “Restaurante con amigos” a los gastos fijos")).toHaveAttribute("data-tone", "success");
     await expect(fixedList(page).getByRole("listitem").filter({ hasText: "Restaurante con amigos" })).toContainText("Agregado por ti");
     await closeToasts(page);
     await openTab(page, "Reportes");
@@ -91,7 +91,7 @@ test("Fijos: los detectados solos, quitar, volver a poner, agregar y sacar (Repo
   await test.step("sacarlo: vuelve a ser un gasto más (sin pasar por Quitados)", async () => {
     await openTab(page, "Fijos");
     await fixedList(page).getByRole("button", { name: "Quitar Restaurante con amigos de los gastos fijos" }).click();
-    await expect(toast(page, "Se quitó «Restaurante con amigos» de los gastos fijos")).toBeVisible();
+    await expect(toast(page, "Se quitó “Restaurante con amigos” de los gastos fijos")).toBeVisible();
     await expect(fixedList(page).getByRole("listitem")).toHaveCount(1);
     await expect(fixedList(page).getByText(/^Quitados/)).toHaveCount(0);
     await closeToasts(page);
@@ -115,12 +115,12 @@ test("el historial de un gasto fijo: cada cambio de valor, con su nota", async (
 
   await test.step("cerrado dice su último cambio; al tocarlo, el cambio y el primer pago", async () => {
     await expect(history).toHaveAttribute("aria-expanded", "false");
-    await expect(history).toContainText(`8% desde ${formatMonthName(current)}`);
+    await expect(history).toContainText(`8 % desde ${formatMonthName(current)}`);
     await history.click();
     await expect(history).toHaveAttribute("aria-expanded", "true");
     const entries = fixed.locator(`[id="${await history.getAttribute("aria-controls")}"]`).getByRole("listitem");
     await expect(entries).toHaveCount(2);
-    await expect(entries.nth(0)).toContainText(`${date}+$20.000,00 (+8%)$250.000,00 → $270.000,00`);
+    await expect(entries.nth(0)).toContainText(`${date}+$20.000,00 (+8 %)$250.000,00 → $270.000,00`);
     await expect(entries.nth(1)).toContainText(`${formatShortDate(dayOf(m2, 8), { withYear: true })}Primer pago$250.000,00`);
   });
 
@@ -153,7 +153,7 @@ test("el historial de un gasto fijo: cada cambio de valor, con su nota", async (
     await closeToasts(page);
 
     await fixed.getByRole("button", { name: `Editar nota del cambio del ${date}` }).click();
-    await fixed.getByRole("button", { name: "Borrar nota" }).click();
+    await fixed.getByRole("button", { name: "Eliminar nota" }).click();
     await expect(toast(page, "Se borró la nota")).toHaveAttribute("data-tone", "removal");
     await expect(fixed.getByText(/^“/)).toHaveCount(0);
     await expect(fixed.getByRole("button", { name: `Agregar nota del cambio del ${date}` })).toBeVisible();

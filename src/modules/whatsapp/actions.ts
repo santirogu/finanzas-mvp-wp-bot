@@ -15,7 +15,7 @@ export async function generateLinkCodeAction(): Promise<LinkCodeState> {
   } catch (error) {
     if (error instanceof LinkCodeLimitError) {
       // El mensaje del error va en español; en inglés, el propio.
-      const english = "You already got several codes in the last hour. Use the last one or wait a while to get another.";
+      const english = "You already asked for several codes in the last hour. Wait a while to ask for another one.";
       return { ok: false, error: (await getRequestLocale()) === "es" ? error.message : english };
     }
     throw error;

@@ -18,8 +18,8 @@ export async function getReadNotifications(userId: string): Promise<Set<string>>
 export type MarkReadResult = { ok: true; message: string; tone: ToastTone } | { ok: false; error: string };
 
 const TEXTS = texts(
-  { error: "No se pudo marcar como leída.", one: "Se marcó como leída", many: (n: number) => `Se marcaron ${n} como leídas` },
-  { en: { error: "It couldn't be marked as read.", one: "Marked as read", many: (n) => `${n} marked as read` } },
+  { error: "No se pudo marcar como leída. Intenta de nuevo.", one: "Se marcó como leída", many: (n: number) => `Se marcaron ${n} como leídas` },
+  { en: { error: "It couldn't be marked as read. Try again.", one: "Marked as read", many: (n) => `${n} marked as read` } },
 );
 
 /** Marca como leídas las notificaciones `ids` (una o varias). Marcar dos veces la misma no hace nada. */

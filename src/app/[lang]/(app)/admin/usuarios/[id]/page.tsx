@@ -8,7 +8,7 @@ import { texts } from "@/i18n/texts";
 import { hasRole, isSuperAdmin, roleLabel } from "@/lib/roles";
 import { requireAdmin } from "@/lib/session";
 import { NO_FILTERS, logHref } from "@/modules/admin/history/log-filters";
-import { formatDate, formatDateTime, formatHour, formatPhone } from "@/modules/admin/shared/filters";
+import { formatDate, formatDateTime, formatHour, formatPhone, withHourArticle } from "@/modules/admin/shared/filters";
 import { describeUserAgent, formatIp } from "@/modules/admin/users/session-info";
 import { USERS_PATH } from "@/modules/admin/users/user-filters";
 import { getUserDetail, type UserDetail } from "@/modules/admin/users/users";
@@ -39,7 +39,7 @@ const TEXTS = texts(
     linkedSince: (date: string) => ` · desde el ${date}`,
     notLinked: "Sin vincular",
     lock: "Bloqueo",
-    lockedUntil: (hour: string) => `Inicio de sesión bloqueado por intentos fallidos hasta las ${hour}`,
+    lockedUntil: (hour: string) => `Inicio de sesión bloqueado por intentos fallidos hasta ${withHourArticle(hour)}`,
     noLock: "Sin bloqueo",
     twoFactor: "Verificación en dos pasos",
     twoFactorOn: "Activa",

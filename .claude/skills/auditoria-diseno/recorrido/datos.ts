@@ -157,7 +157,7 @@ async function conDatos(browser: Browser, baseURL: string, datos: Datos) {
   const fila = visible(page.getByRole("main").getByRole("listitem").filter({ hasText: "Café para borrar" }));
   const id = await fila.locator('input[name="id"]').getAttribute("value");
   await visible(page.getByRole("button", { name: "Eliminar Café para borrar" })).click();
-  await expect(toast(page, "Se borró «Café para borrar»")).toBeVisible();
+  await expect(toast(page, "Se borró “Café para borrar”")).toBeVisible();
   datos.borrado = `/egresos?borrado=${id}`;
 
   datos.sesiones.datos = await page.context().storageState();

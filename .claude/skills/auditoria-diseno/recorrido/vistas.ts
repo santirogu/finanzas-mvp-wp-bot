@@ -158,8 +158,8 @@ export const VISTAS: Vista[] = [
     ruta: fija("/dashboard"),
     preparar: async (page) => {
       const avisos = visible(page.getByRole("region", { name: "Próximos pagos" }));
-      await avisos.getByRole("button", { name: /^Registrar el pago de / }).first().click();
-      await expect(visible(page.getByRole("dialog", { name: /^Registrar el pago de / }))).toBeVisible();
+      await avisos.getByRole("button", { name: /^Registrar pago de / }).first().click();
+      await expect(visible(page.getByRole("dialog", { name: /^Registrar pago de / }))).toBeVisible();
     },
   },
   {
@@ -320,7 +320,7 @@ export const VISTAS: Vista[] = [
     persona: "admin",
     ruta: fija("/reportes"),
     preparar: async (page) => {
-      const seccion = visible(page.getByRole("region", { name: "Los gastos más grandes" }));
+      const seccion = visible(page.getByRole("region", { name: "Los egresos más grandes" }));
       await seccion.getByText(/^Ver (el|los \d+) siguientes?$/).click();
       await expect(seccion.locator("details[open]")).toBeVisible();
       await seccion.scrollIntoViewIfNeeded();

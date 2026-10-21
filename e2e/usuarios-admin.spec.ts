@@ -158,7 +158,7 @@ test("los filtros de rol, WhatsApp, bloqueo y fecha se combinan con la búsqueda
 
   await test.step("bloqueo y WhatsApp", async () => {
     await searchFor(page, carlaEmail);
-    await expect(accounts(page).first()).toContainText(/Bloqueada hasta las/);
+    await expect(accounts(page).first()).toContainText(/Bloqueada hasta las? \d/);
     await expect(accounts(page).first()).toContainText("Sin WhatsApp");
     await toggleChip(page, "Estado", "Inicio de sesión bloqueado", "checkbox");
     await expect(summary(page, "1 cuenta")).toBeVisible();
@@ -172,7 +172,7 @@ test("los filtros de rol, WhatsApp, bloqueo y fecha se combinan con la búsqueda
     }
     // En el detalle, hasta cuándo.
     await accounts(page).first().getByRole("link").click();
-    await expect(field(page, "Bloqueo")).toContainText("Inicio de sesión bloqueado por intentos fallidos hasta las");
+    await expect(field(page, "Bloqueo")).toContainText(/Inicio de sesión bloqueado por intentos fallidos hasta las? \d/);
     await page.goBack();
   });
 

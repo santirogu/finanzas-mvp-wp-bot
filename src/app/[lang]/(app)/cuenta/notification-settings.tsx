@@ -15,13 +15,13 @@ const TEXTS = texts(
     // Los errores del campo antes de enviar (en vez del globo del navegador).
     messages: { days: { required: "Escribe cuántos días antes quieres el aviso.", number: DAYS_AHEAD_MESSAGES.es } } as Record<string, FieldMessages>,
     title: "Notificaciones",
-    intro: "Los avisos de próximos pagos de tus gastos fijos, en el Resumen. Valen en todos tus dispositivos.",
+    intro: "Los avisos de próximos pagos de tus gastos fijos, en el Resumen y en la campana. Valen en todos tus dispositivos.",
     upcoming: "Avisos de próximos pagos",
     on: "Prendidos",
     off: "Apagados",
     days: "Días de anticipación",
     daysHint: "días antes de cada pago (0 = el mismo día)",
-    overdue: 'Los atrasados se avisan siempre, hasta que los registres o marques "Este pago ya no aplica".',
+    overdue: { text: "Los atrasados se avisan sin importar los días de anticipación, hasta que los registres o toques", button: "Este pago ya no aplica" },
     saving: "Guardando…",
     save: "Guardar",
   },
@@ -29,13 +29,13 @@ const TEXTS = texts(
     en: {
       messages: { days: { required: "Enter how many days before you want the notice.", number: DAYS_AHEAD_MESSAGES.en } },
       title: "Notifications",
-      intro: "The upcoming payment notices for your bills, in the Overview. They apply on all your devices.",
+      intro: "The upcoming payment notices for your bills, in the Overview and in the bell. They apply on all your devices.",
       upcoming: "Upcoming payment notices",
       on: "On",
       off: "Off",
       days: "Days in advance",
       daysHint: "days before each payment (0 = the same day)",
-      overdue: 'Overdue ones are always shown, until you add them or mark "This payment doesn\'t apply".',
+      overdue: { text: "Overdue ones are shown no matter the days in advance, until you add them or tap", button: "This payment doesn't apply" },
       saving: "Saving…",
       save: "Save",
     },
@@ -124,7 +124,9 @@ export function NotificationSettings({ enabled: savedEnabled, days }: { enabled:
           </div>
           <FieldError id={errorId} message={error} />
         </div>
-        <p className="text-xs text-muted">{t.overdue}</p>
+        <p className="text-xs text-muted">
+          {t.overdue.text} <strong>{t.overdue.button}</strong>.
+        </p>
         <div className="flex justify-end">
           <button type="submit" disabled={busy} className="btn-primary min-h-11 pointer-fine:min-h-9">
             {busy ? t.saving : t.save}

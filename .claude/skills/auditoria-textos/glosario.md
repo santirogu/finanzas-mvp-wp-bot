@@ -1,6 +1,6 @@
 # Glosario y estilo de la app
 
-Cómo escribe Finanzas MVP: lo que ya está decidido y las palabras que usa en cada idioma. Manda sobre
+Cómo escribe Anotado: lo que ya está decidido y las palabras que usa en cada idioma. Manda sobre
 una regla general. Una auditoría no marca lo que está aquí, pero puede proponer cambiarlo; si el dueño
 lo aprueba, se cambia aquí y en `textos.mjs` (`VARIANTS` y las reglas), en el mismo PR que cambia los
 textos.
@@ -26,7 +26,8 @@ textos.
 - **Español neutro con palabras de Colombia** donde la app ya las usa ("celular", "computador",
   "arriendo"), sin modismos que no se entiendan en otros países.
 - **Emojis:** en el bot, con función (✅ registrado, 📊 balance, 🙂 en lo amable); en la web, solo los de
-  las categorías.
+  las categorías. Un emoji no reemplaza el punto: "todavía no llega 🙂. Prueba…" (FundéuRAE), o el emoji al
+  final del mensaje.
 
 ## Formatos
 
@@ -34,8 +35,12 @@ textos.
   signo, y "−$50.000,00" con el signo menos tipográfico. En inglés, "$1,000,000.00".
 - **Fechas:** con los formateadores de `src/lib/dates.ts`; los meses en minúscula en español ("20 de
   octubre de 2026").
-- **Porcentajes:** con `formatShare`. **Por decidir:** hoy la app escribe "45%" y la RAE pide "45 %"
-  (con espacio fino o normal). En inglés va pegado.
+- **Meses abreviados:** con punto en español ("13 de oct.", "sept."), en las listas, el bot, el PDF y el
+  admin (RAE). Sin punto solo donde el mes va solo, como etiqueta: los ejes de los gráficos y el selector de
+  meses ("oct", `formatShortMonth`). En inglés, como los da Intl ("Oct 13").
+- **Porcentajes:** con `formatPercent` (`src/lib/money.ts`): "45 %" en español, con un espacio duro para que
+  no se separe del número (RAE), y "45%" en inglés. La parte de un total, con `formatShare`.
+- **Millones en los ejes** ("$2,5 M"): se acepta "M" en los ejes de los gráficos y del PDF, por el espacio.
 - **Números:** en cifras ("3 días").
 
 ## Mayúsculas y signos
@@ -52,8 +57,8 @@ textos.
 - **Separadores:** "·" entre datos de una misma línea; en el bot, " — " entre la descripción y el
   monto.
 - **Punto final:** en las frases completas (ayudas, errores, avisos de más de una frase); no en
-  títulos, botones, pestañas ni etiquetas. **Por decidir:** los títulos de bienvenida del inicio y del
-  registro llevan punto ("Bienvenido de nuevo.") como un eslogan; la RAE no lo pone en los títulos.
+  títulos, subtítulos, botones, pestañas ni etiquetas ("Bienvenido de nuevo"). La excepción es el eslogan de
+  la portada, que son dos frases ("Escribe tu gasto por WhatsApp. Queda anotado.").
 
 ## Palabras de la app
 
@@ -61,7 +66,7 @@ textos.
 |---|---|---|---|
 | movimiento | transaction | transacción, registro; movement, entry | Un ingreso o un egreso. |
 | ingreso, Ingresos | income, Income | entrada | |
-| egreso, Egresos | expense, Expenses | salida; outflow | "Gasto" sí: en "gasto fijo", "gasto promedio" y en lo que se le escribe al bot ("gasté"). |
+| egreso, Egresos | expense, Expenses | salida; outflow; spending (en títulos) | También en los títulos de los análisis: "Egresos por categoría", "Los egresos más grandes" ("Expenses by category"). "Gasto" sí: en "gasto fijo", "gasto promedio", los verbos ("qué días gastas más") y lo que se le escribe al bot ("gasté"). |
 | gasto fijo, Fijos | bill, Bills | gasto recurrente; recurring | "Bills" porque "Recurring" no cabía en 375 px. |
 | Resumen | Overview | dashboard, tablero | |
 | Reportes | Reports | informes | |
@@ -83,7 +88,8 @@ textos.
 | archivar, restaurar | archive, restore | | |
 | suspender, reactivar | suspend, reactivate | | |
 | deshacer | undo | | |
-| toca, elige | tap, choose | haz clic, pulsa, presiona; click, press | La app se usa sobre todo en el celular. "Elige" para escoger una opción. |
+| toca, elige | tap, choose | pulsa, presiona, selecciona; press, pick, select | La app se usa sobre todo en el celular. "Elige" para escoger una opción. "Haz clic" / "click" se aceptan solo en lo que se ve con mouse (por ejemplo, la ayuda de un gráfico que se abre al pasar el puntero). |
+| registrar (un movimiento) | add | record, track | "Registrar ingreso" → "Add income"; "el bot registra" → "the bot adds". |
 | celular | phone | móvil, teléfono | "Número de teléfono" se acepta en las páginas legales. |
 | computador | computer | ordenador, computadora | |
 | la persona, la cuenta | the person, the account | | "Usuario" es el nombre del rol ("Usuario", "Administrador"). |

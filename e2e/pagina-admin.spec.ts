@@ -201,14 +201,15 @@ test("un usuario normal no ve la página, ni con filtros en la URL", async ({ pa
 
 test("la política de privacidad explica qué ve el administrador", async ({ page }) => {
   await page.goto("/privacidad");
-  await expect(page.getByText(/el administrador de la app puede ver los datos de\s+cada cuenta/)).toBeVisible();
-  await expect(page.getByText(/sus sesiones abiertas \(navegador,\s+sistema operativo, dirección IP y fechas\)/)).toBeVisible();
-  await expect(page.getByText(/No ve tus ingresos,\s+egresos ni mensajes/)).toBeVisible();
-  await expect(page.getByText(/suspender tu cuenta \(mientras esté suspendida no podrás entrar ni usar el bot/)).toBeVisible();
-  await expect(page.getByText(/o eliminarla con todos sus datos; cada acción queda registrada/)).toBeVisible();
-  await expect(page.getByText(/cuántos movimientos usan cada una, en total y\s+sin saber de quién son ni por cuánto/)).toBeVisible();
+  await expect(page.getByText(/El administrador de la app entra con verificación en dos\s+pasos y puede ver de cada cuenta/)).toBeVisible();
+  await expect(page.getByText(/sus sesiones abiertas: navegador, sistema operativo, dirección IP y fechas/)).toBeVisible();
+  await expect(page.getByText(/No ve tus ingresos, egresos ni mensajes/)).toBeVisible();
+  await expect(page.getByText(/suspender tu cuenta: mientras esté suspendida no podrás entrar ni usar el bot/)).toBeVisible();
+  await expect(page.getByText("eliminarla con todos sus datos.", { exact: true })).toBeVisible();
+  await expect(page.getByText(/Cada acción queda registrada\. Solo el superadministrador puede darle/)).toBeVisible();
+  await expect(page.getByText(/cuántos movimientos usa cada una, en total y\s+sin saber de quién son ni por cuánto/)).toBeVisible();
   await expect(
-    page.getByText(/Los mensajes y los intentos de vinculación de números que no están\s+vinculados a ninguna cuenta se borran a los 30 días/),
+    page.getByText(/los mensajes y los intentos de vinculación de números que no\s+están vinculados a ninguna cuenta se borran a los 30 días/),
   ).toBeVisible();
-  await expect(page.getByText(/Los movimientos que eliminas dejan de verse en ese momento y se borran del todo a\s+los 30 días/)).toBeVisible();
+  await expect(page.getByText(/Los movimientos que eliminas:\s+dejan de verse en ese momento y se borran del todo a\s+los 30 días/)).toBeVisible();
 });

@@ -46,10 +46,10 @@ const TONES: Record<(typeof FIXED_ACTIONS)[number], ToastTone> = { include: "suc
 const TEXTS = texts(
   {
     done: {
-      include: (name: string) => `Se agregó «${name}» a los gastos fijos`,
-      exclude: (name: string) => `Se quitó «${name}» de los gastos fijos`,
-      restore: (name: string) => `Volvió «${name}» a los gastos fijos`,
-      unadd: (name: string) => `Se quitó «${name}» de los gastos fijos`,
+      include: (name: string) => `Se agregó “${name}” a los gastos fijos`,
+      exclude: (name: string) => `Se quitó “${name}” de los gastos fijos`,
+      restore: (name: string) => `Volvió “${name}” a los gastos fijos`,
+      unadd: (name: string) => `Se quitó “${name}” de los gastos fijos`,
     },
     pick: "Elige un egreso.",
     notYours: "Ese egreso no está entre tus movimientos.",
@@ -62,7 +62,7 @@ const TEXTS = texts(
         restore: (name) => `“${name}” is back in your bills`,
         unadd: (name) => `“${name}” was removed from your bills`,
       },
-      pick: "Pick an expense.",
+      pick: "Choose an expense.",
       notYours: "That expense isn't among your transactions.",
     },
   },

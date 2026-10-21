@@ -17,14 +17,14 @@ import { type HistoryMonth, NOTE_MAX_LENGTH } from "./history";
 const TEXTS = texts(
   {
     tooLong: `Máximo ${NOTE_MAX_LENGTH} caracteres.`,
-    error: "No se pudo guardar la nota.",
+    error: "No se pudo guardar la nota. Intenta de nuevo.",
     deleted: "Se borró la nota",
     saved: "Se guardó la nota",
   },
   {
     en: {
       tooLong: `At most ${NOTE_MAX_LENGTH} characters.`,
-      error: "The note couldn't be saved.",
+      error: "The note couldn't be saved. Try again.",
       deleted: "The note was deleted",
       saved: "The note was saved",
     },

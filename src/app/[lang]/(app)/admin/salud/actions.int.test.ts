@@ -39,7 +39,7 @@ describe("probar las conexiones", () => {
     expect(result.whatsapp).toEqual({ ok: true, title: "Conectado", detail: "Finanzas MVP · +1 555-662-5913", warning: null });
     expect(result.claude).toMatchObject({ ok: false, title: "La API key de Claude no sirve: vencida, revocada o mal copiada", detail: "HTTP 401 · invalid x-api-key" });
     // 23:00 UTC es 6:00 p. m. en Colombia.
-    expect(result.lastMessage).toBe("16 de oct de 2026, 6:00 p. m.");
+    expect(result.lastMessage).toBe("16 de oct. de 2026, 6:00 p. m.");
     expect(result.checkedAt).toMatch(/^\d{1,2}:\d{2}\s[ap]\.\s?m\.$/);
     expect(mocks.refresh).not.toHaveBeenCalled();
     expect(await events()).toEqual([]);

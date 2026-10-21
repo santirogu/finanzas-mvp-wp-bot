@@ -24,8 +24,8 @@ const TEXTS = texts(
   {
     income: { title: "Ingresos", none: "No has registrado ingresos este mes.", noneIn: (month: string) => `No registraste ingresos ${month}.` },
     expense: { title: "Egresos", none: "No has registrado egresos este mes.", noneIn: (month: string) => `No registraste egresos ${month}.` },
-    deleted: (description: string) => `Se borró «${description}»`,
-    restored: (description: string) => `Se restauró «${description}»`,
+    deleted: (description: string) => `Se borró “${description}”`,
+    restored: (description: string) => `Se restauró “${description}”`,
     undo: "Deshacer",
   },
   {

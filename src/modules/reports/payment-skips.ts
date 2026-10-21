@@ -31,12 +31,12 @@ export type PaymentSkipResult = { ok: true; message: string; tone: ToastTone } |
 
 const TEXTS = texts(
   {
-    error: "No se pudo ocultar el aviso.",
-    skipped: (month: string, description: string) => `No se avisará del pago de ${month} de «${description}»`,
+    error: "No se pudo ocultar el aviso. Intenta de nuevo.",
+    skipped: (month: string, description: string) => `No se avisará del pago de ${month} de “${description}”`,
   },
   {
     en: {
-      error: "The notice couldn't be hidden.",
+      error: "The notice couldn't be hidden. Try again.",
       skipped: (month, description) => `You won't be notified of the ${month} payment of “${description}”`,
     },
   },

@@ -9,7 +9,7 @@ import { texts } from "@/i18n/texts";
 import { auth } from "@/lib/auth";
 import { requireAdmin } from "@/lib/session";
 import { TWO_FACTOR_LOCKOUT } from "@/modules/auth/two-factor-rules";
-import { formatHour } from "./filters";
+import { formatHour, withHourArticle } from "./filters";
 import { cleanCode, isCodeFormat, matchingStep } from "./totp";
 
 // Confirmar una acción del admin con el código de Google Authenticator. No usa auth.api.verifyTOTP:
@@ -29,7 +29,7 @@ const at = (date: Date) => sql`${date.toISOString()}::timestamptz`;
 const TEXTS = texts(
   {
     // La hora ya termina en punto ("4:15 p. m."): no lleva otro.
-    locked: (hour: string) => `Por demasiados códigos equivocados, las acciones y tu inicio de sesión están bloqueados hasta las ${hour}`,
+    locked: (hour: string) => `Por demasiados códigos equivocados, las acciones y tu inicio de sesión están bloqueados hasta ${withHourArticle(hour)}`,
     format: "Escribe los 6 dígitos del código de Google Authenticator.",
     notSetUp: "Tu verificación en dos pasos no está configurada.",
     wrong: "El código no es correcto.",

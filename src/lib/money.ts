@@ -134,3 +134,10 @@ export function formatShare(part: number, total: number): string {
   const pct = Math.round((part / total) * 100);
   return pct === 0 ? "<1" : String(pct);
 }
+
+/**
+ * Un porcentaje para mostrar: "45 %" en español, con un espacio duro para que no se separe del número (RAE), y
+ * "45%" en inglés.
+ */
+export const formatPercent = (value: string | number, locale: Locale = DEFAULT_LOCALE) =>
+  locale === "es" ? `${value}\u00a0%` : `${value}%`;

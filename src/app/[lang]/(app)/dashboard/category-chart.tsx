@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useLocale } from "@/i18n/client";
 import { texts } from "@/i18n/texts";
-import { formatMoney, formatShare } from "@/lib/money";
+import { formatMoney, formatPercent, formatShare } from "@/lib/money";
 import { type ChartSlice, donutArcs } from "@/modules/transactions/category-chart";
 
 // Los colores de cada puesto de la paleta (globals.css, --chart-1 a --chart-7 y --chart-rest).
@@ -37,7 +37,7 @@ const TEXTS = texts(
 );
 
 /**
- * "Gastos por categoría" del Resumen: la dona con el total de egresos al centro y, debajo (o al lado,
+ * "Egresos por categoría" del Resumen: la dona con el total de egresos al centro y, debajo (o al lado,
  * si hay espacio), la lista con el color, el monto y el porcentaje de cada una. Tocar una categoría,
  * en la lista o en la dona, resalta su tajada. La lista dice todo lo que muestra la dona: el lector de
  * pantalla lee la lista (la dona es decorativa).
@@ -106,7 +106,7 @@ export function CategoryChart({ slices, total, currency }: { slices: ChartSlice[
                 <span aria-hidden className={`size-2.5 shrink-0 rounded-sm ${dotOf(slice)}`} />
                 <span className="min-w-0 flex-1 truncate">{name}</span>
                 <span className="shrink-0 whitespace-nowrap tabular-nums text-muted">
-                  {money(amount)} · {formatShare(amount, total)}%
+                  {money(amount)} · {formatPercent(formatShare(amount, total), locale)}
                 </span>
               </button>
               {/* Las chicas, una por una, debajo de su tajada gris. */}
@@ -118,7 +118,7 @@ export function CategoryChart({ slices, total, currency }: { slices: ChartSlice[
                         {c.emoji} {c.name}
                       </span>
                       <span className="shrink-0 whitespace-nowrap tabular-nums">
-                        {money(c.total)} · {formatShare(c.total, total)}%
+                        {money(c.total)} · {formatPercent(formatShare(c.total, total), locale)}
                       </span>
                     </li>
                   ))}

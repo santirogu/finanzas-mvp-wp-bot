@@ -147,7 +147,7 @@ test("eliminar: sin movimientos se borra; con movimientos avisa y estos pasan a 
 
   await test.step("con movimientos: el aviso, y pasan a Otros", async () => {
     await fromMenu(page, `Mascotas ${id}`, "Eliminar");
-    await expect(dialog(page)).toHaveAccessibleDescription(/^Tiene 1 movimiento\. Si la eliminas, pasarán a .+ Otros\./);
+    await expect(dialog(page)).toHaveAccessibleDescription(/^Tiene 1 movimiento\. Si la eliminas, pasará a .+ Otros\./);
     expect(await seriousViolations(page), "ventana de eliminar").toEqual([]);
     await confirmWithCode(page, codeFor(secret, 1), "Eliminar y pasar a Otros");
     await expect(statusMessage(page)).toHaveText(`Se eliminó la categoría 🐾 Mascotas ${id}; 1 movimiento pasó a Otros.`);

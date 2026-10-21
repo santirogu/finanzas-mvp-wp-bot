@@ -273,7 +273,7 @@ describe("AccountActions", () => {
       const box = await openDelete();
       expect(dialog()).toHaveAccessibleName("¿Eliminar la cuenta de Beto Ruiz?");
       expect(dialog()).toHaveAccessibleDescription(
-        "Se borran su cuenta, sus movimientos, sus categorías, su WhatsApp y su historial. No se puede deshacer. En el historial queda solo “se eliminó una cuenta”.",
+        "Se borran su cuenta, sus movimientos, sus categorías, su WhatsApp y su historial. No se puede deshacer. En el historial solo queda que eliminaste una cuenta, sin su nombre ni su correo.",
       );
       expect(box.getByLabelText(/Escribe su correo/)).toHaveAttribute("type", "email");
       expect(codeField()).toBeInTheDocument();
@@ -444,7 +444,7 @@ describe("en inglés", () => {
     ["Unlock", {}, "Unlock Beto Ruiz's sign-in?", "They can try their password again right away"],
     ["Sign out", {}, "Sign Beto Ruiz out of all their sessions?", "They'll have to sign in again on 2 devices. Their WhatsApp stays linked."],
     ["Sign out", { openSessions: 1 }, "Sign Beto Ruiz out of all their sessions?", "They'll have to sign in again on their device."],
-    ["Unlink", {}, "Unlink Beto Ruiz's WhatsApp?", "The bot will stop recording what they write from +57 300 111 2233. They can link it again from My account."],
+    ["Unlink", {}, "Unlink Beto Ruiz's WhatsApp?", "The bot will stop adding what they write from +57 300 111 2233. They can link it again from My account."],
     ["Suspend", {}, "Suspend Beto Ruiz's account?", "When they try to sign in, they'll see their account is suspended, without the reason."],
     ["Reactivate", { suspendedSince: "today" }, "Reactivate Beto Ruiz's account?", "They'll be able to sign in and use the WhatsApp bot again."],
     ["Make admin", {}, "Make Beto Ruiz an admin?", "Only you can remove the role."],
@@ -480,7 +480,7 @@ describe("en inglés", () => {
     await userEvent.click(screen.getByRole("button", { name: "Delete account" }));
     const box = within(dialog());
     expect(dialog()).toHaveAccessibleName("Delete Beto Ruiz's account?");
-    expect(dialog()).toHaveAccessibleDescription(expect.stringContaining("The history only keeps “an account was deleted”."));
+    expect(dialog()).toHaveAccessibleDescription(expect.stringContaining("The history only keeps that you deleted an account, without its name or email."));
     await userEvent.type(box.getByLabelText(/Type their email/), "beto@correo.com");
     await userEvent.click(box.getByRole("button", { name: "Delete account" }));
     expect(enCodeField()).toHaveAccessibleDescription("Enter the 6-digit code from Google Authenticator.");

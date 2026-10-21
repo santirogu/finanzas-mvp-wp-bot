@@ -89,13 +89,19 @@ export function normalizeTransactions(
 const LINK = /https?:\/\/|www\.|[\w-]\.(com|co|net|org|info|io|app|me|ly|link|xyz|site|online|store|shop|ai|gg|to)\b/i;
 
 /**
- * La respuesta libre del modelo (cuando no hay movimientos), lista para enviar: en una sola línea, de
- * máximo MAX_REPLY_LENGTH caracteres y sin enlaces. Con un texto pegado de otro lado, el modelo podría
+ * Las comillas rectas del modelo ("almuerzo 20 mil") → “almuerzo 20 mil”, como en el resto de los mensajes del
+ * bot (el glosario de textos). Por pares: una que queda sola se deja como está.
+ */
+const curlyQuotes = (text: string) => text.replace(/"([^"]*)"/g, "“$1”");
+
+/**
+ * La respuesta libre del modelo (cuando no hay movimientos), lista para enviar: en una sola línea, con comillas
+ * “ ”, de máximo MAX_REPLY_LENGTH caracteres y sin enlaces. Con un texto pegado de otro lado, el modelo podría
  * responder con la voz del servicio algo engañoso ("verifica tu cuenta en…"). null si no sirve: se
  * usa una respuesta fija.
  */
 export function normalizeReply(text: string | null | undefined): string | null {
-  const clean = (text ?? "").replace(/\s+/g, " ").trim();
+  const clean = curlyQuotes((text ?? "").replace(/\s+/g, " ").trim());
   if (!clean) return null;
   let reply = clean;
   if (clean.length > MAX_REPLY_LENGTH) {

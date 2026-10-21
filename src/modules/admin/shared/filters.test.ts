@@ -12,6 +12,7 @@ import {
   formatDateTime,
   formatHour,
   parseSearch,
+  withHourArticle,
 } from "./filters";
 
 // Lo común de los listados de administración. El resto (fechas, búsqueda, formatos) se prueba con
@@ -50,9 +51,9 @@ describe("parseSearch", () => {
 
 describe("formatDate", () => {
   it("la fecha en Colombia, sin la hora", () => {
-    expect(formatDate(new Date("2026-10-14T21:41:00Z"))).toBe("14 de oct de 2026");
+    expect(formatDate(new Date("2026-10-14T21:41:00Z"))).toBe("14 de oct. de 2026");
     // 11:30 p. m. del 9 en Colombia, aunque en UTC ya es el 10.
-    expect(formatDate(new Date("2026-10-10T04:30:00Z"))).toBe("9 de oct de 2026");
+    expect(formatDate(new Date("2026-10-10T04:30:00Z"))).toBe("9 de oct. de 2026");
   });
 });
 
@@ -80,16 +81,27 @@ describe("en inglés", () => {
     expect(formatHour(night)).toBe("4:41 p. m.");
   });
 
+  it.each([
+    ["2026-10-14T18:05:00Z", "la 1:05 p. m."],
+    ["2026-10-14T06:30:00Z", "la 1:30 a. m."],
+    ["2026-10-14T20:15:00Z", "las 3:15 p. m."],
+    ["2026-10-14T15:00:00Z", "las 10:00 a. m."],
+    ["2026-10-14T16:59:00Z", "las 11:59 a. m."],
+    ["2026-10-14T17:00:00Z", "las 12:00 p. m."],
+  ])("la hora de las %s con su artículo: “%s” (la 1, las demás)", (iso, expected) => {
+    expect(withHourArticle(formatHour(new Date(iso)))).toBe(expected);
+  });
+
   it("los atajos de fecha", () => {
     expect(DATE_PRESETS.map((p) => DATE_PRESET_TEXTS.en[p])).toEqual(["All", "Today", "Last 7 days", "Last 30 days", "Custom"]);
     expect(dateFilterLabel({ date: "7d", from: null, to: null }, "en")).toBe("Last 7 days");
   });
 
   it.each([
-    [{ from: "2026-10-01", to: "2026-10-15" }, "Oct 1 – Oct 15", "1 de oct – 15 de oct"],
-    [{ from: "2026-10-01", to: "2026-10-01" }, "Oct 1", "1 de oct"],
-    [{ from: "2026-10-01", to: null }, "From Oct 1", "Desde el 1 de oct"],
-    [{ from: null, to: "2026-10-15" }, "Until Oct 15", "Hasta el 15 de oct"],
+    [{ from: "2026-10-01", to: "2026-10-15" }, "Oct 1 – Oct 15", "1 de oct. – 15 de oct."],
+    [{ from: "2026-10-01", to: "2026-10-01" }, "Oct 1", "1 de oct."],
+    [{ from: "2026-10-01", to: null }, "From Oct 1", "Desde el 1 de oct."],
+    [{ from: null, to: "2026-10-15" }, "Until Oct 15", "Hasta el 15 de oct."],
   ])("un rango personalizado %j: %s", (range, en, es) => {
     expect(dateFilterLabel({ date: "personalizado", ...range }, "en")).toBe(en);
     expect(dateFilterLabel({ date: "personalizado", ...range })).toBe(es);

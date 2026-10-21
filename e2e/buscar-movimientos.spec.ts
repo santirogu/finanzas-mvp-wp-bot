@@ -84,7 +84,7 @@ test("buscar en los egresos del mes: por descripción o categoría, con su suma,
 
   await test.step("si nada coincide lo dice, y se puede borrar desde ahí", async () => {
     await search(page).fill("zzz");
-    await expect(visible(page.getByText("Ningún egreso coincide con «zzz» este mes."))).toBeVisible();
+    await expect(visible(page.getByText("Ningún egreso coincide con “zzz” este mes."))).toBeVisible();
     await expect(heading(page)).toHaveText("0 de 6 movimientos este mes");
     await visible(page.getByRole("button", { name: "Borrar la búsqueda" })).last().click();
     await expect(list(page).getByRole("listitem")).toHaveCount(6);
@@ -94,7 +94,7 @@ test("buscar en los egresos del mes: por descripción o categoría, con su suma,
     await search(page).fill("civita");
     await expect(list(page).getByRole("listitem")).toHaveCount(2);
     await visible(page.getByRole("button", { name: "Eliminar Claro Hogar Civita" })).click();
-    await expect(toast(page, "Se borró «Claro Hogar Civita»")).toBeVisible();
+    await expect(toast(page, "Se borró “Claro Hogar Civita”")).toBeVisible();
     await expect(heading(page)).toHaveText("1 de 5 movimientos este mes");
     await expect(search(page)).toHaveValue("civita");
   });

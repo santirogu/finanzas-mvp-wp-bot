@@ -40,7 +40,7 @@ const TEXTS = texts(
     recentOf: (month: string) => `Últimos movimientos de ${month}`,
     noneYet: "Aún no tienes movimientos este mes. Registra el primero en Ingresos o Egresos.",
     noneIn: (month: string) => `No tuviste movimientos ${month}.`,
-    byCategory: "Gastos por categoría",
+    byCategory: "Egresos por categoría",
     noExpenses: (month: string) => `Sin egresos ${month}.`,
   },
   {
@@ -53,7 +53,7 @@ const TEXTS = texts(
       recentOf: (month) => `Latest transactions for ${month}`,
       noneYet: "You don't have transactions this month yet. Add the first one in Income or Expenses.",
       noneIn: (month) => `You had no transactions ${month}.`,
-      byCategory: "Spending by category",
+      byCategory: "Expenses by category",
       noExpenses: (month) => `No expenses ${month}.`,
     },
   },

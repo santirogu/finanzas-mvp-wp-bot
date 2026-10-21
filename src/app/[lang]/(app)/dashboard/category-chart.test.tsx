@@ -7,7 +7,7 @@ import { CategoryChart } from "./category-chart";
 
 const cat = (name: string, emoji: string, total: number) => ({ name, emoji, total });
 
-// Ropa 60%, Mercado 30%, Taxi 8%, y dos chicas (1% cada una) que van juntas en "2 más".
+// Ropa 60 %, Mercado 30 %, Taxi 8 %, y dos chicas (1 % cada una) que van juntas en "2 más".
 const CATEGORIES = [
   cat("Ropa", "👕", 600_000),
   cat("Mercado", "🛒", 300_000),
@@ -28,10 +28,10 @@ describe("CategoryChart", () => {
   it("una fila por tajada, de la más grande a la más chica, con su monto y su porcentaje", () => {
     renderChart();
     expect(screen.getAllByRole("button").map((b) => b.textContent)).toEqual([
-      "👕 Ropa$600.000,00 · 60%",
-      "🛒 Mercado$300.000,00 · 30%",
-      "🚕 Taxi$80.000,00 · 8%",
-      "2 más$20.000,00 · 2%",
+      "👕 Ropa$600.000,00 · 60\u00a0%",
+      "🛒 Mercado$300.000,00 · 30\u00a0%",
+      "🚕 Taxi$80.000,00 · 8\u00a0%",
+      "2 más$20.000,00 · 2\u00a0%",
     ]);
   });
 
@@ -39,7 +39,7 @@ describe("CategoryChart", () => {
     renderChart();
     const rest = row(/2 más/).closest("li")!;
     const items = within(rest).getAllByRole("listitem").map((li) => li.textContent);
-    expect(items).toEqual(["🎬 Cine$10.000,00 · 1%", "🧾 Impuestos$10.000,00 · 1%"]);
+    expect(items).toEqual(["🎬 Cine$10.000,00 · 1\u00a0%", "🧾 Impuestos$10.000,00 · 1\u00a0%"]);
     expect(row(/2 más/)).toHaveClass("text-muted");
     expect(row(/Ropa/)).not.toHaveClass("text-muted");
   });
@@ -73,7 +73,7 @@ describe("CategoryChart", () => {
     const { slices } = renderChart([cat("Ropa", "👕", 500_000)], 500_000);
     const dash = Number(slices()[0].getAttribute("stroke-dasharray")?.split(" ")[0]);
     expect(dash).toBeCloseTo(2 * Math.PI * 60);
-    expect(row(/Ropa/)).toHaveTextContent("$500.000,00 · 100%");
+    expect(row(/Ropa/)).toHaveTextContent("$500.000,00 · 100 %");
   });
 
   it("una sola chica que no alcanzó color se llama por su nombre (no \"1 más\")", () => {

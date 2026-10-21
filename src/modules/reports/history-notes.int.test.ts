@@ -115,7 +115,7 @@ describe("saveFixedNote", () => {
       ["Salario", "2026-10"],
       ["Arriendo de Beto", "2026-10"],
     ]) {
-      expect(await saveFixedNote(user.id, { description, month, note: "Hola" })).toEqual({ ok: false, error: "No se pudo guardar la nota." });
+      expect(await saveFixedNote(user.id, { description, month, note: "Hola" })).toEqual({ ok: false, error: "No se pudo guardar la nota. Intenta de nuevo." });
     }
     expect(await notesOf(user.id)).toEqual([]);
   });
@@ -161,7 +161,7 @@ describe("saveFixedNote", () => {
   ])("con algo mal (%j) no guarda nada", async (raw) => {
     const user = await createUser();
     await addTx({ userId: user.id });
-    expect(await saveFixedNote(user.id, raw)).toEqual({ ok: false, error: "No se pudo guardar la nota." });
+    expect(await saveFixedNote(user.id, raw)).toEqual({ ok: false, error: "No se pudo guardar la nota. Intenta de nuevo." });
     expect(await notesOf(user.id)).toEqual([]);
   });
 });
@@ -224,7 +224,7 @@ describe("saveFixedNoteAction", () => {
       field: "note",
     });
     expect(await saveFixedNoteAction({}, form({ description: "Netflix", month: "2026-09", note: "Hola" }))).toEqual({
-      error: "No se pudo guardar la nota.",
+      error: "No se pudo guardar la nota. Intenta de nuevo.",
     });
     expect(await notesOf(user.id)).toEqual([]);
     expect(refresh).not.toHaveBeenCalled();
@@ -237,7 +237,7 @@ describe("saveFixedNote · en inglés", () => {
     await addTx({ userId: id });
     expect(await saveFixedNote(id, { description: "Netflix", month: "2026-10", note: "Subió" }, "en")).toEqual({ ok: true, message: "The note was saved", tone: "success" });
     expect(await saveFixedNote(id, { description: "Netflix", month: "2026-10", note: "" }, "en")).toEqual({ ok: true, message: "The note was deleted", tone: "removal" });
-    expect(await saveFixedNote(id, { description: "Netflix", month: "2026-09", note: "x" }, "en")).toEqual({ ok: false, error: "The note couldn't be saved." });
+    expect(await saveFixedNote(id, { description: "Netflix", month: "2026-09", note: "x" }, "en")).toEqual({ ok: false, error: "The note couldn't be saved. Try again." });
     expect(await saveFixedNote(id, { description: "Netflix", month: "2026-10", note: "x".repeat(1000) }, "en")).toMatchObject({ ok: false, field: "note", error: expect.stringMatching(/^At most \d+ characters\.$/) });
   });
 });

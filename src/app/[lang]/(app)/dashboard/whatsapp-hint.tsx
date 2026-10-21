@@ -6,7 +6,7 @@ import { getLinkForUser } from "@/modules/whatsapp/link";
 
 const TEXTS = texts(
   { title: "Registra tus gastos por WhatsApp", body: "Conecta tu número en Mi cuenta.", connect: "Conectar" },
-  { en: { title: "Track your expenses through WhatsApp", body: "Connect your number in My account.", connect: "Connect" } },
+  { en: { title: "Add your expenses on WhatsApp", body: "Connect your number in My account.", connect: "Connect" } },
 );
 
 /** Donde se conecta y se desvincula el WhatsApp (src/app/[lang]/(app)/cuenta/whatsapp-card.tsx). */

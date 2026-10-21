@@ -225,7 +225,7 @@ describe("AuthForm · registro", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Crear cuenta" }));
     expect(mocks.signUp).not.toHaveBeenCalled();
-    expect(screen.getByText(/presiona “Crear cuenta” de nuevo/)).toBeVisible();
+    expect(screen.getByText(/toca “Crear cuenta” de nuevo/)).toBeVisible();
 
     await userEvent.click(screen.getByRole("button", { name: "Crear cuenta" }));
     expect(mocks.signUp).toHaveBeenCalledWith(expect.objectContaining({ email: "ana@gmal.com" }));
@@ -290,7 +290,7 @@ describe("AuthForm · en inglés", () => {
   it("el login: títulos, campos, botón y el enlace al registro", async () => {
     render(<AuthForm mode="login" />, { wrapper: InEnglish });
     expect(screen.getByRole("heading", { name: "Sign in" })).toBeVisible();
-    expect(screen.getByText("Welcome back.")).toBeVisible();
+    expect(screen.getByText("Welcome back")).toBeVisible();
     expect(screen.getByRole("link", { name: "Sign up" })).toHaveAttribute("href", "/registro");
     await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
     // Los campos vacíos, con sus mensajes en inglés.

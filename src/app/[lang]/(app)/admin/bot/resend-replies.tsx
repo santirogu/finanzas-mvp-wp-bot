@@ -28,7 +28,7 @@ const TEXTS = texts(
       question: (n) => `Resend ${n === 1 ? "1 reply" : `${n} replies`}?`,
       resending: "Resending…",
       body: (hours) =>
-        `The bot sends each person the reply that didn't reach them again, as it was (you don't see it and nothing is recorded again). Only those from the last ${hours} hours: after that, WhatsApp doesn't allow writing to them.`,
+        `The bot sends each person again the reply that didn't reach them, as it was (you don't see it and nothing is added again). Only those from the last ${hours} hours: after that, WhatsApp doesn't allow writing to them.`,
     },
   },
 );

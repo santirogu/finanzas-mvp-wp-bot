@@ -86,8 +86,8 @@ describe("problemLabel", () => {
       [{ kind: "missing_env", names: ["CRON_SECRET", "ANTHROPIC_API_KEY o ANTHROPIC_AUTH_TOKEN"] }, "Faltan variables de entorno: CRON_SECRET, ANTHROPIC_API_KEY o ANTHROPIC_AUTH_TOKEN", "Missing environment variables: CRON_SECRET, ANTHROPIC_API_KEY or ANTHROPIC_AUTH_TOKEN"],
       [{ kind: "database" }, "La base de datos no responde", "The database isn't responding"],
       [{ kind: "migrations", applied: 21, expected: 24 }, "A la base le faltan migraciones: tiene 21 de 24", "The database is missing migrations: it has 21 of 24"],
-      [{ kind: "cleanup_failed", at }, "La última limpieza diaria falló (20 de oct de 2026, 4:00 a. m.)", "The last daily cleanup failed (Oct 20, 2026, 4:00 AM)"],
-      [{ kind: "cleanup_late", since: at }, "La limpieza diaria no corre desde el 20 de oct de 2026, 4:00 a. m.", "The daily cleanup hasn't run since Oct 20, 2026, 4:00 AM"],
+      [{ kind: "cleanup_failed", at }, "La última limpieza diaria falló (20 de oct. de 2026, 4:00 a. m.)", "The last daily cleanup failed (Oct 20, 2026, 4:00 AM)"],
+      [{ kind: "cleanup_late", since: at }, "La limpieza diaria no corre desde el 20 de oct. de 2026, 4:00 a. m.", "The daily cleanup hasn't run since Oct 20, 2026, 4:00 AM"],
       [{ kind: "cleanup_late", since: null }, "La limpieza diaria todavía no ha corrido", "The daily cleanup hasn't run yet"],
     ] as const;
     for (const [problem, es, en] of cases) {

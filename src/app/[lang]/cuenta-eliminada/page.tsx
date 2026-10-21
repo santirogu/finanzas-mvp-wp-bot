@@ -2,12 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getTexts } from "@/i18n/server";
 import { texts } from "@/i18n/texts";
+import { BRAND_NAME } from "@/lib/brand";
 
 const TEXTS = texts(
   {
     title: "Cuenta eliminada",
-    heading: "Tu cuenta fue eliminada",
-    body: "Borramos tu cuenta, tus movimientos y los mensajes que le enviaste al bot de WhatsApp. Gracias por haber usado Anotado.",
+    heading: "Se eliminó tu cuenta",
+    body: `Borramos tu cuenta, tus movimientos y los mensajes que le enviaste al bot de WhatsApp. Gracias por haber usado ${BRAND_NAME}.`,
     home: "Ir al inicio",
     register: "Crear una cuenta nueva",
   },
@@ -15,7 +16,7 @@ const TEXTS = texts(
     en: {
       title: "Account deleted",
       heading: "Your account was deleted",
-      body: "We deleted your account, your transactions and the messages you sent to the WhatsApp bot. Thanks for using Anotado.",
+      body: `We deleted your account, your transactions and the messages you sent to the WhatsApp bot. Thanks for using ${BRAND_NAME}.`,
       home: "Go to home",
       register: "Create a new account",
     },

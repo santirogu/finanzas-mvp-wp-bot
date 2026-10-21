@@ -78,7 +78,7 @@ test("Próximos pagos: los que tocan pronto y los atrasados, Mostrar más y Este
     await fixed.getByRole("button", { name: "Agregar un gasto fijo" }).click();
     await fixed.getByLabel("Egreso", { exact: true }).selectOption("Gimnasio");
     await fixed.getByRole("button", { name: "Agregar", exact: true }).click();
-    await expect(toast(page, "Se agregó «Gimnasio» a los gastos fijos")).toBeVisible();
+    await expect(toast(page, "Se agregó “Gimnasio” a los gastos fijos")).toBeVisible();
     await closeToasts(page);
   }
   await openTab(page, "Resumen");
@@ -105,8 +105,8 @@ test("Próximos pagos: los que tocan pronto y los atrasados, Mostrar más y Este
 
   await test.step("Este pago ya no aplica: el del gimnasio de ese mes ya no se muestra, tampoco al volver", async () => {
     const month = formatMonthName(monthOf(gymDue), { withYear: gymDue.slice(0, 4) !== today.slice(0, 4) });
-    await card(page).getByRole("button", { name: `El pago de ${month} de Gimnasio ya no aplica` }).click();
-    await expect(toast(page, `No se avisará del pago de ${formatMonthName(monthOf(gymDue))} de «Gimnasio»`)).toHaveAttribute("data-tone", "removal");
+    await card(page).getByRole("button", { name: `Este pago ya no aplica: Gimnasio, ${month}` }).click();
+    await expect(toast(page, `No se avisará del pago de ${formatMonthName(monthOf(gymDue))} de “Gimnasio”`)).toHaveAttribute("data-tone", "removal");
     await expect(card(page).getByRole("listitem").filter({ hasText: "Gimnasio" })).toHaveCount(0);
     await page.reload();
     await expect(card(page).getByRole("listitem").filter({ hasText: "Gimnasio" })).toHaveCount(0);
@@ -194,8 +194,8 @@ test("Registrar pago desde el aviso: con el monto y la fecha que se confirman, y
   await addPayments(email, [{ description: "Gimnasio", amount: 120000, dates: paymentsFor(shiftDay(-5)), category: "Salud" }]);
   await page.reload();
   const gym = card(page).getByRole("listitem").filter({ hasText: "Gimnasio" });
-  const opener = gym.getByRole("button", { name: "Registrar el pago de Gimnasio" });
-  const dialog = page.getByRole("dialog", { name: "Registrar el pago de Gimnasio" });
+  const opener = gym.getByRole("button", { name: "Registrar pago de Gimnasio" });
+  const dialog = page.getByRole("dialog", { name: "Registrar pago de Gimnasio" });
 
   await test.step("la ventana: la categoría del último pago, su monto y la fecha de hoy; Esc la cierra y el foco vuelve", async () => {
     await opener.click();
@@ -213,7 +213,7 @@ test("Registrar pago desde el aviso: con el monto y la fecha que se confirman, y
     await opener.click();
     await dialog.getByLabel("Monto").fill("125000");
     await dialog.getByRole("button", { name: "Registrar pago" }).click();
-    await expect(toast(page, "Se registró el pago de «Gimnasio»: −$125.000,00")).toHaveAttribute("data-tone", "success");
+    await expect(toast(page, "Se registró el pago de “Gimnasio”: −$125.000,00")).toHaveAttribute("data-tone", "success");
     await expect(dialog).toBeHidden();
     await expect(card(page)).toHaveCount(0);
     await closeToasts(page);
@@ -226,7 +226,7 @@ test("Registrar pago desde el aviso: con el monto y la fecha que se confirman, y
   });
 });
 
-test("La campana: desde cualquier página, el número, Marcar como leído (sigue en el Resumen) y Registrar pago", async ({ page }) => {
+test("La campana: desde cualquier página, el número, Marcar como leída (sigue en el Resumen) y Registrar pago", async ({ page }) => {
   const { email } = await register(page);
   await addPayments(email, [
     { description: "Gimnasio", amount: 120000, dates: paymentsFor(shiftDay(-5)), category: "Salud" },
@@ -249,10 +249,10 @@ test("La campana: desde cualquier página, el número, Marcar como leído (sigue
     await expect(bell).toBeFocused();
   });
 
-  await test.step("Marcar como leído el gimnasio: sale de la campana, pero sigue en el Resumen", async () => {
+  await test.step("Marcar como leída el gimnasio: sale de la campana, pero sigue en el Resumen", async () => {
     await bell.click();
     const month = formatMonthName(monthOf(shiftDay(-5)), { withYear: shiftDay(-5).slice(0, 4) !== today.slice(0, 4) });
-    await panel.getByRole("button", { name: `Marcar como leído el pago de ${month} de Gimnasio` }).click();
+    await panel.getByRole("button", { name: `Marcar como leída: Gimnasio, ${month}` }).click();
     await expect(toast(page, "Se marcó como leída")).toHaveAttribute("data-tone", "success");
     await expect(bell).toHaveAccessibleName("Notificaciones: 1 sin leer");
     await closeToasts(page);
@@ -262,11 +262,11 @@ test("La campana: desde cualquier página, el número, Marcar como leído (sigue
 
   await test.step("Registrar el pago de Netflix desde la campana: sin notificaciones, y tampoco en el Resumen", async () => {
     await bell.click();
-    await panel.getByRole("button", { name: "Registrar el pago de Netflix" }).click();
-    const dialog = page.getByRole("dialog", { name: "Registrar el pago de Netflix" });
+    await panel.getByRole("button", { name: "Registrar pago de Netflix" }).click();
+    const dialog = page.getByRole("dialog", { name: "Registrar pago de Netflix" });
     await expect(dialog.getByLabel("Monto")).toHaveValue("44.900,00");
     await dialog.getByRole("button", { name: "Registrar pago" }).click();
-    await expect(toast(page, "Se registró el pago de «Netflix»: −$44.900,00")).toBeVisible();
+    await expect(toast(page, "Se registró el pago de “Netflix”: −$44.900,00")).toBeVisible();
     await expect(bell).toHaveAccessibleName("Notificaciones");
     await expect(card(page).getByRole("listitem").filter({ hasText: "Netflix" })).toHaveCount(0);
   });

@@ -88,7 +88,7 @@ describe("registeredReply", () => {
         { today: "2026-10-13", currency: "COP", balance: 70000, range },
       ),
     );
-    expect(text).toContain("Egreso Anotado: *Gasolina* — $30.000,00 (Transporte · 12 de oct)");
+    expect(text).toContain("Egreso Anotado: *Gasolina* — $30.000,00 (Transporte · 12 de oct.)");
     expect(text).toContain("Ingreso Anotado: *Venta* — $100.000,00\n");
   });
 });
@@ -158,7 +158,7 @@ describe("tooOldMonthReply", () => {
 describe("futureMonthReply", () => {
   it("dice que el mes todavía no llega y cómo pedir otro", () => {
     expect(futureMonthReply({ year: 2026, month: 12 })).toBe(
-      "Diciembre de 2026 todavía no llega 🙂 Prueba con *balance* (este mes) o *balance mes pasado*.",
+      "Diciembre de 2026 todavía no llega 🙂. Prueba con *balance* (este mes) o *balance mes pasado*.",
     );
   });
 });
@@ -171,19 +171,27 @@ describe("undoReply", () => {
 
 describe("mensajes de vinculación y ayuda", () => {
   it("saluda por el primer nombre o sin nombre", () => {
-    expect(helpReply("Ana Pérez")).toMatch(/^Hola Ana 👋/);
-    expect(helpReply()).toMatch(/^Hola 👋/);
+    // El vocativo va entre comas (Ortografía de la RAE).
+    expect(helpReply("Ana Pérez")).toMatch(/^Hola, Ana 👋\n/);
+    expect(helpReply()).toMatch(/^Hola 👋\n/);
     expect(linkedReply("Ana Pérez")).toContain("¡Listo, Ana!");
     expect(linkedReply("")).toContain("¡Listo!");
   });
 
-  it("indica dónde vincular el número", () => {
-    expect(notLinkedReply("https://finanzas.test")).toContain("https://finanzas.test/cuenta (Mi cuenta)");
+  it("indica dónde vincular el número, que hay que enviar VINCULAR con el código, y dónde crear la cuenta", () => {
+    expect(notLinkedReply("https://finanzas.test")).toBe(
+      [
+        "Hola 👋",
+        "Este número aún no está vinculado a una cuenta. Entra a https://finanzas.test/cuenta (*Mi cuenta*), toca *Conectar WhatsApp* y envíame el mensaje que te aparece: *VINCULAR* y el código.",
+        "",
+        "Si no tienes cuenta, créala en https://finanzas.test/registro.",
+      ].join("\n"),
+    );
   });
 
-  it("a una cuenta suspendida le dice que no registra nada y cómo escribirnos, sin el motivo", () => {
+  it("a una cuenta suspendida le dice que no registra nada ni responde, y cómo escribirnos, sin el motivo", () => {
     expect(suspendedReply).toBe(
-      `Tu cuenta está suspendida, así que no puedo registrar movimientos. Si crees que es un error, escríbenos a ${CONTACT_EMAIL}.`,
+      `Tu cuenta está suspendida, así que no puedo registrar movimientos ni responder tus consultas. Si crees que es un error, escríbenos a ${CONTACT_EMAIL}.`,
     );
   });
 
@@ -208,7 +216,8 @@ describe("textos fijos del bot", () => {
   it("ayuda", () => {
     expect(helpReply("Ana Pérez")).toBe(
       [
-        "Hola Ana 👋 Escríbeme tus ingresos y gastos como se los contarías a alguien:",
+        "Hola, Ana 👋",
+        "Escríbeme tus ingresos y gastos como se los contarías a alguien:",
         "",
         "• _me compré unos zapatos de $500.000_",
         "• _almuerzo 25 mil y taxi 12 mil_",
@@ -218,46 +227,45 @@ describe("textos fijos del bot", () => {
         "• *balance* — cómo vas este mes",
         "• *balance septiembre* o *balance mes pasado* — otro mes",
         "• *reporte* — tus últimos 12 meses (o *reporte 2025*, un año)",
-        "• *deshacer* — borra el último registro",
+        "• *deshacer* — borra lo último que registré",
       ].join("\n"),
     );
   });
 
   it("errores y vinculación", () => {
-    expect(linkInvalidReply).toBe(
-      "Ese código no es válido o ya venció. Genera uno nuevo en Mi cuenta.",
-    );
-    expect(linkRateLimitedReply).toBe(
-      "Demasiados intentos fallidos. Espera una hora antes de volver a intentar.",
-    );
+    expect(linkInvalidReply).toBe("Ese código no es válido o ya venció. Pide otro en *Mi cuenta*: toca *Conectar WhatsApp*.");
+    expect(linkRateLimitedReply).toBe("Recibí demasiados códigos equivocados desde este número. Espera una hora y vuelve a intentarlo.");
     expect(unsupportedTypeReply).toBe("Por ahora solo entiendo mensajes de texto ✍️");
-    expect(errorReply).toBe(
-      "Tuve un problema procesando tu mensaje 😕 Intenta de nuevo en un momento.",
-    );
+    // El error puede llegar después de guardar: que revise antes de enviarlo de nuevo.
+    expect(errorReply).toBe("Tuve un problema con tu mensaje 😕. Revisa en la web si quedó y, si no, envíamelo de nuevo en un momento.");
     expect(aiUnavailableReply).toBe(
-      "Por ahora solo entiendo *balance*, *reporte*, *deshacer* y *ayuda*. Muy pronto podrás registrar gastos escribiendo normal ✍️",
+      "No registré tu mensaje: por ahora solo entiendo *balance*, *reporte*, *deshacer* y *ayuda*. Muy pronto podrás registrar tus movimientos escribiendo como hablas ✍️.",
     );
   });
 
-  it("con Claude en pausa (/admin/bot): la web y los comandos que siguen", () => {
+  it("con Claude en pausa (/admin/bot): primero que no lo registró, después dónde registrarlo y los comandos que siguen", () => {
     expect(aiPausedReply("https://finanzas.app")).toBe(
-      "Por ahora no puedo entender mensajes escritos libremente 🛠️ Registra tus movimientos en la web: https://finanzas.app/dashboard. *balance*, *reporte*, *deshacer* y *ayuda* siguen funcionando.",
+      "No registré tu mensaje: por ahora no puedo entender mensajes escritos libremente 🛠️. Regístralo en la web, en *Egresos* o *Ingresos*: https://finanzas.app/egresos. Siguen funcionando *balance*, *reporte*, *deshacer* y *ayuda*.",
     );
   });
 
   it("con el tope mensual de tokens alcanzado: lo mismo que en pausa", () => {
     expect(aiMonthlyLimitReply("https://finanzas.app")).toBe(
-      "Este mes ya usé todo mi cupo para entender mensajes escritos libremente 🛠️ Registra tus movimientos en la web: https://finanzas.app/dashboard. *balance*, *reporte*, *deshacer* y *ayuda* siguen funcionando.",
+      "No registré tu mensaje: este mes ya usé todo mi cupo para entender mensajes escritos libremente 🛠️. Regístralo en la web, en *Egresos* o *Ingresos*: https://finanzas.app/egresos. Siguen funcionando *balance*, *reporte*, *deshacer* y *ayuda*.",
     );
   });
 
-  it("límites del bot", () => {
+  it("límites del bot: primero que no registró nada", () => {
     expect(aiRateLimitedReply).toBe(
-      "Recibí muchos mensajes en poco tiempo. Para cuidar el servicio, espera un rato antes de registrar más. Mientras tanto puedes escribir *balance*, *reporte* o *deshacer*, o usar la web.",
+      "No registré este mensaje: recibí muchos en poco tiempo. Espera un rato y envíamelo de nuevo. Mientras tanto, puedes escribir *balance*, *reporte*, *deshacer* o *ayuda*, o registrarlo en la web.",
     );
-    expect(tooManyTransactionsReply(20)).toBe(
-      "Son muchos movimientos en un solo mensaje. Envíame máximo 20 por mensaje y los registro.",
-    );
+    expect(tooManyTransactionsReply(20)).toBe("No registré ninguno: tu mensaje trae más de 20 movimientos. Envíamelos en varios mensajes, hasta 20 en cada uno.");
+  });
+
+  it("los mensajes que no registran nada lo dicen al empezar", () => {
+    for (const reply of [aiRateLimitedReply, tooManyTransactionsReply(20), aiPausedReply("x"), aiMonthlyLimitReply("x"), aiUnavailableReply]) {
+      expect(reply).toMatch(/^No registré /);
+    }
   });
 });
 
@@ -292,13 +300,13 @@ describe("reportReply", () => {
         "📊 *Reporte de noviembre de 2025 a octubre de 2026*",
         "Ingresos: $33.350.000,00",
         "Egresos: $10.977.000,00",
-        "Balance: *$22.373.000,00* (ahorraste el 67%)",
+        "Balance: *$22.373.000,00* (ahorraste el 67\u00a0%)",
         "Gasto promedio por mes: $3.748.000,00",
         "Mes de más gasto: octubre de 2026 ($7.229.000,00)",
-        "En qué se te fue: 🏠 Vivienda 64% · 💳 Deudas 14% · 📚 Educación 11%",
+        "En qué se te fue: 🏠 Vivienda 64\u00a0% · 💳 Deudas 14\u00a0% · 📚 Educación 11\u00a0%",
         "Gastos fijos: $1.800.000,50 al mes",
         "",
-        "Más detalle: https://finanzas.app/reportes",
+        "Más detalle en *Reportes*: https://finanzas.app/reportes",
       ].join("\n"),
     );
   });
@@ -306,7 +314,7 @@ describe("reportReply", () => {
   it(`nombra hasta ${REPORT_CATEGORIES} categorías, las que llegan`, () => {
     const two = { ...categories, rows: categories.rows.slice(0, 1) };
     expect(reportReply({ summary, categories: two, recurring }, reportPeriod(undefined, october), ctx)).toContain(
-      "En qué se te fue: 🏠 Vivienda 64%\n",
+      "En qué se te fue: 🏠 Vivienda 64\u00a0%\n",
     );
   });
 
@@ -315,7 +323,7 @@ describe("reportReply", () => {
     const reply = reportReply({ summary: overspent, categories, recurring }, reportPeriod("2025", october), ctx);
     expect(reply).toMatch(/^📊 \*Reporte de enero a diciembre de 2025\*\n/);
     expect(reply).toContain("Balance: *−$500,00* (gastaste más de lo que ganaste)");
-    expect(reply).toMatch(/Más detalle: https:\/\/finanzas\.app\/reportes\?periodo=2025$/);
+    expect(reply).toMatch(/Más detalle en \*Reportes\*: https:\/\/finanzas\.app\/reportes\?periodo=2025$/);
   });
 
   it("de un solo mes (el año en curso en enero), con su artículo", () => {
@@ -334,7 +342,7 @@ describe("reportReply", () => {
         "Egresos: $0,00",
         "Balance: *$33.350.000,00*",
         "",
-        "Más detalle: https://finanzas.app/reportes",
+        "Más detalle en *Reportes*: https://finanzas.app/reportes",
       ].join("\n"),
     );
   });
@@ -352,7 +360,7 @@ describe("reportReply", () => {
   });
 
   it("un año futuro o de antes del 2000", () => {
-    expect(futureYearReply(2027)).toBe("2027 todavía no llega 🙂 Prueba con *reporte* (los últimos 12 meses) o *reporte* y un año que ya pasó.");
+    expect(futureYearReply(2027)).toBe("2027 todavía no llega 🙂. Prueba con *reporte* (los últimos 12 meses) o *reporte* y un año que ya pasó.");
     expect(tooOldYearReply).toBe("Solo puedo darte reportes desde el 2000. Prueba con *reporte* (los últimos 12 meses) o *reporte 2025*.");
   });
 });

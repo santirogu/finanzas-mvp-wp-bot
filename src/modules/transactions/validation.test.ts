@@ -44,50 +44,50 @@ describe("newTransactionSchema", () => {
   });
 
   it.each(["100.000.000.000,01", "250.000.000.000"])("rechaza un monto por encima del máximo: %j", (amount) => {
-    expect(errorsOf({ ...base, amount })).toHaveProperty("amount", "El monto no puede pasar de $100.000.000.000,00");
+    expect(errorsOf({ ...base, amount })).toHaveProperty("amount", "El monto no puede pasar de $100.000.000.000,00.");
   });
 
   it.each(["0", "", "abc", "0,00", "1,500"])("rechaza el monto %j", (amount) => {
     expect(errorsOf({ ...base, amount })).toHaveProperty(
       "amount",
-      "Ingresa un monto mayor que cero",
+      "Escribe un monto mayor que cero.",
     );
   });
 
   it.each(["-5.000", "$-5.000", "- 5.000", "-$5.000", "−$5.000", "–5.000", "—$5.000"])("rechaza el monto negativo %j", (amount) => {
     expect(errorsOf({ ...base, amount })).toHaveProperty(
       "amount",
-      "Ingresa un monto mayor que cero",
+      "Escribe un monto mayor que cero.",
     );
   });
 
   it.each(["2026-02-30", "2025-02-29", "2026-04-31"])(
     "rechaza la fecha imposible %j",
     (occurredOn) => {
-      expect(errorsOf({ ...base, occurredOn })).toHaveProperty("occurredOn", "Fecha inválida");
+      expect(errorsOf({ ...base, occurredOn })).toHaveProperty("occurredOn", "Elige una fecha válida.");
     },
   );
 
   it("quita los caracteres de control de la descripción (el nulo haría fallar la base)", () => {
     expect(newTransactionSchema.parse({ ...base, description: "Zap\u0000atos\u0007 " }).description).toBe("Zapatos");
     // Si solo tenía caracteres de control, queda vacía y se pide una.
-    expect(errorsOf({ ...base, description: "\u0000\u0000" })).toHaveProperty("description", "Agrega una descripción");
+    expect(errorsOf({ ...base, description: "\u0000\u0000" })).toHaveProperty("description", "Escribe una descripción.");
   });
 
   it("rechaza descripciones vacías o de más de 140 caracteres", () => {
     expect(errorsOf({ ...base, description: "   " })).toHaveProperty(
       "description",
-      "Agrega una descripción",
+      "Escribe una descripción.",
     );
     expect(errorsOf({ ...base, description: "a".repeat(141) })).toHaveProperty(
       "description",
-      "Máximo 140 caracteres",
+      "La descripción puede tener hasta 140 caracteres.",
     );
     expect(errorsOf({ ...base, description: "a".repeat(140) })).toEqual({});
   });
 
   it.each(["13/10/2026", "2026-13-01", "ayer", ""])("rechaza la fecha %j", (occurredOn) => {
-    expect(errorsOf({ ...base, occurredOn })).toHaveProperty("occurredOn", "Fecha inválida");
+    expect(errorsOf({ ...base, occurredOn })).toHaveProperty("occurredOn", "Elige una fecha válida.");
   });
 
   it("rechaza categorías que no son UUID y tipos desconocidos", () => {
@@ -104,7 +104,7 @@ describe("newTransactionSchema · ingresos y mensajes", () => {
   it("explica que la categoría debe elegirse de la lista", () => {
     expect(errorsOf({ ...base, categoryId: "ropa" })).toHaveProperty(
       "categoryId",
-      "Selecciona una categoría",
+      "Elige una categoría.",
     );
   });
 });
@@ -121,14 +121,14 @@ describe("transactionSchema · en inglés", () => {
     const result = transactionSchema("en").safeParse({ ...base, amount: "0", description: " ", categoryId: "x", occurredOn: "2026-13-01" });
     expect(result.success).toBe(false);
     expect(Object.fromEntries(result.error!.issues.map((issue) => [issue.path[0], issue.message]))).toEqual({
-      amount: "Enter an amount greater than zero",
-      description: "Add a description",
-      categoryId: "Pick a category",
-      occurredOn: "Invalid date",
+      amount: "Enter an amount greater than zero.",
+      description: "Enter a description.",
+      categoryId: "Choose a category.",
+      occurredOn: "Choose a valid date.",
     });
     expect(transactionSchema("en").safeParse({ ...base, amount: "100,000,000,000.01" }).error?.issues[0].message).toBe(
-      "The amount can't be more than $100,000,000,000.00",
+      "The amount can't be more than $100,000,000,000.00.",
     );
-    expect(transactionSchema("en").safeParse({ ...base, description: "x".repeat(141) }).error?.issues[0].message).toBe("At most 140 characters");
+    expect(transactionSchema("en").safeParse({ ...base, description: "x".repeat(141) }).error?.issues[0].message).toBe("The description can have up to 140 characters.");
   });
 });

@@ -1223,10 +1223,11 @@ borra automáticamente. El PR debe estar al día con `main` antes de fusionarse.
 ## Despliegue (bloqueado por el CI)
 
 **Nada llega a producción sin pasar el CI.** Vercel no despliega por su cuenta
-(`vercel.json` → `git.deploymentEnabled: false`); lo hace el job `deploy` de
-`.github/workflows/ci.yml`, que solo corre en `main` y solo si lint, tipos y todas las pruebas
-pasaron. Ese job ejecuta `pnpm vercel-build` (migraciones + categorías + build), así que tampoco
-una migración rota llega a la base de producción.
+(`vercel.json` → `git.deploymentEnabled: false`); lo hace el job `deploy` del CI
+(`.github/workflows/ci.yml`), que solo corre en `main` y solo si lint, tipos y todas las pruebas
+pasaron. Sus pasos están en `.github/workflows/deploy.yml`, que usa también el simulacro de abajo.
+Ese job ejecuta `pnpm vercel-build` (migraciones + categorías + build), así que tampoco una
+migración rota llega a la base de producción.
 
 **Cada versión se prueba antes de recibir tráfico** (smoke tests, `scripts/smoke.mjs`):
 
@@ -1237,8 +1238,17 @@ una migración rota llega a la base de producción.
 2. Smoke tests contra esa URL. Si fallan, el job se detiene: el dominio nunca cambió.
 3. Se le pasa el dominio (`vercel promote`, instantáneo, sin recompilar).
 4. Smoke tests contra el dominio real. Si fallan, **vuelve sola a la versión anterior**
-   (`vercel rollback`) y el job queda en rojo. También si el job se cancela a mitad, por ejemplo al
-   llegar al tiempo máximo.
+   (`vercel rollback`), comprueba que el dominio quedó en ella y que pasa los smoke tests, y el job
+   queda en rojo. También si el job se cancela a mitad, por ejemplo al llegar al tiempo máximo.
+
+**Simulacro de la vuelta atrás:** *Actions → Simulacro de vuelta atrás → Run workflow* (rama `main`)
+prueba en producción ese último paso, con los mismos pasos de un despliegue (`deploy.yml`). Publica
+`main`, le pasa el dominio, corre los smoke tests y vuelve a propósito a la versión que estaba;
+termina en verde si el dominio quedó en ella y la pasa. Dura unos minutos y nadie nota el cambio,
+porque la versión nueva es el mismo código que ya está en producción. Por eso no corre si `main`
+tiene cambios de la app sin desplegar: primero hay que desplegarlos. No publica release y queda en
+el entorno `simulacro` de GitHub, así que no cuenta como desplegado para el job `changes`. Conviene
+correrlo después de cambiar algo del despliegue (el CLI de Vercel, el plan, `deploy.yml`).
 
 Los chequeos (segundos, sin costo, sin iniciar sesión ni guardar datos): `/login`, `/privacidad` y
 `/eliminar-datos` cargan; `/api/health` confirma la conexión a la base, que tiene todas las
@@ -1246,8 +1256,8 @@ migraciones y que no falta ninguna variable de entorno (responde solo `ok`/`erro
 queda en los logs de Vercel); y el webhook rechaza un token y una firma falsos. Para correrlos a
 mano: `pnpm smoke https://anotadoapp.vercel.app`.
 
-**Cambiar el dominio.** El dominio de producción está en un solo lugar: `PRODUCTION_URL`, en el job
-`deploy` de `.github/workflows/ci.yml`. El build lo guarda como `APP_PUBLIC_URL` (`next.config.ts`), y
+**Cambiar el dominio.** El dominio de producción está en un solo lugar: `PRODUCTION_URL`, en
+`.github/workflows/deploy.yml` (los pasos del despliegue). El build lo guarda como `APP_PUBLIC_URL` (`next.config.ts`), y
 de ahí lo toman el inicio de sesión, los enlaces que manda el bot, el sitemap y la imagen para compartir
 (`src/lib/app-url.ts`). Para cambiarlo, en este orden (si no, el bot o el inicio de sesión se cortan):
 

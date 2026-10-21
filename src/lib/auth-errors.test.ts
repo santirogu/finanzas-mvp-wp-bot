@@ -86,8 +86,8 @@ describe("authErrorMessage", () => {
   it("sin traducción, muestra el mensaje del servidor o uno genérico", () => {
     expect(authErrorMessage({ code: "OTRO_CODIGO", message: "Mensaje del servidor" })).toBe("Mensaje del servidor");
     expect(authErrorMessage({ status: 500, message: "Error interno" })).toBe("Error interno");
-    expect(authErrorMessage({ code: "OTRO_CODIGO" })).toBe("Algo salió mal.");
-    expect(authErrorMessage({})).toBe("Algo salió mal.");
+    expect(authErrorMessage({ code: "OTRO_CODIGO" })).toBe("Algo salió mal. Intenta de nuevo en unos minutos.");
+    expect(authErrorMessage({})).toBe("Algo salió mal. Intenta de nuevo en unos minutos.");
   });
 });
 
@@ -110,6 +110,6 @@ describe("authErrorMessage · en inglés", () => {
 
   it("sin código conocido: el mensaje que venga o el de respaldo, en inglés", () => {
     expect(authErrorMessage({ code: "OTRO", message: "Some error" }, "en")).toBe("Some error");
-    expect(authErrorMessage({}, "en")).toBe("Something went wrong.");
+    expect(authErrorMessage({}, "en")).toBe("Something went wrong. Try again in a few minutes.");
   });
 });

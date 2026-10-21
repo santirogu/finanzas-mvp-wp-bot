@@ -1,0 +1,62 @@
+name: Simulacro de vuelta atrás
+
+# Prueba en producción que el despliegue sabe volver a la versión anterior, con los mismos pasos de
+# un despliegue de verdad (deploy.yml): publica main sin dominio, corre los smoke tests, le pasa el
+# dominio, los corre de nuevo y vuelve a la versión que estaba, comprobando que el dominio quedó en
+# ella. La versión nueva es el mismo código que ya está en producción, así que nadie nota el cambio
+# (dura un par de minutos). No publica release ni cuenta como desplegado. Se corre a mano:
+# Actions → Simulacro de vuelta atrás → Run workflow (rama main). README → Despliegue.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # Si main tiene cambios de la app que no están en producción (por ejemplo, después de un despliegue
+  # que volvió atrás), el simulacro los publicaría y correría sus migraciones: primero hay que desplegarlos.
+  check:
+    name: Comprobar que main ya está en producción
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      deployments: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Comparar main con el último despliegue
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          last=$(scripts/last-production-sha.sh)
+          if [ -z "$last" ] || ! git cat-file -e "$last^{commit}" 2>/dev/null; then
+            echo "::error::No se encontró el último despliegue a producción en el historial."
+            exit 1
+          fi
+          echo "Último despliegue exitoso: $last"
+          set -o pipefail
+          git diff --name-only "$last" "$GITHUB_SHA" | node scripts/deploy-needed.mjs
+          if grep -q '^deploy=true$' "$GITHUB_OUTPUT"; then
+            echo "::error::main tiene cambios de la app sin desplegar. Despliégalos primero (Actions → CI → Run workflow) y después corre el simulacro."
+            exit 1
+          fi
+
+  simulacro:
+    name: Simulacro
+    needs: check
+    permissions:
+      contents: read
+      deployments: write
+    uses: ./.github/workflows/deploy.yml
+    with:
+      simulacro: true
+    secrets:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}

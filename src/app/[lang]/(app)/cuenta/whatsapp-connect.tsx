@@ -20,7 +20,7 @@ const TEXTS = texts(
     toBot: "al número del bot",
     fromYours: "desde tu WhatsApp:",
     open: "Abrir WhatsApp",
-    expires: (n: number) => `Vence en ${n} ${n === 1 ? "minuto" : "minutos"}. Esta tarjeta se actualiza sola cuando quede vinculado.`,
+    expires: (n: number) => `Vence en ${n} ${n === 1 ? "minuto" : "minutos"}. Esta tarjeta se actualiza sola cuando tu WhatsApp quede vinculado.`,
     noWhatsApp: "¿Sin WhatsApp configurado aún?",
     simulator: "Pruébalo en el simulador",
   },
@@ -81,7 +81,7 @@ export function WhatsAppConnect({
     return (
       <div className="mt-3 space-y-3 text-sm">
         <p className="text-muted">
-          {t.intro} <em>“me compré unos zapatos de $500.000”</em>.
+          {t.intro} <em lang="es">“me compré unos zapatos de $500.000”</em>.
         </p>
         {expired && <p className="text-danger">{t.expired}</p>}
         {error && (
@@ -112,7 +112,7 @@ export function WhatsAppConnect({
         )}{" "}
         {t.fromYours}
       </p>
-      <p className="rounded-lg bg-background py-3 text-center font-mono text-lg font-semibold tracking-widest">
+      <p lang="es" className="rounded-lg bg-background py-3 text-center font-mono text-lg font-semibold tracking-widest">
         {message}
       </p>
       {botNumber && (

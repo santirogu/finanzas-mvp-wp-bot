@@ -48,7 +48,7 @@ describe("skipFixedPayment", () => {
     await addExpense(user.id, "Administración Edificio");
     expect(await skipFixedPayment(user.id, { description: "Administración Edificio", month: "2026-10" })).toEqual({
       ok: true,
-      message: "No se avisará del pago de octubre de «Administración Edificio»",
+      message: "No se avisará del pago de octubre de “Administración Edificio”",
       tone: "removal",
     });
     expect(await skipsOf(user.id)).toEqual([{ key: "administracion edificio", month: "2026-10" }]);
@@ -73,7 +73,7 @@ describe("skipFixedPayment", () => {
   ])("con datos inválidos (%j) no guarda nada", async (raw) => {
     const user = await createUser();
     await addExpense(user.id, "Arriendo");
-    expect(await skipFixedPayment(user.id, raw)).toEqual({ ok: false, error: "No se pudo ocultar el aviso." });
+    expect(await skipFixedPayment(user.id, raw)).toEqual({ ok: false, error: "No se pudo ocultar el aviso. Intenta de nuevo." });
     expect(await skipsOf(user.id)).toEqual([]);
   });
 
@@ -105,7 +105,7 @@ describe("skipFixedPaymentAction", () => {
     const user = await signIn();
     await addExpense(user.id, "Arriendo");
     expect(await skipFixedPaymentAction({}, form({ description: "Arriendo", month: "2026-10" }))).toEqual({
-      message: "No se avisará del pago de octubre de «Arriendo»",
+      message: "No se avisará del pago de octubre de “Arriendo”",
       tone: "removal",
     });
     expect(refresh).toHaveBeenCalledOnce();
@@ -114,7 +114,7 @@ describe("skipFixedPaymentAction", () => {
 
   it("con un error lo devuelve, no guarda nada y no refresca", async () => {
     const user = await signIn();
-    expect(await skipFixedPaymentAction({}, form({ description: "Inventado", month: "2026-10" }))).toEqual({ error: "No se pudo ocultar el aviso." });
+    expect(await skipFixedPaymentAction({}, form({ description: "Inventado", month: "2026-10" }))).toEqual({ error: "No se pudo ocultar el aviso. Intenta de nuevo." });
     expect(await skipsOf(user.id)).toEqual([]);
     expect(refresh).not.toHaveBeenCalled();
   });
@@ -129,6 +129,6 @@ describe("skipFixedPaymentAction · en inglés", () => {
       message: "You won't be notified of the October payment of “Arriendo”",
       tone: "removal",
     });
-    expect(await skipFixedPaymentAction({}, form({ description: "Otro", month: "2026-10" }))).toEqual({ error: "The notice couldn't be hidden." });
+    expect(await skipFixedPaymentAction({}, form({ description: "Otro", month: "2026-10" }))).toEqual({ error: "The notice couldn't be hidden. Try again." });
   });
 });
