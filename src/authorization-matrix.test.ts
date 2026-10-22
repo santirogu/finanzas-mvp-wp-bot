@@ -52,6 +52,8 @@ const API_ROUTES = {
   "/api/whatsapp/webhook POST": "firma HMAC de Meta (X-Hub-Signature-256)",
   "/api/health GET": "pública: no devuelve datos ni detalles de configuración",
   "/api/cron/limpieza GET": "solo Vercel Cron, con el secreto CRON_SECRET (src/lib/cron-auth.ts); devuelve solo cantidades",
+  "/api/cron/vigilancia GET":
+    "solo la vigilancia de GitHub Actions, con el secreto CRON_SECRET (src/lib/cron-auth.ts); devuelve solo si hay problemas y de qué tipo, sin detalles",
   "/reportes/exportar GET": "requiere sesión (requireUser); solo los movimientos propios del período, sin los eliminados",
   "/reportes/pdf GET": "requiere sesión (requireUser); solo los datos propios del período, sin los movimientos eliminados",
 } as const;
