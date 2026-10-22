@@ -191,6 +191,10 @@ test("el tope mensual de tokens: al alcanzarlo, el bot deja de usar Claude hasta
     await expect(toast(page, "El tope mensual quedó en 10.000 tokens")).toBeVisible();
     await expect(monthly()).toContainText(/Alcanzado: [\d.]+ de 10\.000\. Claude vuelve el 1 de [a-z]+\./);
     await expect(settings(page)).toContainText(/En pausa por el tope mensual hasta el 1 de [a-z]+/);
+    // Arriba de la página, la alerta con qué hacer.
+    const alerts = visible(page.getByRole("region", { name: "Alertas del bot" }));
+    await expect(alerts).toContainText(/Se alcanzó el tope mensual de tokens: Claude está en pausa hasta el 1 de [a-z]+/);
+    await expect(alerts).toContainText("sube el tope en Configuración");
   });
 
   await test.step("el bot pide usar la web y los comandos siguen; Inicio lo avisa", async () => {
@@ -199,6 +203,13 @@ test("el tope mensual de tokens: al alcanzarlo, el bot deja de usar Claude hasta
     await page.goto("/admin");
     const card = visible(page.getByRole("list", { name: "Módulos de administración" })).getByRole("listitem").filter({ hasText: "Bot de WhatsApp" });
     await expect(card).toContainText(/Tope mensual alcanzado · \d+ mensajes? hoy/);
+    // La alerta, arriba del Inicio, lleva al módulo, y Salud la cuenta entre sus problemas.
+    const alerts = visible(page.getByRole("region", { name: "Alertas del bot" }));
+    await expect(alerts).toContainText("Se alcanzó el tope mensual de tokens");
+    await expect(alerts.getByRole("link", { name: "Ver Bot de WhatsApp" })).toHaveAttribute("href", "/admin/bot");
+    const health = visible(page.getByRole("list", { name: "Módulos de administración" })).getByRole("listitem").filter({ hasText: "Salud del sistema" });
+    await expect(health).toContainText(/El bot tiene \d+ alertas?/);
+    expect(await seriousViolations(page)).toEqual([]);
   });
 
   await test.step("vacío lo quita y el bot vuelve a entender los mensajes; queda en el historial", async () => {
@@ -207,6 +218,8 @@ test("el tope mensual de tokens: al alcanzarlo, el bot deja de usar Claude hasta
     await dialog(page).getByLabel("Tokens al mes").fill("");
     await confirmWith(page, codeFor(secret, 1), "Guardar tope");
     await expect(toast(page, "Se quitó el tope mensual de tokens.")).toBeVisible();
+    // Sin el problema, la alerta se apaga sola.
+    await expect(page.getByRole("region", { name: "Alertas del bot" })).toHaveCount(0);
     expect(await beto("almuerzo 25.900,50")).toMatch(/✅ Egreso Anotado/);
     await page.goto("/admin/historial?tipo=admin");
     await expect(visible(page.getByRole("listitem").filter({ hasText: "cambió el tope mensual de tokens" })).first()).toContainText(
@@ -227,6 +240,8 @@ test("reenviar una respuesta que no salió: le llega a la persona y no se regist
       await expect(errors).toContainText("1 respuesta no salió en las últimas 24 horas.", { timeout: 1_000 });
     }).toPass({ timeout: 15_000 });
     await expect(errors).toContainText("No se pudo enviar la respuesta por WhatsApp");
+    // Fue un número fuera de la lista de prueba de Meta (depende de quién recibe, no del bot): no es una alerta.
+    await expect(page.getByRole("region", { name: "Alertas del bot" })).toHaveCount(0);
   });
 
   await test.step("con el código se reenvía y a Beto le llega la respuesta de entonces", async () => {

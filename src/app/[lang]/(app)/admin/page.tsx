@@ -12,6 +12,7 @@ import { historySummary } from "@/modules/admin/history/events-log";
 import { adminModules, type AdminModuleId } from "@/modules/admin/modules";
 import { usersSummary } from "@/modules/admin/users/users";
 import { PageSkeleton } from "../page-skeleton";
+import { BotAlerts } from "./bot-alerts";
 import { ModuleIcon } from "./module-icon";
 import { adminMetadata } from "./admin-metadata";
 
@@ -90,41 +91,44 @@ async function AdminHome() {
   const healthLine = healthy ? t.healthy : `${t.problems(health.problems.length)}: ${health.problems.map((p) => problemLabel(p, locale)).join(" · ")}`;
 
   return (
-    <ul aria-label={t.modules} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-      {adminModules(locale).map((adminModule) => {
-        const body = (
-          <>
-            <ModuleIcon id={adminModule.id} />
-            <div className="min-w-0 space-y-0.5">
-              <p className="flex flex-wrap items-center gap-2 font-medium">
-                {adminModule.label}
-                {adminModule.status === "pronto" && (
-                  <span className="rounded-full border border-border px-2 text-xs font-normal text-muted">{t.soon}</span>
-                )}
-              </p>
-              <p className="text-sm text-muted">{adminModule.description}</p>
-              {summaries[adminModule.id] && <p className="text-sm">{summaries[adminModule.id]}</p>}
-              {adminModule.id === "salud" && (
-                <p className={`flex items-start gap-1.5 text-sm font-medium ${healthy ? "text-income" : "text-danger"}`}>
-                  <span aria-hidden>{healthy ? "●" : "▲"}</span>
-                  <span>{healthLine}</span>
+    <div className="space-y-4">
+      <BotAlerts alerts={health.botAlerts} locale={locale} link />
+      <ul aria-label={t.modules} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {adminModules(locale).map((adminModule) => {
+          const body = (
+            <>
+              <ModuleIcon id={adminModule.id} />
+              <div className="min-w-0 space-y-0.5">
+                <p className="flex flex-wrap items-center gap-2 font-medium">
+                  {adminModule.label}
+                  {adminModule.status === "pronto" && (
+                    <span className="rounded-full border border-border px-2 text-xs font-normal text-muted">{t.soon}</span>
+                  )}
                 </p>
+                <p className="text-sm text-muted">{adminModule.description}</p>
+                {summaries[adminModule.id] && <p className="text-sm">{summaries[adminModule.id]}</p>}
+                {adminModule.id === "salud" && (
+                  <p className={`flex items-start gap-1.5 text-sm font-medium ${healthy ? "text-income" : "text-danger"}`}>
+                    <span aria-hidden>{healthy ? "●" : "▲"}</span>
+                    <span>{healthLine}</span>
+                  </p>
+                )}
+              </div>
+            </>
+          );
+          return (
+            <li key={adminModule.id}>
+              {adminModule.status === "activo" ? (
+                <Link href={adminModule.href} className="card flex h-full gap-3 p-4 transition hover:border-brand/40">
+                  {body}
+                </Link>
+              ) : (
+                <div className="flex h-full gap-3 rounded-xl border border-dashed border-border p-4">{body}</div>
               )}
-            </div>
-          </>
-        );
-        return (
-          <li key={adminModule.id}>
-            {adminModule.status === "activo" ? (
-              <Link href={adminModule.href} className="card flex h-full gap-3 p-4 transition hover:border-brand/40">
-                {body}
-              </Link>
-            ) : (
-              <div className="flex h-full gap-3 rounded-xl border border-dashed border-border p-4">{body}</div>
-            )}
-          </li>
-        );
-      })}
-    </ul>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }

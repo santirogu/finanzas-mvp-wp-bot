@@ -24,6 +24,8 @@ export const sendWhatsAppText: Sender = async (to, body) => {
   // WHATSAPP_API_URL: solo para las pruebas E2E (un servidor falso en localhost).
   const base = serviceUrl("WHATSAPP_API_URL", "https://graph.facebook.com");
   const url = `${base}/${GRAPH_VERSION}/${envVar("WHATSAPP_PHONE_NUMBER_ID")}/messages`;
+  // Sin respuesta (10 s) o sin red, fetch lanza: se devuelve como un envío fallido (solo el tipo del error), para
+  // que el mensaje quede registrado como fallido y no "sin procesar" (src/modules/bot/handle-message.ts).
   const response = await fetch(url, {
     method: "POST",
     headers: {
@@ -38,7 +40,8 @@ export const sendWhatsAppText: Sender = async (to, body) => {
       text: { preview_url: false, body },
     }),
     signal: AbortSignal.timeout(10_000),
-  });
+  }).catch((err: unknown) => describeError(err));
+  if (typeof response === "string") return { ok: false, error: response };
 
   if (!response.ok) {
     const detail = await response.text().catch(() => "");
