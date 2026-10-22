@@ -12,6 +12,7 @@ import {
   getExpensesByDay,
   getLargestExpenses,
   getMonthExpenses,
+  getMonthFixed,
   getMonthlyTotals,
   getReport,
   getUpcomingPayments,
@@ -428,6 +429,47 @@ describe("getUpcomingPayments (los avisos del Resumen)", () => {
     await db.update(notificationSetting).set({ upcomingEnabled: false }).where(eq(notificationSetting.userId, ana.id));
     // Apagados, tampoco los atrasados.
     expect(await getUpcomingPayments(ana.id, october, "2026-10-20")).toEqual({ enabled: false, days: 7, payments: [] });
+  });
+});
+
+describe("getMonthFixed (Lo que te queda, en el Resumen)", () => {
+  it("los gastos fijos propios que faltan este mes, sin importar la anticipación ni si apagó los avisos, y lo pagado", async () => {
+    const ana = await createUser();
+    const beto = await createUser();
+    for (const month of ["07", "08", "09"]) {
+      await addTx({ userId: ana.id, description: "Arriendo", amount: 1800000, occurredOn: `2026-${month}-28` });
+      await addTx({ userId: ana.id, description: "Gimnasio", amount: 120000, occurredOn: `2026-${month}-01` });
+      await addTx({ userId: beto.id, description: "Colegio", amount: 900000, occurredOn: `2026-${month}-04` });
+    }
+    // El gimnasio de octubre ya se pagó; el mercado no es un gasto fijo; uno borrado no cuenta.
+    await addTx({ userId: ana.id, description: "Gimnasio", amount: 130000, occurredOn: "2026-10-02" });
+    await addTx({ userId: ana.id, description: "Mercado", amount: 400000, occurredOn: "2026-10-03" });
+    await addTx({ userId: ana.id, description: "Arriendo", amount: 1800000, occurredOn: "2026-10-04", deletedAt: new Date() });
+    // Con los avisos apagados igual cuenta: el arriendo del 28 falta, aunque está a 25 días.
+    await db.insert(notificationSetting).values({ userId: ana.id, upcomingEnabled: false, upcomingDays: 3 });
+    // La marca de Beto no le cambia nada a Ana.
+    await db.insert(fixedPaymentSkip).values({ userId: beto.id, descriptionKey: "arriendo", month: "2026-10" });
+
+    expect(await getMonthFixed(ana.id, october, "2026-10-03")).toEqual({
+      pending: [{ description: "Arriendo", amount: 1800000 }],
+      paid: 130000,
+      hasFixed: true,
+    });
+    // Los de Beto son solo suyos.
+    expect(await getMonthFixed(beto.id, october, "2026-10-03")).toEqual({
+      pending: [{ description: "Colegio", amount: 900000 }],
+      paid: 0,
+      hasFixed: true,
+    });
+
+    await db.insert(fixedPaymentSkip).values({ userId: ana.id, descriptionKey: "arriendo", month: "2026-10" });
+    expect((await getMonthFixed(ana.id, october, "2026-10-03")).pending).toEqual([]);
+  });
+
+  it("sin gastos fijos, nada que decir", async () => {
+    const ana = await createUser();
+    await addTx({ userId: ana.id, description: "Mercado", amount: 400000, occurredOn: "2026-10-03" });
+    expect(await getMonthFixed(ana.id, october, "2026-10-03")).toEqual({ pending: [], paid: 0, hasFixed: false });
   });
 });
 

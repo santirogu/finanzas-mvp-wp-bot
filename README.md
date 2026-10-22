@@ -255,7 +255,7 @@ Automatically start at login*).
 src/
   app/[lang]/                       Las páginas, una vez por idioma (el proxy agrega el idioma por dentro: ver Idiomas)
     (auth)/login, (auth)/registro   Páginas públicas de acceso
-    (app)/dashboard                 Resumen: balance del mes (y frente al anterior), últimos movimientos, gastos por categoría (dona)
+    (app)/dashboard                 Resumen: balance del mes (y frente al anterior), lo que te queda, últimos movimientos, gastos por categoría (dona)
     (app)/cuenta                    Mi cuenta: tus datos, seguridad (cambiar la contraseña), WhatsApp, apariencia y eliminar la cuenta
     (app)/ingresos, (app)/egresos   Formulario + listado del mes (vista compartida)
     (app)/reportes                  Reportes: 12 meses (o un año), barras por mes, categorías frente a su promedio, gastos fijos, los más grandes y qué días gastas más
@@ -485,6 +485,15 @@ La app está en español (el de siempre) y en inglés, toda la web (el bot de Wh
     Cerrado, cada gasto dice su último cambio ("11% desde marzo"). A cada cambio se le puede escribir
     una nota (hasta 280 caracteres; tabla `fixed_expense_note`), solo de un mes en que la persona pagó
     ese gasto; vaciarla la borra.
+- **Lo que te queda este mes** (`src/modules/reports/remaining.ts`, `month-remaining.tsx`): en el Resumen, solo
+  con el mes en curso y si ya hubo ingresos (antes del sueldo todo saldría negativo).
+  - **Lo libre:** ingresos − egresos − los gastos fijos que faltan por pagar este mes (sin pagar ni marcados "ya
+    no aplica", aunque los avisos estén apagados), y cuánto da por día en los que quedan, contando hoy. Se resta
+    solo lo fijo; el gasto variable que viene es una estimación y va en la proyección (decisión del dueño).
+  - **La proyección**, desde el día 7 (`PROJECTION_FROM_DAY`): los egresos de hasta hoy, más los fijos que
+    faltan, más el gasto variable de cada día (los egresos que no son de gastos fijos) en los días que quedan;
+    y lo que sobraría o faltaría. Las estimaciones van a la centena.
+  - Los datos de los gastos fijos los comparte con los avisos (`getFixedPaymentsData`, con `cache`).
 - **Próximos pagos en el Resumen** (`src/modules/reports/upcoming.ts`, `upcoming-payments.tsx`): los gastos
   fijos que tocan en los próximos días (3 si la persona no lo cambió) y los atrasados, del más viejo al
   más próximo. Solo en el mes actual y solo si hay alguno; los primeros 5 y el resto con "Mostrar más".

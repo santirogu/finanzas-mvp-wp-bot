@@ -1,9 +1,10 @@
 import "server-only";
 import { and, asc, desc, eq, gte, isNull, lt, sql } from "drizzle-orm";
+import { cache } from "react";
 import { db } from "@/db";
 import { category, transaction } from "@/db/schema";
 import { DEFAULT_LOCALE, type Locale } from "@/i18n/locales";
-import { compareMonths, type Month, monthOf, monthRange, shiftMonth } from "@/lib/dates";
+import { compareMonths, type Month, monthOf, monthParam, monthRange, shiftMonth } from "@/lib/dates";
 import { listActiveMonths } from "@/modules/transactions/queries";
 import { categoryNameIn } from "@/modules/transactions/category-name";
 import { NO_CATEGORIES } from "@/modules/transactions/search";
@@ -17,6 +18,7 @@ import { type FixedHistoryEntry, fixedHistories } from "./history";
 import { getExpenseHistoryMonths, getFixedNotes, noteKey } from "./history-notes";
 import { getPaymentSkips } from "./payment-skips";
 import { type ReportPeriod, reportPeriod } from "./period";
+import { type MonthFixed, monthFixed } from "./remaining";
 import { type DescriptionMonthTotal, recurringExpenses, recurringFrom } from "./recurring";
 import { monthSeries, type MonthTotals, periodSummary } from "./summary";
 import { type UpcomingPayment, upcomingPayments } from "./upcoming";
@@ -248,15 +250,10 @@ export async function getUpcomingPayments(
 ): Promise<{ enabled: boolean; days: number; payments: (UpcomingPayment & { category: string | null })[] }> {
   const settings = await getUpcomingSettings(userId);
   if (!settings.enabled) return { ...settings, payments: [] };
-  const period = reportPeriod(undefined, current);
-  const [descriptions, choices, history, skipped, lastPayments] = await Promise.all([
-    getExpenseDescriptionsByMonth(userId, recurringFrom(period.months), period.months[period.months.length - 1]),
-    getFixedChoices(userId),
-    getExpenseHistoryMonths(userId),
-    getPaymentSkips(userId),
+  const [{ items, history, skipped }, lastPayments] = await Promise.all([
+    getFixedPaymentsData(userId, monthParam(current)),
     getLastPayments(userId, locale),
   ]);
-  const { items } = recurringExpenses(descriptions, period.months, choices);
   // Con la categoría del último pago: la que lleva "Registrar pago" (null, sin categoría: el aviso lo dice
   // en el idioma de la página).
   const payments = upcomingPayments(items, history, skipped, today, settings.days).map((payment) => ({
@@ -264,4 +261,29 @@ export async function getUpcomingPayments(
     category: lastPayments.get(payment.key)?.category ?? null,
   }));
   return { ...settings, payments };
+}
+
+/**
+ * Lo que miran los avisos de próximos pagos y "Lo que te queda": los gastos fijos (con lo del último mes), los
+ * egresos por mes y descripción y los pagos marcados "ya no aplica". Con `cache`: en el Resumen lo piden la página y
+ * la campana en el mismo request (`month`: el mes en curso, "YYYY-MM").
+ */
+const getFixedPaymentsData = cache(async (userId: string, month: string) => {
+  const period = reportPeriod(undefined, monthOf(`${month}-01`));
+  const [descriptions, choices, history, skipped] = await Promise.all([
+    getExpenseDescriptionsByMonth(userId, recurringFrom(period.months), period.months[period.months.length - 1]),
+    getFixedChoices(userId),
+    getExpenseHistoryMonths(userId),
+    getPaymentSkips(userId),
+  ]);
+  return { items: recurringExpenses(descriptions, period.months, choices).items, history, skipped };
+});
+
+/**
+ * Los gastos fijos del mes en curso para "Lo que te queda" (Resumen): lo que falta pagar y lo que ya se pagó. No
+ * depende de los avisos: cuenta aunque la persona los haya apagado.
+ */
+export async function getMonthFixed(userId: string, current: Month, today: string): Promise<MonthFixed> {
+  const { items, history, skipped } = await getFixedPaymentsData(userId, monthParam(current));
+  return monthFixed(items, history, skipped, today);
 }
