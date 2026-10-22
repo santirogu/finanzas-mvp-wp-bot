@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { whatsappMessage } from "@/db/schema";
 import { envVar } from "@/lib/env";
-import { currentMonthRange, monthRange, shiftMonth, todayInTimezone } from "@/lib/dates";
+import { compareMonths, currentMonthRange, monthRange, monthRangeUpTo, shiftMonth, todayInTimezone } from "@/lib/dates";
 import { describeError } from "@/lib/safe-log";
 import {
   createTransactionsFromMessage,
@@ -197,16 +197,18 @@ async function respond(
         if ("future" in asked) return { ...base, reply: replies.futureMonthReply(asked.future) };
         if ("tooOld" in asked) return { ...base, reply: replies.tooOldMonthReply };
         const previous = shiftMonth(asked.month, -1);
+        // Con este mes, el anterior hasta el mismo día (como en el Resumen).
+        const upToToday = compareMonths(asked.month, range) === 0;
         const [summary, before] = await Promise.all([
           getMonthlySummary(user.id, monthRange(asked.month.year, asked.month.month)),
-          getMonthlySummary(user.id, monthRange(previous.year, previous.month)),
+          getMonthlySummary(user.id, upToToday ? monthRangeUpTo(previous, today) : monthRange(previous.year, previous.month)),
         ]);
         return {
           ...base,
           reply: replies.balanceReply(summary, {
             currency: user.currency,
             range: asked.month,
-            previous: { month: previous, summary: before },
+            previous: { month: previous, summary: before, upToToday },
           }),
         };
       }

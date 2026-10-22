@@ -5,14 +5,15 @@ import { ChangeLine } from "@/components/change-line";
 import { TransactionList } from "@/components/transaction-list";
 import { getLocale, getTexts } from "@/i18n/server";
 import { texts } from "@/i18n/texts";
-import { compareMonths, currentMonthRange, formatMonthName, monthRange, shiftMonth, todayInTimezone } from "@/lib/dates";
+import { compareMonths, currentMonthRange, formatMonthName, monthRange, monthRangeUpTo, shiftMonth, todayInTimezone } from "@/lib/dates";
 import { formatMoney } from "@/lib/money";
 import { inMonthPhrase, monthHref, monthNav, selectedMonth } from "@/lib/month-nav";
 import { requireUser } from "@/lib/session";
 import { getUpcomingPayments } from "@/modules/reports/queries";
+import { monthSavedNote } from "@/modules/reports/summary";
 import { upcomingItems, windowPhrase } from "@/modules/reports/upcoming";
 import { chartSlices } from "@/modules/transactions/category-chart";
-import { balanceChange, totalChange } from "@/modules/transactions/month-comparison";
+import { balanceChange, previousMonthReference, totalChange } from "@/modules/transactions/month-comparison";
 import {
   getMonthlySummary,
   getTotalsByCategory,
@@ -79,9 +80,12 @@ async function Dashboard({ month }: { month: string | string[] | undefined }) {
   const previous = shiftMonth(range, -1);
   const isCurrent = compareMonths(range, current) === 0;
   const today = todayInTimezone(user.timezone);
+  // Con el mes en curso, el anterior hasta el mismo día: contra el mes entero, a mitad de mes casi todo daría
+  // "menos que septiembre".
+  const beforeRange = isCurrent ? monthRangeUpTo(previous, today) : monthRange(previous.year, previous.month);
   const [summary, before, byCategory, recent, activeMonths, upcoming] = await Promise.all([
     getMonthlySummary(user.id, range),
-    getMonthlySummary(user.id, monthRange(previous.year, previous.month)),
+    getMonthlySummary(user.id, beforeRange),
     getTotalsByCategory(user.id, "expense", range, locale),
     listTransactions(user.id, range, { limit: 6, locale }),
     listActiveMonths(user.id),
@@ -92,12 +96,13 @@ async function Dashboard({ month }: { month: string | string[] | undefined }) {
   const firstName = user.name.split(" ")[0];
   const inMonth = inMonthPhrase(range, current, locale);
   // Frente al mes anterior, solo si en ese mes hubo movimientos (si no, todo sería "más que agosto").
-  const previousName = formatMonthName(previous, { locale });
+  const ref = previousMonthReference(formatMonthName(previous, { locale }), isCurrent, locale);
   const changes = before.count > 0 && {
-    balance: balanceChange(summary.balance, before.balance, previousName, user.currency, locale),
-    income: totalChange(summary.income, before.income, previousName, "income", locale),
-    expense: totalChange(summary.expense, before.expense, previousName, "expense", locale),
+    balance: balanceChange(summary.balance, before.balance, ref, user.currency, locale),
+    income: totalChange(summary.income, before.income, ref, "income", locale),
+    expense: totalChange(summary.expense, before.expense, ref, "expense", locale),
   };
+  const saved = monthSavedNote(summary.income, summary.balance, isCurrent, locale);
 
   return (
     <div className="space-y-6">
@@ -121,6 +126,7 @@ async function Dashboard({ month }: { month: string | string[] | undefined }) {
             {money(summary.balance)}
           </p>
           {changes && <ChangeLine change={changes.balance} />}
+          {saved && <p className="mt-1 text-xs text-muted">{saved}</p>}
         </div>
         <Link href={monthHref("/ingresos", range, current)} className="card p-5 transition hover:border-income/40">
           <p className="text-sm text-muted">{t.income}</p>

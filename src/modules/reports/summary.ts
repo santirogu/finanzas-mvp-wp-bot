@@ -79,6 +79,7 @@ const TEXTS = texts(
   {
     overspent: "Gastaste más de lo que ganaste",
     saved: (pct: string) => `Ahorraste el ${formatPercent(pct, "es")} de tus ingresos`,
+    saving: (pct: string) => `Vas ahorrando el ${formatPercent(pct, "es")} de tus ingresos`,
     noAverage: "Se calcula cuando termine tu primer mes",
     average: (months: number) => `En ${months} ${months === 1 ? "mes" : "meses"}`,
     withoutCurrent: (month: string) => `, sin ${month} (va en curso)`,
@@ -87,6 +88,7 @@ const TEXTS = texts(
     en: {
       overspent: "You spent more than you earned",
       saved: (pct) => `You saved ${pct}% of your income`,
+      saving: (pct) => `You're saving ${pct}% of your income`,
       noAverage: "It's calculated when your first month ends",
       average: (months) => `Over ${months} ${months === 1 ? "month" : "months"}`,
       withoutCurrent: (month) => `, without ${month} (in progress)`,
@@ -99,6 +101,18 @@ export function savedNote(saved: PeriodSummary["saved"], locale: Locale = DEFAUL
   const t = TEXTS[locale];
   if (saved === "overspent") return t.overspent;
   return saved ? t.saved(saved) : undefined;
+}
+
+/**
+ * La nota del balance de un mes en el Resumen: "Ahorraste el 28 % de tus ingresos" o, con el mes en curso, "Vas
+ * ahorrando…". Nada si no sobró: el balance en naranja ya lo dice, y a mitad de mes, antes del sueldo, es lo normal.
+ */
+export function monthSavedNote(income: number, balance: number, inProgress: boolean, locale: Locale = DEFAULT_LOCALE): string | undefined {
+  // Con un balance positivo hubo ingresos: los egresos nunca son negativos.
+  if (balance <= 0) return undefined;
+  const t = TEXTS[locale];
+  const pct = formatShare(balance, income);
+  return inProgress ? t.saving(pct) : t.saved(pct);
 }
 
 /** La nota del gasto promedio: "En 3 meses, sin octubre (va en curso)" o, sin meses completos, cuándo se calcula. */

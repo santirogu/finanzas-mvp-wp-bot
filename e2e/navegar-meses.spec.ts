@@ -47,7 +47,7 @@ test("ver otros meses en el Resumen, Ingresos y Egresos @principal", async ({ pa
 
   await test.step("un movimiento de otro mes avisa dónde quedó", async () => {
     await openTab(page, "Ingresos");
-    await addTransaction(page, { amount: "2000000", description: "Sueldo anterior", date: dayOf(previous, 15) });
+    await addTransaction(page, { amount: "2000000", description: "Sueldo anterior", date: dayOf(previous, 1) });
     await expect(toast(page, `Ingreso registrado en ${formatMonthName(previous, { withYear: true })}`)).toBeVisible();
     await openTab(page, "Egresos");
     await addTransaction(page, { amount: "500000", description: "Mercado anterior", date: dayOf(previous, 20) });
@@ -59,14 +59,17 @@ test("ver otros meses en el Resumen, Ingresos y Egresos @principal", async ({ pa
     await expect(text(page, "1 movimiento este mes")).toBeVisible();
   });
 
-  await test.step("el Resumen compara cada total con el mes anterior", async () => {
+  await test.step("el Resumen compara cada total con el mes anterior hasta el mismo día", async () => {
     await openTab(page, "Resumen");
     await expectMonth(page, current, "/dashboard");
-    const before = nameOf(previous);
+    // El sueldo del 1 siempre cuenta; el mercado del 20, solo si hoy ya es 20 o más.
+    const before = `a esta altura de ${nameOf(previous)}`;
+    const marketCounts = dayOf(previous, 20) <= sameDayIn(previous, today);
     await expect(card(page, "Balance del mes")).toContainText("−$575.000,00");
-    await expect(card(page, "Balance del mes")).toContainText(`$2.075.000,00 menos que ${before}`);
+    await expect(card(page, "Balance del mes")).toContainText(`$${marketCounts ? "2.075.000" : "2.575.000"},00 menos que ${before}`);
+    await expect(card(page, "Balance del mes")).not.toContainText("ahorrando");
     await expect(card(page, "Ingresos")).toContainText(`100 % menos que ${before}`);
-    await expect(card(page, "Egresos")).toContainText(`15 % más que ${before}`);
+    await expect(card(page, "Egresos")).toContainText(marketCounts ? `15 % más que ${before}` : `Sin egresos ${before}`);
     // En el mes actual, la flecha siguiente está apagada y no hace falta "Volver al mes actual".
     await expect(visible(page.getByRole("link", { name: "Mes siguiente", exact: true }))).toHaveAttribute(
       "aria-disabled",
@@ -85,6 +88,7 @@ test("ver otros meses en el Resumen, Ingresos y Egresos @principal", async ({ pa
     await expect(recent).not.toContainText("Mercado de hoy");
     const before = nameOf(twoBefore);
     await expect(card(page, "Balance del mes")).toContainText(`$1.600.000,00 más que ${before}`);
+    await expect(card(page, "Balance del mes")).toContainText("Ahorraste el 75 % de tus ingresos");
     await expect(card(page, "Ingresos")).toContainText(`Sin ingresos en ${before}`);
     await expect(card(page, "Egresos")).toContainText(`400 % más que ${before}`);
   });

@@ -10,6 +10,7 @@ import {
   monthOf,
   monthParam,
   monthRange,
+  monthRangeUpTo,
   parseMonthParam,
   sameDayIn,
   shiftMonth,
@@ -95,6 +96,20 @@ describe("sameDayIn", () => {
     expect(sameDayIn({ year: 2026, month: 2 }, "2026-03-30")).toBe("2026-02-28");
     expect(sameDayIn({ year: 2024, month: 2 }, "2024-03-31")).toBe("2024-02-29");
     expect(sameDayIn({ year: 2026, month: 12 }, "2027-01-31")).toBe("2026-12-31");
+  });
+});
+
+describe("monthRangeUpTo", () => {
+  it("el mes hasta el mismo día que hoy, inclusive", () => {
+    expect(monthRangeUpTo({ year: 2026, month: 9 }, "2026-10-21")).toEqual({ start: "2026-09-01", end: "2026-09-22", year: 2026, month: 9 });
+    expect(monthRangeUpTo({ year: 2026, month: 9 }, "2026-10-01")).toEqual({ start: "2026-09-01", end: "2026-09-02", year: 2026, month: 9 });
+  });
+
+  it("si el mes no tiene ese día, el mes entero (también de un año a otro)", () => {
+    expect(monthRangeUpTo({ year: 2026, month: 9 }, "2026-10-31")).toEqual(monthRange(2026, 9));
+    expect(monthRangeUpTo({ year: 2024, month: 2 }, "2024-03-30")).toEqual(monthRange(2024, 2));
+    expect(monthRangeUpTo({ year: 2025, month: 12 }, "2026-01-31")).toEqual(monthRange(2025, 12));
+    expect(monthRangeUpTo({ year: 2025, month: 12 }, "2026-01-15").end).toBe("2025-12-16");
   });
 });
 

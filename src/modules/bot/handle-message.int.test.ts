@@ -455,14 +455,24 @@ describe("handleIncomingMessage · balance de otro mes", () => {
     expect(reply).not.toContain("_");
   });
 
-  it("el balance de siempre (este mes) también compara con el anterior", async () => {
-    const user = await linkedUser();
-    await add(user.id, "income", 100000, current);
-    await add(user.id, "income", 250000, previous);
+  it("el balance de siempre (este mes) compara con el anterior hasta el mismo día", async () => {
+    // Hoy, 21 de octubre en Bogotá: septiembre cuenta hasta el 21, inclusive.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-21T15:00:00Z"));
+    try {
+      const user = await linkedUser();
+      const insert = (amount: number, occurredOn: string) =>
+        db.insert(transaction).values({ userId: user.id, type: "income", amount, description: "Movimiento", occurredOn });
+      await insert(100000, "2026-10-05");
+      await insert(250000, "2026-09-21");
+      await insert(999999, "2026-09-22");
 
-    const reply = await replyTo("balance");
-    expect(reply).toContain(`📊 *${formatMonthLabel(current)}*`);
-    expect(reply.split("\n").at(-1)).toBe(`_↘ $150.000,00 menos que ${formatMonthName(previous)}_`);
+      const reply = await replyTo("balance");
+      expect(reply).toContain(`📊 *${formatMonthLabel({ year: 2026, month: 10 })}*`);
+      expect(reply.split("\n").at(-1)).toBe("_↘ $150.000,00 menos que a esta altura de septiembre_");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("una pregunta como llegó por WhatsApp (\"¿Cuántos fueron mis ingresos en septiembre?\") responde el balance de ese mes", async () => {
