@@ -128,12 +128,12 @@ export const VISTAS: Vista[] = [
   { id: "cuenta-whatsapp", titulo: "Mi cuenta con el WhatsApp vinculado", persona: "datos", ruta: fija("/cuenta") },
   {
     id: "ayuda",
-    titulo: "Ayuda con todos los temas abiertos",
+    titulo: "Ayuda con todos los temas y las preguntas frecuentes abiertos",
     persona: "datos",
     ruta: fija("/ayuda"),
     preparar: async (page) => {
       for (const tema of await visible(page.locator("details summary")).all()) await tema.click();
-      await expect(visible(page.locator("details[open]"))).toHaveCount(5);
+      await expect(visible(page.locator("details[open]"))).toHaveCount(5 + 12);
     },
   },
   // Con sesión: sin ella, el proxy lleva al login cualquier dirección que no conoce (a propósito).

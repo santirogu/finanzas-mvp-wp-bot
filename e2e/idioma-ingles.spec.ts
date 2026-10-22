@@ -161,7 +161,10 @@ test("en inglés: Mi cuenta, la Ayuda y las páginas legales (solo en español, 
   const topics = visible(page.getByRole("region", { name: "Help topics" }));
   await topics.locator("summary", { hasText: "The WhatsApp bot" }).click();
   await expect(topics).toContainText("For now the bot answers in Spanish.");
-  const closed = topics.locator("details:not([open])");
+  const faq = visible(page.getByRole("region", { name: "Frequently asked questions" }));
+  await faq.locator("summary", { hasText: "How do I change my WhatsApp number?" }).click();
+  await expect(faq).toContainText("tap Unlink number");
+  const closed = page.locator("main details:not([open])");
   while ((await closed.count()) > 0) await closed.first().locator("summary").click();
   expect(await seriousViolations(page)).toEqual([]);
 
