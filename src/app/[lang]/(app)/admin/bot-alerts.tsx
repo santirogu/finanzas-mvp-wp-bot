@@ -2,7 +2,7 @@ import Link from "next/link";
 import { texts } from "@/i18n/texts";
 import type { Locale } from "@/i18n/locales";
 import { alertView } from "@/modules/admin/bot/alerts-view";
-import type { BotAlert } from "@/modules/bot/alerts";
+import type { BotAlert } from "@/modules/bot/alert-rules";
 
 const TEXTS = texts(
   { alerts: "Alertas del bot", notices: "Avisos del bot", seeBot: "Ver Bot de WhatsApp" },

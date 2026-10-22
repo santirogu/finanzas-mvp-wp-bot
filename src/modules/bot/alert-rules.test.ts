@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { botAlertsFrom, claudeFailureCause, FAILING_IN_A_ROW, isWarning, sendFailureCause, type RecentClaudeCall, type RecentSend } from "./alerts";
+import { botAlertsFrom, claudeFailureCause, FAILING_IN_A_ROW, isWarning, sendFailureCause, type RecentClaudeCall, type RecentSend } from "./alert-rules";
 
-// Las alertas del bot salen de lo reciente: sin base, solo la decisión. La consulta se prueba en
+// Las reglas de las alertas del bot: sin base, solo la decisión. La consulta (alerts.ts) se prueba en
 // alerts.int.test.ts.
 
 const TOKEN = 'envío: 401 {"error":{"message":"Error validating access token: Session has expired","type":"OAuthException","code":190}}';

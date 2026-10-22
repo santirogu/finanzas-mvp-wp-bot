@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { BotAlert } from "@/modules/bot/alerts";
+import type { BotAlert } from "@/modules/bot/alert-rules";
 import { alertView } from "./alerts-view";
 
 // Cada alerta del bot en una frase, con desde cuándo y qué hacer, en los dos idiomas.

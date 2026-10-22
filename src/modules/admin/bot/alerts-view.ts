@@ -1,7 +1,7 @@
 import { DEFAULT_LOCALE, type Locale } from "@/i18n/locales";
 import { formatPercent } from "@/lib/money";
 import { formatDateTime } from "@/modules/admin/shared/filters";
-import { isWarning, type BotAlert } from "@/modules/bot/alerts";
+import { isWarning, type BotAlert } from "@/modules/bot/alert-rules";
 import { formatDayMonth } from "./bot-filters";
 
 // Cómo se lee cada alerta del bot (src/modules/bot/alerts.ts): qué pasa, desde cuándo y qué hacer, en el

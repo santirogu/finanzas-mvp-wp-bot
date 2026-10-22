@@ -12,7 +12,7 @@ import { CLEANUP_PATH, cleanupResultLabel, cronScheduleLabel, envNames, formatBy
 import { recentReleases } from "@/modules/admin/health/releases";
 import { databaseDetails, recentCleanupRuns, systemHealth, type SystemHealth } from "@/modules/admin/health/system";
 import { formatDate, formatDateTime } from "@/modules/admin/shared/filters";
-import { isWarning } from "@/modules/bot/alerts";
+import { isWarning } from "@/modules/bot/alert-rules";
 import { PageSkeleton } from "../../page-skeleton";
 import { Connections } from "./connections";
 import { adminMetadata } from "../admin-metadata";

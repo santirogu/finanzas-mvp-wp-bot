@@ -1,6 +1,6 @@
 import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import type { BotAlert } from "@/modules/bot/alerts";
+import type { BotAlert } from "@/modules/bot/alert-rules";
 import { BotAlerts } from "./bot-alerts";
 
 const SINCE = new Date("2026-10-21T14:30:00Z");
