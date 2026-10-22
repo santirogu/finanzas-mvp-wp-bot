@@ -1330,7 +1330,8 @@ al pasar de bien a mal o al revés, así que un problema que sigue no manda un a
 - **Necesita el secreto `CRON_SECRET` en GitHub** (*Settings → Secrets and variables → Actions*), con el
   mismo valor que en Vercel. Si falta o no coincide, el workflow queda en rojo con el motivo, y GitHub
   también avisa.
-- **El dominio** sale de `PRODUCTION_URL` en `deploy.yml`, el único lugar donde está.
+- **El dominio** es el del último despliegue exitoso al entorno `production` de GitHub, que registra
+  `deploy.yml` con su `PRODUCTION_URL`, el único lugar donde está. Es donde corre la app de verdad.
 - **Para probarla:** *Actions → Vigilancia → Run workflow*.
 - **GitHub apaga los workflows programados** de un repositorio público que pasa 60 días sin actividad.
   Si eso pasa, se vuelve a activar en *Actions → Vigilancia → Enable workflow*.

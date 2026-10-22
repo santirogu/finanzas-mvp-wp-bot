@@ -1,22 +1,9 @@
-import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
-import { checkProduction, githubIssues, ISSUE_LABEL, ISSUE_TITLE, productionUrl, syncIssue, WATCH_PATH } from "./vigilancia.mjs";
+import { checkProduction, githubApi, ISSUE_LABEL, ISSUE_TITLE, syncIssue, WATCH_PATH } from "./vigilancia.mjs";
 
 // La vigilancia cada hora (scripts/vigilancia.mjs): sin red, con fetch y GitHub simulados.
 
 const URL_ = "https://app.test";
-
-describe("productionUrl", () => {
-  it("sale de PRODUCTION_URL en deploy.yml, el único lugar donde está el dominio", () => {
-    const url = productionUrl(readFileSync(".github/workflows/deploy.yml", "utf8"));
-    expect(url).toMatch(/^https:\/\/[a-z0-9.-]+\.vercel\.app$/);
-  });
-
-  it("sin la barra final; sin PRODUCTION_URL, un error claro", () => {
-    expect(productionUrl("    env:\n      PRODUCTION_URL: https://anotado.test/\n")).toBe("https://anotado.test");
-    expect(() => productionUrl("env: {}")).toThrow(/PRODUCTION_URL/);
-  });
-});
 
 describe("checkProduction", () => {
   const respond = (status: number, body?: unknown) => vi.fn(async () => new Response(body === undefined ? "" : JSON.stringify(body), { status }));
@@ -86,7 +73,29 @@ describe("syncIssue", () => {
   });
 });
 
-describe("githubIssues", () => {
+describe("githubApi · productionUrl", () => {
+  /** GitHub simulado: los despliegues a producción, del más nuevo al más viejo, con el estado de cada uno. */
+  const deployments = (statuses: Record<number, { state: string; environment_url?: string } | undefined>) =>
+    vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/deployments?")) return Response.json(Object.keys(statuses).reverse().map((id) => ({ id: Number(id) })));
+      const id = Number(url.match(/\/deployments\/(\d+)\/statuses/)![1]);
+      return Response.json(statuses[id] ? [statuses[id]] : []);
+    });
+
+  it("la URL del último despliegue exitoso al entorno production (sin la barra final)", async () => {
+    const fetch = deployments({ 1: { state: "success", environment_url: "https://vieja.test" }, 2: { state: "success", environment_url: "https://anotado.test/" }, 3: { state: "failure" } });
+    expect(await githubApi({ token: "t", repository: "r/r", fetch }).productionUrl()).toBe("https://anotado.test");
+    expect(String(fetch.mock.calls[0][0])).toBe("https://api.github.com/repos/r/r/deployments?environment=production&per_page=30");
+  });
+
+  it("sin un despliegue exitoso con URL https, un error claro", async () => {
+    const fetch = deployments({ 1: { state: "success", environment_url: "http://inseguro.test" }, 2: { state: "error" }, 3: undefined });
+    await expect(githubApi({ token: "t", repository: "r/r", fetch }).productionUrl()).rejects.toThrow("No encontré un despliegue exitoso a producción");
+  });
+});
+
+describe("githubApi · issues", () => {
   it("usa la API del repositorio con el token; crea la etiqueta solo si falta", async () => {
     const calls: { url: string; init: RequestInit }[] = [];
     const fetch = vi.fn(async (input: RequestInfo | URL, init: RequestInit = {}) => {
@@ -95,7 +104,7 @@ describe("githubIssues", () => {
       if (url.endsWith(`/labels/${ISSUE_LABEL}`)) return new Response("", { status: 404 });
       return new Response(JSON.stringify(url.includes("/issues?") ? [] : {}), { status: 200 });
     });
-    const issues = githubIssues({ token: "ghs_x", repository: "dueño/repo", fetch });
+    const issues = githubApi({ token: "ghs_x", repository: "dueño/repo", fetch });
 
     await issues.ensureLabel();
     await issues.openIssues();
@@ -112,9 +121,9 @@ describe("githubIssues", () => {
 
   it("con la etiqueta creada no la vuelve a crear; un error de GitHub lanza", async () => {
     const fetch = vi.fn(async () => new Response("{}", { status: 200 }));
-    await githubIssues({ token: "t", repository: "r/r", fetch }).ensureLabel();
+    await githubApi({ token: "t", repository: "r/r", fetch }).ensureLabel();
     expect(fetch).toHaveBeenCalledOnce();
     const failing = vi.fn(async () => new Response("{}", { status: 403 }));
-    await expect(githubIssues({ token: "t", repository: "r/r", fetch: failing }).close(7)).rejects.toThrow("GitHub respondió 403 a PATCH /issues/7");
+    await expect(githubApi({ token: "t", repository: "r/r", fetch: failing }).close(7)).rejects.toThrow("GitHub respondió 403 a PATCH /issues/7");
   });
 });

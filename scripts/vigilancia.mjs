@@ -9,19 +9,11 @@
 //
 // Uso: node scripts/vigilancia.mjs (con CRON_SECRET, GITHUB_TOKEN y GITHUB_REPOSITORY).
 
-import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 
 export const WATCH_PATH = "/api/cron/vigilancia";
 export const ISSUE_LABEL = "vigilancia";
 export const ISSUE_TITLE = "Vigilancia: algo falla en producción";
-
-/** El dominio de producción, del único lugar donde está: PRODUCTION_URL en deploy.yml. */
-export function productionUrl(deployYml) {
-  const url = deployYml.match(/^\s*PRODUCTION_URL:\s*(https:\/\/\S+)\s*$/m)?.[1];
-  if (!url) throw new Error("No encontré PRODUCTION_URL en .github/workflows/deploy.yml");
-  return url.replace(/\/$/, "");
-}
 
 /**
  * ¿Está todo en orden? `false` si la app reporta problemas, responde con error o no responde (está caída).
@@ -70,8 +62,8 @@ const issueBody = (date) =>
     "Este issue se cierra solo cuando la revisión vuelva a ver todo en orden.",
   ].join("\n");
 
-/** Un cliente mínimo de la API de GitHub para los issues de la vigilancia. */
-export function githubIssues({ token, repository, fetch = globalThis.fetch }) {
+/** Un cliente mínimo de la API de GitHub: dónde está producción y los issues de la vigilancia. */
+export function githubApi({ token, repository, fetch = globalThis.fetch }) {
   const request = (path, init = {}) =>
     fetch(`https://api.github.com/repos/${repository}${path}`, {
       ...init,
@@ -83,6 +75,18 @@ export function githubIssues({ token, repository, fetch = globalThis.fetch }) {
     return response.json();
   };
   return {
+    /**
+     * La URL de producción: la del último despliegue exitoso al entorno "production" de GitHub, que registra
+     * deploy.yml con su PRODUCTION_URL (el único lugar donde está el dominio). Es donde corre la app de verdad,
+     * aunque main diga otra cosa (por ejemplo, después de un despliegue que volvió atrás).
+     */
+    productionUrl: async () => {
+      for (const deployment of await call("/deployments?environment=production&per_page=30")) {
+        const [status] = await call(`/deployments/${deployment.id}/statuses?per_page=1`);
+        if (status?.state === "success" && status.environment_url?.startsWith("https://")) return status.environment_url.replace(/\/$/, "");
+      }
+      throw new Error("No encontré un despliegue exitoso a producción en GitHub");
+    },
     /** La etiqueta, si todavía no existe: sin ella no se encontraría el issue abierto y se abriría otro cada hora. */
     ensureLabel: async () => {
       if ((await request(`/labels/${ISSUE_LABEL}`)).status !== 404) return;
@@ -117,9 +121,9 @@ async function main() {
   const { CRON_SECRET: secret, GITHUB_TOKEN: token, GITHUB_REPOSITORY: repository } = process.env;
   if (!secret) throw new Error("Falta el secreto CRON_SECRET en GitHub (el mismo valor que en Vercel)");
   if (!token || !repository) throw new Error("Faltan GITHUB_TOKEN o GITHUB_REPOSITORY");
-  const url = productionUrl(readFileSync(".github/workflows/deploy.yml", "utf8"));
-  const ok = await checkProduction({ url, secret });
-  const result = await syncIssue({ ok, issues: githubIssues({ token, repository }) });
+  const github = githubApi({ token, repository });
+  const ok = await checkProduction({ url: await github.productionUrl(), secret });
+  const result = await syncIssue({ ok, issues: github });
   const messages = {
     opened: "Hay un problema en producción: se abrió un issue.",
     closed: "Todo en orden de nuevo: se cerró el issue.",
