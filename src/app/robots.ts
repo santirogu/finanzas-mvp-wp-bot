@@ -12,6 +12,7 @@ export const PRIVATE_PATHS = [
   "/egresos",
   "/gastos-fijos",
   "/reportes",
+  "/presupuestos",
   "/movimientos/",
   "/cuenta",
   "/ayuda",

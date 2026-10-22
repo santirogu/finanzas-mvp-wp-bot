@@ -9,6 +9,8 @@ import { compareMonths, currentMonthRange, formatMonthName, monthRange, monthRan
 import { formatMoney } from "@/lib/money";
 import { inMonthPhrase, monthHref, monthNav, selectedMonth } from "@/lib/month-nav";
 import { requireUser } from "@/lib/session";
+import { getBudgetProgress } from "@/modules/budgets/budgets";
+import { budgetRows } from "@/modules/budgets/progress";
 import { getMonthFixed, getUpcomingPayments } from "@/modules/reports/queries";
 import { monthRemaining, remainingView } from "@/modules/reports/remaining";
 import { monthSavedNote } from "@/modules/reports/summary";
@@ -24,6 +26,7 @@ import {
 import { MonthNav } from "../month-nav";
 import { PageSkeleton } from "../page-skeleton";
 import { TAB_TEXTS } from "../tab-texts";
+import { BudgetsCard } from "./budgets-card";
 import { CategoryChart } from "./category-chart";
 import { MonthRemaining } from "./month-remaining";
 import { UpcomingPayments } from "./upcoming-payments";
@@ -45,6 +48,9 @@ const TEXTS = texts(
     noneIn: (month: string) => `No tuviste movimientos ${month}.`,
     byCategory: "Egresos por categoría",
     noExpenses: (month: string) => `Sin egresos ${month}.`,
+    budgets: (month: string) => `Presupuestos de ${month}`,
+    editBudgets: "Editar",
+    addBudgets: "Ponle un presupuesto a tus categorías",
   },
   {
     en: {
@@ -58,6 +64,9 @@ const TEXTS = texts(
       noneIn: (month) => `You had no transactions ${month}.`,
       byCategory: "Expenses by category",
       noExpenses: (month) => `No expenses ${month}.`,
+      budgets: (month) => `Budgets for ${month}`,
+      editBudgets: "Edit",
+      addBudgets: "Set a budget for your categories",
     },
   },
 );
@@ -85,7 +94,7 @@ async function Dashboard({ month }: { month: string | string[] | undefined }) {
   // Con el mes en curso, el anterior hasta el mismo día: contra el mes entero, a mitad de mes casi todo daría
   // "menos que septiembre".
   const beforeRange = isCurrent ? monthRangeUpTo(previous, today) : monthRange(previous.year, previous.month);
-  const [summary, before, byCategory, recent, activeMonths, upcoming, fixed] = await Promise.all([
+  const [summary, before, byCategory, recent, activeMonths, upcoming, fixed, budgets] = await Promise.all([
     getMonthlySummary(user.id, range),
     getMonthlySummary(user.id, beforeRange),
     getTotalsByCategory(user.id, "expense", range, locale),
@@ -95,6 +104,8 @@ async function Dashboard({ month }: { month: string | string[] | undefined }) {
     isCurrent ? getUpcomingPayments(user.id, current, today, locale) : null,
     // "Lo que te queda" también es de ahora.
     isCurrent ? getMonthFixed(user.id, current, today) : null,
+    // Los presupuestos son de ahora (el monto vale para el mes en curso).
+    isCurrent ? getBudgetProgress(user.id, current, locale) : null,
   ]);
   const money = (n: number) => formatMoney(n, user.currency, locale);
   const firstName = user.name.split(" ")[0];
@@ -159,6 +170,14 @@ async function Dashboard({ month }: { month: string | string[] | undefined }) {
         <UpcomingPayments items={upcomingItems(upcoming.payments, today, user.currency, locale)} span={windowPhrase(upcoming.days, locale)} today={today} />
       )}
 
+      {budgets && budgets.length > 0 && (
+        <BudgetsCard
+          title={t.budgets(formatMonthName(range, { locale }))}
+          edit={t.editBudgets}
+          rows={budgetRows(budgets, user.currency, locale)}
+        />
+      )}
+
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-5">
         <section className="card lg:col-span-3">
           <h2 className="border-b border-border px-4 py-3 font-semibold">
@@ -180,6 +199,12 @@ async function Dashboard({ month }: { month: string | string[] | undefined }) {
               <p className="py-8 text-center text-sm text-muted">{t.noExpenses(inMonth)}</p>
             ) : (
               <CategoryChart slices={chartSlices(byCategory, summary.expense)} total={summary.expense} currency={user.currency} />
+            )}
+            {/* Sin presupuestos, la invitación a ponerlos (en el mes en curso: son de ahora). */}
+            {budgets && budgets.length === 0 && (
+              <Link href="/presupuestos" className="mt-2 inline-flex min-h-11 items-center text-sm font-medium text-brand pointer-fine:min-h-6">
+                {t.addBudgets}
+              </Link>
             )}
           </section>
         </div>

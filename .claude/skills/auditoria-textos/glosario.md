@@ -68,6 +68,7 @@ textos.
 | ingreso, Ingresos | income, Income | entrada | |
 | egreso, Egresos | expense, Expenses | salida; outflow; spending (en títulos) | También en los títulos de los análisis: "Egresos por categoría", "Los egresos más grandes" ("Expenses by category"). "Gasto" sí: en "gasto fijo", "gasto promedio", los verbos ("qué días gastas más") y lo que se le escribe al bot ("gasté"). |
 | gasto fijo, Fijos | bill, Bills | gasto recurrente; recurring | "Bills" porque "Recurring" no cabía en 375 px. |
+| presupuesto, Presupuestos | budget, Budgets | límite; tope (en títulos) | El monto por mes de una categoría de egresos. En las explicaciones se acepta "tope" ("un tope por mes"). Se "pone", se "cambia" y se "quita" (no "eliminar": borra una configuración, no datos). |
 | Resumen | Overview | dashboard, tablero | |
 | Reportes | Reports | informes | |
 | Mi cuenta | My account | perfil | |

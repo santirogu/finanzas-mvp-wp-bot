@@ -125,6 +125,19 @@ export async function openTab(page: Page, tab: "Resumen" | "Ingresos" | "Egresos
  * Un aviso de éxito lleva solo su mensaje: con una expresión anclada (/^Egreso registrado$/) se pide
  * ese exacto.
  */
+/** Pone un presupuesto desde /presupuestos (la categoría por su nombre) y espera el aviso. */
+export async function addBudget(page: Page, category: string, amount: string) {
+  await page.goto("/presupuestos");
+  await visible(page.getByRole("button", { name: "Agregar un presupuesto" })).click();
+  const dialog = page.getByRole("dialog");
+  const select = dialog.getByLabel("Categoría");
+  const value = await select.locator("option", { hasText: category }).getAttribute("value");
+  await select.selectOption(value ?? "");
+  await dialog.getByLabel("Monto por mes").fill(amount);
+  await dialog.getByRole("button", { name: "Guardar" }).click();
+  await expect(toast(page, `Se guardó el presupuesto de ${category}`)).toBeVisible();
+}
+
 export const toast = (page: Page, text: string | RegExp) => toasts(page).filter({ hasText: text }).last();
 
 /** Todos los avisos emergentes que se ven. */

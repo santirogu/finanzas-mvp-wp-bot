@@ -126,6 +126,18 @@ export const VISTAS: Vista[] = [
     },
   },
   { id: "cuenta-whatsapp", titulo: "Mi cuenta con el WhatsApp vinculado", persona: "datos", ruta: fija("/cuenta") },
+  { id: "presupuestos", titulo: "Presupuestos: uno bien, uno cerca del límite y uno pasado", persona: "datos", ruta: fija("/presupuestos") },
+  { id: "presupuestos-vacio", titulo: "Presupuestos sin ninguno", persona: "vacia", ruta: fija("/presupuestos") },
+  {
+    id: "presupuestos-agregar",
+    titulo: "Agregar un presupuesto (la ventana)",
+    persona: "datos",
+    ruta: fija("/presupuestos"),
+    preparar: async (page) => {
+      await visible(page.getByRole("button", { name: "Agregar un presupuesto" })).click();
+      await expect(page.getByRole("dialog")).toBeVisible();
+    },
+  },
   {
     id: "ayuda",
     titulo: "Ayuda con todos los temas y las preguntas frecuentes abiertos",
@@ -133,7 +145,7 @@ export const VISTAS: Vista[] = [
     ruta: fija("/ayuda"),
     preparar: async (page) => {
       for (const tema of await visible(page.locator("details summary")).all()) await tema.click();
-      await expect(visible(page.locator("details[open]"))).toHaveCount(5 + 12);
+      await expect(visible(page.locator("details[open]"))).toHaveCount(6 + 12);
     },
   },
   // Con sesión: sin ella, el proxy lleva al login cualquier dirección que no conoce (a propósito).
@@ -264,6 +276,7 @@ export const VISTAS: Vista[] = [
 
   // Lo más largo que acepta la app: textos, montos, categorías y una lista de 25 egresos
   { id: "resumen-extremo", titulo: "Resumen con textos y montos máximos", persona: "admin", ruta: fija("/dashboard") },
+  { id: "presupuestos-extremo", titulo: "Presupuestos con la categoría más larga y los montos máximos", persona: "admin", ruta: fija("/presupuestos") },
   { id: "ingresos-extremo", titulo: "Ingresos con textos y montos máximos", persona: "admin", ruta: fija("/ingresos") },
   { id: "egresos-extremo", titulo: "Egresos: 25 movimientos y textos máximos", persona: "admin", ruta: fija("/egresos") },
   { id: "fijos-extremo", titulo: "Fijos con textos y montos máximos", persona: "admin", ruta: fija("/gastos-fijos") },

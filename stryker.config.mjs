@@ -22,6 +22,7 @@ const config = {
     "src/modules/bot/{commands,normalize,interpret,replies,prompt,claude-extractor,limits,pricing,history-match}.ts",
     "src/modules/whatsapp/{signature,payload,phone,client,actions}.ts",
     "src/modules/transactions/{validation,default-categories,month-comparison,category-chart,search}.ts",
+    "src/modules/budgets/progress.ts",
     "src/modules/reports/{period,summary,categories,recurring,biggest,csv,history,daily,upcoming,remaining,pdf/view}.ts",
     "src/modules/notifications/notifications.ts",
     "src/app/api/{whatsapp/webhook,health}/route.ts",

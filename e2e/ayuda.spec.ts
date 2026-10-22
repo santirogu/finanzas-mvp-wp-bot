@@ -20,7 +20,7 @@ test("Ayuda: se abre desde el menú de la cuenta, con sus temas cerrados y lo mi
 
   const topics = visible(page.getByRole("region", { name: "Temas de ayuda" }));
   const topic = (name: string) => topics.locator("details").filter({ has: page.locator("summary", { hasText: name }) });
-  await expect(topics.locator("details")).toHaveCount(5);
+  await expect(topics.locator("details")).toHaveCount(6);
   await expect(topics.locator("details[open]")).toHaveCount(0);
 
   await test.step("el bot de WhatsApp: los mismos ejemplos y comandos de su respuesta a 'ayuda'", async () => {
@@ -58,7 +58,7 @@ test("Ayuda: se abre desde el menú de la cuenta, con sus temas cerrados y lo mi
   await test.step("todos abiertos, sin problemas de accesibilidad; sus enlaces llevan a cada página", async () => {
     const closed = page.locator("main details:not([open])");
     while ((await closed.count()) > 0) await closed.first().locator("summary").click();
-    await expect(topics.locator("details[open]")).toHaveCount(5);
+    await expect(topics.locator("details[open]")).toHaveCount(6);
     await expect(faq.locator("details[open]")).toHaveCount(12);
     const { violations } = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
     expect(violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => v.id)).toEqual([]);

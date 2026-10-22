@@ -168,6 +168,14 @@ test("en inglés: Mi cuenta, la Ayuda y las páginas legales (solo en español, 
   while ((await closed.count()) > 0) await closed.first().locator("summary").click();
   expect(await seriousViolations(page)).toEqual([]);
 
+  await page.goto("/presupuestos");
+  await expect(page).toHaveTitle("Budgets · Anotado");
+  await expect(visible(page.getByRole("heading", { level: 1, name: "Budgets" }))).toBeVisible();
+  await visible(page.getByRole("button", { name: "Add a budget" })).click();
+  await expect(page.getByRole("dialog").getByLabel("Amount per month")).toBeVisible();
+  expect(await seriousViolations(page)).toEqual([]);
+  await page.getByRole("dialog").getByRole("button", { name: "Cancel" }).click();
+
   await page.goto("/privacidad");
   await expect(visible(page.getByText("This page is only available in Spanish."))).toBeVisible();
   await expect(page.locator("main")).toHaveAttribute("lang", "es");
