@@ -433,7 +433,13 @@ La app está en español (el de siempre) y en inglés, toda la web (el bot de Wh
     ("Egreso registrado en octubre de 2026").
   - **Comparación con el mes anterior** (`src/modules/transactions/month-comparison.ts`), en las tres
     tarjetas del Resumen: el balance en plata ("$120.000,00 más que agosto") y los ingresos y egresos
-    en porcentaje ("15% más que agosto"). No aparece si el mes anterior no tuvo movimientos.
+    en porcentaje ("15 % más que agosto"). Con el mes en curso, contra el anterior hasta el mismo día
+    (`monthRangeUpTo`: "15 % más que a esta altura de agosto"), porque contra el mes entero a mitad de
+    mes casi todo daría "menos que". No aparece si el mes anterior (hasta ese día) no tuvo movimientos.
+    El balance del bot ("balance") compara igual.
+  - **Cuánto se ahorró** (`monthSavedNote`), debajo del balance: "Vas ahorrando el 29 % de tus
+    ingresos" en el mes en curso, "Ahorraste…" en uno pasado. Nada si no sobró (el balance en naranja ya
+    lo dice).
 - **Buscar en la lista del mes de Ingresos y Egresos** (`src/components/searchable-transaction-list.tsx`):
   - **Cuándo aparece:** desde 6 movimientos en el mes (`SEARCH_FROM`). Con menos se ven todos de un
     vistazo. Si ya se estaba usando, no desaparece aunque queden menos (al borrar uno mientras se busca).

@@ -7,7 +7,7 @@ import type { CategoryReport } from "@/modules/reports/categories";
 import { periodHref, type ReportPeriod } from "@/modules/reports/period";
 import type { RecurringReport } from "@/modules/reports/recurring";
 import type { PeriodSummary } from "@/modules/reports/summary";
-import { balanceChange } from "@/modules/transactions/month-comparison";
+import { balanceChange, previousMonthReference } from "@/modules/transactions/month-comparison";
 import { BOT_COMMANDS, BOT_EXAMPLES } from "./help";
 import type { ParsedTransaction } from "./normalize";
 
@@ -40,11 +40,12 @@ const CHANGE_ARROWS = { up: "↗ ", down: "↘ ", same: "" } as const;
 
 /**
  * Los totales de un mes ("balance", "balance septiembre"). Con `previous` (el mes anterior), una línea
- * más con cómo cambió el balance, solo si ese mes tuvo movimientos.
+ * más con cómo cambió el balance, solo si ese mes tuvo movimientos. Con el mes en curso, `previous.summary`
+ * es el anterior hasta el mismo día (`upToToday`): "más que a esta altura de septiembre".
  */
 export function balanceReply(
   summary: Summary,
-  ctx: { currency: string; range: Month; previous?: { month: Month; summary: Summary } },
+  ctx: { currency: string; range: Month; previous?: { month: Month; summary: Summary; upToToday: boolean } },
 ): string {
   const money = (n: number) => formatMoney(n, ctx.currency);
   if (summary.count === 0) {
@@ -52,7 +53,12 @@ export function balanceReply(
   }
   const previous = ctx.previous && ctx.previous.summary.count > 0 ? ctx.previous : null;
   const change = previous
-    ? balanceChange(summary.balance, previous.summary.balance, formatMonthName(previous.month), ctx.currency)
+    ? balanceChange(
+        summary.balance,
+        previous.summary.balance,
+        previousMonthReference(formatMonthName(previous.month), previous.upToToday),
+        ctx.currency,
+      )
     : null;
   return [
     `📊 *${formatMonthLabel(ctx.range)}*`,

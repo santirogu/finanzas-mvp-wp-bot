@@ -128,19 +128,24 @@ describe("balanceReply", () => {
   const summary = (balance: number, count = 3) => ({ income: balance > 0 ? balance : 0, expense: balance < 0 ? -balance : 0, balance, count });
 
   it("con el mes anterior, una línea más con cómo cambió el balance (como en el Resumen)", () => {
-    const up = balanceReply(summary(2940627.25), { currency: "COP", range, previous: { month: september, summary: summary(1136648.5) } });
+    const up = balanceReply(summary(2940627.25), { currency: "COP", range, previous: { month: september, summary: summary(1136648.5), upToToday: false } });
     expect(nbsp(up).split("\n").at(-1)).toBe("_↗ $1.803.978,75 más que septiembre_");
-    const down = balanceReply(summary(100000), { currency: "COP", range, previous: { month: september, summary: summary(250000) } });
+    const down = balanceReply(summary(100000), { currency: "COP", range, previous: { month: september, summary: summary(250000), upToToday: false } });
     expect(nbsp(down).split("\n").at(-1)).toBe("_↘ $150.000,00 menos que septiembre_");
-    const same = balanceReply(summary(100000), { currency: "COP", range, previous: { month: september, summary: summary(100000) } });
+    const same = balanceReply(summary(100000), { currency: "COP", range, previous: { month: september, summary: summary(100000), upToToday: false } });
     expect(nbsp(same).split("\n").at(-1)).toBe("_Igual que septiembre_");
+  });
+
+  it("con el mes en curso, contra el anterior hasta el mismo día", () => {
+    const reply = balanceReply(summary(100000), { currency: "COP", range, previous: { month: september, summary: summary(250000), upToToday: true } });
+    expect(nbsp(reply).split("\n").at(-1)).toBe("_↘ $150.000,00 menos que a esta altura de septiembre_");
   });
 
   it("sin movimientos el mes anterior, no compara (y el título dice el mes pedido)", () => {
     const reply = balanceReply(summary(100000), {
       currency: "COP",
       range: { year: 2025, month: 12 },
-      previous: { month: { year: 2025, month: 11 }, summary: summary(0, 0) },
+      previous: { month: { year: 2025, month: 11 }, summary: summary(0, 0), upToToday: false },
     });
     expect(reply.split("\n")).toHaveLength(4);
     expect(reply).toContain("📊 *Diciembre de 2025*");
