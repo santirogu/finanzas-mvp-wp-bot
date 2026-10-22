@@ -957,6 +957,23 @@ En **`/admin/bot`** el admin ve cómo funciona el bot, de todas las cuentas
 (`src/modules/admin/bot/`). Se busca por nombre, correo o número (con espacios o "+") y se filtra por
 la fecha de los mensajes, en hora de Colombia.
 
+- **Alertas del bot:** arriba de esta página y del Inicio del admin, lo que no anda y hay que arreglar,
+  con desde cuándo y qué hacer. Salen de lo que ya guarda cada mensaje y de la configuración, sin tabla
+  propia, y se apagan solas cuando el problema se resuelve. Las reglas están en
+  `src/modules/bot/alert-rules.ts` y la consulta en `src/modules/bot/alerts.ts`.
+
+  | Alerta | Cuándo se prende |
+  |---|---|
+  | El token de WhatsApp no sirve | El último envío falló con 401 o el código 190 de Meta |
+  | WhatsApp no envía | Los últimos 3 envíos fallaron por otra causa. Un número que no puede recibir (fuera de la lista de prueba de Meta) no cuenta |
+  | Claude: la API key, el modelo, los créditos o sin configurar | La última llamada falló por esa causa |
+  | Claude está fallando | Las últimas 3 llamadas fallaron (sobrecarga, red) |
+  | El tope mensual de tokens | Aviso desde el 80 % (en el tono de siempre) y alerta al 100 % |
+  | Mensajes sin procesar | Mensajes de las últimas 24 horas que siguen sin procesar a los 10 minutos |
+
+  Las alertas que son fallas, no los avisos, cuentan como un problema en [Salud del sistema](#salud-del-sistema).
+  Fuera de la app las vigila [la vigilancia cada hora](#vigilancia-cada-hora).
+
 - **Configuración** (cada cambio pide el código de Google Authenticator y queda en Historial → Acciones
   del admin, con "Bot de WhatsApp" en vez de una cuenta):
 
@@ -1043,11 +1060,12 @@ sus valores; tamaños y cantidades). Se revisa al abrir la página (`src/modules
   - las variables de entorno obligatorias (`REQUIRED_ENV`), por nombre;
   - las migraciones (cuántas tiene la base de las del código, y la última);
   - cuánto tarda la base en responder;
-  - la última corrida de la limpieza diaria.
+  - la última corrida de la limpieza diaria;
+  - el bot de WhatsApp: sus [alertas](#bot-de-whatsapp-1) que son fallas.
 
-  Son problemas: una variable que falta, la base sin responder o sin todas las migraciones, y la
-  limpieza si falló o no corre desde hace más de 26 horas (un día y un margen). La tarjeta del Inicio
-  del admin lo muestra como un semáforo, con los mismos problemas.
+  Son problemas: una variable que falta, la base sin responder o sin todas las migraciones, la
+  limpieza si falló o no corre desde hace más de 26 horas (un día y un margen), y las alertas del bot.
+  La tarjeta del Inicio del admin lo muestra como un semáforo, con los mismos problemas.
 - **Versión:** el commit desplegado, cuándo se compiló, el entorno, la región de Vercel y la versión de
   Node. El commit y la fecha los fija `next.config.ts` al compilar (`GITHUB_SHA`, que el CI define al
   correr `vercel build`); en un build local no hay commit (`src/lib/build-info.ts`).
@@ -1285,6 +1303,7 @@ Secretos necesarios en GitHub (*Settings → Secrets and variables → Actions*)
 | `VERCEL_ORG_ID` | Vercel → Team Settings → General → Team ID (`team_…`) |
 | `VERCEL_PROJECT_ID` | Vercel → proyecto → Settings → General → Project ID (`prj_…`) |
 | `VERCEL_AUTOMATION_BYPASS_SECRET` | Vercel → proyecto → Settings → Deployment Protection → Protection Bypass for Automation. Deja entrar a los smoke tests a la URL propia de cada versión, que Vercel protege |
+| `CRON_SECRET` | El mismo valor que en Vercel (Settings → Environment Variables). Lo usa la [vigilancia cada hora](#vigilancia-cada-hora) |
 
 Variables de la app en Vercel (*Settings → Environment Variables*): `DATABASE_URL` y
 `DATABASE_URL_UNPOOLED` (las crea Neon), `BETTER_AUTH_SECRET`, `ANTHROPIC_API_KEY` y las
@@ -1293,6 +1312,29 @@ Variables de la app en Vercel (*Settings → Environment Variables*): `DATABASE_
 Webhook en Meta: `https://<tu-app>.vercel.app/api/whatsapp/webhook`, el mismo
 `WHATSAPP_VERIFY_TOKEN` y suscripción al campo `messages`. La cuenta de WhatsApp Business debe
 estar suscrita a la app: `scripts/meta-subscribe.sh <WABA_ID> <APP_ID>`.
+
+### Vigilancia cada hora
+
+Un workflow de GitHub Actions (`.github/workflows/vigilancia.yml`, a los 23 minutos de cada hora) llama a
+`/api/cron/vigilancia` con `CRON_SECRET` (`scripts/vigilancia.mjs`). La ruta revisa:
+- lo mismo que `/api/health`;
+- la conexión con WhatsApp y con Claude, como "Probar conexiones" (sin enviar nada ni gastar créditos);
+- las alertas del bot.
+
+Si algo falla, o la app no responde, abre un issue con la etiqueta `vigilancia`: GitHub le avisa al dueño
+por correo y en el celular. Cuando todo vuelve a estar en orden, lo cierra con un comentario. Solo actúa
+al pasar de bien a mal o al revés, así que un problema que sigue no manda un aviso cada hora.
+
+- **El repositorio es público:** el issue y el log no dicen qué falla, solo dónde mirarlo (Salud del
+  sistema y Bot de WhatsApp). La ruta tampoco devuelve detalles, solo de qué tipo es cada problema.
+- **Necesita el secreto `CRON_SECRET` en GitHub** (*Settings → Secrets and variables → Actions*), con el
+  mismo valor que en Vercel. Si falta o no coincide, el workflow queda en rojo con el motivo, y GitHub
+  también avisa.
+- **El dominio** es el del último despliegue exitoso al entorno `production` de GitHub, que registra
+  `deploy.yml` con su `PRODUCTION_URL`, el único lugar donde está. Es donde corre la app de verdad.
+- **Para probarla:** *Actions → Vigilancia → Run workflow*.
+- **GitHub apaga los workflows programados** de un repositorio público que pasa 60 días sin actividad.
+  Si eso pasa, se vuelve a activar en *Actions → Vigilancia → Enable workflow*.
 
 ## Roadmap
 

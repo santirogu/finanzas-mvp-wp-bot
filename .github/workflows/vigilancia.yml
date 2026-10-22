@@ -1,0 +1,47 @@
+name: Vigilancia
+
+# Cada hora revisa producción (scripts/vigilancia.mjs → /api/cron/vigilancia): la app, la conexión con WhatsApp
+# y con Claude, y las alertas del bot. Si algo falla abre un issue con la etiqueta "vigilancia" (GitHub le
+# avisa al dueño por correo y en el celular), y lo cierra cuando todo vuelve a estar en orden. El issue no
+# dice qué falla (el repositorio es público): eso está en Salud del sistema y en Bot de WhatsApp.
+# Necesita el secreto CRON_SECRET en GitHub, con el mismo valor que en Vercel. README → Vigilancia.
+on:
+  schedule:
+    # A una hora con minutos raros: en punto, GitHub atrasa las corridas programadas.
+    - cron: "23 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Una corrida a la vez: dos juntas podrían abrir dos issues.
+concurrency:
+  group: vigilancia
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    name: Revisar producción
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      # Dónde está producción: el último despliegue exitoso al entorno "production" (lo registra deploy.yml).
+      deployments: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Sin el token de GitHub en .git/config.
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+
+      # Sin dependencias: solo Node y fetch.
+      - name: Revisar y avisar
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/vigilancia.mjs
