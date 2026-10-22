@@ -8,14 +8,16 @@ import { BRAND_NAME } from "@/lib/brand";
 import { requireUser } from "@/lib/session";
 import { BOT_COMMANDS, BOT_EXAMPLES, HELP_COMMAND } from "@/modules/bot/help";
 import { BIGGEST_SHOWN } from "@/modules/reports/biggest";
+import { CONTACT_EMAIL } from "@/lib/contact";
+import { MAX_TRANSACTIONS_PER_MESSAGE } from "@/modules/bot/limits";
 import { RECURRING_MIN_MONTHS, RECURRING_WINDOW } from "@/modules/reports/recurring";
 import { DAYS_AHEAD, MAX_DAYS_AHEAD, MONTHS_BACK, PAYMENTS_FOR_DAY } from "@/modules/reports/upcoming";
 import { SEARCH_FROM } from "@/modules/transactions/search";
 import { PageSkeleton } from "../page-skeleton";
 
 const TEXTS = texts(
-  { title: "Ayuda", intro: `Cómo sacarle provecho a ${BRAND_NAME}. Toca un tema para abrirlo.`, topics: "Temas de ayuda" },
-  { en: { title: "Help", intro: `How to get the most out of ${BRAND_NAME}. Tap a topic to open it.`, topics: "Help topics" } },
+  { title: "Ayuda", intro: `Cómo sacarle provecho a ${BRAND_NAME}. Toca un tema para abrirlo.`, topics: "Temas de ayuda", faq: "Preguntas frecuentes" },
+  { en: { title: "Help", intro: `How to get the most out of ${BRAND_NAME}. Tap a topic to open it.`, topics: "Help topics", faq: "Frequently asked questions" } },
 );
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -73,6 +75,12 @@ async function Help() {
       </div>
       <section aria-label={t.topics} className="card">
         {locale === "es" ? <SpanishTopics /> : <EnglishTopics />}
+      </section>
+      <section aria-labelledby="preguntas-frecuentes" className="card">
+        <h2 id="preguntas-frecuentes" className="px-4 pb-1 pt-4 font-semibold">
+          {t.faq}
+        </h2>
+        {locale === "es" ? <SpanishFaq /> : <EnglishFaq />}
       </section>
     </div>
   );
@@ -278,6 +286,202 @@ function EnglishTopics() {
         <p>
           You can also delete your account in <strong>Delete my account</strong>: everything is deleted right away and it can&apos;t be undone. What we keep
           and for how long is in the <A href="/privacidad">privacy policy</A> (in Spanish).
+        </p>
+      </Topic>
+    </>
+  );
+}
+
+/** El correo de contacto, para lo que no se resuelve desde la app. */
+const ContactEmail = () => (
+  <a href={`mailto:${CONTACT_EMAIL}`} className="font-medium text-brand underline-offset-2 hover:underline">
+    {CONTACT_EMAIL}
+  </a>
+);
+
+/**
+ * Las preguntas frecuentes (decididas con el dueño): las dudas de quien ya usa la app, con la respuesta corta y
+ * dónde se hace. Los números salen de las constantes de la app, como en los temas.
+ */
+function SpanishFaq() {
+  return (
+    <>
+      <Topic title="¿Por qué el bot no me responde?">
+        <p>
+          Escríbele desde el número que vinculaste en <A href="/cuenta">Mi cuenta</A>: si le escribes desde otro, te dice que ese
+          número no está vinculado y cómo conectarlo.
+        </p>
+        <p>Si no te llega ninguna respuesta, puede ser una falla pasajera: espera un rato y vuelve a escribirle.</p>
+      </Topic>
+      <Topic title="¿Por qué el bot no entendió mi mensaje?">
+        <p>
+          Escríbele el movimiento completo, con lo que fue y el monto: “almuerzo 25 mil” o “me pagaron la quincena 2.100.000”. Los
+          montos van como en Colombia, con punto para los miles y coma para los centavos (25.900,50). También entiende mil, lucas y
+          palos (“20 mil”, “medio palo”).
+        </p>
+        <p>
+          Puedes enviarle hasta {MAX_TRANSACTIONS_PER_MESSAGE} movimientos en un mensaje. No recuerda el mensaje anterior: si le falta
+          algo, envíale el movimiento completo otra vez.
+        </p>
+      </Topic>
+      <Topic title="El bot registró algo mal, ¿cómo lo corrijo?">
+        <p>
+          Escríbele <strong>deshacer</strong>: borra todo lo que registró con tu último mensaje. Si solo quieres cambiar un dato, en{" "}
+          <A href="/ingresos">Ingresos</A> o <A href="/egresos">Egresos</A> toca el lápiz del movimiento.
+        </p>
+      </Topic>
+      <Topic title="¿El bot entiende notas de voz o fotos?">
+        <p>
+          Por ahora solo entiende mensajes de texto: si le envías un audio o una foto, te lo recuerda. Escríbele el movimiento
+          como se lo contarías a alguien.
+        </p>
+      </Topic>
+      <Topic title="¿Por qué no veo un gasto fijo?">
+        <p>
+          Un egreso aparece en <A href="/gastos-fijos">Fijos</A> cuando tiene la misma descripción en al menos {RECURRING_MIN_MONTHS}{" "}
+          de los últimos {RECURRING_WINDOW} meses, sin importar mayúsculas ni tildes. Si lo registras con nombres distintos (“Arriendo”
+          y “Pago del arriendo”), no se reconoce como el mismo.
+        </p>
+        <p>
+          Para sumarlo igual, toca <strong>Agregar un gasto fijo</strong> en Fijos.
+        </p>
+      </Topic>
+      <Topic title="Me avisa de un pago que ya hice">
+        <p>
+          El aviso se quita cuando registras el pago de ese mes con la misma descripción del gasto fijo. Si lo registraste con otra,
+          edítalo con el lápiz para que coincida. Si este mes no tienes que pagarlo, toca <strong>Este pago ya no aplica</strong>.
+        </p>
+      </Topic>
+      <Topic title="¿Puedo recuperar un movimiento que borré?">
+        <p>
+          Sí, justo después: toca <strong>Deshacer</strong> en el aviso que aparece abajo al borrarlo. Cuando el aviso se va, ya no se
+          puede recuperar.
+        </p>
+      </Topic>
+      <Topic title="¿Por qué un movimiento sale en otro mes?">
+        <p>
+          Cada movimiento va en el mes de su fecha, no en el del día en que lo registraste. El bot usa la fecha de hoy, salvo que le digas
+          otra (“ayer”, “el lunes”, “el 5”). Para cambiarla, edita el movimiento con el lápiz.
+        </p>
+      </Topic>
+      <Topic title="¿Cómo cambio mi número de WhatsApp?">
+        <p>
+          En <A href="/cuenta">Mi cuenta</A>, en la tarjeta de WhatsApp, toca <strong>Desvincular número</strong>. Después toca{" "}
+          <strong>Conectar WhatsApp</strong> y envíale al bot, desde el número nuevo, el mensaje que te aparece.
+        </p>
+      </Topic>
+      <Topic title="¿Quién ve mis movimientos?">
+        <p>
+          Solo tú. Para darte soporte, la administración de la app ve los datos de tu cuenta (nombre, correo y número de WhatsApp) y
+          cuántos mensajes le enviaste al bot. No ve tus movimientos ni el texto de tus mensajes. Todo está en la{" "}
+          <A href="/privacidad">política de privacidad</A>.
+        </p>
+      </Topic>
+      <Topic title="¿Cómo descargo mis datos?">
+        <p>
+          En <A href="/reportes">Reportes</A>, toca <strong>Descargar</strong>: <strong>Movimientos (CSV)</strong>, para Excel o Google
+          Sheets, o <strong>Reporte (PDF)</strong>, para guardar o imprimir. Son los del período que estás viendo.
+        </p>
+      </Topic>
+      <Topic title="Olvidé mi contraseña">
+        <p>
+          Por ahora no se puede recuperar desde la app. Escríbenos a{" "}
+          <ContactEmail />{" "}
+          desde el correo de tu cuenta y te ayudamos. Si la recuerdas y quieres cambiarla, hazlo en <A href="/cuenta">Mi cuenta</A>.
+        </p>
+      </Topic>
+    </>
+  );
+}
+
+function EnglishFaq() {
+  return (
+    <>
+      <Topic title="Why isn't the bot answering me?">
+        <p>
+          Write from the number you linked in <A href="/cuenta">My account</A>: if you write from another one, it tells you that number
+          isn&apos;t linked and how to connect it.
+        </p>
+        <p>If you don&apos;t get any answer, it may be a temporary issue: wait a while and write again.</p>
+      </Topic>
+      <Topic title="Why didn't the bot understand my message?">
+        <p>
+          Write the whole transaction, with what it was and the amount: <span lang="es">“almuerzo 25 mil”</span> or{" "}
+          <span lang="es">“me pagaron la quincena 2.100.000”</span>. For now the bot answers in Spanish, and amounts go as in Colombia: a
+          period for thousands and a comma for cents (25.900,50).
+        </p>
+        <p>
+          You can send up to {MAX_TRANSACTIONS_PER_MESSAGE} transactions in one message. It doesn&apos;t remember the previous message: if
+          something is missing, send the whole transaction again.
+        </p>
+      </Topic>
+      <Topic title="The bot added something wrong. How do I fix it?">
+        <p>
+          Send it <strong lang="es">deshacer</strong>: it deletes everything it added from your last message. To change just one detail,
+          in <A href="/ingresos">Income</A> or <A href="/egresos">Expenses</A> tap the transaction&apos;s pencil.
+        </p>
+      </Topic>
+      <Topic title="Does the bot understand voice notes or photos?">
+        <p>
+          For now it only understands text messages: if you send it audio or a photo, it reminds you. Write the transaction the
+          way you&apos;d tell someone.
+        </p>
+      </Topic>
+      <Topic title="Why don't I see a bill?">
+        <p>
+          An expense shows up in <A href="/gastos-fijos">Bills</A> when it has the same description in at least {RECURRING_MIN_MONTHS} of
+          the last {RECURRING_WINDOW} months, regardless of capital letters or accents. If you add it with different names
+          (“Rent” and “Rent payment”), it isn&apos;t recognized as the same one.
+        </p>
+        <p>
+          To include it anyway, tap <strong>Add a bill</strong> in Bills.
+        </p>
+      </Topic>
+      <Topic title="It warns me about a payment I already made">
+        <p>
+          The notice goes away when you add that month&apos;s payment with the same description as the bill. If you added it with another
+          one, edit it with the pencil so they match. If you don&apos;t have to pay it this month, tap{" "}
+          <strong>This payment doesn&apos;t apply</strong>.
+        </p>
+      </Topic>
+      <Topic title="Can I get back a transaction I deleted?">
+        <p>
+          Yes, right after: tap <strong>Undo</strong> in the notice that shows up below when you delete it. Once the notice is gone, it
+          can&apos;t be recovered.
+        </p>
+      </Topic>
+      <Topic title="Why does a transaction show up in another month?">
+        <p>
+          Each transaction goes in the month of its date, not the day you added it. The bot uses today&apos;s date unless you tell it another
+          one (<span lang="es">“ayer”</span>, <span lang="es">“el lunes”</span>, <span lang="es">“el 5”</span>). To change it, edit the
+          transaction with the pencil.
+        </p>
+      </Topic>
+      <Topic title="How do I change my WhatsApp number?">
+        <p>
+          In <A href="/cuenta">My account</A>, on the WhatsApp card, tap <strong>Unlink number</strong>. Then tap{" "}
+          <strong>Connect WhatsApp</strong> and send the bot, from the new number, the message you see.
+        </p>
+      </Topic>
+      <Topic title="Who sees my transactions?">
+        <p>
+          Only you. To give you support, the app&apos;s administrators see your account details (name, email and WhatsApp number) and how
+          many messages you sent the bot. They don&apos;t see your transactions or the text of your messages. It&apos;s all in the{" "}
+          <A href="/privacidad">privacy policy</A> (in Spanish).
+        </p>
+      </Topic>
+      <Topic title="How do I download my data?">
+        <p>
+          In <A href="/reportes">Reports</A>, tap <strong>Download</strong>: <strong>Transactions (CSV)</strong>, for Excel or Google
+          Sheets, or <strong>Report (PDF)</strong>, to save or print. They&apos;re the ones from the period you&apos;re viewing.
+        </p>
+      </Topic>
+      <Topic title="I forgot my password">
+        <p>
+          For now it can&apos;t be recovered from the app. Write to us at{" "}
+          <ContactEmail />{" "}
+          from your account&apos;s email and we&apos;ll help you. If you remember it and want to change it, do it in{" "}
+          <A href="/cuenta">My account</A>.
         </p>
       </Topic>
     </>
