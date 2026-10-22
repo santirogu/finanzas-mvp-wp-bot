@@ -261,3 +261,33 @@ test("reenviar una respuesta que no salió: le llega a la persona y no se regist
     await expect(visible(page.getByRole("listitem").filter({ hasText: "reenvió las respuestas del bot" })).first()).toContainText("1 reenviada");
   });
 });
+
+test("cambiar el modelo de Claude: el bot lo usa desde el siguiente mensaje y queda en el historial", async ({ page, browser, request }) => {
+  const beto = await betoWithWhatsApp(browser, request);
+  const secret = await adminOnBot(page);
+  const model = () => settings(page).getByRole("listitem").filter({ hasText: "Modelo de Claude" });
+  await expect(model()).toContainText("Claude Haiku 5.5: acertó 58 de 58 frases de prueba");
+
+  await test.step("con el código se elige Sonnet", async () => {
+    await settings(page).getByRole("button", { name: "Cambiar el modelo de Claude" }).click();
+    await expect(dialog(page).getByRole("radio", { name: /Claude Haiku 5\.5 \(el de ahora\)/ })).toBeChecked();
+    await dialog(page).getByRole("radio", { name: /Claude Sonnet 5\.5/ }).check();
+    expect(await seriousViolations(page)).toEqual([]);
+    await confirmWith(page, codeFor(secret), "Cambiar modelo");
+    await expect(toast(page, "El bot ahora usa Claude Sonnet 5.5, desde el siguiente mensaje.")).toBeVisible();
+    await expect(model()).toContainText("Claude Sonnet 5.5: acertó 57 de 58 frases de prueba");
+  });
+
+  await test.step("el siguiente mensaje lo interpreta Sonnet (el Claude falso responde con el modelo que se le pide)", async () => {
+    expect(await beto("almuerzo 25.900,50")).toMatch(/✅ Egreso Anotado/);
+    await page.reload();
+    await expect(visible(page.getByText("claude-sonnet-5-5", { exact: true })).first()).toBeVisible();
+  });
+
+  await test.step("queda en el historial, con el nuevo y el de antes", async () => {
+    await page.goto("/admin/historial?tipo=admin");
+    await expect(visible(page.getByRole("listitem").filter({ hasText: "cambió el modelo de Claude del bot" })).first()).toContainText(
+      "ahora Claude Sonnet 5.5 (antes Claude Haiku 5.5)",
+    );
+  });
+});

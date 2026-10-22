@@ -76,6 +76,7 @@ describe("configuración", () => {
       "bot_claude_resumed",
       "bot_limits_changed",
       "bot_monthly_limit_changed",
+      "bot_model_changed",
       "bot_replies_resent",
     ]);
     expect(DATE_PRESETS.map((p) => DATE_PRESET_LABELS[p])).toEqual([
@@ -398,6 +399,9 @@ describe("formatos", () => {
     // El tope mensual de tokens (null: sin tope) y el reenvío de respuestas.
     [{ monthlyLimit: 2_000_000, previousMonthlyLimit: null }, "ahora 2.000.000 tokens al mes (antes sin tope)"],
     [{ monthlyLimit: null, previousMonthlyLimit: 500_000 }, "ahora sin tope (antes 500.000 tokens al mes)"],
+    // El modelo de Claude, con su nombre (uno que no está en la lista, con su id).
+    [{ model: "claude-sonnet-5-5", previousModel: "claude-haiku-5-5" }, "ahora Claude Sonnet 5.5 (antes Claude Haiku 5.5)"],
+    [{ model: "claude-haiku-5-5", previousModel: "claude-modelo-x" }, "ahora Claude Haiku 5.5 (antes claude-modelo-x)"],
     [{ resent: 3, failed: 0 }, "3 reenviadas"],
     [{ resent: 1, failed: 1 }, "1 reenviada · 1 no salió otra vez"],
     [{ resent: 0, failed: 2 }, "0 reenviadas · 2 no salieron otra vez"],
@@ -472,6 +476,7 @@ describe("en inglés", () => {
     ],
     [{ limits: { perHour: 30, perDay: 1500 } }, "now 30 per hour and 1,500 per day"],
     [{ monthlyLimit: 2_000_000, previousMonthlyLimit: null }, "now 2,000,000 tokens a month (before no limit)"],
+    [{ model: "claude-opus-5-5", previousModel: "claude-haiku-5-5" }, "now Claude Opus 5.5 (before Claude Haiku 5.5)"],
     [{ resent: 1 }, "1 resent"],
     [{ resent: 3, failed: 2 }, "3 resent · 2 didn't go out again"],
   ] as const)("el detalle %j", (details, expected) => {

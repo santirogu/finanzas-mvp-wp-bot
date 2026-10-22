@@ -71,6 +71,8 @@ export const botSetting = pgTable(
     // Tokens de Claude al mes, de todas las cuentas (null: sin tope). Al llegar, el bot deja de usar
     // Claude hasta el mes siguiente, en hora de Colombia (src/modules/bot/token-budget.ts).
     monthlyTokenLimit: integer("monthly_token_limit"),
+    // El modelo de Claude que eligió el admin (src/modules/bot/models.ts); null: el de BOT_MODEL o el de siempre.
+    model: text("model"),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
     updatedBy: text("updated_by").references(() => user.id, { onDelete: "set null" }),
   },

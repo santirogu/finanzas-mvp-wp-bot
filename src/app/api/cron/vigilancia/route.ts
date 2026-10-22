@@ -3,7 +3,7 @@ import { isCronRequest } from "@/lib/cron-auth";
 import { envVar } from "@/lib/env";
 import { checkHealth } from "@/lib/health";
 import { describeError } from "@/lib/safe-log";
-import { checkClaudeConnection } from "@/modules/bot/claude-extractor";
+import { botModel, checkClaudeConnection } from "@/modules/bot/claude-extractor";
 import { watchProblems } from "@/modules/system/watch";
 import { checkWhatsAppConnection } from "@/modules/whatsapp/client";
 
@@ -22,7 +22,11 @@ export async function GET(request: Request) {
       latestAppliedMigration: async () => (await import("@/db/migrations-status")).latestAppliedMigration(),
     }),
     checkWhatsAppConnection(),
-    checkClaudeConnection(),
+    // Con el modelo que eligió el admin. Si la base no responde, el de BOT_MODEL o el de siempre (lo dice checkHealth).
+    import("@/modules/bot/settings")
+      .then(({ currentBotModel }) => currentBotModel())
+      .catch(() => botModel())
+      .then((model) => checkClaudeConnection(model)),
     // Import dinámico, como en /api/health: si la base no está, ya lo dice checkHealth.
     import("@/modules/bot/alerts")
       .then(({ collectBotAlerts }) => collectBotAlerts())

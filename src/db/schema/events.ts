@@ -28,6 +28,7 @@ export const accountEventType = pgEnum("account_event_type", [
   "bot_limits_changed",
   "bot_monthly_limit_changed",
   "bot_replies_resent",
+  "bot_model_changed",
 ]);
 
 /** Detalle de un evento: el motivo de una desvinculación o de un intento fallido. */
@@ -45,6 +46,9 @@ export type AccountEventDetails = {
   /** El tope mensual de tokens que dejó el admin, y el de antes; null: sin tope (bot_monthly_limit_changed). */
   monthlyLimit?: number | null;
   previousMonthlyLimit?: number | null;
+  /** El modelo de Claude que dejó el admin, y el de antes (bot_model_changed). */
+  model?: string;
+  previousModel?: string;
   /** Cuántas respuestas reenvió el admin y cuántas no salieron otra vez (bot_replies_resent). */
   resent?: number;
   failed?: number;

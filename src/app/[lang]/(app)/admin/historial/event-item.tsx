@@ -47,6 +47,7 @@ const ICON_PATHS: Record<LogEntry["type"], ReactNode> = {
   bot_claude_resumed: <path d="M4 5.5h12v8H9l-3.5 2.5v-2.5H4zM8.75 7.75v3.5L12 9.5z" />,
   bot_limits_changed: <path d="M4 6h12M4 10h12M4 14h12M7 4.5v3M13 8.5v3M9.5 12.5v3" />,
   bot_monthly_limit_changed: <path d="M4.5 5.5h11v10h-11zM4.5 8.5h11M7.5 4v3M12.5 4v3M7.5 12h5" />,
+  bot_model_changed: <path d="M6.5 6.5h7v7h-7zM8.5 4v2.5M11.5 4v2.5M8.5 13.5V16M11.5 13.5V16M4 8.5h2.5M4 11.5h2.5M13.5 8.5H16M13.5 11.5H16" />,
   bot_replies_resent: <path d="M15.5 9A5.5 5.5 0 1 0 14 13M15.5 5v4h-4" />,
 };
 
@@ -71,6 +72,7 @@ const ICON_COLORS: Record<LogEntry["type"], string> = {
   bot_claude_resumed: ADMIN_COLOR,
   bot_limits_changed: ADMIN_COLOR,
   bot_monthly_limit_changed: ADMIN_COLOR,
+  bot_model_changed: ADMIN_COLOR,
   bot_replies_resent: ADMIN_COLOR,
 };
 
@@ -80,6 +82,7 @@ const BOT_EVENTS: readonly LogEntry["type"][] = [
   "bot_claude_resumed",
   "bot_limits_changed",
   "bot_monthly_limit_changed",
+  "bot_model_changed",
   "bot_replies_resent",
 ];
 
@@ -200,6 +203,8 @@ function spanishSentence(entry: LogEntry, { subject: who }: Who, phone: ReactNod
       return <>{admin} cambió los topes de Claude por cuenta</>;
     case "bot_monthly_limit_changed":
       return <>{admin} cambió el tope mensual de tokens de Claude</>;
+    case "bot_model_changed":
+      return <>{admin} cambió el modelo de Claude del bot</>;
     case "bot_replies_resent":
       return <>{admin} reenvió las respuestas del bot que no habían salido</>;
   }
@@ -245,6 +250,8 @@ function englishSentence(entry: LogEntry, { subject, object, whose, account }: W
       return <>{admin} changed Claude&apos;s per-account limits</>;
     case "bot_monthly_limit_changed":
       return <>{admin} changed Claude&apos;s monthly token limit</>;
+    case "bot_model_changed":
+      return <>{admin} changed the bot&apos;s Claude model</>;
     case "bot_replies_resent":
       return <>{admin} resent the bot replies that hadn&apos;t gone out</>;
   }

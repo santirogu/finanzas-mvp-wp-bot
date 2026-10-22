@@ -10,10 +10,13 @@ import { texts } from "@/i18n/texts";
 import { formatPercent } from "@/lib/money";
 import { FIELD_TEXTS, type FieldMessages } from "@/lib/field-errors";
 import { AI_LIMIT_BOUNDS, MONTHLY_TOKEN_BOUNDS, type AiLimits } from "@/modules/bot/limits";
+import { BOT_MODELS, botModelName, isBotModel } from "@/modules/bot/models";
+import { formatCost, usageCost } from "@/modules/bot/pricing";
 import { type ToastTone, useToast } from "@/components/toaster";
 import { Buttons, CODE_FIELD_TEXTS, CodeField, Dialog, FormError } from "../admin-dialog";
 import {
   changeAiLimitsAction,
+  changeBotModelAction,
   changeMonthlyLimitAction,
   pauseClaudeAction,
   resumeClaudeAction,
@@ -21,11 +24,11 @@ import {
 } from "./actions";
 
 // La configuración del bot en /admin/bot: si Claude está activo o en pausa, los topes de mensajes con
-// Claude por cuenta y el tope mensual de tokens. Cada cambio abre una ventana que explica qué va a pasar y pide el código de
+// Claude por cuenta, el tope mensual de tokens y el modelo de Claude. Cada cambio abre una ventana que explica qué va a pasar y pide el código de
 // Google Authenticator. El servidor vuelve a validar todo (src/modules/admin/bot/bot-settings.ts). En el
 // idioma de la página: los miles se escriben con su separador ("1.000" o "1,000"), como los lee el servidor.
 
-type Kind = "pause" | "resume" | "limits" | "monthly";
+type Kind = "pause" | "resume" | "limits" | "monthly" | "model";
 type ServerAction = (prev: BotSettingState, formData: FormData) => Promise<BotSettingState>;
 
 export type BotSettingsProps = {
@@ -36,6 +39,12 @@ export type BotSettingsProps = {
   month: { used: number; reached: boolean; resetsOn: string };
   /** Tokens por llamada, en promedio (para estimar cuánto alcanza un tope); null sin llamadas. */
   averageTokensPerCall: number | null;
+  /** Los de entrada y los de salida por llamada, en promedio (el costo de cada modelo); null sin llamadas. */
+  averageUsage: { input: number; output: number } | null;
+  /** El id del modelo que usa el bot. */
+  model: string;
+  /** Cuándo se midieron los modelos con bot:eval ("21 de oct. de 2026"). */
+  modelsEvaluatedOn: string;
   /** "Ana Admin · 16 de oct. de 2026, 6:00 p. m.", o null si nadie la ha cambiado. */
   lastChange: string | null;
 };
@@ -91,6 +100,15 @@ const TEXTS = texts(
     average: (tokens: string) => ` En promedio, cada mensaje usa ${tokens} tokens`,
     estimate: (messages: string) => `: alcanza para unos ${messages} mensajes.`,
     saveMonthly: "Guardar tope",
+    modelTitle: "Modelo de Claude",
+    evaluation: (passed: number, total: number) => `acertó ${passed} de ${total} frases de prueba`,
+    perThousand: (cost: string) => ` · unos ${cost} cada 1.000 mensajes`,
+    changeModel: "Cambiar el modelo de Claude",
+    modelBody: (date: string) =>
+      `Aplica desde el siguiente mensaje. Cuánto acertó cada uno sale de las frases de prueba del bot (pnpm bot:eval, el ${date}); el costo, del promedio de tokens de los mensajes de hasta ahora.`,
+    models: "Modelo",
+    current: "el de ahora",
+    saveModel: "Cambiar modelo",
     fields: {
       perHour: { required: "Escribe cuántos mensajes por hora.", pattern: "Escribe un número entero, sin decimales." },
       perDay: { required: "Escribe cuántos mensajes por día.", pattern: "Escribe un número entero, sin decimales." },
@@ -141,6 +159,15 @@ const TEXTS = texts(
       average: (tokens) => ` On average, each message uses ${tokens} tokens`,
       estimate: (messages) => `: enough for about ${messages} messages.`,
       saveMonthly: "Save limit",
+      modelTitle: "Claude model",
+      evaluation: (passed, total) => `got ${passed} of ${total} test phrases right`,
+      perThousand: (cost) => ` · about ${cost} per 1,000 messages`,
+      changeModel: "Change the Claude model",
+      modelBody: (date) =>
+        `It applies from the next message. How many each one got right comes from the bot's test phrases (pnpm bot:eval, on ${date}); the cost, from the average tokens of the messages so far.`,
+      models: "Model",
+      current: "current",
+      saveModel: "Change model",
       fields: {
         perHour: { required: "Enter how many messages per hour.", pattern: "Enter a whole number, without decimals." },
         perDay: { required: "Enter how many messages per day.", pattern: "Enter a whole number, without decimals." },
@@ -158,10 +185,21 @@ const NUMBERS: Readonly<Record<Locale, { thousands: RegExp; limitPattern: string
 };
 const counter = (locale: Locale) => new Intl.NumberFormat(INTL_LOCALES[locale]).format;
 
-export function BotSettings({ claudePaused, limits, monthlyTokenLimit, month, averageTokensPerCall, lastChange }: BotSettingsProps) {
+export function BotSettings({
+  claudePaused,
+  limits,
+  monthlyTokenLimit,
+  month,
+  averageTokensPerCall,
+  averageUsage,
+  model,
+  modelsEvaluatedOn,
+  lastChange,
+}: BotSettingsProps) {
   const locale = useLocale();
   const t = TEXTS[locale];
   const count = counter(locale);
+  const modelLine = modelSummary(t, locale, averageUsage);
   const [open, setOpen] = useState<Kind | null>(null);
   const toast = useToast();
   const close = () => setOpen(null);
@@ -220,6 +258,13 @@ export function BotSettings({ claudePaused, limits, monthlyTokenLimit, month, av
           label={t.changeMonthly}
           onClick={() => start("monthly")}
         />
+        <Row
+          title={t.modelTitle}
+          description={`${botModelName(model)}: ${modelLine(model)}`}
+          button={t.change}
+          label={t.changeModel}
+          onClick={() => start("model")}
+        />
       </ul>
       <p className="text-xs text-muted">{lastChange ? t.lastChange(lastChange) : t.noChanges}</p>
 
@@ -251,6 +296,9 @@ export function BotSettings({ claudePaused, limits, monthlyTokenLimit, month, av
       {open === "limits" && <LimitsDialog limits={limits} onClose={close} onDone={finish("success")} />}
       {open === "monthly" && (
         <MonthlyLimitDialog limit={monthlyTokenLimit} averageTokensPerCall={averageTokensPerCall} onClose={close} onDone={finish("success")} />
+      )}
+      {open === "model" && (
+        <ModelDialog current={model} summary={modelLine} evaluatedOn={modelsEvaluatedOn} onClose={close} onDone={finish("success")} />
       )}
     </section>
   );
@@ -475,6 +523,92 @@ function MonthlyLimitDialog({
           <CodeField state={state} clientError={errors.code} />
           <FormError state={state} />
           <Buttons submit={t.saveMonthly} pending={t.saving} busy={busy} />
+        </form>
+      )}
+    </Dialog>
+  );
+}
+
+/**
+ * Lo que se sabe de un modelo, para leer: cuánto acertó en bot:eval y cuánto cuestan 1.000 mensajes con el
+ * promedio de tokens de los de hasta ahora (sin mensajes todavía, solo lo que acertó). Uno que no está en la
+ * lista (de BOT_MODEL) no tiene evaluación.
+ */
+function modelSummary(t: (typeof TEXTS)[Locale], locale: Locale, averageUsage: { input: number; output: number } | null) {
+  return (id: string) => {
+    const evaluated = BOT_MODELS.find((model) => model.id === id)?.eval;
+    const cost =
+      averageUsage && usageCost({ model: id, longPrompt: false, inputTokens: averageUsage.input * 1000, outputTokens: averageUsage.output * 1000 });
+    const perThousand = cost == null ? "" : t.perThousand(formatCost(cost, locale));
+    return `${evaluated ? t.evaluation(evaluated.passed, evaluated.total) : "—"}${perThousand}`;
+  };
+}
+
+const capitalize = (text: string) => `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
+
+function ModelDialog({
+  current,
+  summary,
+  evaluatedOn,
+  onClose,
+  onDone,
+}: {
+  current: string;
+  summary: (id: string) => string;
+  evaluatedOn: string;
+  onClose: () => void;
+  onDone: (message: string) => void;
+}) {
+  const locale = useLocale();
+  const t = TEXTS[locale];
+  const [state, formAction, busy] = useSettingAction(changeBotModelAction, onDone);
+  const { errors, formProps } = useFieldErrors(CODE_FIELD_TEXTS[locale]);
+  // Controlado: si el servidor rechaza el código, la elección sigue ahí.
+  const [chosen, setChosen] = useState<string>(isBotModel(current) ? current : BOT_MODELS[0].id);
+  const errorId = useId();
+  const message = state.field === "model" ? state.error : undefined;
+
+  return (
+    <Dialog title={t.changeModel} onClose={onClose}>
+      {(ids) => (
+        <form action={formAction} {...formProps} className="space-y-4">
+          <p id={ids.description} className="text-sm text-muted">
+            {t.modelBody(evaluatedOn)}
+          </p>
+          <fieldset aria-describedby={describedBy(message && errorId)} className="space-y-2">
+            <legend className="text-sm font-medium">{t.models}</legend>
+            {BOT_MODELS.map((model) => (
+              <label
+                key={model.id}
+                className="flex cursor-pointer items-start gap-3 rounded-lg border border-control p-3 transition has-[:checked]:border-brand has-[:checked]:bg-brand/10 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-brand/40"
+              >
+                <input
+                  type="radio"
+                  name="model"
+                  value={model.id}
+                  checked={chosen === model.id}
+                  onChange={() => setChosen(model.id)}
+                  className="mt-0.5 size-4 accent-[var(--brand)]"
+                />
+                <span className="min-w-0 text-sm">
+                  <span className="block font-medium">
+                    {model.name}
+                    {model.id === current && (
+                      <>
+                        {" "}
+                        <span className="font-normal text-muted">({t.current})</span>
+                      </>
+                    )}
+                  </span>
+                  <span className="block text-muted">{capitalize(summary(model.id))}</span>
+                </span>
+              </label>
+            ))}
+          </fieldset>
+          <FieldError id={errorId} message={message} />
+          <CodeField state={state} clientError={errors.code} />
+          <FormError state={state} />
+          <Buttons submit={t.saveModel} pending={t.saving} busy={busy} />
         </form>
       )}
     </Dialog>
