@@ -11,6 +11,7 @@ import { BIGGEST_SHOWN } from "@/modules/reports/biggest";
 import { CONTACT_EMAIL } from "@/lib/contact";
 import { MAX_TRANSACTIONS_PER_MESSAGE } from "@/modules/bot/limits";
 import { RECURRING_MIN_MONTHS, RECURRING_WINDOW } from "@/modules/reports/recurring";
+import { PROJECTION_FROM_DAY } from "@/modules/reports/remaining";
 import { DAYS_AHEAD, MAX_DAYS_AHEAD, MONTHS_BACK, PAYMENTS_FOR_DAY } from "@/modules/reports/upcoming";
 import { SEARCH_FROM } from "@/modules/transactions/search";
 import { PageSkeleton } from "../page-skeleton";
@@ -177,6 +178,11 @@ function SpanishTopics() {
           En <A href="/cuenta">Mi cuenta → Notificaciones</A> puedes apagar los avisos o elegir con cuántos días de anticipación llegan
           (de 0, el mismo día, a {MAX_DAYS_AHEAD}).
         </p>
+        <p>
+          En el Resumen, <strong>Lo que te queda este mes</strong> resta de lo que te entró lo que ya gastaste y los fijos que faltan
+          por pagar. También te dice cuánto te da por día hasta fin de mes y, desde el día {PROJECTION_FROM_DAY}, cómo cerrarías el mes a
+          tu ritmo de gasto.
+        </p>
       </Topic>
 
       <Topic title="Reportes y descargas">
@@ -257,6 +263,11 @@ function EnglishTopics() {
         <p>
           In <A href="/cuenta">My account → Notifications</A> you can turn the notices off or choose how many days in advance they come
           (from 0, the same day, to {MAX_DAYS_AHEAD}).
+        </p>
+        <p>
+          In the Overview, <strong>What&apos;s left this month</strong> takes what you&apos;ve spent and the bills still to pay from what
+          came in. It also tells you how much that gives you a day until month&apos;s end and, from day {PROJECTION_FROM_DAY}, how you&apos;d
+          end the month at your spending pace.
         </p>
       </Topic>
 
@@ -340,7 +351,7 @@ function SpanishFaq() {
         <p>
           Un egreso aparece en <A href="/gastos-fijos">Fijos</A> cuando tiene la misma descripción en al menos {RECURRING_MIN_MONTHS}{" "}
           de los últimos {RECURRING_WINDOW} meses, sin importar mayúsculas ni tildes. Si lo registras con nombres distintos (“Arriendo”
-          y “Pago del arriendo”), no se reconoce como el mismo.
+          y “Pago del arriendo”), no se reconoce como un solo gasto.
         </p>
         <p>
           Para sumarlo igual, toca <strong>Agregar un gasto fijo</strong> en Fijos.

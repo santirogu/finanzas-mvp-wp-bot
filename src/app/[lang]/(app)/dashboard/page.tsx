@@ -9,7 +9,8 @@ import { compareMonths, currentMonthRange, formatMonthName, monthRange, monthRan
 import { formatMoney } from "@/lib/money";
 import { inMonthPhrase, monthHref, monthNav, selectedMonth } from "@/lib/month-nav";
 import { requireUser } from "@/lib/session";
-import { getUpcomingPayments } from "@/modules/reports/queries";
+import { getMonthFixed, getUpcomingPayments } from "@/modules/reports/queries";
+import { monthRemaining, remainingView } from "@/modules/reports/remaining";
 import { monthSavedNote } from "@/modules/reports/summary";
 import { upcomingItems, windowPhrase } from "@/modules/reports/upcoming";
 import { chartSlices } from "@/modules/transactions/category-chart";
@@ -24,6 +25,7 @@ import { MonthNav } from "../month-nav";
 import { PageSkeleton } from "../page-skeleton";
 import { TAB_TEXTS } from "../tab-texts";
 import { CategoryChart } from "./category-chart";
+import { MonthRemaining } from "./month-remaining";
 import { UpcomingPayments } from "./upcoming-payments";
 import { WhatsAppHint } from "./whatsapp-hint";
 
@@ -83,7 +85,7 @@ async function Dashboard({ month }: { month: string | string[] | undefined }) {
   // Con el mes en curso, el anterior hasta el mismo día: contra el mes entero, a mitad de mes casi todo daría
   // "menos que septiembre".
   const beforeRange = isCurrent ? monthRangeUpTo(previous, today) : monthRange(previous.year, previous.month);
-  const [summary, before, byCategory, recent, activeMonths, upcoming] = await Promise.all([
+  const [summary, before, byCategory, recent, activeMonths, upcoming, fixed] = await Promise.all([
     getMonthlySummary(user.id, range),
     getMonthlySummary(user.id, beforeRange),
     getTotalsByCategory(user.id, "expense", range, locale),
@@ -91,6 +93,8 @@ async function Dashboard({ month }: { month: string | string[] | undefined }) {
     listActiveMonths(user.id),
     // Los avisos de próximos pagos son de ahora: solo en el mes actual.
     isCurrent ? getUpcomingPayments(user.id, current, today, locale) : null,
+    // "Lo que te queda" también es de ahora.
+    isCurrent ? getMonthFixed(user.id, current, today) : null,
   ]);
   const money = (n: number) => formatMoney(n, user.currency, locale);
   const firstName = user.name.split(" ")[0];
@@ -103,6 +107,11 @@ async function Dashboard({ month }: { month: string | string[] | undefined }) {
     expense: totalChange(summary.expense, before.expense, ref, "expense", locale),
   };
   const saved = monthSavedNote(summary.income, summary.balance, isCurrent, locale);
+  // Sin ingresos todavía (antes del sueldo) no hay de qué hablar: todo saldría negativo.
+  const remaining =
+    fixed && summary.income > 0
+      ? remainingView(monthRemaining(summary, fixed, today), summary, fixed, today, user.currency, locale)
+      : null;
 
   return (
     <div className="space-y-6">
@@ -143,6 +152,8 @@ async function Dashboard({ month }: { month: string | string[] | undefined }) {
           {changes && <ChangeLine change={changes.expense} />}
         </Link>
       </section>
+
+      {remaining && <MonthRemaining view={remaining} />}
 
       {upcoming && upcoming.payments.length > 0 && (
         <UpcomingPayments items={upcomingItems(upcoming.payments, today, user.currency, locale)} span={windowPhrase(upcoming.days, locale)} today={today} />
