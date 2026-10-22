@@ -112,6 +112,18 @@ describe("sendWhatsAppText", () => {
   });
 });
 
+describe("sendWhatsAppText · sin respuesta", () => {
+  it.each([
+    [new DOMException("The operation timed out.", "TimeoutError"), "TimeoutError (23)"],
+    [new TypeError("fetch failed"), "TypeError"],
+  ])("si Meta no responde o no hay red, devuelve el envío fallido sin lanzar: %s", async (thrown, error) => {
+    fetchMock.mockRejectedValue(thrown);
+    const { sendWhatsAppText } = await loadClient();
+
+    expect(await sendWhatsAppText("573001112233", "Hola")).toEqual({ ok: false, error });
+  });
+});
+
 describe("sendWhatsAppText · errores sin cuerpo", () => {
   it("si no se puede leer el cuerpo del error, informa solo el estado", async () => {
     const response = new Response(null, { status: 503 });

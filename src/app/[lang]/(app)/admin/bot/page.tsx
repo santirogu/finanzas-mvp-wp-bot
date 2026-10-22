@@ -8,6 +8,7 @@ import { texts } from "@/i18n/texts";
 import { todayInTimezone } from "@/lib/dates";
 import { formatPercent, formatShare } from "@/lib/money";
 import { requireAdmin } from "@/lib/session";
+import { botAlerts } from "@/modules/admin/bot/alerts";
 import { botAccounts, botActivity, type AccountRow } from "@/modules/admin/bot/bot-activity";
 import { botSettingsForAdmin } from "@/modules/admin/bot/bot-settings";
 import { pendingResends } from "@/modules/admin/bot/resend";
@@ -35,6 +36,7 @@ import {
 } from "@/modules/admin/bot/bot-filters";
 import { adminModuleLabel } from "@/modules/admin/modules";
 import { ADMIN_MAX_ROWS, ADMIN_PAGE_SIZE, ADMIN_TIMEZONE, formatDate, formatDateTime } from "@/modules/admin/shared/filters";
+import { BotAlerts } from "../bot-alerts";
 import { PageSkeleton } from "../../page-skeleton";
 import { ActiveFilters } from "../active-filters";
 import { BotSettings } from "./bot-settings";
@@ -187,11 +189,12 @@ async function Bot({ params }: { params: Record<string, string | string[] | unde
   const count = (n: number) => formatCount(n, locale);
   const filters = parseBotFilters(params);
   const today = todayInTimezone(ADMIN_TIMEZONE);
-  const [activity, accounts, settings, resends] = await Promise.all([
+  const [activity, accounts, settings, resends, alerts] = await Promise.all([
     botActivity(filters, today),
     botAccounts(filters, today),
     botSettingsForAdmin(),
     pendingResends(),
+    botAlerts(),
   ]);
   const panelOpen = params.panel === "1";
   const filtered = activeBotFilters(filters).length > 0;
@@ -203,6 +206,7 @@ async function Bot({ params }: { params: Record<string, string | string[] | unde
 
   return (
     <div className="space-y-4">
+      <BotAlerts alerts={alerts} locale={locale} />
       <section className="card space-y-4 p-4" aria-labelledby="bot">
         <div className="space-y-1">
           <h2 id="bot" className="font-semibold">

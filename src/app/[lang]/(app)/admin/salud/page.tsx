@@ -6,11 +6,13 @@ import { texts } from "@/i18n/texts";
 import { appliedMigrationCount, MIGRATION_COUNT, migrationName, REQUIRED_ENV, ANTHROPIC_CREDENTIALS } from "@/lib/health";
 import { commitUrl, RELEASES_PAGE, releaseOf, type Release } from "@/lib/releases";
 import { requireAdmin } from "@/lib/session";
+import { alertView } from "@/modules/admin/bot/alerts-view";
 import { formatCount } from "@/modules/admin/bot/bot-filters";
 import { CLEANUP_PATH, cleanupResultLabel, cronScheduleLabel, envNames, formatBytes } from "@/modules/admin/health/health-view";
 import { recentReleases } from "@/modules/admin/health/releases";
 import { databaseDetails, recentCleanupRuns, systemHealth, type SystemHealth } from "@/modules/admin/health/system";
 import { formatDate, formatDateTime } from "@/modules/admin/shared/filters";
+import { isWarning } from "@/modules/bot/alerts";
 import { PageSkeleton } from "../../page-skeleton";
 import { Connections } from "./connections";
 import { adminMetadata } from "../admin-metadata";
@@ -45,6 +47,9 @@ const TEXTS = texts(
     responds: (ms: number) => `Responde en ${ms} ms`,
     noResponse: "No responde",
     cleanup: "Limpieza diaria",
+    bot: "Bot de WhatsApp",
+    botOk: "Sin alertas",
+    botAlerts: (n: number) => (n === 1 ? "1 alerta: revísala en Bot de WhatsApp" : `${n} alertas: revísalas en Bot de WhatsApp`),
     lastRun: (date: string) => `La última corrida: ${date}`,
     lastRunFailed: (date: string) => `La última corrida falló: ${date}`,
     noRuns: "Todavía no hay corridas registradas",
@@ -100,6 +105,9 @@ const TEXTS = texts(
       responds: (ms) => `Responds in ${ms} ms`,
       noResponse: "Not responding",
       cleanup: "Daily cleanup",
+      bot: "WhatsApp bot",
+      botOk: "No alerts",
+      botAlerts: (n) => (n === 1 ? "1 alert: check it in WhatsApp bot" : `${n} alerts: check them in WhatsApp bot`),
       lastRun: (date) => `Last run: ${date}`,
       lastRunFailed: (date) => `The last run failed: ${date}`,
       noRuns: "No runs recorded yet",
@@ -276,6 +284,8 @@ function Status({ health, t, locale }: { health: SystemHealth; t: HealthTexts; l
   const applied = appliedMigrationCount(report.appliedMigration);
   const lastName = migrationName(report.appliedMigration);
   const cleanupProblem = problems.some((p) => p.kind === "cleanup_failed" || p.kind === "cleanup_late");
+  // Las fallas del bot (los avisos, como el tope mensual cerca, se ven en /admin/bot).
+  const botFailures = health.botAlerts.filter((alert) => !isWarning(alert));
   return (
     <section className="card space-y-3 p-4" aria-labelledby="estado">
       <div className="space-y-1">
@@ -311,6 +321,12 @@ function Status({ health, t, locale }: { health: SystemHealth; t: HealthTexts; l
               ? (lastCleanup.ok ? t.lastRun : t.lastRunFailed)(formatDateTime(lastCleanup.startedAt, locale))
               : t.noRuns
           }
+        />
+        <Check
+          ok={reachable ? botFailures.length === 0 : null}
+          label={t.bot}
+          value={botFailures.length === 0 ? t.botOk : t.botAlerts(botFailures.length)}
+          detail={botFailures.length === 0 ? null : botFailures.map((alert) => alertView(alert, locale).title).join(" · ")}
         />
       </ul>
     </section>

@@ -20,7 +20,9 @@ export type HealthProblem =
   | { kind: "migrations"; applied: number; expected: number }
   | { kind: "cleanup_failed"; at: Date }
   /** `since`: la última corrida; null si nunca corrió desde que se guardan (y la versión ya lleva más de un día). */
-  | { kind: "cleanup_late"; since: Date | null };
+  | { kind: "cleanup_late"; since: Date | null }
+  /** Las alertas del bot que son fallas (src/modules/bot/alerts.ts; los avisos, como el tope mensual cerca, no cuentan). */
+  | { kind: "bot_alerts"; count: number };
 
 /** Si /api/health respondería "ok": la configuración completa y la base al día. */
 export const healthcheckOk = (report: HealthReport) => report.missingEnv.length === 0 && migrationsUpToDate(report);
@@ -34,11 +36,14 @@ export function healthProblems({
   lastCleanup,
   builtAt,
   now,
+  botAlerts = 0,
 }: {
   report: HealthReport;
   lastCleanup: CleanupRunSummary | null;
   builtAt: Date | null;
   now: Date;
+  /** Cuántas alertas del bot son fallas. */
+  botAlerts?: number;
 }): HealthProblem[] {
   const problems: HealthProblem[] = [];
   if (report.missingEnv.length > 0) problems.push({ kind: "missing_env", names: report.missingEnv });
@@ -51,6 +56,7 @@ export function healthProblems({
   else if (since && now.getTime() - since.getTime() > CLEANUP_LATE_HOURS * 3_600_000) {
     problems.push({ kind: "cleanup_late", since: lastCleanup?.startedAt ?? null });
   }
+  if (botAlerts > 0) problems.push({ kind: "bot_alerts", count: botAlerts });
   return problems;
 }
 
@@ -62,6 +68,7 @@ const PROBLEM_TEXTS = {
     cleanup_failed: (at: string) => `La última limpieza diaria falló (${at})`,
     cleanup_late: (since: string) => `La limpieza diaria no corre desde el ${since}`,
     cleanup_never: "La limpieza diaria todavía no ha corrido",
+    bot_alerts: (n: number) => (n === 1 ? "El bot tiene 1 alerta" : `El bot tiene ${n} alertas`),
   },
   en: {
     missing_env: (names: string) => `Missing environment variables: ${names}`,
@@ -70,6 +77,7 @@ const PROBLEM_TEXTS = {
     cleanup_failed: (at: string) => `The last daily cleanup failed (${at})`,
     cleanup_late: (since: string) => `The daily cleanup hasn't run since ${since}`,
     cleanup_never: "The daily cleanup hasn't run yet",
+    bot_alerts: (n: number) => (n === 1 ? "The bot has 1 alert" : `The bot has ${n} alerts`),
   },
 } as const satisfies Record<Locale, unknown>;
 
@@ -91,6 +99,8 @@ export function problemLabel(problem: HealthProblem, locale: Locale = DEFAULT_LO
       return t.cleanup_failed(formatDateTime(problem.at, locale));
     case "cleanup_late":
       return problem.since ? t.cleanup_late(formatDateTime(problem.since, locale)) : t.cleanup_never;
+    case "bot_alerts":
+      return t.bot_alerts(problem.count);
   }
 }
 
