@@ -28,7 +28,7 @@ const config = {
     "src/app/*/*/simulador/actions.ts",
     "src/proxy.ts",
     "src/i18n/locales.ts",
-    "scripts/{conventional-commit,deploy-needed,e2e-needed,pr-description,check-schema-drift,mutation-summary,mutation-targets,smoke,release}.mjs",
+    "scripts/{conventional-commit,deploy-needed,e2e-needed,pr-description,check-schema-drift,dependency-audit,mutation-summary,mutation-targets,smoke,release}.mjs",
     "scripts/{delete-data,admin,db-cli,db-backup}.ts",
   ],
   reporters: ["clear-text", "progress-append-only", "html", "json"],
