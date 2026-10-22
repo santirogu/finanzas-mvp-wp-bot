@@ -255,10 +255,11 @@ Automatically start at login*).
 src/
   app/[lang]/                       Las páginas, una vez por idioma (el proxy agrega el idioma por dentro: ver Idiomas)
     (auth)/login, (auth)/registro   Páginas públicas de acceso
-    (app)/dashboard                 Resumen: balance del mes (y frente al anterior), lo que te queda, últimos movimientos, gastos por categoría (dona)
+    (app)/dashboard                 Resumen: balance del mes (y frente al anterior), lo que te queda, presupuestos, últimos movimientos, gastos por categoría (dona)
     (app)/cuenta                    Mi cuenta: tus datos, seguridad (cambiar la contraseña), WhatsApp, apariencia y eliminar la cuenta
     (app)/ingresos, (app)/egresos   Formulario + listado del mes (vista compartida)
     (app)/reportes                  Reportes: 12 meses (o un año), barras por mes, categorías frente a su promedio, gastos fijos, los más grandes y qué días gastas más
+    (app)/presupuestos              Presupuestos: un monto por mes por categoría de egresos y cómo va cada uno (se llega desde el Resumen)
     (app)/month-nav.tsx             Navegador de meses (flechas y tarjeta del año) del Resumen, Ingresos y Egresos
     (app)/account-menu.tsx          Menú de la cuenta del encabezado (iniciales, escudo de admin, Mi cuenta y Salir)
   app/api/auth/[...all]             Endpoints de Better Auth
@@ -485,6 +486,17 @@ La app está en español (el de siempre) y en inglés, toda la web (el bot de Wh
     Cerrado, cada gasto dice su último cambio ("11% desde marzo"). A cada cambio se le puede escribir
     una nota (hasta 280 caracteres; tabla `fixed_expense_note`), solo de un mes en que la persona pagó
     ese gasto; vaciarla la borra.
+- **Presupuestos** (`/presupuestos`, `src/modules/budgets/`, tabla `category_budget`): un monto por mes para una
+  categoría de egresos, el mismo cada mes hasta que la persona lo cambie o lo quite (decisiones del dueño). Sin
+  pestaña propia: se llega desde el Resumen.
+  - **La página:** cómo va cada uno en el mes en curso, "Agregar un presupuesto" (con las categorías de egresos
+    disponibles que todavía no tienen), "Cambiar" (el monto) y "Quitar". Uno nuevo solo con una categoría que la
+    persona puede ver y no está archivada; el de una que el admin archivó se puede cambiar. Si el admin elimina la
+    categoría, el presupuesto se va con ella (cascada).
+  - **En el Resumen**, solo con el mes en curso: una barra por presupuesto, de la categoría más cerca del límite (o
+    más pasada) a la más lejos, con "Te quedan…" o "Te pasaste por…" (en rojo). Desde el 80 % (`NEAR_SHARE`)
+    resalta la línea. Sin presupuestos, un enlace en "Egresos por categoría" invita a ponerlos.
+  - Cuenta lo gastado en la categoría en el mes (sin los borrados); los movimientos sin categoría no suman a ninguno.
 - **Lo que te queda este mes** (`src/modules/reports/remaining.ts`, `month-remaining.tsx`): en el Resumen, solo
   con el mes en curso y si ya hubo ingresos (antes del sueldo todo saldría negativo).
   - **Lo libre:** ingresos − egresos − los gastos fijos que faltan por pagar este mes (sin pagar ni marcados "ya

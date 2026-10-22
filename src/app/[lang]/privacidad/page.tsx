@@ -65,6 +65,11 @@ export default function PrivacyPage() {
               notificación como leída, guardamos cuál fue y cuándo, hasta que elimines tu cuenta.
             </li>
             <li>
+              <strong>Tus presupuestos:</strong> si en <strong>Presupuestos</strong> le pones un tope por mes a
+              una categoría de egresos, guardamos la categoría y el monto. Se guardan hasta que los quites o
+              elimines tu cuenta.
+            </li>
+            <li>
               <strong>Datos de WhatsApp, si conectas tu número:</strong> tu número de teléfono y el
               contenido de los mensajes que envías al bot, junto con las respuestas del bot.
             </li>

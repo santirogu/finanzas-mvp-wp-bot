@@ -10,6 +10,8 @@ import { BOT_COMMANDS, BOT_EXAMPLES, HELP_COMMAND } from "@/modules/bot/help";
 import { BIGGEST_SHOWN } from "@/modules/reports/biggest";
 import { CONTACT_EMAIL } from "@/lib/contact";
 import { MAX_TRANSACTIONS_PER_MESSAGE } from "@/modules/bot/limits";
+import { formatPercent } from "@/lib/money";
+import { NEAR_SHARE } from "@/modules/budgets/progress";
 import { RECURRING_MIN_MONTHS, RECURRING_WINDOW } from "@/modules/reports/recurring";
 import { PROJECTION_FROM_DAY } from "@/modules/reports/remaining";
 import { DAYS_AHEAD, MAX_DAYS_AHEAD, MONTHS_BACK, PAYMENTS_FOR_DAY } from "@/modules/reports/upcoming";
@@ -185,6 +187,17 @@ function SpanishTopics() {
         </p>
       </Topic>
 
+      <Topic title="Presupuestos">
+        <p>
+          En <A href="/presupuestos">Presupuestos</A> le pones un tope por mes a las categorías de egresos que quieras cuidar: vale
+          todos los meses hasta que lo cambies o lo quites. Llegas ahí desde el <A href="/dashboard">Resumen</A>.
+        </p>
+        <p>
+          En el Resumen ves cuánto llevas de cada una en el mes y cuánto te queda. Desde el {formatPercent(NEAR_SHARE)} del presupuesto,
+          la línea se resalta; si te pasas, sale en rojo con cuánto.
+        </p>
+      </Topic>
+
       <Topic title="Reportes y descargas">
         <p>
           En <A href="/reportes">Reportes</A> ves cómo te va en los últimos 12 meses o en un año:
@@ -268,6 +281,17 @@ function EnglishTopics() {
           In the Overview, <strong>What&apos;s left this month</strong> takes what you&apos;ve spent and the bills still to pay from what
           came in. It also tells you how much that gives you a day until month&apos;s end and, from day {PROJECTION_FROM_DAY}, how you&apos;d
           end the month at your spending pace.
+        </p>
+      </Topic>
+
+      <Topic title="Budgets">
+        <p>
+          In <A href="/presupuestos">Budgets</A> you set a monthly limit for the expense categories you want to watch: it applies every
+          month until you change or remove it. You get there from the <A href="/dashboard">Overview</A>.
+        </p>
+        <p>
+          In the Overview you see how much you&apos;ve spent in each one this month and how much you have left. From{" "}
+          {formatPercent(NEAR_SHARE, "en")} of the budget the line stands out; if you go over, it turns red and shows by how much.
         </p>
       </Topic>
 

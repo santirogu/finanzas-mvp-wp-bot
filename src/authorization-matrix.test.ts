@@ -29,6 +29,7 @@ const PAGES = {
   "/ingresos": "requiere sesión",
   "/egresos": "requiere sesión",
   "/gastos-fijos": "requiere sesión; solo los gastos fijos propios (sus marcas y notas, también)",
+  "/presupuestos": "requiere sesión; solo los presupuestos propios y lo que gastó la persona en cada categoría",
   "/reportes": "requiere sesión; solo los movimientos propios",
   "/simulador": "requiere sesión; solo en desarrollo",
   "/movimientos/[id]/editar": "requiere sesión; solo movimientos propios (los demás dan 404)",
@@ -105,6 +106,9 @@ const SERVER_ACTIONS = {
   markNotificationsReadAction: "requireUser; solo marca como leídas notificaciones propias (ids con su formato, hasta 50)",
   registerFixedPaymentAction:
     "requireUser; registra un egreso propio con la descripción y la categoría del último pago propio de ese gasto (las busca el servidor); fecha hasta hoy",
+  saveBudgetAction:
+    "requireUser; solo presupuestos propios (el dueño sale de la sesión), de una categoría de egresos que la persona puede ver (una nueva, no archivada); monto hasta MAX_AMOUNT",
+  removeBudgetAction: "requireUser; solo quita un presupuesto propio",
 } as const;
 
 // Acciones que no necesitan validar la sesión, con el porqué.

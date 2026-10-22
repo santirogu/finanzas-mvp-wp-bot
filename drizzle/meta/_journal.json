@@ -176,6 +176,13 @@
       "when": 1792633214187,
       "tag": "0024_modelo-del-bot",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1792673499075,
+      "tag": "0025_presupuestos",
+      "breakpoints": true
     }
   ]
 }

@@ -1,7 +1,7 @@
 import { randomInt } from "node:crypto";
 import { expect, type Browser, type BrowserContext, type Page } from "@playwright/test";
 import { newAdmin, setUpTwoFactor } from "../../../../e2e/admin";
-import { addTransaction, adminCommand, fakeIp, register, toast, uniqueEmail, visible } from "../../../../e2e/helpers";
+import { addBudget, addTransaction, adminCommand, fakeIp, register, toast, uniqueEmail, visible } from "../../../../e2e/helpers";
 import { newPhone, nthReply, sendWhatsApp } from "../../../../e2e/whatsapp";
 import { monthOf, monthParam, shiftMonth, todayInTimezone } from "../../../../src/lib/dates";
 
@@ -149,6 +149,11 @@ async function conDatos(browser: Browser, baseURL: string, datos: Datos) {
 
   datos.editar.datos = await primeraEdicion(page);
 
+  // Presupuestos: uno lejos del límite, uno cerca (86 %) y uno pasado (124 %).
+  await addBudget(page, "Entretenimiento", "200000");
+  await addBudget(page, "Mercado", "800000");
+  await addBudget(page, "Transporte", "50000");
+
   // Un movimiento borrado, para el aviso "Se borró… · Deshacer" (se puede deshacer 10 minutos).
   await page.goto("/egresos");
   await addTransaction(page, { amount: "9500", description: "Café para borrar", category: "Alimentación" });
@@ -195,6 +200,10 @@ async function admin(browser: Browser, baseURL: string, datos: Datos) {
     { ruta: "/egresos", movimiento: { amount: maximo, description: larga, category: categoria, date: `${MES_ANTERIOR}-28` } },
   ]);
   datos.editar.admin = await primeraEdicion(page);
+  // Presupuestos con los textos más largos: la categoría de 40 caracteres en el monto máximo, y uno de $1 que se pasa
+  // por millones (el porcentaje más largo).
+  await addBudget(page, categoria, maximo);
+  await addBudget(page, "Vivienda", "1");
 
   if (datos.correos.datos) {
     await page.goto(`/admin/usuarios?q=${encodeURIComponent(datos.correos.datos)}`);

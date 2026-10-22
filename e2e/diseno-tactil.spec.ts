@@ -4,7 +4,7 @@ import postgres from "postgres";
 import { heading, newAdmin, setUpTwoFactor } from "./admin";
 import { monthOf, monthParam, shiftMonth, todayInTimezone } from "../src/lib/dates";
 import { e2eDatabaseUrl } from "./database-url";
-import { addTransaction, closeToasts, openAccountMenu, openTab, register, test, toast, visible } from "./helpers";
+import { addBudget, addTransaction, closeToasts, openAccountMenu, openTab, register, test, toast, visible } from "./helpers";
 
 // En las pantallas táctiles todo cabe en la pantalla, aunque los textos sean largos (sin scroll de
 // lado), y los campos tienen letra de 16 px o más: con menos, Safari del iPhone y del iPad hace zoom
@@ -198,8 +198,16 @@ test("en pantallas táctiles las páginas caben y los campos no hacen zoom @tact
     await expect(toast(page, /^Egreso registrado$/)).toBeVisible();
   });
 
+  await test.step("un presupuesto de la categoría más larga, pasado por el monto más largo", async () => {
+    await open(page, "/presupuestos");
+    await visible(page.getByRole("button", { name: "Agregar un presupuesto" })).click();
+    await expectFitsOnScreens(page, "ventana de agregar un presupuesto");
+    await page.getByRole("dialog").getByRole("button", { name: "Cancelar" }).click();
+    await addBudget(page, category, "1");
+  });
+
   await test.step("las páginas de la persona", async () => {
-    for (const path of ["/dashboard", "/ingresos", "/egresos", "/gastos-fijos", "/reportes", "/cuenta", "/ayuda", `/dashboard?mes=${previousMonth}`, `/egresos?mes=${previousMonth}`]) {
+    for (const path of ["/dashboard", "/ingresos", "/egresos", "/gastos-fijos", "/reportes", "/presupuestos", "/cuenta", "/ayuda", `/dashboard?mes=${previousMonth}`, `/egresos?mes=${previousMonth}`]) {
       await open(page, path);
       await expectFitsOnScreens(page, path);
     }

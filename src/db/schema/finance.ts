@@ -81,6 +81,32 @@ export const transaction = pgTable(
   ],
 );
 
+// Los presupuestos de la persona (/presupuestos y el Resumen, src/modules/budgets/): un monto por mes para una
+// categoría de egresos, el mismo cada mes hasta que lo cambie o lo quite. Se borra con la cuenta y con la
+// categoría, si el admin la elimina (cascada).
+export const categoryBudget = pgTable(
+  "category_budget",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    categoryId: uuid("category_id")
+      .notNull()
+      .references(() => category.id, { onDelete: "cascade" }),
+    amount: numeric("amount", { precision: 18, scale: 2, mode: "number" }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (t) => [
+    uniqueIndex("category_budget_user_category_uq").on(t.userId, t.categoryId),
+    check("category_budget_amount_positive", sql`${t.amount} > 0`),
+  ],
+);
+
 // Los gastos fijos marcados a mano en Reportes (src/modules/reports/fixed-choices.ts): "include" suma uno
 // que el detector todavía no ve (lleva pocos meses) y "exclude" quita uno que detectó por error. La clave
 // es la descripción como la agrupa el detector: sin mayúsculas, tildes ni espacios de más (searchKey).

@@ -42,7 +42,7 @@ describe("robots.txt", () => {
       rules: {
         userAgent: "*",
         allow: ["/", "/cuenta-eliminada"],
-        disallow: ["/dashboard", "/ingresos", "/egresos", "/gastos-fijos", "/reportes", "/movimientos/", "/cuenta", "/ayuda", "/admin", "/simulador", "/api/"],
+        disallow: ["/dashboard", "/ingresos", "/egresos", "/gastos-fijos", "/reportes", "/presupuestos", "/movimientos/", "/cuenta", "/ayuda", "/admin", "/simulador", "/api/"],
       },
       sitemap: "https://finanzas.co/sitemap.xml",
     });
