@@ -48,6 +48,8 @@ jobs:
         with:
           # Sin el token de GitHub en .git/config mientras corre código de terceros.
           persist-credentials: false
+          # Todo el historial: la auditoría compara pnpm-lock.yaml con la base.
+          fetch-depth: 0
 
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
 
@@ -62,8 +64,19 @@ jobs:
       # corren con la base de producción en el build. Las que no tienen versión corregida y no se
       # pueden explotar aquí van en package.json → pnpm.auditConfig.ignoreGhsas, con su porqué en
       # el README (Versiones forzadas de dependencias).
+      # Si el registro de npm no responde, sigue con un aviso solo si pnpm-lock.yaml no cambió: esas
+      # dependencias ya pasaron la auditoría (scripts/dependency-audit.mjs; README → Riesgos aceptados).
       - name: Auditoría de dependencias
-        run: pnpm audit --audit-level high
+        env:
+          # En un PR, la base; en main, el commit anterior. Con "Run workflow" no hay con qué comparar.
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          # Sin base, o si git no puede comparar, cuenta como cambiado: si npm no responde, falla.
+          lockfile=cambio
+          if [ -n "$BASE" ] && git diff --quiet "$BASE" "$GITHUB_SHA" -- pnpm-lock.yaml; then
+            lockfile=sin-cambios
+          fi
+          node scripts/dependency-audit.mjs "$lockfile"
 
       - name: Lint
         run: pnpm lint

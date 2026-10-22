@@ -22,6 +22,7 @@ Solo la versión desplegada en producción (rama `main`).
 - **Dependabot**: alertas y PRs de actualización ante vulnerabilidades en dependencias.
 - **Secret scanning** con *push protection*: GitHub rechaza pushes que contengan credenciales.
 - **`pnpm audit`** en el CI: falla ante vulnerabilidades altas o críticas en todas las dependencias.
+  Si el registro de npm no responde, falla solo si cambiaron las dependencias (`pnpm-lock.yaml`).
 - **Cadena de suministro del despliegue:** acciones de GitHub fijadas por SHA, checkouts sin
   credenciales guardadas, el token de Vercel solo en los pasos que lo usan, el CLI de Vercel con su
   lockfile y Dependabot con 7 días de espera ante versiones nuevas.
