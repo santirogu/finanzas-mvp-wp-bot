@@ -2,6 +2,7 @@ import "server-only";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { whatsappMessage } from "@/db/schema";
+import { envVar } from "@/lib/env";
 import { currentMonthRange, monthRange, shiftMonth, todayInTimezone } from "@/lib/dates";
 import { describeError } from "@/lib/safe-log";
 import {
@@ -21,6 +22,7 @@ import { withHistoryDescriptions } from "./history";
 import { interpretMessage, type BotIntent } from "./interpret";
 import { monthlyBudgetReached } from "./limits";
 import * as replies from "./replies";
+import { resolveBotModel } from "./models";
 import { getBotSettings } from "./settings";
 import { tokensUsedThisMonth } from "./token-budget";
 
@@ -148,7 +150,9 @@ async function respond(
     if (settings.monthlyTokenLimit !== null && monthlyBudgetReached(settings.monthlyTokenLimit, await tokensUsedThisMonth())) {
       return { ok: false, reason: "monthly_limit" };
     }
-    return (await reserveAiCall(user.id, msg.id, settings.limits)) ? deps.extractor(input) : { ok: false, reason: "rate_limited" };
+    if (!(await reserveAiCall(user.id, msg.id, settings.limits))) return { ok: false, reason: "rate_limited" };
+    // El modelo que eligió el admin (o el de BOT_MODEL, o el de siempre): aplica desde el siguiente mensaje.
+    return deps.extractor({ ...input, model: resolveBotModel(settings.model, envVar("BOT_MODEL")) });
   };
   const intent = await interpretMessage(
     msg.text,

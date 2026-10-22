@@ -2,16 +2,17 @@ import Anthropic from "@anthropic-ai/sdk";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { z } from "zod";
 import type { CategoryNames, RawTransaction } from "./normalize";
+import { resolveBotModel } from "./models";
 import { buildSystemPrompt, buildUserMessage } from "./prompt";
 import { envVar } from "@/lib/env";
 import { describeError } from "@/lib/safe-log";
 import { CHECK_TIMEOUT_MS, type ServiceCheck } from "@/lib/service-check";
 import { serviceUrl } from "@/lib/service-url";
 
-// Modelo configurable por entorno. Por defecto Claude Haiku 5.5 con esfuerzo bajo:
-// en el set de evaluación acertó 50/50, más rápido y ~40 veces más barato que Opus 5.5.
-// Para cambiarlo: BOT_MODEL=claude-opus-5-5 (y comparar antes con `pnpm bot:eval`).
-export const botModel = () => envVar("BOT_MODEL") || "claude-haiku-5-5";
+// El modelo lo elige el admin en /admin/bot (src/modules/bot/models.ts) y llega en cada llamada. Sin
+// elección, BOT_MODEL del entorno (para comparar en local con `pnpm bot:eval --model …`) o el de siempre,
+// Claude Haiku 5.5 con esfuerzo bajo: el que más acertó y el más barato.
+export const botModel = () => resolveBotModel(null, envVar("BOT_MODEL"));
 const botEffort = () => (envVar("BOT_EFFORT") || "low") as "low" | "medium" | "high";
 
 const extractionSchema = z.object({
@@ -34,6 +35,8 @@ export type ExtractionInput = {
   text: string;
   today: { iso: string; long: string };
   categories: CategoryNames;
+  /** El modelo que eligió el admin (src/modules/bot/settings.ts); sin él, botModel(). */
+  model?: string;
 };
 
 export type ExtractionResult =
@@ -69,12 +72,11 @@ function getClient() {
 // Los modelos Haiku no tienen fallback del lado del servidor.
 const supportsServerFallback = (model: string) => !model.includes("haiku");
 
-export const claudeExtractor: Extractor = async ({ text, today, categories }) => {
+export const claudeExtractor: Extractor = async ({ text, today, categories, model = botModel() }) => {
   // Sin credenciales el SDK lanza un Error genérico; mejor detectarlo antes.
   if (!envVar("ANTHROPIC_API_KEY") && !envVar("ANTHROPIC_AUTH_TOKEN")) {
     return { ok: false, reason: "not_configured" };
   }
-  const model = botModel();
   try {
     const response = await getClient().beta.messages.parse({
       model,
@@ -129,13 +131,12 @@ export const claudeExtractor: Extractor = async ({ text, today, categories }) =>
 };
 
 /**
- * Prueba la API key de Claude sin gastar créditos: consulta el modelo del bot en la API de modelos
- * (gratis). Así se sabe que la key sirve y que el modelo existe; avisa si Anthropic ya lo marcó como
- * obsoleto. Sin reintentos: el admin está mirando la página.
+ * Prueba la API key de Claude sin gastar créditos: consulta el modelo del bot (el que eligió el admin) en la
+ * API de modelos (gratis). Así se sabe que la key sirve y que el modelo existe; avisa si Anthropic ya lo
+ * marcó como obsoleto. Sin reintentos: el admin está mirando la página.
  */
-export async function checkClaudeConnection(): Promise<ServiceCheck> {
+export async function checkClaudeConnection(model = botModel()): Promise<ServiceCheck> {
   if (!envVar("ANTHROPIC_API_KEY") && !envVar("ANTHROPIC_AUTH_TOKEN")) return { status: "sin_configurar", missing: ["ANTHROPIC_API_KEY"] };
-  const model = botModel();
   try {
     const info = await getClient().models.retrieve(model, {}, { timeout: CHECK_TIMEOUT_MS, maxRetries: 0 });
     const detail = info.display_name && info.display_name !== info.id ? `${info.display_name} (${info.id})` : info.id;

@@ -180,6 +180,21 @@ describe("handleIncomingMessage · límites (auditoría de seguridad 2026-10-15)
 describe("handleIncomingMessage · configuración del admin (/admin/bot)", () => {
   const ALMUERZO = [{ type: "expense" as const, amount: 20000, description: "Almuerzo", category: "Alimentación" }];
 
+  it("usa el modelo que eligió el admin, desde el siguiente mensaje; sin elección, el de siempre", async () => {
+    await linkedUser();
+    const models: (string | undefined)[] = [];
+    const extractor = fakeExtractor((input) => {
+      models.push(input.model);
+      return { ok: true, reply: null, usage: { model: input.model ?? "", inputTokens: 1, outputTokens: 1 }, transactions: ALMUERZO.map((t) => ({ ...t, date: input.today.iso })) };
+    });
+    const { deps: d } = deps(extractor);
+
+    await handleIncomingMessage(incoming("almuerzo 20 mil"), d);
+    await db.insert(botSetting).values({ id: 1, aiPerHour: 20, aiPerDay: 100, model: "claude-sonnet-5-5" });
+    await handleIncomingMessage(incoming("almuerzo 20 mil"), d);
+    expect(models).toEqual(["claude-haiku-5-5", "claude-sonnet-5-5"]);
+  });
+
   it("con Claude en pausa no lo llama ni gasta cupo: pide usar la web, y los comandos siguen", async () => {
     const user = await linkedUser();
     await db.insert(botSetting).values({ id: 1, claudePaused: true, aiPerHour: 20, aiPerDay: 100 });

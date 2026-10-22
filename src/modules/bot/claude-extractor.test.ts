@@ -308,6 +308,13 @@ describe("checkClaudeConnection", () => {
     sdk.retrieve.mockReset();
   });
 
+  it("el modelo que eligió el admin (en la llamada) va antes que BOT_MODEL", async () => {
+    vi.stubEnv("BOT_MODEL", "claude-opus-5-5");
+    sdk.parse.mockResolvedValue(response({ model: "claude-sonnet-5-5" }));
+    await claudeExtractor({ ...input, model: "claude-sonnet-5-5" });
+    expect(sdk.parse.mock.calls[0][0]).toMatchObject({ model: "claude-sonnet-5-5" });
+  });
+
   it("consulta el modelo del bot (gratis), sin reintentos y con un tiempo corto", async () => {
     sdk.retrieve.mockResolvedValue({ id: "claude-haiku-5-5", display_name: "Claude Haiku 5.5", deprecated_at: null });
     expect(await checkClaudeConnection()).toEqual({ status: "ok", detail: "Claude Haiku 5.5 (claude-haiku-5-5)" });
@@ -320,6 +327,12 @@ describe("checkClaudeConnection", () => {
     sdk.retrieve.mockResolvedValue({ id: "claude-sonnet-5-5", display_name: "claude-sonnet-5-5", deprecated_at: null });
     expect(await checkClaudeConnection()).toEqual({ status: "ok", detail: "claude-sonnet-5-5" });
     expect(sdk.retrieve.mock.calls[0][0]).toBe("claude-sonnet-5-5");
+  });
+
+  it("prueba el modelo que se le pide (el que eligió el admin)", async () => {
+    sdk.retrieve.mockResolvedValue({ id: "claude-opus-5-5", display_name: "Claude Opus 5.5", deprecated_at: null });
+    expect(await checkClaudeConnection("claude-opus-5-5")).toEqual({ status: "ok", detail: "Claude Opus 5.5 (claude-opus-5-5)" });
+    expect(sdk.retrieve.mock.calls[0][0]).toBe("claude-opus-5-5");
   });
 
   it("avisa si Anthropic marcó el modelo como obsoleto", async () => {

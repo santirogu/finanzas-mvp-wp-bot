@@ -7,11 +7,13 @@ const mocks = vi.hoisted(() => ({
   checkWhatsAppConnection: vi.fn(),
   checkClaudeConnection: vi.fn(),
   collectBotAlerts: vi.fn(),
+  currentBotModel: vi.fn(),
 }));
 vi.mock("next/server", async (importOriginal) => ({ ...(await importOriginal<typeof import("next/server")>()), connection: vi.fn() }));
 vi.mock("@/lib/health", () => ({ checkHealth: mocks.checkHealth }));
 vi.mock("@/modules/whatsapp/client", () => ({ checkWhatsAppConnection: mocks.checkWhatsAppConnection }));
-vi.mock("@/modules/bot/claude-extractor", () => ({ checkClaudeConnection: mocks.checkClaudeConnection }));
+vi.mock("@/modules/bot/claude-extractor", () => ({ checkClaudeConnection: mocks.checkClaudeConnection, botModel: () => "claude-haiku-5-5" }));
+vi.mock("@/modules/bot/settings", () => ({ currentBotModel: mocks.currentBotModel }));
 vi.mock("@/modules/bot/alerts", () => ({ collectBotAlerts: mocks.collectBotAlerts }));
 
 const { GET } = await import("./route");
@@ -27,6 +29,7 @@ beforeEach(() => {
   mocks.checkWhatsAppConnection.mockResolvedValue({ status: "ok", detail: "Anotado" });
   mocks.checkClaudeConnection.mockResolvedValue({ status: "ok", detail: "Claude Haiku 5.5" });
   mocks.collectBotAlerts.mockResolvedValue([]);
+  mocks.currentBotModel.mockResolvedValue("claude-sonnet-5-5");
 });
 
 afterEach(() => {
@@ -51,6 +54,8 @@ describe("GET /api/cron/vigilancia", () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ ok: true, problems: [] });
     expect(response.headers.get("cache-control")).toBe("no-store");
+    // Prueba Claude con el modelo que eligió el admin.
+    expect(mocks.checkClaudeConnection).toHaveBeenCalledWith("claude-sonnet-5-5");
   });
 
   it("con fallas, solo de qué tipo (sin el error, el token ni el detalle) y al log", async () => {
@@ -68,6 +73,9 @@ describe("GET /api/cron/vigilancia", () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     mocks.checkHealth.mockResolvedValue({ ok: false, problems: ["database"] });
     mocks.collectBotAlerts.mockRejectedValue(new Error("connect ECONNREFUSED"));
+    mocks.currentBotModel.mockRejectedValue(new Error("connect ECONNREFUSED"));
     expect(await (await call()).json()).toEqual({ ok: false, problems: ["app"] });
+    // Sin la base, prueba Claude con el modelo de siempre.
+    expect(mocks.checkClaudeConnection).toHaveBeenCalledWith("claude-haiku-5-5");
   });
 });

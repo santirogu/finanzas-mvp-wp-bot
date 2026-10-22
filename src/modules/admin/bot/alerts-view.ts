@@ -30,7 +30,7 @@ const TEXTS = {
     },
     claude_model: {
       title: "El modelo del bot no existe o la API key no tiene acceso a él",
-      action: "Cambia BOT_MODEL en Vercel por un modelo vigente (antes, compáralo con pnpm bot:eval) y despliega de nuevo.",
+      action: "Elige otro en Configuración → Modelo de Claude. Si viene de BOT_MODEL en Vercel, cámbialo ahí y despliega de nuevo.",
     },
     claude_credits: {
       title: "La cuenta de Anthropic se quedó sin créditos",
@@ -75,7 +75,7 @@ const TEXTS = {
     },
     claude_model: {
       title: "The bot's model doesn't exist or the API key can't use it",
-      action: "Change BOT_MODEL in Vercel to a current model (compare it first with pnpm bot:eval) and deploy again.",
+      action: "Choose another one in Settings → Claude model. If it comes from BOT_MODEL in Vercel, change it there and deploy again.",
     },
     claude_credits: {
       title: "The Anthropic account ran out of credits",

@@ -93,6 +93,7 @@ const SERVER_ACTIONS = {
   changeAiLimitsAction: "requireAdmin + código de Google Authenticator; topes dentro de AI_LIMIT_BOUNDS",
   testConnectionsAction: "requireAdmin; solo lee (consultas gratis a WhatsApp y Claude): nunca muestra el token ni la API key",
   changeMonthlyLimitAction: "requireAdmin + código de Google Authenticator; tope dentro de MONTHLY_TOKEN_BOUNDS o sin tope",
+  changeBotModelAction: "requireAdmin + código de Google Authenticator; solo un modelo de la lista (src/modules/bot/models.ts)",
   resendRepliesAction: "requireAdmin + código de Google Authenticator; solo las respuestas que no salieron en 24 h, sin mostrarlas",
   chooseFixedExpenseAction:
     "requireUser; solo los gastos fijos propios (el dueño sale de la sesión); agregar exige un egreso propio con esa descripción",

@@ -12,6 +12,7 @@ import { botAlerts } from "@/modules/admin/bot/alerts";
 import { botAccounts, botActivity, type AccountRow } from "@/modules/admin/bot/bot-activity";
 import { botSettingsForAdmin } from "@/modules/admin/bot/bot-settings";
 import { pendingResends } from "@/modules/admin/bot/resend";
+import { BOT_MODELS_EVALUATED_ON } from "@/modules/bot/models";
 import { formatCost, PRICES_CHECKED_ON } from "@/modules/bot/pricing";
 import {
   ACCOUNT_SORTS,
@@ -237,6 +238,9 @@ async function Bot({ params }: { params: Record<string, string | string[] | unde
         monthlyTokenLimit={settings.monthlyTokenLimit}
         month={{ ...settings.month, resetsOn: formatDayMonth(settings.month.resetsOn, locale) }}
         averageTokensPerCall={settings.averageTokensPerCall}
+        averageUsage={settings.averageUsage}
+        model={settings.model.id}
+        modelsEvaluatedOn={formatPriceDate(BOT_MODELS_EVALUATED_ON, locale)}
         lastChange={settings.updated && `${settings.updated.by ?? t.someAdmin} · ${formatDateTime(settings.updated.at, locale)}`}
       />
       <p className="px-1 text-sm text-muted">

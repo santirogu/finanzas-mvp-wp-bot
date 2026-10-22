@@ -20,6 +20,7 @@ import {
   type DatePreset,
   type Params,
 } from "../shared/filters";
+import { botModelName } from "@/modules/bot/models";
 
 export {
   DATE_PRESETS,
@@ -70,6 +71,7 @@ export const ADMIN_EVENT_TYPES = [
   "bot_claude_resumed",
   "bot_limits_changed",
   "bot_monthly_limit_changed",
+  "bot_model_changed",
   "bot_replies_resent",
 ] as const;
 
@@ -264,6 +266,7 @@ export function eventDetail(details: AccountEventDetails, locale: Locale = DEFAU
     const limit = (value: number | null | undefined) => (value == null ? t.noLimit : t.monthly(count(value)));
     parts.push(t.change(limit(details.monthlyLimit), limit(details.previousMonthlyLimit)));
   }
+  if (details.model) parts.push(t.change(botModelName(details.model), details.previousModel ? botModelName(details.previousModel) : null));
   if (details.resent !== undefined) {
     parts.push(`${t.resent(details.resent)}${details.failed ? ` · ${t.failedAgain(details.failed)}` : ""}`);
   }
