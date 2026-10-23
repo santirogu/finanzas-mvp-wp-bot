@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { randomInt, randomUUID } from "node:crypto";
 import { expect } from "@playwright/test";
 import { FAKE_SERVICES_URL } from "./fake-config";
 import { formatMonthLabel, formatMonthName, monthOf, monthParam, shiftMonth, todayInTimezone } from "../src/lib/dates";
@@ -186,4 +186,24 @@ test("el bot guarda la descripción que ya está en el historial, con su categor
   const rows = visible(page.getByRole("listitem").filter({ hasText: "Claro Postpago Cata Amor" }));
   await expect(rows).toHaveCount(2);
   await expect(rows.filter({ hasText: "vía WhatsApp" })).toContainText("Servicios");
+});
+
+// Safari mide de menos un texto con white-space: nowrap dentro de un párrafo: entre 428 y 442 px de ancho (los
+// iPhone Pro Max), con uno de cada tres finales de número, el número vinculado se salía de la tarjeta hasta 3 px.
+// Con este final (0002) se salía.
+test("en Safari, el número vinculado cabe en la tarjeta de los iPhone Pro Max @safari", async ({ page, request }) => {
+  const phone = `57300${randomInt(100, 1000)}0002`;
+  await register(page);
+  await goToWhatsApp(page);
+  await page.getByRole("button", { name: "Conectar WhatsApp" }).click();
+  const code = (await visible(page.getByText(/^VINCULAR \d{6}$/)).textContent())!.replace("VINCULAR ", "");
+  await sendWhatsApp(request, phone, `VINCULAR ${code}`);
+  await nthReply(request, phone, 1);
+  await page.reload();
+  const linked = visible(page.getByText(/^Registra movimientos escribiendo desde/));
+  await expect(linked).toContainText("+57 300 ••• 0002");
+  for (const width of [428, 430, 434, 438, 440, 442]) {
+    await page.setViewportSize({ width, height: 900 });
+    expect(await linked.evaluate((p) => p.scrollWidth - p.clientWidth), `${width} px`).toBeLessThanOrEqual(0);
+  }
 });
