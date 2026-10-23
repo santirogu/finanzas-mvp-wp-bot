@@ -14,6 +14,7 @@ import { CONTACT_EMAIL } from "@/lib/contact";
 import { MAX_TRANSACTIONS_PER_MESSAGE } from "@/modules/bot/limits";
 import { formatMoney, formatPercent } from "@/lib/money";
 import { FACT_MIN_AMOUNT, FACT_MIN_SHARE } from "@/modules/reports/month-fact";
+import { REMINDER_DAYS, REMINDER_DAYS_MAX, REMINDER_DAYS_MIN } from "@/modules/reminders/register-reminder";
 import { PROJECTION_FROM_DAY } from "@/modules/reports/remaining";
 import { daysAheadPhrase, MAX_DAYS_AHEAD, MONTHS_BACK, PAYMENTS_FOR_DAY } from "@/modules/reports/upcoming";
 import { SEARCH_FROM } from "@/modules/transactions/search";
@@ -151,6 +152,11 @@ function SpanishTopics({ values }: { values: AppValues }) {
           Para ver otro mes, toca el nombre del mes arriba de la página. Con {SEARCH_FROM} movimientos o más en el mes, la lista trae un
           buscador por descripción o por categoría.
         </p>
+        <p>
+          Si pasan {REMINDER_DAYS} días sin que registres nada, te lo recordamos en el <A href="/dashboard">Resumen</A> y en la campana,
+          para que tus cuentas del mes queden completas. En <A href="/configuracion#recordatorio">Configuración → Recordatorio de
+          registro</A> puedes apagarlo o elegir después de cuántos días llega (de {REMINDER_DAYS_MIN} a {REMINDER_DAYS_MAX}).
+        </p>
       </Topic>
 
       <Topic title="El bot de WhatsApp">
@@ -261,6 +267,11 @@ function EnglishTopics({ values }: { values: AppValues }) {
         <p>
           To see another month, tap the month&apos;s name at the top of the page. With {SEARCH_FROM} or more transactions in the month,
           the list has a search box by description or category.
+        </p>
+        <p>
+          If {REMINDER_DAYS} days go by without you adding anything, we remind you in the <A href="/dashboard">Overview</A> and in the
+          bell, so your month&apos;s numbers stay complete. In <A href="/configuracion#recordatorio">Settings → Reminder to add transactions</A> you can
+          turn it off or choose after how many days it comes (from {REMINDER_DAYS_MIN} to {REMINDER_DAYS_MAX}).
         </p>
       </Topic>
 

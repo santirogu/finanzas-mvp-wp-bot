@@ -30,6 +30,7 @@ import { TAB_TEXTS } from "../tab-texts";
 import { BudgetsCard } from "./budgets-card";
 import { CategoryChart } from "./category-chart";
 import { MonthRemaining } from "./month-remaining";
+import { RegisterReminderCard } from "./register-reminder";
 import { UpcomingPayments } from "./upcoming-payments";
 import { WhatsAppHint } from "./whatsapp-hint";
 
@@ -198,6 +199,8 @@ async function Dashboard({ month }: { month: string | string[] | undefined }) {
         </section>
 
         <div className="space-y-6 lg:col-span-2">
+          {/* Si lleva varios días sin registrar nada (con el mes en curso: es de ahora). */}
+          {isCurrent && <RegisterReminderCard today={today} />}
           {/* El WhatsApp se conecta en Mi cuenta: aquí, solo el aviso mientras no esté vinculado. */}
           <WhatsAppHint />
           <section className="card p-4">

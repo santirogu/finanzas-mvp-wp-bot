@@ -189,9 +189,28 @@ export const notificationSetting = pgTable(
   (t) => [check("notification_setting_upcoming_days", sql`${t.upcomingDays} between 0 and ${sql.raw(String(UPCOMING_DAYS_MAX))}`)],
 );
 
+// El recordatorio de registro (Configuración → Recordatorio de registro): si está prendido y desde cuántos días sin
+// registrar nada (de 1 a 14). Sin fila, los de siempre (prendido, 3 días: src/modules/reminders/). En su propia
+// tabla: una fila en notification_setting haría que los avisos de pagos dejaran de seguir los valores de la app.
+// Se borra con la cuenta.
+export const REMINDER_DAYS_MAX = 14;
+
+export const reminderSetting = pgTable(
+  "reminder_setting",
+  {
+    userId: text("user_id")
+      .primaryKey()
+      .references(() => user.id, { onDelete: "cascade" }),
+    enabled: boolean("enabled").notNull(),
+    days: smallint("days").notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [check("reminder_setting_days", sql`${t.days} between 1 and ${sql.raw(String(REMINDER_DAYS_MAX))}`)],
+);
+
 // Las notificaciones de la campana que la persona marcó como leídas: salen de la campana (el aviso sigue
-// en el Resumen). Por su id (src/modules/notifications/notifications.ts: "pago|YYYY-MM|<clave>"; otros
-// tipos, con otro prefijo). Se borran con la cuenta.
+// en el Resumen). Por su id (src/modules/notifications/notifications.ts: "pago|YYYY-MM|<clave>" o
+// "registro|YYYY-MM-DD"). Se borran con la cuenta.
 export const NOTIFICATION_ID_MAX_LENGTH = 200;
 
 export const notificationRead = pgTable(

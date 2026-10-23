@@ -61,6 +61,12 @@ export default function PrivacyPage() {
               esa elección. Se guarda hasta que elimines tu cuenta.
             </li>
             <li>
+              <strong>Tu configuración del recordatorio de registro:</strong> si en <strong>Configuración</strong>{" "}
+              prendes o apagas el recordatorio de registro, o cambias después de cuántos días sin registrar nada
+              llega, guardamos esa elección. Se guarda hasta que elimines tu cuenta. Para saber si toca, la app mira
+              cuándo registraste tu último movimiento: no guarda nada más.
+            </li>
+            <li>
               <strong>Las notificaciones que marcas como leídas:</strong> si en la campana marcas una
               notificación como leída, guardamos cuál fue y cuándo, hasta que elimines tu cuenta.
             </li>

@@ -277,13 +277,25 @@ test("La campana: desde cualquier página, el número, Marcar como leída (sigue
     await expect(card(page).getByRole("listitem").filter({ hasText: "Netflix" })).toHaveCount(0);
   });
 
-  await test.step("con los avisos apagados, no hay campana", async () => {
+  await test.step("con los avisos apagados, la campana sigue (por el recordatorio de registro), sin el enlace a los pagos", async () => {
     await closeToasts(page);
     await page.goto("/configuracion");
     const settings = visible(page.getByRole("region", { name: "Notificaciones" }));
     await settings.getByText("Avisos de próximos pagos", { exact: true }).click();
     await settings.getByRole("button", { name: "Guardar" }).click();
     await expect(toast(page, "Se apagaron los avisos de próximos pagos")).toBeVisible();
+    await closeToasts(page);
+    await bell.click();
+    await expect(panel.getByText("No tienes notificaciones nuevas.")).toBeVisible();
+    await expect(panel.getByRole("link", { name: "Ver los próximos pagos en el Resumen" })).toHaveCount(0);
+  });
+
+  await test.step("con el recordatorio de registro también apagado, no hay campana", async () => {
+    await page.keyboard.press("Escape");
+    const reminder = visible(page.getByRole("region", { name: "Recordatorio de registro" }));
+    await reminder.getByText("Recordatorio", { exact: true }).click();
+    await reminder.getByRole("button", { name: "Guardar" }).click();
+    await expect(toast(page, "Se apagó el recordatorio de registro")).toBeVisible();
     await expect(page.getByRole("button", { name: /^Notificaciones/ })).toHaveCount(0);
   });
 });

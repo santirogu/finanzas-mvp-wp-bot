@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useEffect, useId, useRef, useState } from "react";
+import { type ReactNode, useActionState, useEffect, useId, useRef, useState } from "react";
 import { useToast } from "@/components/toaster";
-import { useTexts } from "@/i18n/client";
+import { useLocale, useTexts } from "@/i18n/client";
 import { texts } from "@/i18n/texts";
 import { type MarkReadState, markNotificationsReadAction } from "@/modules/notifications/actions";
 import type { BellNotification } from "@/modules/notifications/notifications";
+import { type RegisterReminder, reminderText } from "@/modules/reminders/register-reminder";
 import { UpcomingPaymentItem } from "./dashboard/upcoming-payments";
 
 const TEXTS = texts(
@@ -20,6 +21,8 @@ const TEXTS = texts(
     none: "No tienes notificaciones nuevas.",
     upcoming: "Próximos pagos de tus gastos fijos.",
     seeAll: "Ver los próximos pagos en el Resumen",
+    register: "Registrar un egreso",
+    markReminder: "Marcar como leída: el recordatorio de registro",
   },
   {
     en: {
@@ -32,6 +35,8 @@ const TEXTS = texts(
       none: "You don't have new notifications.",
       upcoming: "Upcoming payments of your bills.",
       seeAll: "See upcoming payments in the Overview",
+      register: "Add an expense",
+      markReminder: "Mark as read: the reminder to add transactions",
     },
   },
 );
@@ -42,15 +47,26 @@ const TEXTS = texts(
  * ("Registrar pago", "Este pago ya no aplica" y "Marcar como leído"). Leídas salen de la campana; los avisos
  * siguen en el Resumen. Se maneja como el menú de la cuenta: se cierra con Escape (el foco vuelve a la
  * campana), al tocar fuera o al salir con Tab; con la ventana de "Registrar pago" abierta, Escape cierra
- * solo la ventana.
+ * solo la ventana. El enlace a los próximos pagos del Resumen, solo con sus avisos prendidos (`upcomingEnabled`):
+ * con ellos apagados, la campana tiene solo el recordatorio de registro.
  */
-export function NotificationBell({ notifications, today }: { notifications: BellNotification[]; today: string }) {
+export function NotificationBell({
+  notifications,
+  today,
+  upcomingEnabled,
+}: {
+  notifications: BellNotification[];
+  today: string;
+  upcomingEnabled: boolean;
+}) {
   const t = useTexts(TEXTS);
   const [open, setOpen] = useState(false);
   const panelId = useId();
   const wrapper = useRef<HTMLDivElement>(null);
   const button = useRef<HTMLButtonElement>(null);
   const count = notifications.length;
+  const reminder = notifications.find((n) => n.kind === "reminder");
+  const payments = notifications.filter((n) => n.kind === "payment");
 
   useEffect(() => {
     if (!open) return;
@@ -123,27 +139,58 @@ export function NotificationBell({ notifications, today }: { notifications: Bell
           <p className="py-6 text-center text-sm text-muted">{t.none}</p>
         ) : (
           <>
-            <p className="text-xs text-muted">{t.upcoming}</p>
-            {/* Sin desplazamiento propio: con muchos avisos, la lista crece y se recorre con la página. */}
-            <ul className="mt-1 divide-y divide-border">
-              {notifications.map(({ id, item }) => (
-                <UpcomingPaymentItem
-                  key={id}
-                  item={item}
-                  today={today}
-                  extra={<MarkRead ids={[id]} label={t.markOne} busyLabel={t.marking} name={t.markOneName(item.monthName, item.description)} />}
-                />
-              ))}
-            </ul>
+            {reminder && (
+              <ReminderItem
+                reminder={reminder.reminder}
+                onNavigate={() => setOpen(false)}
+                extra={<MarkRead ids={[reminder.id]} label={t.markOne} busyLabel={t.marking} name={t.markReminder} />}
+              />
+            )}
+            {payments.length > 0 && (
+              <>
+                <p className={`text-xs text-muted ${reminder ? "mt-2 border-t border-border pt-2" : ""}`}>{t.upcoming}</p>
+                {/* Sin desplazamiento propio: con muchos avisos, la lista crece y se recorre con la página. */}
+                <ul className="mt-1 divide-y divide-border">
+                  {payments.map(({ id, item }) => (
+                    <UpcomingPaymentItem
+                      key={id}
+                      item={item}
+                      today={today}
+                      extra={<MarkRead ids={[id]} label={t.markOne} busyLabel={t.marking} name={t.markOneName(item.monthName, item.description)} />}
+                    />
+                  ))}
+                </ul>
+              </>
+            )}
           </>
         )}
-        <Link
-          href="/dashboard"
-          onClick={() => setOpen(false)}
-          className="mt-1 flex min-h-11 w-full items-center border-t border-border pt-1 text-sm font-medium text-brand pointer-fine:min-h-8"
-        >
-          {t.seeAll}
+        {upcomingEnabled && (
+          <Link
+            href="/dashboard"
+            onClick={() => setOpen(false)}
+            className="mt-1 flex min-h-11 w-full items-center border-t border-border pt-1 text-sm font-medium text-brand pointer-fine:min-h-8"
+          >
+            {t.seeAll}
+          </Link>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** El recordatorio de registro: cuántos días van sin registrar nada y el enlace para registrar. */
+function ReminderItem({ reminder, onNavigate, extra }: { reminder: RegisterReminder; onNavigate: () => void; extra: ReactNode }) {
+  const t = useTexts(TEXTS);
+  const text = reminderText(reminder, useLocale());
+  return (
+    <div className="space-y-0.5 py-2 text-sm">
+      <p className="font-medium">{text.title}</p>
+      <p className="text-xs text-muted">{text.hint}</p>
+      <div className="flex flex-wrap items-center gap-x-4">
+        <Link href="/egresos" onClick={onNavigate} className="inline-flex min-h-11 items-center text-xs font-medium text-brand pointer-fine:min-h-6">
+          {t.register}
         </Link>
+        {extra}
       </div>
     </div>
   );

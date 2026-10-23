@@ -211,6 +211,13 @@
       "when": 1792779321356,
       "tag": "0029_valores-de-la-app",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1792790084428,
+      "tag": "0030_recordatorio-de-registro",
+      "breakpoints": true
     }
   ]
 }

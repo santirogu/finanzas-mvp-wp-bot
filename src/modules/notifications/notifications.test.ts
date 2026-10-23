@@ -26,7 +26,22 @@ describe("paymentNotificationId e isNotificationId", () => {
     expect(isNotificationId("pago|2026-10|plan del celular")).toBe(true);
   });
 
-  it.each([["otro|2026-10|x"], ["pago|2026-13|x"], ["pago|octubre|x"], ["pago|2026-10|"], [`pago|2026-10|${"x".repeat(200)}`], [3], [null]])(
+  it("el del recordatorio de registro: el tipo y el día desde el que no registra nada", () => {
+    expect(isNotificationId("registro|2026-10-20")).toBe(true);
+  });
+
+  it.each([
+    ["otro|2026-10|x"],
+    ["pago|2026-13|x"],
+    ["pago|octubre|x"],
+    ["pago|2026-10|"],
+    [`pago|2026-10|${"x".repeat(200)}`],
+    ["registro|2026-10"],
+    ["registro|2026-10-32"],
+    ["registro|2026-10-20|x"],
+    [3],
+    [null],
+  ])(
     "%j no es un id válido",
     (value) => {
       expect(isNotificationId(value)).toBe(false);
@@ -42,9 +57,19 @@ describe("unreadNotifications", () => {
   it("los avisos que no se marcaron como leídos, en el mismo orden y con su id", () => {
     const items = [item("gimnasio"), item("arriendo"), item("arriendo", "2026-09")];
     expect(unreadNotifications(items, new Set(["pago|2026-10|arriendo"]))).toEqual([
-      { id: "pago|2026-10|gimnasio", item: items[0] },
-      { id: "pago|2026-09|arriendo", item: items[2] },
+      { kind: "payment", id: "pago|2026-10|gimnasio", item: items[0] },
+      { kind: "payment", id: "pago|2026-09|arriendo", item: items[2] },
     ]);
     expect(unreadNotifications([], new Set())).toEqual([]);
+  });
+
+  it("el recordatorio de registro va primero; leído, sale hasta el próximo hueco (otra fecha)", () => {
+    const reminder = { since: "2026-10-16", days: 4, firstTime: false };
+    expect(unreadNotifications([item("gimnasio")], new Set(), reminder).map((n) => [n.kind, n.id])).toEqual([
+      ["reminder", "registro|2026-10-16"],
+      ["payment", "pago|2026-10|gimnasio"],
+    ]);
+    expect(unreadNotifications([], new Set(["registro|2026-10-16"]), reminder)).toEqual([]);
+    expect(unreadNotifications([], new Set(["registro|2026-10-16"]), { ...reminder, since: "2026-10-18" })).toHaveLength(1);
   });
 });
