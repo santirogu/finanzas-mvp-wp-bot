@@ -126,13 +126,13 @@ export const VISTAS: Vista[] = [
     },
   },
   { id: "cuenta-whatsapp", titulo: "Mi cuenta con el WhatsApp vinculado", persona: "datos", ruta: fija("/cuenta") },
-  { id: "presupuestos", titulo: "Presupuestos: uno bien, uno cerca del límite y uno pasado", persona: "datos", ruta: fija("/presupuestos") },
-  { id: "presupuestos-vacio", titulo: "Presupuestos sin ninguno", persona: "vacia", ruta: fija("/presupuestos") },
+  { id: "configuracion", titulo: "Configuración: presupuestos (uno bien, uno cerca y uno pasado), avisos, apariencia e idioma", persona: "datos", ruta: fija("/configuracion") },
+  { id: "configuracion-vacia", titulo: "Configuración sin presupuestos", persona: "vacia", ruta: fija("/configuracion") },
   {
     id: "presupuestos-agregar",
     titulo: "Agregar un presupuesto (la ventana)",
     persona: "datos",
-    ruta: fija("/presupuestos"),
+    ruta: fija("/configuracion"),
     preparar: async (page) => {
       await visible(page.getByRole("button", { name: "Agregar un presupuesto" })).click();
       await expect(page.getByRole("dialog")).toBeVisible();
@@ -276,7 +276,7 @@ export const VISTAS: Vista[] = [
 
   // Lo más largo que acepta la app: textos, montos, categorías y una lista de 25 egresos
   { id: "resumen-extremo", titulo: "Resumen con textos y montos máximos", persona: "admin", ruta: fija("/dashboard") },
-  { id: "presupuestos-extremo", titulo: "Presupuestos con la categoría más larga y los montos máximos", persona: "admin", ruta: fija("/presupuestos") },
+  { id: "configuracion-extremo", titulo: "Configuración con presupuestos de la categoría más larga y los montos máximos", persona: "admin", ruta: fija("/configuracion") },
   { id: "ingresos-extremo", titulo: "Ingresos con textos y montos máximos", persona: "admin", ruta: fija("/ingresos") },
   { id: "egresos-extremo", titulo: "Egresos: 25 movimientos y textos máximos", persona: "admin", ruta: fija("/egresos") },
   { id: "fijos-extremo", titulo: "Fijos con textos y montos máximos", persona: "admin", ruta: fija("/gastos-fijos") },

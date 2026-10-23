@@ -1,16 +1,13 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Suspense } from "react";
 import { getLocale, getTexts } from "@/i18n/server";
 import { texts } from "@/i18n/texts";
 import { hasRole, roleLabel } from "@/lib/roles";
 import { requireUser } from "@/lib/session";
-import { getUpcomingSettings } from "@/modules/reports/upcoming-settings";
 import { PageSkeleton } from "../page-skeleton";
 import { ChangePassword } from "./change-password";
 import { DeleteAccountForm } from "./delete-account-form";
-import { LanguagePicker } from "./language-picker";
-import { NotificationSettings } from "./notification-settings";
-import { ThemePicker } from "./theme-picker";
 import { WhatsAppCard } from "./whatsapp-card";
 
 const TEXTS = texts(
@@ -26,10 +23,8 @@ const TEXTS = texts(
     currencySoon: "Pronto: USD y EUR",
     currencies: { COP: "Peso colombiano" } as Record<string, string>,
     soon: "Pronto",
-    appearance: "Apariencia",
-    appearanceIntro: "Con “Sistema”, la app se ve clara u oscura según tu celular o computador. Se guarda en este dispositivo.",
-    language: "Idioma",
-    languageIntro: "Se guarda en tu cuenta: ves la app en este idioma en cualquier dispositivo donde inicies sesión. El bot de WhatsApp sigue respondiendo en español.",
+    settings: "¿Buscas los presupuestos, los avisos, la apariencia o el idioma? Están en",
+    settingsLink: "Configuración",
     deleteTitle: "Eliminar mi cuenta",
     deleteIntro: "Se borra todo de inmediato y no se puede deshacer:",
     deleteItems: ["tu cuenta y tu sesión;", "todos tus ingresos, egresos y categorías;", "el vínculo con tu WhatsApp y los mensajes que le enviaste al bot."],
@@ -47,10 +42,8 @@ const TEXTS = texts(
       currencySoon: "Soon: USD and EUR",
       currencies: { COP: "Colombian peso" },
       soon: "Soon",
-      appearance: "Appearance",
-      appearanceIntro: "With “System”, the app looks light or dark depending on your phone or computer. It's saved on this device.",
-      language: "Language",
-      languageIntro: "It's saved to your account: you see the app in this language on any device where you sign in. The WhatsApp bot still answers in Spanish.",
+      settings: "Looking for budgets, notices, appearance or language? They're in",
+      settingsLink: "Settings",
       deleteTitle: "Delete my account",
       deleteIntro: "Everything is deleted right away and it can't be undone:",
       deleteItems: ["your account and your session;", "all your income, expenses and categories;", "the link to your WhatsApp and the messages you sent to the bot."],
@@ -74,11 +67,20 @@ async function Account() {
   const user = await requireUser();
   const locale = await getLocale();
   const t = TEXTS[locale];
-  const notifications = await getUpcomingSettings(user.id);
 
   return (
     <div className="mx-auto max-w-xl space-y-6">
-      <h1 className="text-2xl font-semibold tracking-tight">{t.title}</h1>
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">{t.title}</h1>
+        {/* Lo que estaba aquí y pasó a Configuración: quien lo busca en Mi cuenta encuentra el camino. */}
+        <p className="mt-1 text-sm text-muted">
+          {t.settings}{" "}
+          <Link href="/configuracion" className="font-medium text-brand underline-offset-2 hover:underline">
+            {t.settingsLink}
+          </Link>
+          .
+        </p>
+      </div>
 
       <section className="card p-4 text-sm" aria-labelledby="tus-datos">
         <h2 id="tus-datos" className="font-semibold">
@@ -117,28 +119,6 @@ async function Account() {
       <ChangePassword needsCode={hasRole(user.role, "admin") && user.twoFactorEnabled} />
 
       <WhatsAppCard />
-
-      <NotificationSettings {...notifications} />
-
-      <section className="card space-y-3 p-4 text-sm" aria-labelledby="apariencia">
-        <div className="space-y-1">
-          <h2 id="apariencia" className="font-semibold">
-            {t.appearance}
-          </h2>
-          <p className="text-muted">{t.appearanceIntro}</p>
-        </div>
-        <ThemePicker />
-      </section>
-
-      <section className="card space-y-3 p-4 text-sm" aria-labelledby="idioma">
-        <div className="space-y-1">
-          <h2 id="idioma" className="font-semibold">
-            {t.language}
-          </h2>
-          <p className="text-muted">{t.languageIntro}</p>
-        </div>
-        <LanguagePicker />
-      </section>
 
       <section className="card space-y-4 border-danger/40 p-4">
         <div className="space-y-2 text-sm">

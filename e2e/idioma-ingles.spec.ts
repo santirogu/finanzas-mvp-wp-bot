@@ -143,7 +143,7 @@ test("en inglés: Reportes, con la descarga del CSV para el Excel en inglés @pr
   expect(lines[1]).toMatch(/^\d{4}-\d{2}-\d{2},Expense,Almuerzo,No category,-1250\.50,Web$/);
 });
 
-test("en inglés: Mi cuenta, la Ayuda y las páginas legales (solo en español, con su nota) @principal", async ({ page }) => {
+test("en inglés: Mi cuenta, Configuración, la Ayuda y las páginas legales (solo en español, con su nota) @principal", async ({ page }) => {
   await register(page);
   await inEnglish(page);
 
@@ -152,9 +152,20 @@ test("en inglés: Mi cuenta, la Ayuda y las páginas legales (solo en español, 
   await expect(visible(page.getByRole("heading", { level: 1, name: "My account" }))).toBeVisible();
   await expect(visible(page.getByRole("region", { name: "Your details" }))).toContainText("User");
   await expect(visible(page.getByRole("region", { name: "Security" }))).toBeVisible();
-  await expect(visible(page.getByRole("region", { name: "Notifications" }))).toBeVisible();
   await expect(visible(page.getByLabel("Type DELETE to confirm"))).toBeVisible();
   expect(await seriousViolations(page)).toEqual([]);
+
+  await visible(page.getByRole("link", { name: "Settings" })).click();
+  await expect(page).toHaveURL(/\/configuracion$/);
+  await expect(page).toHaveTitle("Settings · Anotado");
+  await expect(visible(page.getByRole("heading", { level: 1, name: "Settings" }))).toBeVisible();
+  for (const name of ["Budgets", "Notifications", "Appearance", "Language"]) {
+    await expect(visible(page.getByRole("region", { name }))).toBeVisible();
+  }
+  await visible(page.getByRole("button", { name: "Add a budget" })).click();
+  await expect(page.getByRole("dialog").getByLabel("Amount per month")).toBeVisible();
+  expect(await seriousViolations(page)).toEqual([]);
+  await page.getByRole("dialog").getByRole("button", { name: "Cancel" }).click();
 
   await page.goto("/ayuda");
   await expect(page).toHaveTitle("Help · Anotado");
@@ -167,14 +178,6 @@ test("en inglés: Mi cuenta, la Ayuda y las páginas legales (solo en español, 
   const closed = page.locator("main details:not([open])");
   while ((await closed.count()) > 0) await closed.first().locator("summary").click();
   expect(await seriousViolations(page)).toEqual([]);
-
-  await page.goto("/presupuestos");
-  await expect(page).toHaveTitle("Budgets · Anotado");
-  await expect(visible(page.getByRole("heading", { level: 1, name: "Budgets" }))).toBeVisible();
-  await visible(page.getByRole("button", { name: "Add a budget" })).click();
-  await expect(page.getByRole("dialog").getByLabel("Amount per month")).toBeVisible();
-  expect(await seriousViolations(page)).toEqual([]);
-  await page.getByRole("dialog").getByRole("button", { name: "Cancel" }).click();
 
   await page.goto("/privacidad");
   await expect(visible(page.getByText("This page is only available in Spanish."))).toBeVisible();
@@ -341,20 +344,20 @@ test("en inglés: el Historial, el Bot y Categorías de la administración @prin
   });
 });
 
-test("elegir el idioma en Mi cuenta: la app cambia, y la cuenta lo lleva a otro navegador @principal", async ({ page, browser }) => {
+test("elegir el idioma en Configuración: la app cambia, y la cuenta lo lleva a otro navegador @principal", async ({ page, browser }) => {
   const email = uniqueEmail();
   await register(page, "Ana Pérez", email);
 
-  await test.step("en Mi cuenta, English: Mi cuenta vuelve en inglés, con el aviso", async () => {
-    await page.goto("/cuenta");
+  await test.step("en Configuración, English: Configuración vuelve en inglés, con el aviso", async () => {
+    await page.goto("/configuracion");
     await expect(page.locator("html")).toHaveAttribute("lang", "es");
     const language = visible(page.getByRole("group", { name: "Idioma" }));
     await expect(language.getByRole("radio", { name: "Español" })).toBeChecked();
     expect(await seriousViolations(page)).toEqual([]);
     await language.locator("label", { hasText: "English" }).click();
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
-    await expect(page).toHaveURL(/\/cuenta$/);
-    await expect(visible(page.getByRole("heading", { level: 1, name: "My account" }))).toBeVisible();
+    await expect(page).toHaveURL(/\/configuracion(#idioma)?$/);
+    await expect(visible(page.getByRole("heading", { level: 1, name: "Settings" }))).toBeVisible();
     await expect(page.getByRole("region", { name: "Notices" }).getByText("Language saved")).toBeVisible();
     await expect(visible(page.getByRole("group", { name: "Language" })).getByRole("radio", { name: "English" })).toBeChecked();
     await page.goto("/dashboard");
@@ -370,7 +373,7 @@ test("elegir el idioma en Mi cuenta: la app cambia, y la cuenta lo lleva a otro 
     await expect(other.locator("html")).toHaveAttribute("lang", "en");
 
     // De vuelta a español desde ese navegador.
-    await other.goto("/cuenta");
+    await other.goto("/configuracion");
     await visible(other.getByRole("group", { name: "Language" })).locator("label", { hasText: "Español" }).click();
     await expect(other.locator("html")).toHaveAttribute("lang", "es");
     await expect(other.getByRole("region", { name: "Avisos" }).getByText("Idioma guardado")).toBeVisible();
@@ -408,11 +411,11 @@ test("cambiar de idioma no cambia la apariencia elegida (ni al elegirlo ni al en
   await page.emulateMedia({ colorScheme: "dark" });
   const email = uniqueEmail();
   await register(page, "Ana Pérez", email);
-  await page.goto("/cuenta");
+  await page.goto("/configuracion");
   await visible(page.getByRole("group", { name: "Apariencia" })).locator("label", { hasText: "Claro" }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
 
-  await test.step("al elegir English en Mi cuenta", async () => {
+  await test.step("al elegir English en Configuración", async () => {
     await visible(page.getByRole("group", { name: "Idioma" })).locator("label", { hasText: "English" }).click();
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
     await expect(page.locator("html")).toHaveAttribute("data-theme", "light");

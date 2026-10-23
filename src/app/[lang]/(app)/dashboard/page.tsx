@@ -202,7 +202,7 @@ async function Dashboard({ month }: { month: string | string[] | undefined }) {
             )}
             {/* Sin presupuestos, la invitación a ponerlos (en el mes en curso: son de ahora). */}
             {budgets && budgets.length === 0 && (
-              <Link href="/presupuestos" className="mt-2 inline-flex min-h-11 items-center text-sm font-medium text-brand pointer-fine:min-h-6">
+              <Link href="/configuracion#presupuestos" className="mt-2 inline-flex min-h-11 items-center text-sm font-medium text-brand pointer-fine:min-h-6">
                 {t.addBudgets}
               </Link>
             )}

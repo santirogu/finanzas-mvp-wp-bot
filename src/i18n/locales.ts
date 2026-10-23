@@ -14,7 +14,7 @@ export const INTL_LOCALES: Readonly<Record<Locale, string>> = { es: "es-CO", en:
 /** El de quien no eligió otro, aunque su navegador esté en otro idioma (y el de una cookie con un valor que no es un idioma). */
 export const DEFAULT_LOCALE: Locale = "es";
 
-/** La cookie con el idioma elegido (en el selector sin sesión, en Mi cuenta o al iniciar sesión con una cuenta que lo eligió). */
+/** La cookie con el idioma elegido (en el selector sin sesión, en Configuración o al iniciar sesión con una cuenta que lo eligió). */
 export const LOCALE_COOKIE = "idioma";
 
 /** Cuánto dura la cookie del idioma: un año (los navegadores aceptan hasta 400 días). */

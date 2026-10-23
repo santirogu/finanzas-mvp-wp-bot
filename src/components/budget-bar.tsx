@@ -2,7 +2,7 @@ import type { BudgetRow } from "@/modules/budgets/progress";
 
 /**
  * Un presupuesto: la categoría, el porcentaje, la barra y cuánto queda o por cuánto se pasó (en rojo, como las
- * alertas). La barra es de apoyo: el texto ya lo dice. La usan la tarjeta del Resumen y /presupuestos.
+ * alertas). La barra es de apoyo: el texto ya lo dice. La usan la tarjeta del Resumen y Configuración.
  */
 export function BudgetBar({ row }: { row: BudgetRow }) {
   const over = row.level === "over";

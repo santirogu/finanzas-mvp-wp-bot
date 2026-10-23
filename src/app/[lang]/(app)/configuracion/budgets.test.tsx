@@ -29,7 +29,7 @@ const OPTIONS = [
   { id: "c4", name: "Ropa", emoji: "👟" },
 ];
 
-const section = () => within(screen.getByRole("region", { name: "Cómo vas en octubre" }));
+const section = () => within(screen.getByRole("region", { name: "Presupuestos" }));
 const dialog = () => within(screen.getByRole("dialog"));
 
 // jsdom no abre ventanas modales: basta con marcarla abierta y avisar al cerrarla.
@@ -49,8 +49,9 @@ beforeEach(() => {
 });
 
 describe("Budgets", () => {
-  it("cada presupuesto con cuánto lleva, el porcentaje y cuánto le queda o por cuánto se pasó", () => {
+  it("cada presupuesto con cuánto lleva, el porcentaje y cuánto le queda o por cuánto se pasó (bajo cómo va el mes)", () => {
     render(<Budgets rows={ROWS} options={OPTIONS} month="octubre" />);
+    expect(section().getByRole("heading", { level: 3, name: "Cómo vas en octubre" })).toBeVisible();
     const items = section().getAllByRole("listitem");
     expect(items[0]).toHaveTextContent(/Transporte103.%\$310\.000,00 de \$300\.000,00Te pasaste por \$10\.000,00CambiarQuitar/);
     expect(within(items[0]).getByText("Te pasaste por $10.000,00")).toHaveClass("text-danger");
@@ -167,7 +168,7 @@ describe("Budgets · en inglés", () => {
   it("los textos y la ventana", async () => {
     const user = userEvent.setup();
     render(<Budgets rows={[]} options={OPTIONS} month="October" />, { english: true });
-    const card = within(screen.getByRole("region", { name: "How you're doing in October" }));
+    const card = within(screen.getByRole("region", { name: "Budgets" }));
     expect(card.getByText(/^You don't have budgets yet\./)).toBeVisible();
     await user.click(card.getByRole("button", { name: "Add a budget" }));
     expect(dialog().getByLabelText("Category")).toBeVisible();

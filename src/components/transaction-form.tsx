@@ -293,7 +293,7 @@ export function TransactionForm({
               {alert.text}
             </p>
           ))}
-          <Link href="/presupuestos" className="inline-flex min-h-11 items-center font-medium text-brand pointer-fine:min-h-6">
+          <Link href="/configuracion#presupuestos" className="inline-flex min-h-11 items-center font-medium text-brand pointer-fine:min-h-6">
             {t.budgets}
           </Link>
         </div>

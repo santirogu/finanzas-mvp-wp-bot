@@ -15,6 +15,8 @@ import type { BudgetRow } from "@/modules/budgets/progress";
 
 const TEXTS = texts(
   {
+    title: "Presupuestos",
+    intro: "Un tope por mes para las categorías de egresos que quieras cuidar. Vale todos los meses hasta que lo cambies o lo quites.",
     progress: (month: string) => `Cómo vas en ${month}`,
     empty: "Todavía no tienes presupuestos. Agrega uno para ver cuánto te queda de cada categoría en el mes.",
     add: "Agregar un presupuesto",
@@ -36,6 +38,8 @@ const TEXTS = texts(
   },
   {
     en: {
+      title: "Budgets",
+      intro: "A monthly limit for the expense categories you want to watch. It applies every month until you change or remove it.",
       progress: (month) => `How you're doing in ${month}`,
       empty: "You don't have budgets yet. Add one to see how much you have left in each category this month.",
       add: "Add a budget",
@@ -61,25 +65,29 @@ const TEXTS = texts(
 type CategoryOption = { id: string; name: string; emoji: string };
 
 /**
- * /presupuestos: cómo va cada presupuesto este mes, con "Cambiar" (el monto) y "Quitar", y "Agregar un presupuesto"
- * con las categorías que todavía no tienen.
+ * Configuración → Presupuestos: cómo va cada uno este mes, con "Cambiar" (el monto) y "Quitar", y "Agregar un
+ * presupuesto" con las categorías que todavía no tienen.
  */
 export function Budgets({ rows, options, month }: { rows: BudgetRow[]; options: CategoryOption[]; month: string }) {
   const t = useTexts(TEXTS);
   const [adding, setAdding] = useState(false);
   return (
-    <section aria-labelledby="como-vas" className="card p-4">
-      <h2 id="como-vas" className="font-semibold">
-        {t.progress(month)}
+    <section aria-labelledby="presupuestos" className="card scroll-mt-4 p-4">
+      <h2 id="presupuestos" className="font-semibold">
+        {t.title}
       </h2>
+      <p className="mt-1 text-sm text-muted">{t.intro}</p>
       {rows.length === 0 ? (
-        <p className="mt-2 text-sm text-muted">{t.empty}</p>
+        <p className="mt-3 text-sm text-muted">{t.empty}</p>
       ) : (
-        <ul className="mt-2 divide-y divide-border">
-          {rows.map((row) => (
-            <BudgetItem key={row.categoryId} row={row} />
-          ))}
-        </ul>
+        <>
+          <h3 className="mt-4 text-sm font-medium">{t.progress(month)}</h3>
+          <ul className="mt-1 divide-y divide-border">
+            {rows.map((row) => (
+              <BudgetItem key={row.categoryId} row={row} />
+            ))}
+          </ul>
+        </>
       )}
       {options.length > 0 && (
         <button

@@ -77,9 +77,9 @@ export const auth = betterAuth({
       superAdmin: { type: "boolean", required: false, defaultValue: false, input: false },
       // Suspendida por el admin: input: false → nadie la cambia con "actualizar perfil".
       suspendedAt: { type: "date", required: false, input: false },
-      // El idioma que eligió en Mi cuenta (o null): input: false → solo lo guarda Mi cuenta (saveLanguageAction).
+      // El idioma que eligió en Configuración (o null): input: false → solo lo guarda Configuración (saveLanguageAction).
       locale: { type: "string", required: false, input: false },
-      // La apariencia que eligió en Mi cuenta (o null): input: false → solo la guarda Mi cuenta (saveThemeAction).
+      // La apariencia que eligió en Configuración (o null): input: false → solo la guarda Configuración (saveThemeAction).
       theme: { type: "string", required: false, input: false },
     },
   },
@@ -126,10 +126,10 @@ export const auth = betterAuth({
     // contador se borra; si era equivocada, queda como fallo; si fue otra cosa, se devuelve.
     after: createAuthMiddleware(async (ctx) => {
       const returned = ctx.context.returned;
-      // Con el idioma elegido en Mi cuenta, el navegador donde se abre la sesión pasa a ver la app en ese
+      // Con el idioma elegido en Configuración, el navegador donde se abre la sesión pasa a ver la app en ese
       // idioma. Sin elegir, sigue la cookie que haya (o español). Con la verificación en dos pasos, la contraseña sola
       // todavía no abre la sesión: el idioma llega con el código (/two-factor/verify-*).
-      // La apariencia elegida en Mi cuenta llega igual (la cookie `tema`, que lee el script del <head>).
+      // La apariencia elegida en Configuración llega igual (la cookie `tema`, que lee el script del <head>).
       const opened = ctx.context.newSession?.user as { locale?: unknown; theme?: unknown; twoFactorEnabled?: unknown } | undefined;
       const secondStepPending = ctx.path === "/sign-in/email" && opened?.twoFactorEnabled === true;
       if (!secondStepPending && isLocale(opened?.locale)) ctx.setCookie(LOCALE_COOKIE, opened.locale, localeCookieOptions());

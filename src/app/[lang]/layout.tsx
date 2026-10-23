@@ -65,7 +65,7 @@ export default async function RootLayout({ children }: LayoutProps<"/[lang]">) {
       suppressHydrationWarning
     >
       <head>
-        {/* El tema elegido en Mi cuenta (src/lib/theme.ts), antes de pintar: sin parpadeo. */}
+        {/* El tema elegido en Configuración (src/lib/theme.ts), antes de pintar: sin parpadeo. */}
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>
       <body className="min-h-full flex flex-col font-sans">

@@ -9,7 +9,7 @@ import { NotificationBell } from "./notification-bell";
 
 /**
  * La campana del encabezado (src/app/[lang]/(app)/notification-bell.tsx) con las notificaciones sin leer de la
- * persona: por ahora, sus avisos de próximos pagos. Con los avisos apagados (Mi cuenta → Notificaciones),
+ * persona: por ahora, sus avisos de próximos pagos. Con los avisos apagados (Configuración → Notificaciones),
  * no hay campana.
  */
 export async function UserNotifications() {

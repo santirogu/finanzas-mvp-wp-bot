@@ -125,9 +125,9 @@ export async function openTab(page: Page, tab: "Resumen" | "Ingresos" | "Egresos
  * Un aviso de éxito lleva solo su mensaje: con una expresión anclada (/^Egreso registrado$/) se pide
  * ese exacto.
  */
-/** Pone un presupuesto desde /presupuestos (la categoría por su nombre) y espera el aviso. */
+/** Pone un presupuesto desde Configuración (la categoría por su nombre) y espera el aviso. */
 export async function addBudget(page: Page, category: string, amount: string) {
-  await page.goto("/presupuestos");
+  await page.goto("/configuracion");
   await visible(page.getByRole("button", { name: "Agregar un presupuesto" })).click();
   const dialog = page.getByRole("dialog");
   const select = dialog.getByLabel("Categoría");

@@ -4,7 +4,7 @@ import { seriousViolations } from "./admin";
 import { addBudget, addTransaction, register, test, toast, visible } from "./helpers";
 
 // Los presupuestos de punta a punta: la invitación del Resumen, ponerlos (con el error de un campo vacío), el aviso al
-// registrar el egreso que llega al 80 %, cómo van en /presupuestos y en el Resumen, cambiarlos y quitarlos.
+// registrar el egreso que llega al 80 %, cómo van en Configuración y en el Resumen, cambiarlos y quitarlos.
 
 const month = formatMonthName(monthOf(todayInTimezone("America/Bogota")));
 const row = (page: Page, name: string) => visible(page.getByRole("main").getByRole("listitem").filter({ hasText: name }));
@@ -16,8 +16,9 @@ test("Presupuestos: ponerlos, cómo van en el Resumen, cambiarlos y quitarlos @p
   await test.step("sin presupuestos, el Resumen invita a ponerlos", async () => {
     await page.goto("/dashboard");
     await visible(page.getByRole("link", { name: "Ponle un presupuesto a tus categorías" })).click();
-    await expect(page).toHaveURL(/\/presupuestos$/);
-    await expect(visible(page.getByRole("heading", { level: 1, name: "Presupuestos" }))).toBeVisible();
+    await expect(page).toHaveURL(/\/configuracion#presupuestos$/);
+    await expect(visible(page.getByRole("heading", { level: 1, name: "Configuración" }))).toBeVisible();
+    await expect(visible(page.getByRole("region", { name: "Presupuestos" }))).toBeVisible();
     await expect(visible(page.getByText("Todavía no tienes presupuestos."))).toBeVisible();
   });
 
@@ -42,10 +43,12 @@ test("Presupuestos: ponerlos, cómo van en el Resumen, cambiarlos y quitarlos @p
     // Con este egreso llegó al 85 %: el aviso queda a la vista, con el enlace a los presupuestos.
     const notice = visible(page.getByRole("status").filter({ hasText: "Alimentación: llevas" }));
     await expect(notice).toContainText("Alimentación: llevas $85.000,00 de $100.000,00 (85 %)");
-    await expect(notice.getByRole("link", { name: "Ver presupuestos" })).toHaveAttribute("href", "/presupuestos");
+    await expect(notice.getByRole("link", { name: "Ver presupuestos" })).toHaveAttribute("href", "/configuracion#presupuestos");
     expect(await seriousViolations(page)).toEqual([]);
 
+    // La dirección de antes lleva a la sección de Configuración.
     await page.goto("/presupuestos");
+    await expect(page).toHaveURL(/\/configuracion#presupuestos$/);
     await expect(row(page, "Alimentación")).toContainText("$85.000,00 de $100.000,00");
     await expect(row(page, "Alimentación")).toContainText("85 %");
     await expect(row(page, "Alimentación")).toContainText("Te quedan $15.000,00");
@@ -56,7 +59,7 @@ test("Presupuestos: ponerlos, cómo van en el Resumen, cambiarlos y quitarlos @p
     await expect(resumenCard(page)).toContainText("Te quedan $15.000,00");
     await expect(page.getByRole("link", { name: "Ponle un presupuesto a tus categorías" })).toHaveCount(0);
     await resumenCard(page).getByRole("link", { name: "Editar" }).click();
-    await expect(page).toHaveURL(/\/presupuestos$/);
+    await expect(page).toHaveURL(/\/configuracion#presupuestos$/);
   });
 
   await test.step("cambiarlo: con el monto de antes en el campo; si se pasa, por cuánto", async () => {

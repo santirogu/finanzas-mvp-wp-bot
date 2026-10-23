@@ -43,7 +43,7 @@ const TEXTS = texts(
 );
 
 /**
- * Mi cuenta → Notificaciones: prender o apagar los avisos de próximos pagos del Resumen y con cuántos días de
+ * Configuración → Notificaciones: prender o apagar los avisos de próximos pagos del Resumen y con cuántos días de
  * anticipación (de 0, el mismo día, a MAX_DAYS_AHEAD). Se guarda con el botón y avisa abajo: verde si
  * quedan prendidos, rojo si se apagaron. Apagados, el campo de los días queda inactivo (se conservan).
  */
@@ -64,7 +64,7 @@ export function NotificationSettings({ enabled: savedEnabled, days }: { enabled:
   const error = errors.days ?? state.error;
 
   return (
-    <section className="card space-y-3 p-4 text-sm" aria-labelledby="notificaciones">
+    <section className="card scroll-mt-4 space-y-3 p-4 text-sm" aria-labelledby="notificaciones">
       <div className="space-y-1">
         {/* "Notificaciones" y no "Avisos": así se llama la zona de los avisos emergentes (src/components/toaster.tsx). */}
         <h2 id="notificaciones" className="font-semibold">

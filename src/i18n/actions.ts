@@ -8,7 +8,7 @@ import { isLocale, LANGUAGE_SWITCH_PAGES, LOCALE_COOKIE } from "./locales";
 /**
  * El selector de idioma de quien no tiene sesión (la portada, el login y el registro): guarda la cookie del
  * idioma en este navegador y vuelve a la misma página (`to`), ya en ese idioma. No toca ninguna cuenta: con
- * sesión, el idioma se elige en Mi cuenta. Si `to` no es una de esas páginas, vuelve a la portada.
+ * sesión, el idioma se elige en Configuración. Si `to` no es una de esas páginas, vuelve a la portada.
  */
 export async function chooseLanguageAction(formData: FormData): Promise<void> {
   const locale = formData.get("locale");

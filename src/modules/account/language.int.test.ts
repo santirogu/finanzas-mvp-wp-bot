@@ -4,8 +4,8 @@ import { db } from "@/db";
 import { user } from "@/db/schema";
 import { createUser } from "../../../test/integration/factories";
 
-// Mi cuenta → Idioma, con la base de verdad: guarda el de la cuenta de la sesión (nunca otra), lo pone en
-// este navegador y vuelve a Mi cuenta con el aviso. La sesión, la cookie y la redirección se simulan.
+// Configuración → Idioma, con la base de verdad: guarda el de la cuenta de la sesión (nunca otra), lo pone en
+// este navegador y vuelve a Configuración con el aviso. La sesión, la cookie y la redirección se simulan.
 const mocks = vi.hoisted(() => ({
   requireUser: vi.fn(),
   setCookie: vi.fn(),
@@ -27,13 +27,13 @@ const form = (locale?: string) => {
 const localeOf = async (id: string) => (await db.select({ locale: user.locale }).from(user).where(eq(user.id, id)))[0].locale;
 
 describe("saveLanguageAction", () => {
-  it("guarda el idioma de la cuenta de la sesión (no el de otra), lo pone en este navegador y vuelve a Mi cuenta", async () => {
+  it("guarda el idioma de la cuenta de la sesión (no el de otra), lo pone en este navegador y vuelve a Configuración", async () => {
     const ana = await createUser({ name: "Ana" });
     const beto = await createUser({ name: "Beto" });
     mocks.requireUser.mockResolvedValue(ana);
     mocks.setCookie.mockReset();
 
-    await expect(saveLanguageAction(form("en"))).rejects.toThrow("NEXT_REDIRECT /cuenta?aviso=idioma-guardado");
+    await expect(saveLanguageAction(form("en"))).rejects.toThrow("NEXT_REDIRECT /configuracion?aviso=idioma-guardado#idioma");
     expect(await localeOf(ana.id)).toBe("en");
     expect(await localeOf(beto.id)).toBeNull();
     expect(mocks.setCookie).toHaveBeenCalledWith("idioma", "en", {

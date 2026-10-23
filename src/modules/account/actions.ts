@@ -138,8 +138,8 @@ export async function changePasswordAction(_prev: ChangePasswordState, formData:
 }
 
 /**
- * Mi cuenta → Idioma: lo guarda en la cuenta (para los demás navegadores donde inicie sesión) y en este
- * navegador, y vuelve a Mi cuenta, ya en ese idioma, con el aviso. Un valor que no es un idioma de la app
+ * Configuración → Idioma: lo guarda en la cuenta (para los demás navegadores donde inicie sesión) y en este
+ * navegador, y vuelve a Configuración, ya en ese idioma, con el aviso. Un valor que no es un idioma de la app
  * no cambia nada.
  */
 export async function saveLanguageAction(formData: FormData): Promise<void> {
@@ -148,11 +148,11 @@ export async function saveLanguageAction(formData: FormData): Promise<void> {
   if (!isLocale(locale)) return;
   await saveAccountLocale(user.id, locale);
   (await cookies()).set(LOCALE_COOKIE, locale, localeCookieOptions());
-  redirect(`/cuenta?${TOAST_PARAM}=idioma-guardado`);
+  redirect(`/configuracion?${TOAST_PARAM}=idioma-guardado#idioma`);
 }
 
 /**
- * Mi cuenta → Apariencia: la guarda en la cuenta, para los demás navegadores donde inicie sesión. En este
+ * Configuración → Apariencia: la guarda en la cuenta, para los demás navegadores donde inicie sesión. En este
  * navegador ya la guardó y la aplicó el selector (saveTheme, src/lib/theme.ts). Un valor que no es una
  * apariencia de la app no cambia nada.
  */
