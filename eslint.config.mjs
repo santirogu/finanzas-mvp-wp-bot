@@ -21,6 +21,9 @@ const eslintConfig = defineConfig([
     "test-results/**",
     "blob-report/**",
     ".stryker-tmp/**",
+    // Las copias del repo de otras sesiones de Claude Code (git worktree), cada una con su .next: no son de
+    // esta rama, y revisarlas sumaba miles de problemas ajenos.
+    ".claude/worktrees/**",
   ]),
 ]);
 
