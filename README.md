@@ -397,7 +397,12 @@ La app está en español (el de siempre) y en inglés, toda la web (el bot de Wh
     pueda enviar correos para confirmar el nuevo: sin eso, un correo mal escrito dejaría a la persona sin
     poder entrar. La moneda se muestra ("Peso colombiano (COP)") con "Pronto: USD y EUR".
 - **Apariencia: Sistema, Claro u Oscuro** (Mi cuenta, `src/lib/theme.ts`).
-  - **Dónde se guarda:** en el navegador (`localStorage`), no en la cuenta, así que cada dispositivo tiene la suya.
+  - **Dónde se guarda:** al elegirla, en la cuenta (`user.theme`, con `saveThemeAction`) y en la cookie `tema` de
+    ese navegador, por un año. Al iniciar sesión en otro navegador (también tras el segundo paso de un admin),
+    Better Auth le pone la cookie desde la cuenta (`hooks.after` en `src/lib/auth.ts`), como con el idioma. Sin
+    elegir (`null`), cada navegador tiene la suya. La cookie no es `HttpOnly`: la lee el script del `<head>`.
+    Antes se guardaba solo en `localStorage`; sin la cookie, todavía vale lo de ahí, y se sigue escribiendo para
+    avisar a las otras pestañas (el evento `storage`).
   - **Cómo se aplica:** un script en línea del `<head>` la aplica antes de pintar, sin parpadeo, también en las páginas sin sesión, que se sirven prearmadas.
   - **Los colores** del modo oscuro están dos veces en `globals.css`, uno por cada forma de llegar a él: con el sistema en oscuro y sin `data-theme="light"`, o con `data-theme="dark"`. `src/color-contrast.test.ts` exige que los dos bloques sean iguales.
   - **Sin `dark:`:** la variante de Tailwind solo mira el sistema, así que no se usa.
@@ -529,7 +534,7 @@ La app está en español (el de siempre) y en inglés, toda la web (el bot de Wh
     `notification_setting`): prenderlos o apagarlos (apagados no se avisa nada, tampoco los atrasados) y
     con cuántos días de anticipación, de 0 (el mismo día) a 10, en un campo numérico con su error en
     español debajo. Se guarda con el botón; apagados, el campo queda inactivo y los días se conservan.
-    Sin guardar nada: prendidos, con 3 días. Vale en todos los dispositivos (no es como la apariencia).
+    Sin guardar nada: prendidos, con 3 días. Vale en todos los dispositivos.
   - **La fecha esperada:** la mediana de los días del mes de los últimos 3 pagos (resiste uno fuera de lo
     normal: el 5, el 5 y el 20 dan el 5); con menos pagos, con los que haya y "aprox.". Un 31 en un mes
     más corto es su último día, y los pagos alrededor del cambio de mes (el 30, el 31, el 1) van juntos.

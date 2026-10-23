@@ -183,6 +183,13 @@
       "when": 1792673499075,
       "tag": "0025_presupuestos",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1792719258419,
+      "tag": "0026_apariencia-en-la-cuenta",
+      "breakpoints": true
     }
   ]
 }

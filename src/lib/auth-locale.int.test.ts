@@ -70,3 +70,41 @@ describe("solo Mi cuenta cambia el idioma de la cuenta", () => {
     await setLocale("eva@test.local", null);
   });
 });
+
+const setTheme = (email: string, theme: string | null) => db.update(user).set({ theme }).where(eq(user.email, email));
+const themeCookie = (response: Response) => response.headers.getSetCookie().find((cookie) => cookie.startsWith("tema="));
+
+describe("la apariencia de la cuenta al iniciar sesión", () => {
+  it("con una elegida, el navegador donde entra la recibe: por un año y legible por el script (sin HttpOnly)", async () => {
+    await register("fede@test.local");
+    await setTheme("fede@test.local", "dark");
+    const cookie = themeCookie((await signIn("fede@test.local")).response)!;
+    expect(cookie).toMatch(/^tema=dark;/);
+    expect(cookie).toMatch(/Max-Age=31536000/i);
+    expect(cookie).toMatch(/Path=\//i);
+    expect(cookie).toMatch(/SameSite=Lax/i);
+    expect(cookie).not.toMatch(/HttpOnly/i);
+  });
+
+  it("sin elegir no le pone ninguna: queda la de ese navegador", async () => {
+    await register("gabi@test.local");
+    expect(themeCookie((await signIn("gabi@test.local")).response)).toBeUndefined();
+  });
+
+  it("un admin la recibe al terminar el segundo paso, no con la contraseña sola", async () => {
+    const { secret } = await adminWithTwoFactor("admin2@test.local");
+    await setTheme("admin2@test.local", "light");
+    const { jar, response } = await signIn("admin2@test.local");
+    expect(themeCookie(response)).toBeUndefined();
+    const verified = await post("/two-factor/verify-totp", { code: totp(secret) }, jar);
+    expect(themeCookie(verified)).toMatch(/^tema=light;/);
+  });
+
+  it("solo Mi cuenta la cambia (input: false) y la base solo acepta las de la app", async () => {
+    const jar = await register("hugo@test.local");
+    expect(await updateUserFromServer({ theme: "dark" }, jar)).toMatchObject({ status: 400 });
+    await expect(setTheme("hugo@test.local", "azul")).rejects.toThrow();
+    await setTheme("hugo@test.local", "system");
+    await setTheme("hugo@test.local", null);
+  });
+});

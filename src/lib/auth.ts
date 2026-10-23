@@ -8,6 +8,8 @@ import { PHASE_PRODUCTION_BUILD } from "next/constants";
 import { db, schema } from "@/db";
 import { localeCookieOptions } from "@/i18n/cookie";
 import { LOCALE_COOKIE, isLocale } from "@/i18n/locales";
+import { isTheme, THEME_KEY } from "@/lib/theme";
+import { themeCookieOptions } from "@/lib/theme-cookie";
 import { recordEvent } from "@/modules/account/events";
 import { SUSPENDED_MESSAGE, isSuspended } from "@/modules/account/suspension";
 import { parseAccountName } from "@/modules/auth/account-name";
@@ -77,6 +79,8 @@ export const auth = betterAuth({
       suspendedAt: { type: "date", required: false, input: false },
       // El idioma que eligió en Mi cuenta (o null): input: false → solo lo guarda Mi cuenta (saveLanguageAction).
       locale: { type: "string", required: false, input: false },
+      // La apariencia que eligió en Mi cuenta (o null): input: false → solo la guarda Mi cuenta (saveThemeAction).
+      theme: { type: "string", required: false, input: false },
     },
   },
   // Límite de intentos por IP (contra quien prueba contraseñas a la fuerza), guardado en Postgres.
@@ -125,9 +129,11 @@ export const auth = betterAuth({
       // Con el idioma elegido en Mi cuenta, el navegador donde se abre la sesión pasa a ver la app en ese
       // idioma. Sin elegir, sigue la cookie que haya (o español). Con la verificación en dos pasos, la contraseña sola
       // todavía no abre la sesión: el idioma llega con el código (/two-factor/verify-*).
-      const opened = ctx.context.newSession?.user as { locale?: unknown; twoFactorEnabled?: unknown } | undefined;
+      // La apariencia elegida en Mi cuenta llega igual (la cookie `tema`, que lee el script del <head>).
+      const opened = ctx.context.newSession?.user as { locale?: unknown; theme?: unknown; twoFactorEnabled?: unknown } | undefined;
       const secondStepPending = ctx.path === "/sign-in/email" && opened?.twoFactorEnabled === true;
       if (!secondStepPending && isLocale(opened?.locale)) ctx.setCookie(LOCALE_COOKIE, opened.locale, localeCookieOptions());
+      if (!secondStepPending && isTheme(opened?.theme)) ctx.setCookie(THEME_KEY, opened.theme, themeCookieOptions());
       if (ctx.path === "/sign-in/email") {
         const email = normalizeEmail(ctx.body?.email);
         if (!email) return;

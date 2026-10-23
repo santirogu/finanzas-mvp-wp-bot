@@ -1,9 +1,10 @@
 "use client";
 
-import { useId, useSyncExternalStore } from "react";
+import { useId, useSyncExternalStore, useTransition } from "react";
 import { useTexts } from "@/i18n/client";
 import { texts } from "@/i18n/texts";
 import { THEME_EVENT, THEME_KEY, THEME_LABELS, THEMES, readTheme, saveTheme } from "@/lib/theme";
+import { saveThemeAction } from "@/modules/account/actions";
 
 const TEXTS = texts(
   { legend: "Apariencia", labels: THEME_LABELS },
@@ -24,9 +25,13 @@ function subscribe(onChange: () => void) {
   };
 }
 
-/** "Sistema · Claro · Oscuro": la apariencia de la app en este dispositivo (src/lib/theme.ts). */
+/**
+ * "Sistema · Claro · Oscuro": la apariencia de la app. Se aplica y se guarda en este navegador de inmediato y,
+ * aparte, en la cuenta, para los demás navegadores donde inicie sesión (src/lib/theme.ts).
+ */
 export function ThemePicker() {
   const theme = useSyncExternalStore(subscribe, readTheme, () => "system" as const);
+  const [, startTransition] = useTransition();
   const t = useTexts(TEXTS);
   // Un grupo de radios propio: fuera de un formulario, los que tienen el mismo `name` son un solo grupo en
   // todo el documento. Next deja montada (oculta) la página anterior, y al cambiar de idioma quedan dos Mi
@@ -47,7 +52,11 @@ export function ThemePicker() {
               name={name}
               value={option}
               checked={theme === option}
-              onChange={() => saveTheme(option)}
+              onChange={() => {
+                saveTheme(option);
+                // En la cuenta, sin esperar: aquí ya se ve.
+                startTransition(() => saveThemeAction(option));
+              }}
               className="sr-only"
             />
             {t.labels[option]}
