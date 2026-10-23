@@ -206,8 +206,8 @@ Puntos a revisar:
 - **Comprobación pasiva en producción:** compara lo esperado con lo real.
 
   ```bash
-  curl -sI https://finanzas-mvp-wp-bot.vercel.app/login
-  curl -sI https://finanzas-mvp-wp-bot.vercel.app/api/health
+  curl -sI https://anotadoapp.vercel.app/login
+  curl -sI https://anotadoapp.vercel.app/api/health
   ```
 
 - **CSRF:**
