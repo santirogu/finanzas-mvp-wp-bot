@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { FixedExpenseState, FixedNoteState } from "@/modules/reports/actions";
 import type { FixedHistoryEntry } from "@/modules/reports/history";
+import type { FixedMonthView } from "@/modules/reports/fixed-month";
 import type { FixedOption, RecurringExpense } from "@/modules/reports/recurring";
 import { findToast, renderWithToaster as render } from "../../../../../test/toaster";
 
@@ -39,9 +40,11 @@ const HISTORIES = {
   },
   "seguro del carro": { entries: [entry("2026-10", 950000, null)], summary: null },
 };
+const NO_MONTH: FixedMonthView = { summary: null, statuses: {} };
 const props = {
   items: ITEMS,
   histories: HISTORIES,
+  month: NO_MONTH,
   removed: [option("Netflix")],
   candidates: [option("Mercado"), option("Gimnasio")],
   total: 2750000,
@@ -344,6 +347,50 @@ describe("FixedExpenses · historial", () => {
   });
 });
 
+
+describe("FixedExpenses · el estado del mes", () => {
+  const toggle = (name: RegExp) => section().getByRole("button", { name });
+  const MONTH: FixedMonthView = {
+    summary: { paid: "1 de 2 pagados este mes", pending: "Faltan $950.000,00" },
+    statuses: {
+      arriendo: { text: "Pagado el 5 de oct.", tone: "paid" },
+      "seguro del carro": { text: "Atrasado · lo sueles pagar el 15", tone: "overdue" },
+    },
+  };
+
+  it("arriba, cuántos se pagaron y cuánto falta; en cada gasto, su estado (pagado con ✓, atrasado en rojo)", () => {
+    render(<FixedExpenses {...props} month={MONTH} />);
+    expect(section().getByText("1 de 2 pagados este mes").parentElement).toHaveTextContent("1 de 2 pagados este mesFaltan $950.000,00");
+    const paid = section().getByText("Pagado el 5 de oct.");
+    expect(paid).toHaveClass("text-brand");
+    expect(paid.querySelector("svg")).toHaveAttribute("aria-hidden");
+    expect(section().getByText("Atrasado · lo sueles pagar el 15")).toHaveClass("text-danger");
+    // Dentro del botón del historial: se lee con el gasto.
+    expect(toggle(/^Historial de Arriendo/)).toHaveAccessibleName(/^Historial de Arriendo Pagado el 5 de oct\. En 4 de 12 meses/);
+  });
+
+  it("lo que falta, apagado; un gasto sin pago esperado este mes, sin estado (aunque su clave exista en cualquier objeto)", () => {
+    render(
+      <FixedExpenses
+        {...props}
+        items={[...ITEMS, item("Constructor", 10000)]}
+        month={{
+          summary: { paid: "Todos pagados este mes", pending: null },
+          statuses: { arriendo: { text: "Falta · lo sueles pagar el 22", tone: "pending" }, "seguro del carro": { text: "No aplica este mes", tone: "skipped" } },
+        }}
+      />,
+    );
+    expect(section().getByText("Todos pagados este mes").parentElement).toHaveTextContent(/^Todos pagados este mes$/);
+    expect(section().getByText("Falta · lo sueles pagar el 22")).toHaveClass("text-muted");
+    expect(section().getByText("No aplica este mes")).toHaveClass("text-muted");
+    expect(toggle(/^Historial de Constructor/)).toHaveAccessibleName(/^Historial de Constructor En 4 de 12 meses$/);
+  });
+
+  it("sin pagos este mes, sin resumen", () => {
+    render(<FixedExpenses {...props} />);
+    expect(section().queryByText(/pagados este mes/)).toBeNull();
+  });
+});
 
 describe("FixedExpenses · en inglés", () => {
   it("la lista, el total, el historial con sus notas y los quitados, en inglés", async () => {

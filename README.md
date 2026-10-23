@@ -497,6 +497,11 @@ La app está en español (el de siempre) y en inglés, toda la web (el bot de Wh
     Cerrado, cada gasto dice su último cambio ("11% desde marzo"). A cada cambio se le puede escribir
     una nota (hasta 280 caracteres; tabla `fixed_expense_note`), solo de un mes en que la persona pagó
     ese gasto; vaciarla la borra.
+  - **El estado de este mes** (`fixed-month.ts`): arriba, "5 de 8 pagados este mes" y "Faltan $X" ("Todos
+    pagados este mes" si no falta ninguno), y en cada gasto, "Pagado el 4 de oct." (con ✓), "Falta · lo sueles pagar el 22",
+    "Atrasado · …" (en rojo) o "No aplica este mes" (marcado "Este pago ya no aplica"). Sale del mismo calendario
+    de pagos que los avisos de próximos pagos (`paymentSchedules`, en `upcoming.ts`): lo que falta es lo mismo que
+    resta "Lo que te queda". Un gasto sin pago esperado este mes (empezó a pagarse después) no dice nada.
 - **Configuración** (`/configuracion`, en el menú de la cuenta, entre Mi cuenta y Ayuda): cómo funciona la app para
   la persona, con un índice arriba y una tarjeta por sección: Presupuestos, Notificaciones, Apariencia e Idioma. Lo que
   se agregue después (la moneda, el recordatorio de registro, las categorías propias) va ahí como otra sección. **Mi

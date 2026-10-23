@@ -175,6 +175,7 @@ function SpanishTopics({ values }: { values: AppValues }) {
           {values.recurringWindow} meses (el arriendo, Netflix, el plan del celular). Los ves en <A href="/gastos-fijos">Fijos</A>: puedes
           quitar uno que no lo es, agregar otro a mano y abrir el historial de su valor, con una nota por cada cambio.
         </p>
+        <p>Cada uno dice si ya lo pagaste este mes, y arriba ves cuántos van y cuánto falta.</p>
         <p>
           En el <A href="/dashboard">Resumen</A> y en la campana de arriba te avisamos de los que tocan pronto
           {values.upcomingEnabled
@@ -291,6 +292,7 @@ function EnglishTopics({ values }: { values: AppValues }) {
           {values.recurringWindow} months (rent, Netflix, your phone plan). You see them in <A href="/gastos-fijos">Bills</A>: you can remove
           one that isn&apos;t, add another one yourself and open the history of its amount, with a note for each change.
         </p>
+        <p>Each one says whether you already paid it this month, and at the top you see how many are paid and how much is left.</p>
         <p>
           In the <A href="/dashboard">Overview</A> and in the bell at the top we let you know about the ones coming up
           {values.upcomingEnabled
