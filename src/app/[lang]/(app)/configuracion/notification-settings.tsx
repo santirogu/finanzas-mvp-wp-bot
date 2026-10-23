@@ -49,17 +49,24 @@ const TEXTS = texts(
  */
 export function NotificationSettings({ enabled: savedEnabled, days }: { enabled: boolean; days: number }) {
   const t = useTexts(TEXTS);
-  const [enabled, setEnabled] = useState(savedEnabled);
   const toast = useToast();
   const daysId = useId();
   const hintId = useId();
   const errorId = useId();
   const { errors, formProps } = useFieldErrors(t.messages);
-  const [state, formAction, busy] = useActionState<UpcomingSettingsState, FormData>(async (prev, formData) => {
+  // React vacía el formulario al terminar la acción y deja el interruptor como se dibujó al principio, aunque
+  // sea controlado: lo enviado vuelve con el estado y los campos lo usan de valor inicial, como en los
+  // presupuestos. Apagados, los días no se envían (el campo está inactivo) y quedan los guardados.
+  const [state, formAction, busy] = useActionState<UpcomingSettingsState & { enabled?: boolean; days?: string }, FormData>(async (prev, formData) => {
     const result = await saveUpcomingSettingsAction(prev, formData);
     if (result.message && result.tone) toast({ tone: result.tone, message: result.message });
-    return result;
+    const sentDays = formData.get("days");
+    return { ...result, enabled: formData.get("enabled") === "on", days: typeof sentDays === "string" ? sentDays : undefined };
   }, {});
+  // Prendidos o Apagados (y los días inactivos) siguen al interruptor mientras se toca y, al terminar de
+  // guardar, vuelven a lo enviado: así queda el interruptor tras vaciarse el formulario.
+  const [touched, setTouched] = useState<{ since: typeof state; enabled: boolean }>();
+  const enabled = touched?.since === state ? touched.enabled : (state.enabled ?? savedEnabled);
   // El del navegador (antes de enviar) o el del servidor (siempre de los días).
   const error = errors.days ?? state.error;
 
@@ -87,8 +94,8 @@ export function NotificationSettings({ enabled: savedEnabled, days }: { enabled:
                 type="checkbox"
                 role="switch"
                 name="enabled"
-                checked={enabled}
-                onChange={(event) => setEnabled(event.target.checked)}
+                defaultChecked={state.enabled ?? savedEnabled}
+                onChange={(event) => setTouched({ since: state, enabled: event.target.checked })}
                 className="peer absolute inset-0 z-10 m-0 size-full cursor-pointer opacity-0"
               />
               <span
@@ -112,7 +119,7 @@ export function NotificationSettings({ enabled: savedEnabled, days }: { enabled:
               max={MAX_DAYS_AHEAD}
               step={1}
               required
-              defaultValue={days}
+              defaultValue={state.days ?? days}
               disabled={!enabled}
               aria-invalid={error ? true : undefined}
               aria-describedby={describedBy(hintId, error && errorId)}

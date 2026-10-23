@@ -53,6 +53,9 @@ describe("NotificationSettings", () => {
     const toast = await findToast();
     expect(toast).toHaveTextContent("Se guardó: te avisaremos 7 días antes de cada pago fijo");
     expect(toast).toHaveAttribute("data-tone", "success");
+    // Aunque React vacíe el formulario al terminar, quedan los días guardados y no los de antes.
+    await waitFor(() => expect(save()).toBeEnabled());
+    expect(days()).toHaveValue(7);
   });
 
   it("apagarlos manda solo el interruptor apagado (los días se conservan) y avisa en rojo", async () => {
@@ -93,6 +96,71 @@ describe("NotificationSettings", () => {
     expect(await section().findByText("Escribe un número entre 0 y 10.")).toBeVisible();
     expect(days()).toHaveAttribute("aria-invalid", "true");
     expect(screen.queryByRole("status")).toBeNull();
+  });
+
+  // React vacía el formulario al terminar la acción: con el checkbox controlado volvía a quedar prendido
+  // aunque dijera "Apagados", y otro Guardar lo mandaba prendido.
+  it("apagarlos y guardar: el interruptor queda apagado, como dice, y otro Guardar lo manda apagado", async () => {
+    action.mockResolvedValue({ message: "Se apagaron los avisos de próximos pagos", tone: "removal" });
+    const user = userEvent.setup();
+    render(<NotificationSettings enabled days={3} />);
+    await user.click(toggle());
+    await user.click(save());
+    expect(await findToast()).toHaveAttribute("data-tone", "removal");
+    await waitFor(() => expect(save()).toBeEnabled());
+    expect(toggle()).not.toBeChecked();
+    expect(section().getByText("Apagados")).toBeVisible();
+    expect(days()).toBeDisabled();
+    await user.click(save());
+    await waitFor(() => expect(action).toHaveBeenCalledTimes(2));
+    expect(Object.fromEntries(action.mock.calls[1][1])).toEqual({});
+  });
+
+  it("si se toca el interruptor mientras guarda, al terminar muestra lo que se envió, como queda el interruptor", async () => {
+    let finish!: (state: UpcomingSettingsState) => void;
+    action.mockReturnValue(new Promise((resolve) => (finish = resolve)));
+    const user = userEvent.setup();
+    render(<NotificationSettings enabled days={3} />);
+    await user.click(toggle());
+    await user.click(save());
+    await waitFor(() => expect(section().getByRole("button", { name: "Guardando…" })).toBeDisabled());
+    await user.click(toggle());
+    expect(section().getByText("Prendidos")).toBeVisible();
+    finish({ message: "Se apagaron los avisos de próximos pagos", tone: "removal" });
+    await waitFor(() => expect(save()).toBeEnabled());
+    expect(toggle()).not.toBeChecked();
+    expect(section().getByText("Apagados")).toBeVisible();
+  });
+
+  it("apagarlos con un error del servidor: el interruptor sigue apagado, como dice", async () => {
+    action.mockResolvedValue({ error: "Escribe un número entre 0 y 10.", field: "days" });
+    const user = userEvent.setup();
+    render(<NotificationSettings enabled days={3} />);
+    await user.click(toggle());
+    await user.click(save());
+    expect(await section().findByText("Escribe un número entre 0 y 10.")).toBeVisible();
+    expect(toggle()).not.toBeChecked();
+    expect(section().getByText("Apagados")).toBeVisible();
+    expect(days()).toBeDisabled();
+  });
+
+  it("prenderlos con un error del servidor en los días: siguen prendidos, con lo escrito, y se vuelve a enviar eso", async () => {
+    action.mockResolvedValue({ error: "Escribe un número entre 0 y 10.", field: "days" });
+    const user = userEvent.setup();
+    render(<NotificationSettings enabled={false} days={3} />);
+    await user.click(toggle());
+    await user.clear(days());
+    await user.type(days(), "7");
+    await user.click(save());
+    expect(await section().findByText("Escribe un número entre 0 y 10.")).toBeVisible();
+    expect(toggle()).toBeChecked();
+    expect(section().getByText("Prendidos")).toBeVisible();
+    expect(days()).toBeEnabled();
+    expect(days()).toHaveValue(7);
+    action.mockResolvedValue({ message: "Se guardó: te avisaremos 7 días antes de cada pago fijo", tone: "success" });
+    await user.click(save());
+    expect(await findToast()).toHaveAttribute("data-tone", "success");
+    expect(Object.fromEntries(action.mock.calls[1][1])).toEqual({ enabled: "on", days: "7" });
   });
 });
 

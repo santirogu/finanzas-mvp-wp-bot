@@ -175,12 +175,18 @@ test("Configuración → Notificaciones: los días de anticipación cambian lo q
     await expect(card(page).getByRole("listitem").filter({ hasText: "Arriendo" }).getByText(when, { exact: true })).toBeVisible();
   });
 
-  await test.step("apagados: sin tarjeta, y al volver a Configuración siguen apagados con sus días", async () => {
+  await test.step("apagados: el interruptor queda apagado al guardar, sin tarjeta, y al volver siguen apagados con sus días", async () => {
     await page.goto("/configuracion");
     await settings().getByText("Avisos de próximos pagos", { exact: true }).click();
     await expect(days()).toBeDisabled();
     await settings().getByRole("button", { name: "Guardar" }).click();
     await expect(toast(page, "Se apagaron los avisos de próximos pagos")).toHaveAttribute("data-tone", "removal");
+    // React vacía el formulario al terminar de guardar (el botón vuelve a "Guardar"): el interruptor tiene que
+    // seguir apagado, como dice el texto.
+    await expect(settings().getByRole("button", { name: "Guardar" })).toBeEnabled();
+    await expect(settings().getByRole("switch", { name: /Avisos de próximos pagos/ })).not.toBeChecked();
+    await expect(settings().getByText("Apagados", { exact: true })).toBeVisible();
+    await expect(days()).toBeDisabled();
     await page.reload();
     await expect(settings().getByRole("switch", { name: /Avisos de próximos pagos/ })).not.toBeChecked();
     await expect(days()).toHaveValue("10");
