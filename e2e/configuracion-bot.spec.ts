@@ -197,6 +197,25 @@ test("el tope mensual de tokens: al alcanzarlo, el bot deja de usar Claude hasta
     await expect(alerts).toContainText("sube el tope en Configuración");
   });
 
+  await test.step("la campana del admin la trae desde cualquier página; leída, sale de ahí pero sigue en el módulo", async () => {
+    await page.goto("/egresos");
+    const bell = visible(page.getByRole("button", { name: /^Notificaciones/ }));
+    const panel = visible(page.getByRole("group", { name: "Notificaciones" }));
+    const alert = panel.getByRole("listitem").filter({ hasText: "Se alcanzó el tope mensual de tokens" });
+    await expect(bell).toHaveAccessibleName(/^Notificaciones: \d+ sin leer$/);
+    await bell.click();
+    await expect(panel.getByText(/^Alertas del bot/)).toBeVisible();
+    await expect(alert).toContainText(/Claude está en pausa hasta el 1 de [a-z]+/);
+    expect(await seriousViolations(page)).toEqual([]);
+    await alert.getByRole("button", { name: /^Marcar como leída: Se alcanzó el tope mensual de tokens/ }).click();
+    await expect(toast(page, "Se marcó como leída")).toBeVisible();
+    await bell.click();
+    await expect(alert).toHaveCount(0);
+    await page.keyboard.press("Escape");
+    await page.goto("/admin/bot");
+    await expect(visible(page.getByRole("region", { name: "Alertas del bot" }))).toContainText("Se alcanzó el tope mensual de tokens");
+  });
+
   await test.step("el bot pide usar la web y los comandos siguen; Inicio lo avisa", async () => {
     expect(await beto("almuerzo 25.900,50")).toContain("No registré tu mensaje: este mes ya usé todo mi cupo");
     expect(await beto("balance")).toContain("Aún no tienes movimientos");

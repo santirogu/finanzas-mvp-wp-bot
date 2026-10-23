@@ -32,6 +32,17 @@ const notification = (description: string, when = "En 2 días"): Extract<BellNot
 };
 const TWO = [notification("Gimnasio", "Atrasado"), notification("Netflix")];
 
+const botAlert = (
+  title: string,
+  { warning = false, detail = "Desde el 23 de oct., 14:05" }: { warning?: boolean; detail?: string | null } = {},
+): Extract<BellNotification, { kind: "bot" }> => ({
+  kind: "bot",
+  id: `bot|${warning ? "monthly_limit_near|2026-11-01" : "whatsapp_token|2026-10-23T14:05:00.000Z"}`,
+  alert: { title, detail, action: "Haz algo.", warning },
+});
+const TOKEN = "El token de WhatsApp no sirve: el bot no puede responder";
+const NEAR = "Ya se usó el 85 % del tope mensual de tokens";
+
 const reminder = (days = 4, firstTime = false): Extract<BellNotification, { kind: "reminder" }> => ({
   kind: "reminder",
   id: "registro|2026-10-16",
@@ -220,6 +231,69 @@ describe("NotificationBell", () => {
       await user.click(link);
       expect(screen.queryByRole("group", { name: "Notificaciones" })).toBeNull();
     });
+  });
+});
+
+describe("NotificationBell · las alertas del bot (solo les llegan a los admins)", () => {
+  it("van primero, con la etiqueta Admin, en rojo, desde cuándo, el enlace al módulo y su Marcar como leída", async () => {
+    markRead.mockResolvedValue({ message: "Se marcó como leída", tone: "success" });
+    const user = userEvent.setup();
+    render(<NotificationBell notifications={[botAlert(TOKEN), reminder(), TWO[1]]} today="2026-10-20" upcomingEnabled />);
+    expect(bell()).toHaveAccessibleName("Notificaciones: 3 sin leer");
+    await user.click(bell());
+    const headings = panel().getAllByText(/^(Alertas del bot|Avisos del bot|Próximos pagos de tus gastos fijos\.)/).map((p) => p.textContent);
+    expect(headings).toEqual(["Alertas del bot Admin", "Próximos pagos de tus gastos fijos."]);
+    const [alert] = panel().getAllByRole("listitem");
+    expect(within(alert).getByText(TOKEN)).toHaveClass("text-danger");
+    expect(within(alert).getByText("Desde el 23 de oct., 14:05")).toBeVisible();
+    // Qué hacer, en el módulo (en la campana, solo qué pasa).
+    expect(within(alert).queryByText("Haz algo.")).toBeNull();
+    expect(within(alert).getByRole("link", { name: "Ver Bot de WhatsApp" })).toHaveAttribute("href", "/admin/bot");
+    await user.click(within(alert).getByRole("button", { name: `Marcar como leída: ${TOKEN}` }));
+    expect(sent()).toEqual(["bot|whatsapp_token|2026-10-23T14:05:00.000Z"]);
+    expect(await findToast()).toHaveTextContent("Se marcó como leída");
+  });
+
+  it("si solo hay avisos (el tope cerca): Avisos del bot, sin rojo y sin desde cuándo", async () => {
+    const user = userEvent.setup();
+    render(<NotificationBell notifications={[botAlert(NEAR, { warning: true, detail: null })]} today="2026-10-20" upcomingEnabled={false} />);
+    await user.click(bell());
+    expect(panel().getByText(/^Avisos del bot/)).toBeVisible();
+    expect(panel().queryByText(/^Alertas del bot/)).toBeNull();
+    expect(panel().getByText(NEAR)).not.toHaveClass("text-danger");
+    expect(panel().queryByText(/^Desde el/)).toBeNull();
+  });
+
+  it("con una falla y un aviso: Alertas del bot, la falla en rojo y el aviso no; Marcar todas las incluye", async () => {
+    markRead.mockResolvedValue({ message: "Se marcaron 2 como leídas", tone: "success" });
+    const user = userEvent.setup();
+    render(<NotificationBell notifications={[botAlert(TOKEN), botAlert(NEAR, { warning: true, detail: null })]} today="2026-10-20" upcomingEnabled />);
+    await user.click(bell());
+    expect(panel().getByText(/^Alertas del bot/)).toBeVisible();
+    expect(panel().getByText(TOKEN)).toHaveClass("text-danger");
+    expect(panel().getByText(NEAR)).not.toHaveClass("text-danger");
+    await user.click(panel().getByRole("button", { name: "Marcar todas como leídas" }));
+    expect(sent()).toEqual(["bot|whatsapp_token|2026-10-23T14:05:00.000Z", "bot|monthly_limit_near|2026-11-01"]);
+  });
+
+  it("seguir Ver Bot de WhatsApp cierra la campana", async () => {
+    const user = userEvent.setup();
+    render(<NotificationBell notifications={[botAlert(TOKEN)]} today="2026-10-20" upcomingEnabled />);
+    await user.click(bell());
+    const link = panel().getByRole("link", { name: "Ver Bot de WhatsApp" });
+    link.addEventListener("click", (event) => event.preventDefault());
+    await user.click(link);
+    expect(screen.queryByRole("group", { name: "Notificaciones" })).toBeNull();
+  });
+
+  it("en inglés", async () => {
+    const title = "The WhatsApp token doesn't work: the bot can't reply";
+    render(<NotificationBell notifications={[botAlert(title, { detail: "Since Oct 23, 2:05 PM" })]} today="2026-10-20" upcomingEnabled />, { english: true });
+    await userEvent.click(screen.getByRole("button", { name: "Notifications: 1 unread" }));
+    const list = within(screen.getByRole("group", { name: "Notifications" }));
+    expect(list.getByText(/^Bot alerts/)).toBeVisible();
+    expect(list.getByRole("link", { name: "See WhatsApp bot" })).toHaveAttribute("href", "/admin/bot");
+    expect(list.getByRole("button", { name: `Mark as read: ${title}` })).toHaveTextContent("Mark as read");
   });
 });
 

@@ -63,6 +63,12 @@ export async function requireAdmin(): Promise<CurrentUser> {
 }
 
 /**
+ * ¿Puede administrar? El rol de admin y la verificación en dos pasos, lo mismo que pide requireAdmin, pero sin
+ * redirigir: para mostrar algo de administración fuera de /admin (las alertas del bot en la campana).
+ */
+export const canAdminister = (user: CurrentUser) => hasRole(user.role, "admin") && user.twoFactorEnabled;
+
+/**
  * Para dar y quitar el rol de admin (/admin/usuarios): lo de requireAdmin y, además, ser el super
  * admin. A cualquier otro admin le responde 404, como a quien no es admin.
  */

@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { type ReactNode, useActionState, useEffect, useId, useRef, useState } from "react";
+import { AdminBadge } from "@/components/admin-badge";
 import { useToast } from "@/components/toaster";
 import { useLocale, useTexts } from "@/i18n/client";
 import { texts } from "@/i18n/texts";
+import type { BotAlertView } from "@/modules/admin/bot/alerts-view";
 import { type MarkReadState, markNotificationsReadAction } from "@/modules/notifications/actions";
 import type { BellNotification } from "@/modules/notifications/notifications";
 import { type RegisterReminder, reminderText } from "@/modules/reminders/register-reminder";
@@ -23,6 +25,10 @@ const TEXTS = texts(
     seeAll: "Ver los próximos pagos en el Resumen",
     register: "Registrar un egreso",
     markReminder: "Marcar como leída: el recordatorio de registro",
+    markAlert: (title: string) => `Marcar como leída: ${title}`,
+    botAlerts: "Alertas del bot",
+    botNotices: "Avisos del bot",
+    seeBot: "Ver Bot de WhatsApp",
   },
   {
     en: {
@@ -37,6 +43,10 @@ const TEXTS = texts(
       seeAll: "See upcoming payments in the Overview",
       register: "Add an expense",
       markReminder: "Mark as read: the reminder to add transactions",
+      markAlert: (title) => `Mark as read: ${title}`,
+      botAlerts: "Bot alerts",
+      botNotices: "Bot notices",
+      seeBot: "See WhatsApp bot",
     },
   },
 );
@@ -48,7 +58,8 @@ const TEXTS = texts(
  * siguen en el Resumen. Se maneja como el menú de la cuenta: se cierra con Escape (el foco vuelve a la
  * campana), al tocar fuera o al salir con Tab; con la ventana de "Registrar pago" abierta, Escape cierra
  * solo la ventana. El enlace a los próximos pagos del Resumen, solo con sus avisos prendidos (`upcomingEnabled`):
- * con ellos apagados, la campana tiene solo el recordatorio de registro.
+ * con ellos apagados, la campana tiene solo el recordatorio de registro (y, a los admins, las alertas del bot, que
+ * van primero, con la etiqueta Admin).
  */
 export function NotificationBell({
   notifications,
@@ -65,8 +76,12 @@ export function NotificationBell({
   const wrapper = useRef<HTMLDivElement>(null);
   const button = useRef<HTMLButtonElement>(null);
   const count = notifications.length;
+  const alerts = notifications.filter((n) => n.kind === "bot");
   const reminder = notifications.find((n) => n.kind === "reminder");
   const payments = notifications.filter((n) => n.kind === "payment");
+  // Si solo hay avisos (el tope mensual cerca), "Avisos del bot", como en el Inicio del admin.
+  const failing = alerts.some(({ alert }) => !alert.warning);
+  const separator = "mt-2 border-t border-border pt-2";
 
   useEffect(() => {
     if (!open) return;
@@ -139,16 +154,36 @@ export function NotificationBell({
           <p className="py-6 text-center text-sm text-muted">{t.none}</p>
         ) : (
           <>
+            {alerts.length > 0 && (
+              <>
+                <p className="flex items-center gap-2 text-xs text-muted">
+                  {failing ? t.botAlerts : t.botNotices} <AdminBadge />
+                </p>
+                <ul className="mt-1 divide-y divide-border">
+                  {alerts.map(({ id, alert }) => (
+                    <li key={id}>
+                      <BotAlertItem
+                        alert={alert}
+                        onNavigate={() => setOpen(false)}
+                        extra={<MarkRead ids={[id]} label={t.markOne} busyLabel={t.marking} name={t.markAlert(alert.title)} />}
+                      />
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
             {reminder && (
-              <ReminderItem
-                reminder={reminder.reminder}
-                onNavigate={() => setOpen(false)}
-                extra={<MarkRead ids={[reminder.id]} label={t.markOne} busyLabel={t.marking} name={t.markReminder} />}
-              />
+              <div className={alerts.length > 0 ? separator : ""}>
+                <ReminderItem
+                  reminder={reminder.reminder}
+                  onNavigate={() => setOpen(false)}
+                  extra={<MarkRead ids={[reminder.id]} label={t.markOne} busyLabel={t.marking} name={t.markReminder} />}
+                />
+              </div>
             )}
             {payments.length > 0 && (
               <>
-                <p className={`text-xs text-muted ${reminder ? "mt-2 border-t border-border pt-2" : ""}`}>{t.upcoming}</p>
+                <p className={`text-xs text-muted ${alerts.length > 0 || reminder ? separator : ""}`}>{t.upcoming}</p>
                 {/* Sin desplazamiento propio: con muchos avisos, la lista crece y se recorre con la página. */}
                 <ul className="mt-1 divide-y divide-border">
                   {payments.map(({ id, item }) => (
@@ -173,6 +208,23 @@ export function NotificationBell({
             {t.seeAll}
           </Link>
         )}
+      </div>
+    </div>
+  );
+}
+
+/** Una alerta del bot (solo a los admins): qué pasa (en rojo si es una falla), desde cuándo y el enlace al módulo. */
+function BotAlertItem({ alert, onNavigate, extra }: { alert: BotAlertView; onNavigate: () => void; extra: ReactNode }) {
+  const t = useTexts(TEXTS);
+  return (
+    <div className="space-y-0.5 py-2 text-sm">
+      <p className={`font-medium ${alert.warning ? "" : "text-danger"}`}>{alert.title}</p>
+      {alert.detail && <p className="text-xs text-muted">{alert.detail}</p>}
+      <div className="flex flex-wrap items-center gap-x-4">
+        <Link href="/admin/bot" onClick={onNavigate} className="inline-flex min-h-11 items-center text-xs font-medium text-brand pointer-fine:min-h-6">
+          {t.seeBot}
+        </Link>
+        {extra}
       </div>
     </div>
   );

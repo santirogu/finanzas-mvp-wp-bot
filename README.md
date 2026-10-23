@@ -563,11 +563,12 @@ La app está en español (el de siempre) y en inglés, toda la web (el bot de Wh
   - **La campana** (`notification-bell.tsx`, `user-notifications.tsx`, `src/modules/notifications/`): arriba,
     junto al menú de la cuenta, en todas las páginas. El número en rojo cuenta las notificaciones sin leer:
     el recordatorio de registro (primero) y los avisos de próximos pagos, cada una con su tipo en el id
-    (`registro|YYYY-MM-DD`, `pago|YYYY-MM|<clave>`). La lista trae los mismos avisos con "Registrar pago",
+    (`registro|YYYY-MM-DD`, `pago|YYYY-MM|<clave>`); a los admins, antes, las alertas del bot (`bot|<tipo>|<fecha>`,
+    ver Bot de WhatsApp → Alertas del bot). La lista trae los mismos avisos con "Registrar pago",
     "Este pago ya no aplica" y "Marcar como leída" (o "Marcar todas como leídas"), que la saca de la campana
     (tabla `notification_read`) pero el aviso sigue en el Resumen. Se cierra con Escape, al tocar fuera o al
     salir con Tab, como el menú de la cuenta. "Ver los próximos pagos en el Resumen", solo con esos avisos
-    prendidos; con ellos y el recordatorio apagados, no hay campana.
+    prendidos; con ellos y el recordatorio apagados (y, para un admin, sin alertas del bot), no hay campana.
   - **Configuración → Notificaciones** (`notification-settings.tsx`, `upcoming-settings.ts`, tabla
     `notification_setting`): prenderlos o apagarlos (apagados no se avisa nada, tampoco los atrasados) y
     con cuántos días de anticipación, de 0 (el mismo día) a 10, en un campo numérico con su error en
@@ -1050,6 +1051,13 @@ la fecha de los mensajes, en hora de Colombia.
 
   Las alertas que son fallas, no los avisos, cuentan como un problema en [Salud del sistema](#salud-del-sistema).
   Fuera de la app las vigila [la vigilancia cada hora](#vigilancia-cada-hora).
+
+  También van en **la campana** de quien puede administrar (el rol y la verificación en dos pasos:
+  `canAdminister`), en cualquier página y antes que todo, con la etiqueta Admin, qué pasa, desde cuándo y "Ver Bot de
+  WhatsApp" (qué hacer queda en el módulo). No se apagan en Configuración (decisión del dueño). "Marcar como leída"
+  la saca de la campana hasta que vuelva a pasar: su id lleva el tipo y desde cuándo (`bot|<tipo>|<fecha>`), así que
+  una falla que se arregla y vuelve es otra; el tope mensual vuelve el mes siguiente, y los mensajes sin procesar,
+  cada día mientras sigan.
 
 - **Configuración** (cada cambio pide el código de Google Authenticator y queda en Historial → Acciones
   del admin, con "Bot de WhatsApp" en vez de una cuenta):
