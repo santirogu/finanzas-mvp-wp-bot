@@ -14,6 +14,7 @@ import {
   notificationRead,
   notificationSetting,
   loginFailure,
+  reminderSetting,
   session,
   signupInvite,
   transaction,
@@ -64,6 +65,7 @@ async function fullAccount(email: string, phone: string) {
   await db.insert(categoryBudget).values({ userId: id, categoryId: personal.id, amount: 50000 });
   await db.insert(notificationSetting).values({ userId: id, upcomingDays: 5 });
   await db.insert(notificationRead).values({ userId: id, notificationId: "pago|2026-10|web" });
+  await db.insert(reminderSetting).values({ userId: id, enabled: false, days: 5 });
   // La verificación en dos pasos (su clave secreta y sus códigos de respaldo) y, como admin, el último
   // código con el que confirmó una acción: un admin también puede eliminar su cuenta.
   await db.insert(twoFactor).values({ id: randomUUID(), userId: id, secret: "secreto-cifrado", backupCodes: "codigos-cifrados" });
@@ -89,6 +91,7 @@ async function countsFor(userId: string, email: string, phone: string) {
     categoryBudget: await count(db.select().from(categoryBudget).where(eq(categoryBudget.userId, userId))),
     notificationSetting: await count(db.select().from(notificationSetting).where(eq(notificationSetting.userId, userId))),
     notificationRead: await count(db.select().from(notificationRead).where(eq(notificationRead.userId, userId))),
+    reminderSetting: await count(db.select().from(reminderSetting).where(eq(reminderSetting.userId, userId))),
     twoFactor: await count(db.select().from(twoFactor).where(eq(twoFactor.userId, userId))),
     adminCodeUse: await count(db.select().from(adminCodeUse).where(eq(adminCodeUse.userId, userId))),
   };
@@ -114,6 +117,7 @@ describe("deleteAccountData", () => {
       categoryBudget: 1,
       notificationSetting: 1,
       notificationRead: 1,
+      reminderSetting: 1,
       twoFactor: 1,
       adminCodeUse: 1,
     });
@@ -136,6 +140,7 @@ describe("deleteAccountData", () => {
       categoryBudget: 0,
       notificationSetting: 0,
       notificationRead: 0,
+      reminderSetting: 0,
       twoFactor: 0,
       adminCodeUse: 0,
     });

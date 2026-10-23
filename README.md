@@ -539,6 +539,18 @@ La app está en español (el de siempre) y en inglés, toda la web (el bot de Wh
   plata, con al menos 20 % y $20.000 de diferencia (así $5.000 → $20.000 no es "300 % más"), o, si ninguna subió,
   la que más bajó; también una categoría nueva o una sin gastos este mes (decisiones del dueño). "Ver en Reportes"
   lleva a sus categorías (`#categorias`; `ScrollToHash` baja hasta ahí cuando la sección llega).
+- **El recordatorio de registro** (`src/modules/reminders/`, `dashboard/register-reminder.tsx`): si la persona
+  lleva 3 días o más sin registrar nada, en el Resumen (solo con el mes en curso) y en la campana: "Llevas 4 días sin
+  registrar nada." (o "Todavía no registras ningún movimiento.") con "Registrar un egreso" y, con WhatsApp
+  vinculado, "Escribirle al bot". Cuenta desde el día (en su zona) en que registró su último movimiento, por la
+  web o por WhatsApp y sin los eliminados, o, si nunca registró, desde que creó la cuenta. Solo en la web
+  (decisión del dueño: por WhatsApp haría falta una plantilla de Meta, que se cobra por mensaje). Marcarlo leído
+  en la campana lo saca hasta el próximo hueco (el id lleva el día desde el que cuenta).
+  - **Configuración → Recordatorio de registro** (`reminder-settings.tsx`, tabla `reminder_setting`, una fila
+    por cuenta que lo cambió): prenderlo o apagarlo y después de cuántos días sin registrar, de 1 a 14. Funciona
+    como Notificaciones: se guarda con el botón; apagado, los días se conservan. Va en su propia tabla para que
+    guardarlo no fije los avisos de próximos pagos (que siguen los Valores de la app mientras la persona no los
+    cambie).
 - **Próximos pagos en el Resumen** (`src/modules/reports/upcoming.ts`, `upcoming-payments.tsx`): los gastos
   fijos que tocan en los próximos días (3 si la persona no lo cambió) y los atrasados, del más viejo al
   más próximo. Solo en el mes actual y solo si hay alguno; los primeros 5 y el resto con "Mostrar más".
@@ -549,12 +561,13 @@ La app está en español (el de siempre) y en inglés, toda la web (el bot de Wh
     va sin categoría. Se registra como cualquier egreso web, con las mismas validaciones, y el aviso
     desaparece (ese mes ya está pagado).
   - **La campana** (`notification-bell.tsx`, `user-notifications.tsx`, `src/modules/notifications/`): arriba,
-    junto al menú de la cuenta, en todas las páginas. El número en rojo cuenta las notificaciones sin leer
-    (por ahora, los avisos de próximos pagos; cada una con su tipo en el id, `pago|YYYY-MM|<clave>`, para
-    sumar otros tipos). La lista trae los mismos avisos con "Registrar pago", "Este pago ya no aplica" y
-    "Marcar como leído" (o "Marcar todas como leídas"), que la saca de la campana (tabla
-    `notification_read`) pero el aviso sigue en el Resumen. Se cierra con Escape, al tocar fuera o al
-    salir con Tab, como el menú de la cuenta. Con los avisos apagados, no hay campana.
+    junto al menú de la cuenta, en todas las páginas. El número en rojo cuenta las notificaciones sin leer:
+    el recordatorio de registro (primero) y los avisos de próximos pagos, cada una con su tipo en el id
+    (`registro|YYYY-MM-DD`, `pago|YYYY-MM|<clave>`). La lista trae los mismos avisos con "Registrar pago",
+    "Este pago ya no aplica" y "Marcar como leída" (o "Marcar todas como leídas"), que la saca de la campana
+    (tabla `notification_read`) pero el aviso sigue en el Resumen. Se cierra con Escape, al tocar fuera o al
+    salir con Tab, como el menú de la cuenta. "Ver los próximos pagos en el Resumen", solo con esos avisos
+    prendidos; con ellos y el recordatorio apagados, no hay campana.
   - **Configuración → Notificaciones** (`notification-settings.tsx`, `upcoming-settings.ts`, tabla
     `notification_setting`): prenderlos o apagarlos (apagados no se avisa nada, tampoco los atrasados) y
     con cuántos días de anticipación, de 0 (el mismo día) a 10, en un campo numérico con su error en

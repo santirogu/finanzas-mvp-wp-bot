@@ -78,6 +78,7 @@ textos.
 | balance | balance | saldo | El bot entiende "saldo", pero responde "balance". |
 | aviso (de un pago) | notice | recordatorio; reminder | |
 | campana, notificaciones | bell, notifications | | |
+| recordatorio de registro | reminder to add transactions | aviso de registro; notificación de inactividad | Cuando la persona lleva días sin registrar nada (Resumen, campana y Configuración). "Recordatorio" se reserva para esto: los de los pagos son "avisos". |
 | Entrar (botón), iniciar sesión | Sign in, sign in | loguearse, login; log in | |
 | Salir (botón), cerrar sesión | Sign out, sign out | log out | |
 | Crear cuenta, registrarte | Create account, sign up | | |
