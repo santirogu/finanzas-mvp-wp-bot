@@ -235,11 +235,39 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ matrix.webkit && 'webkit-' || '' }}${{ hashFiles('pnpm-lock.yaml') }}
 
+      # Las dependencias del sistema de los navegadores (paquetes de apt; las de WebKit, unos 120 MB): algunos
+      # runners las bajan del espejo de Ubuntu a pocos KB/s y la parte se cortaba sin ninguna prueba fallida
+      # (#187, #190). Los .deb se guardan en la caché y apt los usa en vez de bajarlos; con una versión nueva de
+      # Playwright, la caché anterior sirve igual (restore-keys) y apt baja solo lo que cambió.
+      - name: Caché de los paquetes de los navegadores
+        id: paquetes-navegadores
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/paquetes-navegadores
+          key: apt-${{ runner.os }}-${{ matrix.webkit && 'webkit-' || '' }}${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: apt-${{ runner.os }}-${{ matrix.webkit && 'webkit-' || '' }}
+
       - name: Instalar los navegadores
         env:
           NAVEGADORES: ${{ matrix.webkit && 'chromium webkit' || 'chromium' }}
-        # Sin comillas a propósito: $NAVEGADORES son uno o dos argumentos.
-        run: pnpm exec playwright install --with-deps $NAVEGADORES
+        run: |
+          # Que apt no borre los .deb al instalar: se copian a la caché al terminar.
+          echo 'APT::Keep-Downloaded-Packages "true"; Binary::apt::APT::Keep-Downloaded-Packages "true";' \
+            | sudo tee /etc/apt/apt.conf.d/99-guardar-paquetes > /dev/null
+          mkdir -p ~/paquetes-navegadores
+          sudo cp ~/paquetes-navegadores/*.deb /var/cache/apt/archives/ 2>/dev/null || true
+          # Sin comillas a propósito: $NAVEGADORES son uno o dos argumentos.
+          pnpm exec playwright install --with-deps $NAVEGADORES
+          cp /var/cache/apt/archives/*.deb ~/paquetes-navegadores/ 2>/dev/null || true
+          echo "Paquetes de los navegadores: $(ls ~/paquetes-navegadores | wc -l) .deb, $(du -sh ~/paquetes-navegadores | cut -f1)"
+
+      # Apenas se instalan (no al final del job): así se guardan aunque después falle una prueba.
+      - name: Guardar los paquetes de los navegadores
+        if: steps.paquetes-navegadores.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/paquetes-navegadores
+          key: ${{ steps.paquetes-navegadores.outputs.cache-primary-key }}
 
       - name: Compilar la app
         env:
