@@ -1,4 +1,5 @@
-import { bigint, index, jsonb, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import { bigint, check, index, integer, jsonb, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { user } from "./auth";
 import { category, transactionType } from "./finance";
 
@@ -44,4 +45,36 @@ export const categoryChange = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("category_change_created_at_idx").on(t.createdAt)],
+);
+
+// La configuración de la app que cambia el admin (/admin/configuracion, src/modules/admin/configuracion/): una
+// sola fila. Por ahora, quién puede crear una cuenta: "open" (cualquiera, lo de siempre), "closed" (nadie) o
+// "invite" (solo los correos de signup_invite). Sin la fila, abiertos.
+export const appSetting = pgTable(
+  "app_setting",
+  {
+    id: integer("id").primaryKey().default(1),
+    signupMode: text("signup_mode").notNull().default("open"),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedBy: text("updated_by").references(() => user.id, { onDelete: "set null" }),
+  },
+  (t) => [
+    check("app_setting_single_row", sql`${t.id} = 1`),
+    check("app_setting_signup_mode", sql`${t.signupMode} in ('open', 'closed', 'invite')`),
+  ],
+);
+
+// Los correos invitados a crear una cuenta cuando los registros son "solo con invitación". El correo va en
+// minúsculas y sin espacios (como lo compara el registro). Al registrarse, la invitación queda marcada
+// (used_at) y se borra si esa persona elimina su cuenta (deleteAccountData).
+export const signupInvite = pgTable(
+  "signup_invite",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    email: text("email").notNull(),
+    invitedBy: text("invited_by").references(() => user.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+  },
+  (t) => [uniqueIndex("signup_invite_email_uq").on(t.email)],
 );

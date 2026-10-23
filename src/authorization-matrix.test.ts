@@ -18,7 +18,7 @@ const APP = join(ROOT, "src/app");
 const PAGES = {
   "/": "pública (con sesión redirige al dashboard)",
   "/login": "pública (con sesión redirige al dashboard)",
-  "/registro": "pública (con sesión redirige al dashboard)",
+  "/registro": "pública (con sesión redirige al dashboard); solo lee si los registros están abiertos, cerrados o con invitación (sin los correos invitados)",
   "/privacidad": "pública siempre (la exige Meta)",
   "/eliminar-datos": "pública siempre (la exige Meta)",
   "/cuenta-eliminada": "pública siempre (se llega justo después de eliminar la cuenta)",
@@ -41,6 +41,7 @@ const PAGES = {
   "/admin/bot": "requiere sesión de admin con la verificación en dos pasos activa (requireAdmin); sin el texto de los mensajes",
   "/admin/salud":
     "requiere sesión de admin con la verificación en dos pasos activa (requireAdmin); solo nombres de variables (nunca sus valores), tamaños y cantidades",
+  "/admin/configuracion": "requiere sesión de admin con la verificación en dos pasos activa (requireAdmin); la configuración global de la app y los correos invitados",
   "/admin/seguridad": "requiere sesión de admin; es donde se configura la verificación en dos pasos (requireAdminRole)",
 } as const;
 
@@ -99,6 +100,9 @@ const SERVER_ACTIONS = {
   changeMonthlyLimitAction: "requireAdmin + código de Google Authenticator; tope dentro de MONTHLY_TOKEN_BOUNDS o sin tope",
   changeBotModelAction: "requireAdmin + código de Google Authenticator; solo un modelo de la lista (src/modules/bot/models.ts)",
   resendRepliesAction: "requireAdmin + código de Google Authenticator; solo las respuestas que no salieron en 24 h, sin mostrarlas",
+  changeSignupModeAction: "requireAdmin + código de Google Authenticator; solo uno de los modos (src/modules/auth/signup-modes.ts)",
+  addSignupInviteAction: "requireAdmin; un correo válido que no tenga cuenta; queda en el historial (sin código: README → Riesgos aceptados)",
+  removeSignupInviteAction: "requireAdmin; solo quita una invitación; queda en el historial (sin código: README → Riesgos aceptados)",
   chooseFixedExpenseAction:
     "requireUser; solo los gastos fijos propios (el dueño sale de la sesión); agregar exige un egreso propio con esa descripción",
   saveFixedNoteAction:
@@ -387,6 +391,7 @@ describe("administración", () => {
         "src/modules/admin/health/connections.ts",
         "src/modules/admin/health/system.ts",
         "src/modules/admin/bot/resend.ts",
+        "src/modules/admin/configuracion/signup.ts",
       ]),
     );
   });

@@ -72,8 +72,8 @@ export const ADMIN_MODULES: readonly AdminModule[] = [
     id: "configuracion",
     label: "Configuración",
     href: "/admin/configuracion",
-    description: "Ajustes globales de la app",
-    status: "pronto",
+    description: "Quién puede crear una cuenta",
+    status: "activo",
   },
   {
     id: "seguridad",
@@ -91,7 +91,7 @@ const ENGLISH: Readonly<Record<AdminModuleId, Pick<AdminModule, "label" | "descr
   bot: { label: "WhatsApp bot", description: "Messages, errors and Claude usage" },
   categorias: { label: "Categories", description: "The income and expense categories" },
   salud: { label: "System health", description: "Database, deployments and services" },
-  configuracion: { label: "Settings", description: "Global app settings" },
+  configuracion: { label: "Settings", description: "Who can create an account" },
   seguridad: { label: "Security", description: "Your two-step verification" },
 };
 

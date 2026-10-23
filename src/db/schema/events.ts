@@ -29,6 +29,10 @@ export const accountEventType = pgEnum("account_event_type", [
   "bot_monthly_limit_changed",
   "bot_replies_resent",
   "bot_model_changed",
+  // Configuración de la app (/admin/configuracion), con admin_id y sin cuenta: los registros y las invitaciones.
+  "signup_mode_changed",
+  "signup_invite_added",
+  "signup_invite_removed",
 ]);
 
 /** Detalle de un evento: el motivo de una desvinculación o de un intento fallido. */
@@ -52,6 +56,11 @@ export type AccountEventDetails = {
   /** Cuántas respuestas reenvió el admin y cuántas no salieron otra vez (bot_replies_resent). */
   resent?: number;
   failed?: number;
+  /** Cómo quedaron los registros, y cómo estaban (signup_mode_changed). */
+  signupMode?: "open" | "closed" | "invite";
+  previousSignupMode?: "open" | "closed" | "invite";
+  /** El correo invitado o quitado (signup_invite_added, signup_invite_removed): solo lo ve el admin. */
+  email?: string;
 };
 
 export const accountEvent = pgTable(

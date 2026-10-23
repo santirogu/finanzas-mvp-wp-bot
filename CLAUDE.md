@@ -193,9 +193,10 @@ de Vercel ni muevas las migraciones fuera del job `deploy`.
   Configuración (`saveLanguageAction`); la cookie `idioma`, Configuración y el inicio de sesión (`src/lib/auth.ts`).
   Sin cookie, español (decisión del dueño: el idioma del navegador no cuenta); sin sesión se cambia con el
   selector de la portada, el login y el registro (`chooseLanguageAction`, que solo vuelve a esas páginas).
-- **E2E que cambian algo de toda la app** (pausar Claude, los topes del bot, la configuración): van en
-  `e2e/configuracion-*.spec.ts`, el proyecto "configuracion" de Playwright, que corre aparte (README →
-  Pruebas y CI). En paralelo con las demás les cambiaría lo que responde el bot.
+- **E2E que cambian algo de toda la app** (pausar Claude, los topes del bot, los registros): van en
+  `e2e/configuracion-*.spec.ts`, el proyecto "configuracion" de Playwright, que corre aparte y de a un
+  archivo (README → Pruebas y CI). En paralelo con las demás les cambiaría lo que responde el bot o no
+  las dejaría crear cuentas; cada prueba empieza con la configuración de siempre (`beforeEach`).
 - **Auditoría de diseño:** usa el skill `/auditoria-diseno` (README → Pruebas y CI).
   - Antes de abrir un PR que cambie páginas, componentes, `globals.css` o el layout, corre
     `/auditoria-diseno cambios`.
