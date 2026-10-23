@@ -8,7 +8,7 @@ vi.mock("next/navigation", () => ({ usePathname: () => navigation.pathname }));
 const { AdminNav } = await import("./admin-nav");
 
 describe("AdminNav", () => {
-  it("muestra Inicio y los módulos activos, sin los que vienen", () => {
+  it("muestra Inicio y los módulos activos", () => {
     render(<AdminNav />);
     const nav = screen.getByRole("navigation", { name: "Secciones de administración" });
     const links = screen.getAllByRole("link");
@@ -20,9 +20,9 @@ describe("AdminNav", () => {
       ["Bot de WhatsApp", "/admin/bot"],
       ["Categorías", "/admin/categorias"],
       ["Salud del sistema", "/admin/salud"],
+      ["Configuración", "/admin/configuracion"],
       ["Seguridad", "/admin/seguridad"],
     ]);
-    expect(screen.queryByText("Configuración")).toBeNull();
   });
 
   it.each([
@@ -33,6 +33,7 @@ describe("AdminNav", () => {
     ["/admin/usuarios/abc123", "Usuarios"],
     ["/admin/bot", "Bot de WhatsApp"],
     ["/admin/categorias", "Categorías"],
+    ["/admin/configuracion", "Configuración"],
     ["/admin/seguridad", "Seguridad"],
   ])("en %s marca %s como la página actual (y solo esa)", (pathname, current) => {
     navigation.pathname = pathname;
@@ -56,6 +57,7 @@ describe("AdminNav en inglés", () => {
       ["WhatsApp bot", "/admin/bot"],
       ["Categories", "/admin/categorias"],
       ["System health", "/admin/salud"],
+      ["Settings", "/admin/configuracion"],
       ["Security", "/admin/seguridad"],
     ]);
     expect(screen.getByRole("link", { name: "Users" })).toHaveAttribute("aria-current", "page");

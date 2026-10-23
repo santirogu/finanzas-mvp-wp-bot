@@ -3,11 +3,17 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { db } from "@/db";
 import { accountEvent, user } from "@/db/schema";
 
-// Si guardar el evento de registro falla, la cuenta se crea igual (y el error queda en el log):
-// perder una línea del historial es mejor que impedir registrarse.
+// Si guardar el evento de registro o marcar la invitación como usada falla, la cuenta se crea igual (y el error
+// queda en el log): perder una línea del historial es mejor que impedir registrarse.
 vi.mock("@/modules/account/events", () => ({
   recordEvent: vi.fn(async () => {
     throw new Error("se cayó la tabla del historial");
+  }),
+}));
+vi.mock("@/modules/auth/signup-policy", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/modules/auth/signup-policy")>()),
+  markInviteUsed: vi.fn(async () => {
+    throw new Error("se cayó la tabla de invitaciones");
   }),
 }));
 
@@ -30,5 +36,6 @@ describe("historial al registrarse", () => {
     expect(await db.select().from(accountEvent)).toEqual([]);
     // Solo el tipo del error: su mensaje podría traer datos de la consulta.
     expect(logged).toHaveBeenCalledWith("[historial] no se pudo registrar el evento de registro", result.user.id, "Error");
+    expect(logged).toHaveBeenCalledWith("[registros] no se pudo marcar la invitación como usada", result.user.id, "Error");
   });
 });

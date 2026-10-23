@@ -218,8 +218,9 @@ test("en inglés: la administración (Seguridad, el inicio, Usuarios y una acci�
     await expect(page).toHaveTitle("Administration · Anotado");
     await expect(page.getByRole("heading", { level: 1, name: "Administration" })).toBeVisible();
     const nav = visible(page.getByRole("navigation", { name: "Administration sections" }));
-    await expect(nav.getByRole("link")).toHaveText(["Home", "History", "Users", "WhatsApp bot", "Categories", "System health", "Security"]);
+    await expect(nav.getByRole("link")).toHaveText(["Home", "History", "Users", "WhatsApp bot", "Categories", "System health", "Settings", "Security"]);
     await expect(visible(page.getByText("Two-step verification on"))).toBeVisible();
+    await expect(visible(page.getByText("Sign-ups open"))).toBeVisible();
     expect(await seriousViolations(page)).toEqual([]);
     await nav.getByRole("link", { name: "Users", exact: true }).click();
     await expect(page).toHaveURL(/\/admin\/usuarios$/);

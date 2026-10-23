@@ -10,7 +10,7 @@ const subnav = (page: Page) => visible(page.getByRole("navigation", { name: "Sec
 const chip = (page: Page, name: string) => subnav(page).getByRole("link", { name, exact: true });
 const cards = (page: Page) => visible(page.getByRole("list", { name: "Módulos de administración" })).getByRole("listitem");
 
-test("Inicio muestra una tarjeta por módulo: los activos con su resumen y los que vienen como 'Pronto' @principal", async ({ page, request }) => {
+test("Inicio muestra una tarjeta por módulo, con su resumen @principal", async ({ page, request }) => {
   // Una corrida reciente de la limpieza diaria: así Salud del sistema está en orden aunque el build sea viejo.
   expect((await request.get("/api/cron/limpieza", { headers: { authorization: `Bearer ${E2E_CRON_SECRET}` } })).status()).toBe(200);
   await newAdmin(page);
@@ -38,9 +38,11 @@ test("Inicio muestra una tarjeta por módulo: los activos con su resumen y los q
   const health = cards(page).filter({ hasText: "Salud del sistema" });
   await expect(health.getByRole("link")).toHaveAttribute("href", "/admin/salud");
   await expect(health).toContainText("Todo en orden");
+  // Las E2E que cambian la configuración de la app van aparte (e2e/configuracion-*.spec.ts) y la dejan abierta.
   const settings = cards(page).filter({ hasText: "Configuración" });
-  await expect(settings).toContainText("Pronto");
-  await expect(settings.getByRole("link")).toHaveCount(0);
+  await expect(settings.getByRole("link")).toHaveAttribute("href", "/admin/configuracion");
+  await expect(settings).toContainText("Quién puede crear una cuenta");
+  await expect(settings).toContainText("Registros abiertos");
   expect(await seriousViolations(page)).toEqual([]);
 });
 
@@ -48,13 +50,23 @@ test("la subnavegación lleva a cada módulo y marca dónde se está; la pestañ
   await newAdmin(page);
   await setUpTwoFactor(page);
 
-  await expect(subnav(page).getByRole("link")).toHaveText(["Inicio", "Historial", "Usuarios", "Bot de WhatsApp", "Categorías", "Salud del sistema", "Seguridad"]);
+  await expect(subnav(page).getByRole("link")).toHaveText([
+    "Inicio",
+    "Historial",
+    "Usuarios",
+    "Bot de WhatsApp",
+    "Categorías",
+    "Salud del sistema",
+    "Configuración",
+    "Seguridad",
+  ]);
   for (const [name, url] of [
     ["Historial", /\/admin\/historial$/],
     ["Usuarios", /\/admin\/usuarios$/],
     ["Bot de WhatsApp", /\/admin\/bot$/],
     ["Categorías", /\/admin\/categorias$/],
     ["Salud del sistema", /\/admin\/salud$/],
+    ["Configuración", /\/admin\/configuracion$/],
     ["Seguridad", /\/admin\/seguridad$/],
     ["Inicio", /\/admin$/],
   ] as const) {
@@ -85,7 +97,7 @@ test("un admin sin la verificación ve el marco pero solo puede entrar a Segurid
   await newAdmin(page);
   await expect(page).toHaveURL(/\/admin\/seguridad$/);
   await expect(chip(page, "Seguridad")).toHaveAttribute("aria-current", "page");
-  for (const path of ["/admin", "/admin/historial", "/admin/usuarios", "/admin/usuarios/cualquiera", "/admin/categorias", "/admin/salud"]) {
+  for (const path of ["/admin", "/admin/historial", "/admin/usuarios", "/admin/usuarios/cualquiera", "/admin/categorias", "/admin/salud", "/admin/configuracion"]) {
     await page.goto(path);
     await expect(page, path).toHaveURL(/\/admin\/seguridad$/);
   }
@@ -93,7 +105,7 @@ test("un admin sin la verificación ve el marco pero solo puede entrar a Segurid
 
 test("a un usuario normal no le llega nada de la administración: ni el marco ni los nombres de los módulos", async ({ page }) => {
   await register(page);
-  for (const path of ["/admin", "/admin/historial", "/admin/usuarios", "/admin/categorias", "/admin/salud", "/admin/seguridad"]) {
+  for (const path of ["/admin", "/admin/historial", "/admin/usuarios", "/admin/categorias", "/admin/salud", "/admin/configuracion", "/admin/seguridad"]) {
     const response = await page.goto(path);
     await expect(visible(page.getByRole("heading", { name: "No encontramos esta página" })), path).toBeVisible();
     // Tampoco en el título de la pestaña (Next lo arma aparte del marco).

@@ -110,9 +110,10 @@ pnpm dev                        # http://localhost:3000 (antes, copia la base lo
   obligatorio **E2E y accesibilidad** pasa solo si pasan todas. Las partes están en la matriz del job
   `e2e-parte` de `.github/workflows/ci.yml`: si agregas un proyecto de Playwright, súmalo ahí
   (`test/e2e-en-ci.test.ts` falla si falta). La regla de `main` no cambia. Las pruebas que cambian la
-  configuración de toda la app (pausar Claude, los topes del bot: `e2e/configuracion-*.spec.ts`) van
-  en el proyecto `configuracion`: en local corren después de las demás y en el CI, en su propia parte
-  (`--no-deps`), porque a la vez que las otras les cambiarían lo que responde el bot. En un PR que solo cambia
+  configuración de toda la app (pausar Claude, los topes del bot, cerrar los registros:
+  `e2e/configuracion-*.spec.ts`) van en el proyecto `configuracion`: en local corren después de las demás
+  y en el CI, en su propia parte (`--no-deps`), porque a la vez que las otras les cambiarían lo que
+  responde el bot o no las dejarían crear cuentas. Dentro del proyecto, un archivo a la vez. En un PR que solo cambia
   cosas que las E2E no ejercitan (documentación, skills, otros workflows, pruebas que no son E2E,
   herramientas de `scripts/`), se saltan y el check pasa igual: lo decide `scripts/e2e-needed.mjs`,
   que ante un archivo desconocido las corre. Todo lo que salta las E2E también salta el despliegue
@@ -774,6 +775,7 @@ justifica.
 | **HSTS con `preload`** (`max-age` de 2 años, `includeSubDomains`) | En `*.vercel.app` no tiene efecto: solo el dueño de un dominio registrable puede pedir que entre a la lista de precarga (hstspreload.org), y nadie lo ha pedido. La cabecera sí obliga HTTPS a cada navegador que ya visitó la app | Se agregue un dominio propio: antes de pedir la precarga, confirmar que **todos** sus subdominios funcionan con HTTPS (salir de la lista tarda meses). Si no se va a pedir, se puede quitar `preload` |
 | **El rol de admin se da y se quita desde la app** (solo el super admin, en Usuarios) | Antes solo desde la terminal; el dueño lo pidió para no depender de la `DATABASE_URL`. Lo hace una sola cuenta (el super admin, marcado solo desde la terminal), con su código de Google Authenticator, y queda en el historial. Dar el rol cierra las sesiones de la persona y le exige la verificación en dos pasos para administrar; nadie le quita el rol al super admin desde la app | Hubiera más de una persona de confianza que necesite dar roles, o se agreguen roles con más permisos |
 | **Categorías: crear, renombrar y restaurar no piden el código** de Google Authenticator; archivar y eliminar sí (#50) | Son cambios que se ven de inmediato y se deshacen con otro cambio. Cada uno queda en `category_change` con el admin, y la sesión de admin ya exige los dos pasos al entrar | Las categorías empezaran a afectar algo más que el nombre y el emoji (por ejemplo, reglas del bot) |
+| **Registros: invitar y quitar un correo no piden el código** de Google Authenticator; cambiar quién puede crear una cuenta sí | Como crear categorías (#50): se ve de inmediato y se deshace con otro cambio. Una invitación solo sirve con los registros "solo con invitación" y para crear una cuenta común (nunca de admin). Cada cambio queda en el historial con el admin, y la sesión de admin ya exige los dos pasos al entrar. La invitación es el correo, no un enlace secreto: como la app no verifica correos, quien sepa un correo invitado podría registrarse antes con él (sería una cuenta común, y la persona invitada lo notaría al registrarse) | Una invitación diera algo más que crear una cuenta común (un rol, otra moneda, beneficios), o se agregue la verificación del correo |
 | **Eliminar una cuenta reinicia el contador de intentos de vinculación de su número** | Conservar esos intentos contradiría "al eliminar la cuenta se borra su historial". Aprovecharlo exige registrarse y vincular el número cada 5 intentos, contra un millón de códigos que viven 10 minutos | Se agregue un contador sin datos personales (por ejemplo, el número con hash, por una hora) |
 | **Si el registro de npm no responde, la auditoría de dependencias deja un aviso y el CI sigue**, solo si `pnpm-lock.yaml` no cambió (`scripts/dependency-audit.mjs`) | Un timeout del registro frenó el despliegue de #176 sin ninguna vulnerabilidad de por medio. Esas dependencias ya pasaron la auditoría: en un PR, las de la base; en `main`, las del PR, que la regla "Proteger main" exige al día. Lo único que se atrasa es ver un aviso publicado después: lo muestran la próxima corrida y Dependabot. Si el lockfile cambió, o no se puede comparar (con "Run workflow"), falla como ante una vulnerabilidad | El aviso amarillo apareciera en varias corridas seguidas (días sin auditar) |
 | **El filtro de enlaces de las respuestas del bot usa una lista de terminaciones** (`.com`, `.co`, `.net`…) | Una terminación rara pasaría, pero la respuesta solo le llega a quien escribió, y además tiene largo máximo | Hubiera respuestas reales con enlaces de otra terminación |
@@ -922,7 +924,7 @@ y escribe el correo para confirmar. Si otra cuenta era el super admin, deja de s
 La pestaña **Admin** (solo para admins) abre `/admin`, organizada en **módulos**. Todos comparten un
 marco (`src/app/[lang]/(app)/admin/layout.tsx`): el título y una subnavegación con chips (Inicio y los
 módulos activos). **Inicio** muestra una tarjeta por módulo, con un resumen de los activos; los que
-vienen aparecen como "Pronto".
+vienen (hoy ninguno) aparecen como "Pronto".
 
 La pestaña va siempre en violeta (los colores `admin`) y con el escudo, como la etiqueta y el escudo del
 menú de la cuenta (`src/components/admin-badge.tsx`): se distingue de las de todos y avisa que ahí se
@@ -935,7 +937,7 @@ actúa con permisos de admin.
 | Bot de WhatsApp | `/admin/bot` | Activo: qué pasó con los mensajes, consumo de Claude y errores, sin el texto |
 | Categorías | `/admin/categorias` | Activo: crear, editar, archivar, restaurar y eliminar las de ingresos y egresos |
 | Salud del sistema | `/admin/salud` | Activo: el estado de la app (lo mismo que `/api/health`), la versión, la base, la limpieza diaria, las conexiones del bot y los despliegues recientes |
-| Configuración | `/admin/configuracion` | Pronto |
+| Configuración | `/admin/configuracion` | Activo: quién puede crear una cuenta (registros abiertos, cerrados o solo con invitación) y los correos invitados |
 | Seguridad | `/admin/seguridad` | Activo: la verificación en dos pasos del admin |
 
 - **Registro único** (`src/modules/admin/modules.ts`): de ahí salen la subnavegación y las tarjetas.
@@ -1139,6 +1141,30 @@ sus valores; tamaños y cantidades). Se revisa al abrir la página (`src/modules
   el resto de la página se ve igual, con un enlace a las releases. En las E2E, `GITHUB_API_URL` apunta
   al GitHub falso (`e2e/fake-services.mjs`).
 
+### Configuración de la app
+
+En **`/admin/configuracion`** el admin cambia lo que vale para toda la app. Por ahora, los
+**registros**: quién puede crear una cuenta (`src/modules/admin/configuracion/`). Lo que venga (un aviso
+para todos, los valores de las cuentas nuevas…) va aquí como otra tarjeta.
+
+| Registros | Qué pasa en `/registro` |
+|---|---|
+| **Abiertos** (sin elegir, como siempre) | Cualquiera crea su cuenta |
+| **Solo con invitación** | Solo los correos de la lista de invitados (sin importar mayúsculas ni espacios). La página lo avisa |
+| **Cerrados** | Nadie crea una cuenta nueva, ni con invitación. La página lo avisa |
+
+- **Dónde se revisa:** en el servidor, en el registro de Better Auth (`src/lib/auth.ts` con
+  `src/modules/auth/signup-policy.ts`), no solo en la página: un registro por HTTP (curl) se rechaza
+  igual, con el correo de contacto en el mensaje. Las cuentas que ya existen entran como siempre.
+- **Cambiar el modo** pide el código de Google Authenticator y queda en el historial con el de antes
+  (`app_setting`, una sola fila: sin fila, abiertos).
+- **Los invitados** (`signup_invite`): agregarlos y quitarlos no pide el código, pero queda en el
+  historial con el admin (ver "Riesgos aceptados"). No se invita un correo que ya tiene cuenta. Al
+  registrarse, la invitación queda como usada ("Creó su cuenta el…"); si esa persona elimina su
+  cuenta, se borra su invitación y su correo sale de esos eventos ("invitó a alguien").
+- **Inicio** muestra cómo están los registros y, solo con invitación, cuántas invitaciones faltan por
+  usar.
+
 ### Historial de las cuentas
 
 La tabla `account_event` (`src/modules/account/events.ts`) guarda el historial de registro y
@@ -1160,6 +1186,7 @@ administrador.
 | `whatsapp_unlinked` | Se desvincula (`by_user`), el número pasa a otra cuenta (`number_moved`) o la cuenta vincula otro número (`number_changed`) | Número |
 | `whatsapp_link_failed` | Código inválido o vencido (`invalid_code`) o demasiados intentos (`rate_limited`) | Número; sin cuenta |
 | `login_unlocked`, `sessions_revoked`, `account_suspended`, `account_reactivated`, `account_deleted` | Acciones del admin en `/admin/usuarios` (y `whatsapp_unlinked` con `by_admin`) | `admin_id`: quién lo hizo; `details.note`: el motivo de una suspensión |
+| `signup_mode_changed`, `signup_invite_added`, `signup_invite_removed` | Acciones del admin en `/admin/configuracion`; sin cuenta | El modo nuevo y el de antes; el correo invitado (sale si esa persona elimina su cuenta) |
 
 Las acciones del admin llevan `admin_id` (su cuenta) y tienen su chip, **Acciones del admin**, en los
 filtros del Historial; también se ven en el detalle de cada cuenta. Si se borra la cuenta del admin, la
@@ -1182,8 +1209,8 @@ pnpm account:delete persona@correo.com
 
 Borra lo mismo que el botón de la app (`deleteAccountData`): la cuenta, sus sesiones, movimientos,
 categorías propias, el número vinculado, sus mensajes del bot (también los que llegaron sin cuenta
-desde los números que tuvo antes, salvo que ese número sea hoy de otra cuenta) y sus intentos
-fallidos de login.
+desde los números que tuvo antes, salvo que ese número sea hoy de otra cuenta), sus intentos
+fallidos de login y su invitación (con su correo en los eventos de las invitaciones).
 Antes muestra en qué base de datos va a trabajar (sin la clave) y qué va a borrar, y pide escribir
 el correo de nuevo para confirmar. No uses SQL a mano: podrías dejar mensajes o intentos fallidos
 sueltos.

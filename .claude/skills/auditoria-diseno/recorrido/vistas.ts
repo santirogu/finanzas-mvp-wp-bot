@@ -1,6 +1,6 @@
 import { randomInt } from "node:crypto";
 import { expect, type Page } from "@playwright/test";
-import { PASSWORD, adminCommand, uniqueEmail, visible } from "../../../../e2e/helpers";
+import { PASSWORD, adminCommand, closeToasts, uniqueEmail, visible } from "../../../../e2e/helpers";
 import { MES_ANTERIOR, type Datos, type Persona } from "./datos";
 
 // Las páginas y los estados que recorre la auditoría. Para el modo "cambios", el skill elige las
@@ -439,6 +439,32 @@ export const VISTAS: Vista[] = [
     ruta: fija("/admin/bot"),
     preparar: async (page) => {
       await visible(page.getByRole("region", { name: "Configuración" })).getByRole("button", { name: "Cambiar los topes por cuenta" }).click();
+      await expect(dialogo(page)).toBeVisible();
+    },
+  },
+  // Los registros quedan abiertos: cerrarlos dejaría sin registrarse a los demás grupos del recorrido. Invitar un
+  // correo no cambia quién puede crear una cuenta mientras estén abiertos.
+  {
+    id: "admin-configuracion",
+    titulo: "Administración: configuración (registros e invitados)",
+    persona: "admin",
+    ruta: fija("/admin/configuracion"),
+    preparar: async (page) => {
+      const registros = visible(page.getByRole("region", { name: "Registros" }));
+      await registros.getByLabel("Correo", { exact: true }).fill(uniqueEmail());
+      await registros.getByRole("button", { name: "Invitar" }).click();
+      await expect(registros.getByRole("list", { name: "Correos invitados" }).getByRole("listitem").first()).toBeVisible();
+      // Sin el aviso de "Se invitó a…": tapaba el último "Quitar" al medir el foco.
+      await closeToasts(page);
+    },
+  },
+  {
+    id: "admin-configuracion-registros",
+    titulo: "Administración: ventana para cambiar quién puede crear una cuenta",
+    persona: "admin",
+    ruta: fija("/admin/configuracion"),
+    preparar: async (page) => {
+      await visible(page.getByRole("button", { name: "Cambiar quién puede crear una cuenta" })).click();
       await expect(dialogo(page)).toBeVisible();
     },
   },

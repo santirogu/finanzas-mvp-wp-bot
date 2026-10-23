@@ -49,6 +49,9 @@ const ICON_PATHS: Record<LogEntry["type"], ReactNode> = {
   bot_monthly_limit_changed: <path d="M4.5 5.5h11v10h-11zM4.5 8.5h11M7.5 4v3M12.5 4v3M7.5 12h5" />,
   bot_model_changed: <path d="M6.5 6.5h7v7h-7zM8.5 4v2.5M11.5 4v2.5M8.5 13.5V16M11.5 13.5V16M4 8.5h2.5M4 11.5h2.5M13.5 8.5H16M13.5 11.5H16" />,
   bot_replies_resent: <path d="M15.5 9A5.5 5.5 0 1 0 14 13M15.5 5v4h-4" />,
+  signup_mode_changed: <path d="M6.5 9V7a3.5 3.5 0 0 1 7 0v2M5 9h10v7H5zM10 11.5v2" />,
+  signup_invite_added: <path d="M3.5 5.5h13v9h-13zM3.5 5.5l6.5 5 6.5-5" />,
+  signup_invite_removed: <path d="M3.5 5.5h13v9h-13zM3.5 5.5l6.5 5 6.5-5M7.5 17.5h5" />,
 };
 
 const ADMIN_COLOR = "bg-admin-surface text-admin";
@@ -74,6 +77,9 @@ const ICON_COLORS: Record<LogEntry["type"], string> = {
   bot_monthly_limit_changed: ADMIN_COLOR,
   bot_model_changed: ADMIN_COLOR,
   bot_replies_resent: ADMIN_COLOR,
+  signup_mode_changed: ADMIN_COLOR,
+  signup_invite_added: ADMIN_COLOR,
+  signup_invite_removed: ADMIN_COLOR,
 };
 
 /** Los cambios de la configuración del bot (/admin/bot): no son de ninguna cuenta. */
@@ -85,6 +91,9 @@ const BOT_EVENTS: readonly LogEntry["type"][] = [
   "bot_model_changed",
   "bot_replies_resent",
 ];
+
+/** Los cambios de la configuración de la app (/admin/configuracion): tampoco son de una cuenta. */
+const SETTINGS_EVENTS: readonly LogEntry["type"][] = ["signup_mode_changed", "signup_invite_added", "signup_invite_removed"];
 
 /**
  * Con `filters`, tocar el nombre muestra solo los eventos de esa cuenta (en el Historial); sin
@@ -128,11 +137,15 @@ export function EventItem({
     ? es
       ? "Bot de WhatsApp"
       : "WhatsApp bot"
-    : entry.type === "account_deleted"
+    : SETTINGS_EVENTS.includes(entry.type)
       ? es
-        ? "Sin datos de la cuenta"
-        : "No account data"
-      : (entry.account?.email ?? (es ? "Sin cuenta" : "No account"));
+        ? "Configuración"
+        : "Settings"
+      : entry.type === "account_deleted"
+        ? es
+          ? "Sin datos de la cuenta"
+          : "No account data"
+        : (entry.account?.email ?? (es ? "Sin cuenta" : "No account"));
   const sentence = es ? spanishSentence : englishSentence;
 
   return (
@@ -207,6 +220,13 @@ function spanishSentence(entry: LogEntry, { subject: who }: Who, phone: ReactNod
       return <>{admin} cambió el modelo de Claude del bot</>;
     case "bot_replies_resent":
       return <>{admin} reenvió las respuestas del bot que no habían salido</>;
+    case "signup_mode_changed":
+      return <>{admin} cambió quién puede crear una cuenta</>;
+    case "signup_invite_added":
+      // Sin el correo si esa persona después eliminó su cuenta (src/modules/account/delete-account.ts).
+      return <>{admin} invitó a {entry.details.email ?? "alguien"} a crear una cuenta</>;
+    case "signup_invite_removed":
+      return entry.details.email ? <>{admin} quitó la invitación de {entry.details.email}</> : <>{admin} quitó una invitación</>;
   }
 }
 
@@ -254,5 +274,11 @@ function englishSentence(entry: LogEntry, { subject, object, whose, account }: W
       return <>{admin} changed the bot&apos;s Claude model</>;
     case "bot_replies_resent":
       return <>{admin} resent the bot replies that hadn&apos;t gone out</>;
+    case "signup_mode_changed":
+      return <>{admin} changed who can create an account</>;
+    case "signup_invite_added":
+      return <>{admin} invited {entry.details.email ?? "someone"} to create an account</>;
+    case "signup_invite_removed":
+      return entry.details.email ? <>{admin} removed the invitation for {entry.details.email}</> : <>{admin} removed an invitation</>;
   }
 }

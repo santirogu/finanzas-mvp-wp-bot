@@ -26,6 +26,9 @@ beforeEach(async () => {
   await db.execute(sql`delete from bot_setting`);
   // Las corridas de la limpieza diaria (/admin/salud).
   await db.execute(sql`delete from cron_run`);
+  // La configuración de la app (/admin/configuracion): sin fila, los registros abiertos.
+  await db.execute(sql`delete from app_setting`);
+  await db.execute(sql`delete from signup_invite`);
   await resetGlobalCategories();
 });
 

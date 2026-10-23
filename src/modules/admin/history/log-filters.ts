@@ -58,7 +58,7 @@ export const EVENT_TYPES = [
 ] as const;
 export type EventType = (typeof EVENT_TYPES)[number];
 
-/** Los tipos que solo registra una acción del admin (/admin/usuarios, también del super admin, y /admin/bot). */
+/** Los tipos que solo registra una acción del admin (/admin/usuarios, también del super admin, /admin/bot y /admin/configuracion). */
 export const ADMIN_EVENT_TYPES = [
   "login_unlocked",
   "sessions_revoked",
@@ -73,6 +73,9 @@ export const ADMIN_EVENT_TYPES = [
   "bot_monthly_limit_changed",
   "bot_model_changed",
   "bot_replies_resent",
+  "signup_mode_changed",
+  "signup_invite_added",
+  "signup_invite_removed",
 ] as const;
 
 /** El chip "Acciones del admin": todo lo que hizo un admin, sea del tipo que sea. */
@@ -232,6 +235,7 @@ const DETAIL_TEXTS = {
     noLimit: "sin tope",
     monthly: (tokens: string) => `${tokens} tokens al mes`,
     change: (now: string, before: string | null) => `ahora ${now}${before === null ? "" : ` (antes ${before})`}`,
+    signupModes: { open: "abiertos", closed: "cerrados", invite: "solo con invitación" },
     resent: (n: number) => `${n} ${n === 1 ? "reenviada" : "reenviadas"}`,
     failedAgain: (n: number) => `${n} no ${n === 1 ? "salió" : "salieron"} otra vez`,
   },
@@ -243,6 +247,7 @@ const DETAIL_TEXTS = {
     noLimit: "no limit",
     monthly: (tokens: string) => `${tokens} tokens a month`,
     change: (now: string, before: string | null) => `now ${now}${before === null ? "" : ` (before ${before})`}`,
+    signupModes: { open: "open", closed: "closed", invite: "invitation only" },
     resent: (n: number) => `${n} resent`,
     failedAgain: (n: number) => `${n} didn't go out again`,
   },
@@ -267,6 +272,9 @@ export function eventDetail(details: AccountEventDetails, locale: Locale = DEFAU
     parts.push(t.change(limit(details.monthlyLimit), limit(details.previousMonthlyLimit)));
   }
   if (details.model) parts.push(t.change(botModelName(details.model), details.previousModel ? botModelName(details.previousModel) : null));
+  if (details.signupMode) {
+    parts.push(t.change(t.signupModes[details.signupMode], details.previousSignupMode ? t.signupModes[details.previousSignupMode] : null));
+  }
   if (details.resent !== undefined) {
     parts.push(`${t.resent(details.resent)}${details.failed ? ` · ${t.failedAgain(details.failed)}` : ""}`);
   }
