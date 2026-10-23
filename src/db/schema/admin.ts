@@ -1,7 +1,7 @@
 import { sql } from "drizzle-orm";
-import { bigint, check, index, integer, jsonb, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { bigint, boolean, check, index, integer, jsonb, pgEnum, pgTable, smallint, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { user } from "./auth";
-import { category, transactionType } from "./finance";
+import { category, transactionType, UPCOMING_DAYS_MAX } from "./finance";
 
 // El último código de Google Authenticator con el que cada admin confirmó una acción
 // (src/modules/admin/shared/confirm-code.ts): guarda su período de 30 s para que el mismo código, u
@@ -94,4 +94,27 @@ export const appNotice = pgTable(
     publishedBy: text("published_by").references(() => user.id, { onDelete: "set null" }),
   },
   (t) => [check("app_notice_single_row", sql`${t.id} = 1`), check("app_notice_tone", sql`${t.tone} in ('info', 'important')`)],
+);
+
+// Los valores de la app (/admin/configuracion → Valores de la app): una sola fila. Sin la fila, los de siempre
+// (src/modules/app-values/values.ts). Los avisos de próximos pagos valen para quien no eligió los suyos
+// (notification_setting); los umbrales, para todas las cuentas. La base revisa los rangos.
+export const appValues = pgTable(
+  "app_values",
+  {
+    id: integer("id").primaryKey().default(1),
+    upcomingEnabled: boolean("upcoming_enabled").notNull(),
+    upcomingDays: smallint("upcoming_days").notNull(),
+    budgetNearShare: smallint("budget_near_share").notNull(),
+    recurringMinMonths: smallint("recurring_min_months").notNull(),
+    recurringWindow: smallint("recurring_window").notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedBy: text("updated_by").references(() => user.id, { onDelete: "set null" }),
+  },
+  (t) => [
+    check("app_values_single_row", sql`${t.id} = 1`),
+    check("app_values_upcoming_days", sql`${t.upcomingDays} between 0 and ${sql.raw(String(UPCOMING_DAYS_MAX))}`),
+    check("app_values_budget_near_share", sql`${t.budgetNearShare} between 50 and 95`),
+    check("app_values_recurring", sql`${t.recurringWindow} between 3 and 6 and ${t.recurringMinMonths} between 2 and ${t.recurringWindow}`),
+  ],
 );

@@ -6,15 +6,15 @@ import { getLocale, getTexts } from "@/i18n/server";
 import { texts } from "@/i18n/texts";
 import { BRAND_NAME } from "@/lib/brand";
 import { requireUser } from "@/lib/session";
+import { getAppValues } from "@/modules/app-values/current";
+import type { AppValues } from "@/modules/app-values/values";
 import { BOT_COMMANDS, BOT_EXAMPLES, HELP_COMMAND } from "@/modules/bot/help";
 import { BIGGEST_SHOWN } from "@/modules/reports/biggest";
 import { CONTACT_EMAIL } from "@/lib/contact";
 import { MAX_TRANSACTIONS_PER_MESSAGE } from "@/modules/bot/limits";
 import { formatPercent } from "@/lib/money";
-import { NEAR_SHARE } from "@/modules/budgets/progress";
-import { RECURRING_MIN_MONTHS, RECURRING_WINDOW } from "@/modules/reports/recurring";
 import { PROJECTION_FROM_DAY } from "@/modules/reports/remaining";
-import { DAYS_AHEAD, MAX_DAYS_AHEAD, MONTHS_BACK, PAYMENTS_FOR_DAY } from "@/modules/reports/upcoming";
+import { daysAheadPhrase, MAX_DAYS_AHEAD, MONTHS_BACK, PAYMENTS_FOR_DAY } from "@/modules/reports/upcoming";
 import { SEARCH_FROM } from "@/modules/transactions/search";
 import { PageSkeleton } from "../page-skeleton";
 
@@ -70,6 +70,8 @@ async function Help() {
   await requireUser();
   const locale = await getLocale();
   const t = TEXTS[locale];
+  // Los avisos por defecto y los umbrales que se explican: los que eligió el admin (Valores de la app).
+  const values = await getAppValues();
   return (
     <div className="mx-auto max-w-2xl space-y-4">
       <div>
@@ -77,13 +79,13 @@ async function Help() {
         <p className="mt-1 text-sm text-muted">{t.intro}</p>
       </div>
       <section aria-label={t.topics} className="card">
-        {locale === "es" ? <SpanishTopics /> : <EnglishTopics />}
+        {locale === "es" ? <SpanishTopics values={values} /> : <EnglishTopics values={values} />}
       </section>
       <section aria-labelledby="preguntas-frecuentes" className="card">
         <h2 id="preguntas-frecuentes" className="px-4 pb-1 pt-4 font-semibold">
           {t.faq}
         </h2>
-        {locale === "es" ? <SpanishFaq /> : <EnglishFaq />}
+        {locale === "es" ? <SpanishFaq values={values} /> : <EnglishFaq values={values} />}
       </section>
     </div>
   );
@@ -131,7 +133,7 @@ function BotExamples() {
   );
 }
 
-function SpanishTopics() {
+function SpanishTopics({ values }: { values: AppValues }) {
   return (
     <>
       <Topic title="Registrar ingresos y egresos">
@@ -162,13 +164,16 @@ function SpanishTopics() {
 
       <Topic title="Gastos fijos y avisos de pagos">
         <p>
-          Un <strong>gasto fijo</strong> es un egreso con la misma descripción en al menos {RECURRING_MIN_MONTHS} de los últimos{" "}
-          {RECURRING_WINDOW} meses (el arriendo, Netflix, el plan del celular). Los ves en <A href="/gastos-fijos">Fijos</A>: puedes
+          Un <strong>gasto fijo</strong> es un egreso con la misma descripción en al menos {values.recurringMinMonths} de los últimos{" "}
+          {values.recurringWindow} meses (el arriendo, Netflix, el plan del celular). Los ves en <A href="/gastos-fijos">Fijos</A>: puedes
           quitar uno que no lo es, agregar otro a mano y abrir el historial de su valor, con una nota por cada cambio.
         </p>
         <p>
-          En el <A href="/dashboard">Resumen</A> y en la campana de arriba te avisamos de los que tocan pronto, {DAYS_AHEAD} días antes si no
-          lo cambias. También de los atrasados, hasta {MONTHS_BACK} meses atrás. La fecha sale del día en que pagaste las últimas{" "}
+          En el <A href="/dashboard">Resumen</A> y en la campana de arriba te avisamos de los que tocan pronto
+          {values.upcomingEnabled
+            ? `, ${daysAheadPhrase(values.upcomingDays)} si no lo cambias. También de los atrasados, hasta ${MONTHS_BACK} meses atrás.`
+            : ` y de los atrasados (hasta ${MONTHS_BACK} meses atrás) si prendes los avisos en Configuración.`}{" "}
+          La fecha sale del día en que pagaste las últimas{" "}
           {PAYMENTS_FOR_DAY} veces; con menos pagos, dice <strong>aprox.</strong>
         </p>
         <p>
@@ -193,11 +198,11 @@ function SpanishTopics() {
           todos los meses hasta que lo cambies o lo quites. Llegas ahí desde el <A href="/dashboard">Resumen</A>.
         </p>
         <p>
-          En el Resumen ves cuánto llevas de cada una en el mes y cuánto te queda. Desde el {formatPercent(NEAR_SHARE)} del presupuesto,
+          En el Resumen ves cuánto llevas de cada una en el mes y cuánto te queda. Desde el {formatPercent(values.budgetNearShare)} del presupuesto,
           la línea se resalta; si te pasas, sale en rojo con cuánto.
         </p>
         <p>
-          Cuando un egreso de este mes hace llegar una categoría al {formatPercent(NEAR_SHARE)} o pasarse, te avisamos una vez. Si lo
+          Cuando un egreso de este mes hace llegar una categoría al {formatPercent(values.budgetNearShare)} o pasarse, te avisamos una vez. Si lo
           registras por WhatsApp, el aviso va en la respuesta del bot; en Egresos, debajo del formulario.
         </p>
       </Topic>
@@ -233,7 +238,7 @@ function SpanishTopics() {
   );
 }
 
-function EnglishTopics() {
+function EnglishTopics({ values }: { values: AppValues }) {
   return (
     <>
       <Topic title="Adding income and expenses">
@@ -264,13 +269,16 @@ function EnglishTopics() {
 
       <Topic title="Bills and payment notices">
         <p>
-          A <strong>bill</strong> is an expense with the same description in at least {RECURRING_MIN_MONTHS} of the last{" "}
-          {RECURRING_WINDOW} months (rent, Netflix, your phone plan). You see them in <A href="/gastos-fijos">Bills</A>: you can remove
+          A <strong>bill</strong> is an expense with the same description in at least {values.recurringMinMonths} of the last{" "}
+          {values.recurringWindow} months (rent, Netflix, your phone plan). You see them in <A href="/gastos-fijos">Bills</A>: you can remove
           one that isn&apos;t, add another one yourself and open the history of its amount, with a note for each change.
         </p>
         <p>
-          In the <A href="/dashboard">Overview</A> and in the bell at the top we let you know about the ones coming up, {DAYS_AHEAD} days
-          before unless you change it. Also about the overdue ones, up to {MONTHS_BACK} months back. The date comes from the day you paid the
+          In the <A href="/dashboard">Overview</A> and in the bell at the top we let you know about the ones coming up
+          {values.upcomingEnabled
+            ? `, ${daysAheadPhrase(values.upcomingDays, "en")} unless you change it. Also about the overdue ones, up to ${MONTHS_BACK} months back.`
+            : ` and the overdue ones (up to ${MONTHS_BACK} months back) if you turn the notices on in Settings.`}{" "}
+          The date comes from the day you paid the
           last {PAYMENTS_FOR_DAY} times; with fewer payments, it says <strong>approx.</strong>
         </p>
         <p>
@@ -296,10 +304,10 @@ function EnglishTopics() {
         </p>
         <p>
           In the Overview you see how much you&apos;ve spent in each one this month and how much you have left. From{" "}
-          {formatPercent(NEAR_SHARE, "en")} of the budget the line stands out; if you go over, it turns red and shows by how much.
+          {formatPercent(values.budgetNearShare, "en")} of the budget the line stands out; if you go over, it turns red and shows by how much.
         </p>
         <p>
-          When an expense this month takes a category to {formatPercent(NEAR_SHARE, "en")} or over its budget, we let you know once. If
+          When an expense this month takes a category to {formatPercent(values.budgetNearShare, "en")} or over its budget, we let you know once. If
           you add it on WhatsApp, the notice comes in the bot&apos;s reply; in Expenses, below the form.
         </p>
       </Topic>
@@ -348,7 +356,7 @@ const ContactEmail = () => (
  * Las preguntas frecuentes (decididas con el dueño): las dudas de quien ya usa la app, con la respuesta corta y
  * dónde se hace. Los números salen de las constantes de la app, como en los temas.
  */
-function SpanishFaq() {
+function SpanishFaq({ values }: { values: AppValues }) {
   return (
     <>
       <Topic title="¿Por qué el bot no me responde?">
@@ -383,8 +391,8 @@ function SpanishFaq() {
       </Topic>
       <Topic title="¿Por qué no veo un gasto fijo?">
         <p>
-          Un egreso aparece en <A href="/gastos-fijos">Fijos</A> cuando tiene la misma descripción en al menos {RECURRING_MIN_MONTHS}{" "}
-          de los últimos {RECURRING_WINDOW} meses, sin importar mayúsculas ni tildes. Si lo registras con nombres distintos (“Arriendo”
+          Un egreso aparece en <A href="/gastos-fijos">Fijos</A> cuando tiene la misma descripción en al menos {values.recurringMinMonths}{" "}
+          de los últimos {values.recurringWindow} meses, sin importar mayúsculas ni tildes. Si lo registras con nombres distintos (“Arriendo”
           y “Pago del arriendo”), no se reconoce como un solo gasto.
         </p>
         <p>
@@ -439,7 +447,7 @@ function SpanishFaq() {
   );
 }
 
-function EnglishFaq() {
+function EnglishFaq({ values }: { values: AppValues }) {
   return (
     <>
       <Topic title="Why isn't the bot answering me?">
@@ -474,8 +482,8 @@ function EnglishFaq() {
       </Topic>
       <Topic title="Why don't I see a bill?">
         <p>
-          An expense shows up in <A href="/gastos-fijos">Bills</A> when it has the same description in at least {RECURRING_MIN_MONTHS} of
-          the last {RECURRING_WINDOW} months, regardless of capital letters or accents. If you add it with different names
+          An expense shows up in <A href="/gastos-fijos">Bills</A> when it has the same description in at least {values.recurringMinMonths} of
+          the last {values.recurringWindow} months, regardless of capital letters or accents. If you add it with different names
           (“Rent” and “Rent payment”), it isn&apos;t recognized as the same one.
         </p>
         <p>

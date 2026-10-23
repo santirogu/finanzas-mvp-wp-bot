@@ -83,6 +83,7 @@ describe("configuración", () => {
       "signup_invite_removed",
       "notice_published",
       "notice_removed",
+      "app_values_changed",
     ]);
     expect(DATE_PRESETS.map((p) => DATE_PRESET_LABELS[p])).toEqual([
       "Todo",
@@ -412,6 +413,26 @@ describe("formatos", () => {
     [{ signupMode: "closed" as const }, "ahora cerrados"],
     // El correo de una invitación va en la frase, no en el detalle.
     [{ email: "beto@test.local" }, ""],
+    // Los valores de la app: solo lo que cambió.
+    [
+      {
+        appValues: { upcomingEnabled: false, upcomingDays: 5, budgetNearShare: 70, recurringMinMonths: 3, recurringWindow: 4 },
+        previousAppValues: { upcomingEnabled: true, upcomingDays: 3, budgetNearShare: 80, recurringMinMonths: 3, recurringWindow: 4 },
+      },
+      "avisos de pagos: ahora apagados, 5 días (antes prendidos, 3 días) · cerca del presupuesto: ahora 70\u00a0% (antes 80\u00a0%)",
+    ],
+    [
+      {
+        appValues: { upcomingEnabled: true, upcomingDays: 1, budgetNearShare: 80, recurringMinMonths: 2, recurringWindow: 3 },
+        previousAppValues: { upcomingEnabled: true, upcomingDays: 3, budgetNearShare: 80, recurringMinMonths: 3, recurringWindow: 4 },
+      },
+      "avisos de pagos: ahora prendidos, 1 día (antes prendidos, 3 días) · gastos fijos: ahora 2 de 3 meses (antes 3 de 4 meses)",
+    ],
+    // Sin los de antes, todos.
+    [
+      { appValues: { upcomingEnabled: true, upcomingDays: 3, budgetNearShare: 80, recurringMinMonths: 3, recurringWindow: 4 } },
+      "avisos de pagos: ahora prendidos, 3 días · cerca del presupuesto: ahora 80\u00a0% · gastos fijos: ahora 3 de 4 meses",
+    ],
     // El aviso para todos: el texto (corto), el tipo y hasta cuándo, en hora de Colombia.
     [
       { notice: { message: "Mantenimiento el sábado de 8 a 9", tone: "important" as const, endsAt: "2026-10-26T01:00:00.000Z" } },
@@ -497,6 +518,13 @@ describe("en inglés", () => {
     [{ monthlyLimit: 2_000_000, previousMonthlyLimit: null }, "now 2,000,000 tokens a month (before no limit)"],
     [{ model: "claude-opus-5-5", previousModel: "claude-haiku-5-5" }, "now Claude Opus 5.5 (before Claude Haiku 5.5)"],
     [{ signupMode: "open", previousSignupMode: "closed" }, "now open (before closed)"],
+    [
+      {
+        appValues: { upcomingEnabled: true, upcomingDays: 3, budgetNearShare: 75, recurringMinMonths: 3, recurringWindow: 4 },
+        previousAppValues: { upcomingEnabled: true, upcomingDays: 3, budgetNearShare: 80, recurringMinMonths: 3, recurringWindow: 4 },
+      },
+      "near the budget: now 75% (before 80%)",
+    ],
     [
       { notice: { message: "Maintenance", tone: "important", endsAt: "2026-10-26T01:00:00.000Z" } },
       "“Maintenance” · important · until Oct 25, 2026, 8:00 PM",

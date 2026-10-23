@@ -480,6 +480,16 @@ export const VISTAS: Vista[] = [
       await expect(dialogo(page)).toBeVisible();
     },
   },
+  {
+    id: "admin-configuracion-valores",
+    titulo: "Administración: ventana para cambiar los valores de la app",
+    persona: "admin",
+    ruta: fija("/admin/configuracion"),
+    preparar: async (page) => {
+      await visible(page.getByRole("region", { name: "Valores de la app" })).getByRole("button", { name: "Cambiar los valores" }).click();
+      await expect(dialogo(page)).toBeVisible();
+    },
+  },
   { id: "admin-categorias", titulo: "Administración: categorías", persona: "admin", ruta: fija("/admin/categorias") },
   {
     id: "admin-categoria-nueva",

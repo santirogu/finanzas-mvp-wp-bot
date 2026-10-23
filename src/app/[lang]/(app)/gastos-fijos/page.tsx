@@ -5,10 +5,10 @@ import { getLocale, getTexts } from "@/i18n/server";
 import { texts } from "@/i18n/texts";
 import { currentMonthRange, type Month } from "@/lib/dates";
 import { requireUser } from "@/lib/session";
+import { getAppValues } from "@/modules/app-values/current";
 import { lastChangeSummary } from "@/modules/reports/history";
 import { reportPeriod } from "@/modules/reports/period";
 import { type FixedExpensesReport, getFixedExpenses } from "@/modules/reports/queries";
-import { RECURRING_MIN_MONTHS, RECURRING_WINDOW } from "@/modules/reports/recurring";
 import { PageSkeleton } from "../page-skeleton";
 import { type FixedHistory, FixedExpenses } from "./fixed-expenses";
 
@@ -49,12 +49,13 @@ async function Fixed() {
   const t = TEXTS[locale];
   const current = currentMonthRange(user.timezone);
   const period = reportPeriod(undefined, current);
-  const fixed = await getFixedExpenses(user.id, period, current);
+  // Cuándo un gasto es fijo lo eligió el admin (Valores de la app).
+  const [fixed, values] = await Promise.all([getFixedExpenses(user.id, period, current), getAppValues()]);
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">{t.title}</h1>
-        <p className="mt-1 text-sm text-muted">{t.intro(RECURRING_MIN_MONTHS, RECURRING_WINDOW)}</p>
+        <p className="mt-1 text-sm text-muted">{t.intro(values.recurringMinMonths, values.recurringWindow)}</p>
       </div>
       <FixedExpenses
         items={fixed.recurring.items}

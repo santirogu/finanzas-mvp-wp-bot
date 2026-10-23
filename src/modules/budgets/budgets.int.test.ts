@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { refresh } from "next/cache";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "@/db";
-import { category, categoryBudget, transaction } from "@/db/schema";
+import { appValues, category, categoryBudget, transaction } from "@/db/schema";
 import { monthRange } from "@/lib/dates";
 import type { CurrentUser } from "@/lib/session";
 import { listCategories } from "@/modules/transactions/queries";
@@ -159,6 +159,13 @@ describe("getSpentByCategory, getBudgetProgress y listBudgetCategories", () => {
     ]);
     expect(await getBudgetProgress(beto.id, october)).toEqual([]);
 
+    // Con otro porcentaje en Valores de la app, "cerca" desde ese.
+    await db.insert(appValues).values({ id: 1, upcomingEnabled: true, upcomingDays: 3, budgetNearShare: 90, recurringMinMonths: 3, recurringWindow: 4 });
+    expect((await getBudgetProgress(ana.id, october)).map((p) => p.level)).toEqual(["ok", "ok"]);
+    await db.update(appValues).set({ budgetNearShare: 50 });
+    expect((await getBudgetProgress(ana.id, october)).map((p) => p.level)).toEqual(["near", "ok"]);
+    await db.delete(appValues);
+
     // Para uno nuevo, las de egresos sin presupuesto.
     const options = (await listBudgetCategories(ana.id)).map((c) => c.id);
     expect(options).not.toContain(mercado.id);
@@ -182,6 +189,10 @@ describe("getBudgetCrossings (los avisos de lo recién registrado)", () => {
     ];
 
     expect((await getBudgetCrossings(ana.id, october, added({}))).map((c) => [c.name, c.level, c.share])).toEqual([["Mercado", "near", 85]]);
+    // Con "cerca" desde el 90 % (Valores de la app), llegar al 85 % no avisa.
+    await db.insert(appValues).values({ id: 1, upcomingEnabled: true, upcomingDays: 3, budgetNearShare: 90, recurringMinMonths: 3, recurringWindow: 4 });
+    expect(await getBudgetCrossings(ana.id, october, added({}))).toEqual([]);
+    await db.delete(appValues);
     // Beto no tiene presupuesto: lo de Ana no le avisa nada.
     expect(await getBudgetCrossings(beto.id, october, added({}))).toEqual([]);
     expect(await getBudgetCrossings(ana.id, october, added({ type: "income", categoryId: salario.id }))).toEqual([]);

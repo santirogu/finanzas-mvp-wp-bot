@@ -120,6 +120,17 @@ describe("EventItem", () => {
       "Ana Admin quitó el aviso para todos",
       "Configuración · “Nuevo: presupuestos” · información · hasta el 25 de oct. de 2026, 8:00 p. m. · 9:41 p. m.",
     ],
+    [
+      {
+        type: "app_values_changed",
+        details: {
+          appValues: { upcomingEnabled: true, upcomingDays: 3, budgetNearShare: 70, recurringMinMonths: 3, recurringWindow: 4 },
+          previousAppValues: { upcomingEnabled: true, upcomingDays: 3, budgetNearShare: 80, recurringMinMonths: 3, recurringWindow: 4 },
+        },
+      },
+      "Ana Admin cambió los valores de la app",
+      "Configuración · cerca del presupuesto: ahora 70\u00a0% (antes 80\u00a0%) · 9:41 p. m.",
+    ],
   ] as const)("acción del admin sobre los registros %j, en su color", (overrides, sentence, meta) => {
     const shown = renderItem({ entry: entry({ account: null, admin: { name: "Ana Admin" }, ...(overrides as Partial<LogEntry>) }) });
     expect(shown.sentence).toBe(sentence);
@@ -219,6 +230,7 @@ describe("EventItem en inglés", () => {
     [{ type: "signup_invite_removed", account: null }, "Carla Admin removed an invitation"],
     [{ type: "notice_published", account: null }, "Carla Admin published a notice for everyone"],
     [{ type: "notice_removed", account: null }, "Carla Admin removed the notice for everyone"],
+    [{ type: "app_values_changed", account: null }, "Carla Admin changed the app values"],
   ] as const)("acción del admin %j", (overrides, sentence) => {
     expect(renderItem({ entry: entry({ admin: carla, ...(overrides as Partial<LogEntry>) }), locale: "en" }).sentence).toBe(sentence);
   });

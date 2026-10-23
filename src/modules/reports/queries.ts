@@ -5,6 +5,8 @@ import { db } from "@/db";
 import { category, transaction } from "@/db/schema";
 import { DEFAULT_LOCALE, type Locale } from "@/i18n/locales";
 import { compareMonths, type Month, monthOf, monthParam, monthRange, shiftMonth } from "@/lib/dates";
+import { getAppValues } from "@/modules/app-values/current";
+import { recurringRuleOf } from "@/modules/app-values/values";
 import { listActiveMonths } from "@/modules/transactions/queries";
 import { categoryNameIn } from "@/modules/transactions/category-name";
 import { NO_CATEGORIES } from "@/modules/transactions/search";
@@ -181,17 +183,19 @@ export async function getReport(userId: string, period: ReportPeriod, current: M
   // Las categorías se comparan con los meses anteriores (pueden quedar fuera del período) y los gastos
   // fijos se buscan en los últimos meses (en un año que recién empieza, también los del anterior).
   const categoriesFrom = shiftMonth(last, -(AVERAGE_MONTHS + 1));
+  // Cuándo un gasto es fijo (Valores de la app): decide desde qué mes se consulta.
+  const rule = recurringRuleOf(await getAppValues());
   const [activeMonths, monthly, categories, descriptions, largest, choices] = await Promise.all([
     listActiveMonths(userId),
     getMonthlyTotals(userId, first, last),
     getCategoryMonthlyTotals(userId, compareMonths(categoriesFrom, first) < 0 ? categoriesFrom : first, last, locale),
-    getExpenseDescriptionsByMonth(userId, recurringFrom(period.months), last),
+    getExpenseDescriptionsByMonth(userId, recurringFrom(period.months, rule.window), last),
     getLargestExpenses(userId, first, last, locale),
     getFixedChoices(userId),
   ]);
   // Los gastos fijos (con lo que la persona agregó o quitó a mano) no se muestran en Reportes (tienen su
   // pestaña, /gastos-fijos), pero salen de los gastos más grandes y del gasto por día.
-  const recurring = recurringExpenses(descriptions, period.months, choices);
+  const recurring = recurringExpenses(descriptions, period.months, choices, rule);
   const series = monthSeries(period.months, monthly);
   return {
     activeMonths,
@@ -214,15 +218,16 @@ const firstActiveOf = (activeMonths: string[]) => (activeMonths.length > 0 ? mon
 export async function getFixedExpenses(userId: string, period: ReportPeriod, current: Month) {
   const first = period.months[0];
   const last = period.months[period.months.length - 1];
+  const rule = recurringRuleOf(await getAppValues());
   const [activeMonths, monthly, descriptions, choices, historyMonths, notes] = await Promise.all([
     listActiveMonths(userId),
     getMonthlyTotals(userId, first, last),
-    getExpenseDescriptionsByMonth(userId, recurringFrom(period.months), last),
+    getExpenseDescriptionsByMonth(userId, recurringFrom(period.months, rule.window), last),
     getFixedChoices(userId),
     getExpenseHistoryMonths(userId),
     getFixedNotes(userId),
   ]);
-  const recurring = recurringExpenses(descriptions, period.months, choices);
+  const recurring = recurringExpenses(descriptions, period.months, choices, rule);
   const byKey = fixedHistories(historyMonths, recurring.items.map((item) => item.key));
   const histories: Record<string, FixedHistoryEntry[]> = {};
   for (const [key, entries] of byKey) {
@@ -270,13 +275,14 @@ export async function getUpcomingPayments(
  */
 const getFixedPaymentsData = cache(async (userId: string, month: string) => {
   const period = reportPeriod(undefined, monthOf(`${month}-01`));
+  const rule = recurringRuleOf(await getAppValues());
   const [descriptions, choices, history, skipped] = await Promise.all([
-    getExpenseDescriptionsByMonth(userId, recurringFrom(period.months), period.months[period.months.length - 1]),
+    getExpenseDescriptionsByMonth(userId, recurringFrom(period.months, rule.window), period.months[period.months.length - 1]),
     getFixedChoices(userId),
     getExpenseHistoryMonths(userId),
     getPaymentSkips(userId),
   ]);
-  return { items: recurringExpenses(descriptions, period.months, choices).items, history, skipped };
+  return { items: recurringExpenses(descriptions, period.months, choices, rule).items, history, skipped };
 });
 
 /**

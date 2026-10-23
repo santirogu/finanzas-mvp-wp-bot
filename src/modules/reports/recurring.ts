@@ -7,10 +7,14 @@ import { searchKey } from "@/lib/suggestions";
 // celular), detectados solos. La persona puede quitar uno que se detectó
 // por error o agregar uno que todavía lleva pocos meses (fixed_expense_choice).
 
-/** Los meses que se miran para decidir si un gasto es fijo: los últimos del período. */
+/** Los meses que se miran para decidir si un gasto es fijo: los últimos del período (si el admin no eligió otros). */
 export const RECURRING_WINDOW = 4;
-/** En cuántos de esos meses tiene que aparecer, como mínimo. */
+/** En cuántos de esos meses tiene que aparecer, como mínimo (si el admin no eligió otro). */
 export const RECURRING_MIN_MONTHS = 3;
+
+/** Cuándo un gasto es fijo: en al menos `minMonths` de los últimos `window` meses (Valores de la app). */
+export type RecurringRule = { minMonths: number; window: number };
+export const DEFAULT_RECURRING_RULE: RecurringRule = { minMonths: RECURRING_MIN_MONTHS, window: RECURRING_WINDOW };
 /**
  * Cuántas veces puede aparecer en un mismo mes. Un gasto fijo se paga una vez al mes (dos, si es
  * quincenal o son dos suscripciones con el mismo nombre); "Almuerzo" o "Taxi", que se repiten muchas
@@ -62,8 +66,8 @@ export type RecurringReport = {
 };
 
 /** El primer mes que hay que consultar para el período: el suyo o, si es más corto, el de la ventana. */
-export function recurringFrom(period: Month[]): Month {
-  const windowStart = shiftMonth(period[period.length - 1], -(RECURRING_WINDOW - 1));
+export function recurringFrom(period: Month[], window = RECURRING_WINDOW): Month {
+  const windowStart = shiftMonth(period[period.length - 1], -(window - 1));
   // Stryker disable next-line EqualityOperator: si son el mismo mes, cualquiera de los dos da lo mismo
   return compareMonths(windowStart, period[0]) < 0 ? windowStart : period[0];
 }
@@ -83,10 +87,13 @@ const byDescription = (a: FixedOption, b: FixedOption) => a.description.localeCo
  * aparece aunque no se detecte (si tiene egresos en el período). Los demás egresos del período quedan
  * en `candidates`, para agregarlos.
  */
-export function recurringExpenses(rows: DescriptionMonthTotal[], period: Month[], choices: FixedChoices = NO_CHOICES): RecurringReport {
-  const window = new Set(
-    Array.from({ length: RECURRING_WINDOW }, (_, i) => monthParam(shiftMonth(period[period.length - 1], i - RECURRING_WINDOW + 1))),
-  );
+export function recurringExpenses(
+  rows: DescriptionMonthTotal[],
+  period: Month[],
+  choices: FixedChoices = NO_CHOICES,
+  rule: RecurringRule = DEFAULT_RECURRING_RULE,
+): RecurringReport {
+  const window = new Set(Array.from({ length: rule.window }, (_, i) => monthParam(shiftMonth(period[period.length - 1], i - rule.window + 1))));
   const inPeriod = new Set(period.map(monthParam));
 
   // Por descripción y, dentro de cada una, por mes (juntando las que solo cambian en tildes o mayúsculas).
@@ -113,7 +120,7 @@ export function recurringExpenses(rows: DescriptionMonthTotal[], period: Month[]
   for (const [key, months] of descriptions) {
     const inWindow = [...months.values()].filter((row) => window.has(row.month));
     const ofPeriod = [...months.values()].filter((row) => inPeriod.has(row.month));
-    const detected = inWindow.length >= RECURRING_MIN_MONTHS && inWindow.every((row) => row.count <= RECURRING_MAX_PER_MONTH);
+    const detected = inWindow.length >= rule.minMonths && inWindow.every((row) => row.count <= RECURRING_MAX_PER_MONTH);
     if (detected) {
       const last = latestOf(inWindow);
       const option = { key, description: last.description, emoji: last.emoji };

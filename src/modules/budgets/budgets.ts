@@ -8,6 +8,7 @@ import { texts } from "@/i18n/texts";
 import type { MonthRange } from "@/lib/dates";
 import { formatMoney, roundToCents } from "@/lib/money";
 import type { ToastTone } from "@/lib/toasts";
+import { getAppValues } from "@/modules/app-values/current";
 import { categoryLabel } from "@/modules/transactions/category-name";
 import { isCategoryAvailable, listCategories } from "@/modules/transactions/queries";
 import { amountSchema } from "@/modules/transactions/validation";
@@ -60,16 +61,16 @@ export async function getSpentByCategory(userId: string, range: MonthRange): Pro
 
 /** Los presupuestos con lo que lleva cada categoría en el mes (`range`). */
 export async function getBudgetProgress(userId: string, range: MonthRange, locale: Locale = DEFAULT_LOCALE): Promise<BudgetProgress[]> {
-  const [budgets, spent] = await Promise.all([listBudgets(userId, locale), getSpentByCategory(userId, range)]);
-  return budgetProgress(budgets, spent, locale);
+  const [budgets, spent, values] = await Promise.all([listBudgets(userId, locale), getSpentByCategory(userId, range), getAppValues()]);
+  return budgetProgress(budgets, spent, locale, values.budgetNearShare);
 }
 
 /** Un movimiento recién registrado, para los avisos de presupuesto. */
 export type AddedTransaction = { type: "income" | "expense"; categoryId: string | null; amount: number; occurredOn: string };
 
 /**
- * Los presupuestos que cruzan un umbral con lo que se acaba de registrar (`added`): el 80 % o el límite
- * (budgetCrossings). Solo cuentan los egresos con categoría del mes en curso (`current`): los avisos son de ahora.
+ * Los presupuestos que cruzan un umbral con lo que se acaba de registrar (`added`): el de "se acerca" (Valores de
+ * la app) o el límite (budgetCrossings). Solo cuentan los egresos con categoría del mes en curso (`current`): los avisos son de ahora.
  * Lo usan la respuesta del bot y el formulario de Egresos.
  */
 export async function getBudgetCrossings(
@@ -84,8 +85,8 @@ export async function getBudgetCrossings(
     sums.set(item.categoryId, roundToCents((sums.get(item.categoryId) ?? 0) + item.amount));
   }
   if (sums.size === 0) return [];
-  const [budgets, spent] = await Promise.all([listBudgets(userId, locale), getSpentByCategory(userId, current)]);
-  return budgetCrossings(budgets, spent, sums);
+  const [budgets, spent, values] = await Promise.all([listBudgets(userId, locale), getSpentByCategory(userId, current), getAppValues()]);
+  return budgetCrossings(budgets, spent, sums, values.budgetNearShare);
 }
 
 /** Las categorías de egresos que se pueden elegir para un presupuesto nuevo: las disponibles que todavía no tienen. */

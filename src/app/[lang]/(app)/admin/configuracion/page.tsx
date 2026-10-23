@@ -5,12 +5,14 @@ import { texts } from "@/i18n/texts";
 import { requireAdmin } from "@/lib/session";
 import { getNoticeSettings } from "@/modules/admin/configuracion/notice";
 import { getSignupSettings } from "@/modules/admin/configuracion/signup";
+import { getAppValuesSettings } from "@/modules/admin/configuracion/values";
 import { toBogotaDateTime } from "@/modules/notice/notice";
 import { formatDate, formatDateTime } from "@/modules/admin/shared/filters";
 import { PageSkeleton } from "../../page-skeleton";
 import { adminMetadata } from "../admin-metadata";
 import { NoticeSettings } from "./notice-settings";
 import { SignupSettings } from "./signup-settings";
+import { ValuesSettings } from "./values-settings";
 
 export async function generateMetadata(): Promise<Metadata> {
   return adminMetadata("configuracion");
@@ -28,14 +30,14 @@ export default function AdminSettingsPage() {
 }
 
 /**
- * La configuración de la app, para todas las cuentas: los registros (quién puede crear una cuenta) y el aviso para
- * todos. Lo que venga (los valores de las cuentas nuevas…) va aquí como otra tarjeta.
+ * La configuración de la app, para todas las cuentas: los registros (quién puede crear una cuenta), el aviso para
+ * todos y los valores de la app (los avisos por defecto y los umbrales). Lo que venga va aquí como otra tarjeta.
  */
 async function AdminSettings() {
   // Rol de admin y verificación en dos pasos activa (sin ella, lleva a configurarla).
   await requireAdmin();
   const locale = await getLocale();
-  const [settings, notice] = await Promise.all([getSignupSettings(), getNoticeSettings()]);
+  const [settings, notice, appValues] = await Promise.all([getSignupSettings(), getNoticeSettings(), getAppValuesSettings()]);
   const t = TEXTS[locale];
 
   return (
@@ -61,6 +63,10 @@ async function AdminSettings() {
             published: `${notice.published.by ?? t.someAdmin} · ${formatDateTime(notice.published.at, locale)}`,
           }
         }
+      />
+      <ValuesSettings
+        values={appValues.values}
+        lastChange={appValues.updated && `${appValues.updated.by ?? t.someAdmin} · ${formatDateTime(appValues.updated.at, locale)}`}
       />
     </div>
   );

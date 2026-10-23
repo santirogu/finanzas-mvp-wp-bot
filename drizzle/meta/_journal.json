@@ -204,6 +204,13 @@
       "when": 1792774066020,
       "tag": "0028_aviso-para-todos",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1792779321356,
+      "tag": "0029_valores-de-la-app",
+      "breakpoints": true
     }
   ]
 }

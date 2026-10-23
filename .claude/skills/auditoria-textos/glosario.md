@@ -83,6 +83,7 @@ textos.
 | Crear cuenta, registrarte | Create account, sign up | | |
 | los registros: abiertos, solo con invitación, cerrados | sign-ups: open, invitation only, closed | inscripciones; registrations | Quién puede crear una cuenta (Configuración del admin). Se "invita" un correo y se "quita" la invitación. |
 | el aviso para todos (en el admin), el aviso general (en la franja) | the notice for everyone, general notice | anuncio, banner, comunicado | Un mensaje del admin arriba de la app, el login y el registro: "Información" o "Importante". No confundir con los avisos emergentes (los toasts, la región "Avisos"). Se "publica", se "cambia" y se "quita"; la persona lo "oculta" con la ✕. |
+| los valores de la app | the app values | ajustes, parámetros, configuración global | Los avisos de próximos pagos por defecto y los umbrales (el % de "se acerca", cuándo un gasto es fijo), en la Configuración del admin. |
 | contraseña | password | clave, password | "Clave" solo en la configuración de Google Authenticator, que la llama así. |
 | correo | email | email, e-mail, mail | "Correo electrónico" se acepta la primera vez en las páginas legales. |
 | verificación en dos pasos | two-step verification | 2FA, doble factor | |

@@ -55,6 +55,8 @@ const ICON_PATHS: Record<LogEntry["type"], ReactNode> = {
   // Un megáfono; tachado al quitar el aviso.
   notice_published: <path d="M3.5 8v4h2.5l5.5 3.5v-11L6 8H3.5zM14 8a3 3 0 0 1 0 4M15.5 6a6 6 0 0 1 0 8" />,
   notice_removed: <path d="M3.5 8v4h2.5l5.5 3.5v-11L6 8H3.5zM3 3l14 14" />,
+  // Tres controles deslizantes: los valores de la app.
+  app_values_changed: <path d="M4 5.5h12M4 10h12M4 14.5h12M7 4v3M12.5 8.5v3M9 13v3" />,
 };
 
 const ADMIN_COLOR = "bg-admin-surface text-admin";
@@ -85,6 +87,7 @@ const ICON_COLORS: Record<LogEntry["type"], string> = {
   signup_invite_removed: ADMIN_COLOR,
   notice_published: ADMIN_COLOR,
   notice_removed: ADMIN_COLOR,
+  app_values_changed: ADMIN_COLOR,
 };
 
 /** Los cambios de la configuración del bot (/admin/bot): no son de ninguna cuenta. */
@@ -104,6 +107,7 @@ const SETTINGS_EVENTS: readonly LogEntry["type"][] = [
   "signup_invite_removed",
   "notice_published",
   "notice_removed",
+  "app_values_changed",
 ];
 
 /**
@@ -242,6 +246,8 @@ function spanishSentence(entry: LogEntry, { subject: who }: Who, phone: ReactNod
       return <>{admin} publicó un aviso para todos</>;
     case "notice_removed":
       return <>{admin} quitó el aviso para todos</>;
+    case "app_values_changed":
+      return <>{admin} cambió los valores de la app</>;
   }
 }
 
@@ -299,5 +305,7 @@ function englishSentence(entry: LogEntry, { subject, object, whose, account }: W
       return <>{admin} published a notice for everyone</>;
     case "notice_removed":
       return <>{admin} removed the notice for everyone</>;
+    case "app_values_changed":
+      return <>{admin} changed the app values</>;
   }
 }
