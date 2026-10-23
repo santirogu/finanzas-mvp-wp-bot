@@ -31,9 +31,13 @@ export const user = pgTable(
     // reactive (src/modules/account/suspension.ts). El motivo es interno: solo lo ve el admin.
     suspendedAt: timestamp("suspended_at", { withTimezone: true }),
     suspensionReason: text("suspension_reason"),
-    // El idioma que eligió en Mi cuenta ("es" o "en"); null si no eligió: ve la app en el idioma de su
-    // navegador. Al iniciar sesión en otro navegador, se le pone ahí también (src/lib/auth.ts).
+    // El idioma que eligió en Mi cuenta ("es" o "en"); null si no eligió: ve la app en el de la cookie del
+    // navegador o, sin ella, en español. Al iniciar sesión en otro navegador, se le pone ahí también
+    // (src/lib/auth.ts).
     locale: text("locale"),
+    // La apariencia que eligió en Mi cuenta ("system", "light" o "dark"); null si no eligió: cada navegador
+    // tiene la suya. Al iniciar sesión, se le pone a ese navegador (la cookie `tema`, src/lib/theme.ts).
+    theme: text("theme"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
@@ -45,6 +49,8 @@ export const user = pgTable(
     uniqueIndex("user_one_super_admin_idx").on(t.superAdmin).where(sql`${t.superAdmin}`),
     // Solo los idiomas de la app (src/i18n/locales.ts).
     check("user_locale_check", sql`${t.locale} in ('es', 'en')`),
+    // Solo las apariencias de la app (src/lib/theme.ts).
+    check("user_theme_check", sql`${t.theme} in ('system', 'light', 'dark')`),
   ],
 );
 

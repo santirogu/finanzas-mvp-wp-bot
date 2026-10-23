@@ -17,7 +17,7 @@ vi.mock("@/lib/session", () => ({ requireUser: mocks.requireUser }));
 vi.mock("next/headers", () => ({ cookies: async () => ({ set: mocks.setCookie }), headers: async () => new Headers() }));
 vi.mock("next/navigation", () => ({ redirect: mocks.redirect }));
 
-const { saveLanguageAction } = await import("./actions");
+const { saveLanguageAction, saveThemeAction } = await import("./actions");
 
 const form = (locale?: string) => {
   const data = new FormData();
@@ -67,5 +67,35 @@ describe("saveLanguageAction", () => {
     await expect(saveLanguageAction(form("en"))).rejects.toThrow("/login");
     expect(await localeOf(ana.id)).toBeNull();
     expect(mocks.setCookie).not.toHaveBeenCalled();
+  });
+});
+
+const themeOf = async (id: string) => (await db.select({ theme: user.theme }).from(user).where(eq(user.id, id)))[0].theme;
+
+describe("saveThemeAction", () => {
+  it("guarda la apariencia de la cuenta de la sesión (no la de otra), sin redirigir", async () => {
+    const ana = await createUser({ name: "Ana" });
+    const beto = await createUser({ name: "Beto" });
+    mocks.requireUser.mockResolvedValue(ana);
+    mocks.redirect.mockClear();
+
+    await saveThemeAction("dark");
+    expect(await themeOf(ana.id)).toBe("dark");
+    expect(await themeOf(beto.id)).toBeNull();
+    await saveThemeAction("system");
+    expect(await themeOf(ana.id)).toBe("system");
+    expect(mocks.redirect).not.toHaveBeenCalled();
+  });
+
+  it.each([["azul"], [""], [undefined], [{ theme: "dark" }]])("con %j no cambia nada", async (value) => {
+    const ana = await createUser();
+    mocks.requireUser.mockResolvedValue(ana);
+    await saveThemeAction(value);
+    expect(await themeOf(ana.id)).toBeNull();
+  });
+
+  it("sin sesión no guarda nada", async () => {
+    mocks.requireUser.mockRejectedValueOnce(new Error("NEXT_REDIRECT /login"));
+    await expect(saveThemeAction("dark")).rejects.toThrow("NEXT_REDIRECT /login");
   });
 });

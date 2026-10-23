@@ -70,6 +70,7 @@ const SERVER_ACTIONS = {
   signOutAction: "sin sesión no hay nada que cerrar",
   deleteAccountAction: "requireUser + contraseña + palabra de confirmación; solo la cuenta propia",
   saveLanguageAction: "requireUser; solo el idioma de la cuenta propia (y la cookie de este navegador)",
+  saveThemeAction: "requireUser; solo la apariencia de la cuenta propia (una de las tres de la app)",
   chooseLanguageAction:
     "sin sesión: solo guarda la cookie del idioma en este navegador (no toca ninguna cuenta) y vuelve a la portada, el login o el registro, nunca a otra dirección",
   changePasswordAction:

@@ -84,8 +84,16 @@ export default function PrivacyPage() {
             </li>
             <li>
               <strong>Tu preferencia de apariencia:</strong> si en <strong>Mi cuenta</strong> eliges{" "}
-              <strong>Claro</strong> u <strong>Oscuro</strong>, se guarda solo en tu navegador, en este
-              dispositivo. No llega a nuestros servidores.
+              <strong>Sistema</strong>, <strong>Claro</strong> u <strong>Oscuro</strong>, se guarda en dos lugares:
+              <ul>
+                <li>
+                  en tu cuenta, hasta que la elimines, para mostrarte la app así en cualquier dispositivo donde
+                  inicies sesión;
+                </li>
+                <li>
+                  en una cookie de tu navegador (<code>tema</code>), que dura un año.
+                </li>
+              </ul>
             </li>
             <li>
               <strong>Tu idioma:</strong> si eliges el idioma en <strong>Mi cuenta</strong>, se guarda en dos
