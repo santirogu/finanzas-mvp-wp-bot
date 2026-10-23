@@ -92,7 +92,8 @@ describe("ValuesSettings", () => {
     await userEvent.type(dialog().getByLabelText("En al menos (meses)"), "5");
     await userEvent.type(dialog().getByLabelText("Código de Google Authenticator"), "123456");
     await userEvent.click(dialog().getByRole("button", { name: "Guardar" }));
-    expect(dialog().getByLabelText("En al menos (meses)")).toHaveAccessibleDescription("Escribe de 2 meses hasta los que se miran.");
+    // La respuesta vuelve a montar los campos (con lo enviado): se espera a que el error esté.
+    await vi.waitFor(() => expect(dialog().getByLabelText("En al menos (meses)")).toHaveAccessibleDescription("Escribe de 2 meses hasta los que se miran."));
     expect(dialog().getByLabelText("En al menos (meses)")).toHaveValue(5);
     expect(dialog().getByLabelText("Código de Google Authenticator")).toHaveValue("");
     expect(toasts()).toHaveLength(0);
