@@ -900,8 +900,9 @@ Authenticator (o cualquier app TOTP); reglas propias en `src/modules/auth/two-fa
   tampoco, `pnpm admin:reset-2fa --env .env.produccion <correo>` la reinicia y cierra sus sesiones.
 - **Sesión cerrada en otro lado** (al activarla, al reiniciarla, al borrar la cuenta): el navegador
   conserva la cookie vieja. `requireUser` manda a `/login?sesion=vencida`, donde el proxy la borra
-  y el login avisa "Tu sesión se cerró" (`src/lib/expired-session.ts`); sin eso, el proxy y el
-  dashboard se mandaban el uno al otro sin fin.
+  (en una redirección a la misma dirección, no en la respuesta que arma el login: ahí Next repetía las
+  cookies sin borrarlas) y el login avisa "Tu sesión se cerró" (`src/lib/expired-session.ts`); sin eso,
+  el proxy y el dashboard se mandaban el uno al otro sin fin.
 
 **Hacerse admin** (en la terminal, dentro de la carpeta del proyecto, con la cuenta ya registrada en
 la app):
@@ -937,7 +938,7 @@ actúa con permisos de admin.
 | Bot de WhatsApp | `/admin/bot` | Activo: qué pasó con los mensajes, consumo de Claude y errores, sin el texto |
 | Categorías | `/admin/categorias` | Activo: crear, editar, archivar, restaurar y eliminar las de ingresos y egresos |
 | Salud del sistema | `/admin/salud` | Activo: el estado de la app (lo mismo que `/api/health`), la versión, la base, la limpieza diaria, las conexiones del bot y los despliegues recientes |
-| Configuración | `/admin/configuracion` | Activo: quién puede crear una cuenta (registros abiertos, cerrados o solo con invitación) y los correos invitados |
+| Configuración | `/admin/configuracion` | Activo: quién puede crear una cuenta (registros abiertos, cerrados o solo con invitación), los correos invitados y el aviso para todos |
 | Seguridad | `/admin/seguridad` | Activo: la verificación en dos pasos del admin |
 
 - **Registro único** (`src/modules/admin/modules.ts`): de ahí salen la subnavegación y las tarjetas.
@@ -1143,9 +1144,9 @@ sus valores; tamaños y cantidades). Se revisa al abrir la página (`src/modules
 
 ### Configuración de la app
 
-En **`/admin/configuracion`** el admin cambia lo que vale para toda la app. Por ahora, los
-**registros**: quién puede crear una cuenta (`src/modules/admin/configuracion/`). Lo que venga (un aviso
-para todos, los valores de las cuentas nuevas…) va aquí como otra tarjeta.
+En **`/admin/configuracion`** el admin cambia lo que vale para toda la app (`src/modules/admin/configuracion/`):
+los **registros** (quién puede crear una cuenta) y el **aviso para todos**. Lo que venga (los valores de las
+cuentas nuevas…) va aquí como otra tarjeta.
 
 | Registros | Qué pasa en `/registro` |
 |---|---|
@@ -1163,7 +1164,21 @@ para todos, los valores de las cuentas nuevas…) va aquí como otra tarjeta.
   registrarse, la invitación queda como usada ("Creó su cuenta el…"); si esa persona elimina su
   cuenta, se borra su invitación y su correo sale de esos eventos ("invitó a alguien").
 - **Inicio** muestra cómo están los registros y, solo con invitación, cuántas invitaciones faltan por
-  usar.
+  usar; con un aviso vigente, hasta cuándo se ve.
+
+**El aviso para todos** (`app_notice`, una sola fila): un mensaje arriba de la app, del inicio de sesión y
+del registro, por ejemplo "Mantenimiento el sábado de 8 a 9" o "Nuevo: presupuestos".
+- **Uno a la vez**, de hasta 200 caracteres en una línea, con un texto opcional en inglés (vacío: se ve el de
+  español). Es **Información** (en el color de la marca) o **Importante** (en rojo, como las alertas).
+- **Se apaga solo** en la fecha y hora de fin, en hora de Colombia, hasta 31 días después. Uno vencido sigue
+  en Configuración (en rojo, "Venció el…") hasta que se publique otro o se quite.
+- **Publicarlo, cambiarlo y quitarlo** piden el código de Google Authenticator y quedan en el historial con el
+  texto, el tipo y la fecha de fin.
+- **Se cierra con la ✕** en cada navegador: la cookie `aviso-cerrado` guarda su versión (la fecha en que se
+  publicó), así el servidor tampoco lo dibuja al recargar. Si se publica otro, o se cambia el texto, tiene
+  otra versión y vuelve a aparecer.
+- Lo lee `src/modules/notice/current-notice.ts` en cada pedido (`src/components/site-notice.tsx`, dentro de
+  Suspense en los layouts de la app y de entrar), sin sesión.
 
 ### Historial de las cuentas
 
@@ -1187,6 +1202,7 @@ administrador.
 | `whatsapp_link_failed` | Código inválido o vencido (`invalid_code`) o demasiados intentos (`rate_limited`) | Número; sin cuenta |
 | `login_unlocked`, `sessions_revoked`, `account_suspended`, `account_reactivated`, `account_deleted` | Acciones del admin en `/admin/usuarios` (y `whatsapp_unlinked` con `by_admin`) | `admin_id`: quién lo hizo; `details.note`: el motivo de una suspensión |
 | `signup_mode_changed`, `signup_invite_added`, `signup_invite_removed` | Acciones del admin en `/admin/configuracion`; sin cuenta | El modo nuevo y el de antes; el correo invitado (sale si esa persona elimina su cuenta) |
+| `notice_published`, `notice_removed` | El aviso para todos, en `/admin/configuracion`; sin cuenta | El texto en español, el tipo y la fecha de fin |
 
 Las acciones del admin llevan `admin_id` (su cuenta) y tienen su chip, **Acciones del admin**, en los
 filtros del Historial; también se ven en el detalle de cada cuenta. Si se borra la cuenta del admin, la

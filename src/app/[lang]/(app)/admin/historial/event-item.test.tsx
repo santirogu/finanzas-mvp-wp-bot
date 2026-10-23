@@ -110,6 +110,16 @@ describe("EventItem", () => {
     // Si esa persona eliminó su cuenta, su correo ya no está (src/modules/account/delete-account.ts).
     [{ type: "signup_invite_added" }, "Ana Admin invitó a alguien a crear una cuenta", "Configuración · 9:41 p. m."],
     [{ type: "signup_invite_removed" }, "Ana Admin quitó una invitación", "Configuración · 9:41 p. m."],
+    [
+      { type: "notice_published", details: { notice: { message: "Nuevo: presupuestos", tone: "info", endsAt: "2026-10-26T01:00:00.000Z" } } },
+      "Ana Admin publicó un aviso para todos",
+      "Configuración · “Nuevo: presupuestos” · información · hasta el 25 de oct. de 2026, 8:00 p. m. · 9:41 p. m.",
+    ],
+    [
+      { type: "notice_removed", details: { notice: { message: "Nuevo: presupuestos", tone: "info", endsAt: "2026-10-26T01:00:00.000Z" } } },
+      "Ana Admin quitó el aviso para todos",
+      "Configuración · “Nuevo: presupuestos” · información · hasta el 25 de oct. de 2026, 8:00 p. m. · 9:41 p. m.",
+    ],
   ] as const)("acción del admin sobre los registros %j, en su color", (overrides, sentence, meta) => {
     const shown = renderItem({ entry: entry({ account: null, admin: { name: "Ana Admin" }, ...(overrides as Partial<LogEntry>) }) });
     expect(shown.sentence).toBe(sentence);
@@ -207,6 +217,8 @@ describe("EventItem en inglés", () => {
     [{ type: "signup_invite_removed", account: null, details: { email: "beto@test.local" } }, "Carla Admin removed the invitation for beto@test.local"],
     [{ type: "signup_invite_added", account: null }, "Carla Admin invited someone to create an account"],
     [{ type: "signup_invite_removed", account: null }, "Carla Admin removed an invitation"],
+    [{ type: "notice_published", account: null }, "Carla Admin published a notice for everyone"],
+    [{ type: "notice_removed", account: null }, "Carla Admin removed the notice for everyone"],
   ] as const)("acción del admin %j", (overrides, sentence) => {
     expect(renderItem({ entry: entry({ admin: carla, ...(overrides as Partial<LogEntry>) }), locale: "en" }).sentence).toBe(sentence);
   });

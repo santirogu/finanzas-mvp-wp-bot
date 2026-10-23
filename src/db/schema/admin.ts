@@ -78,3 +78,20 @@ export const signupInvite = pgTable(
   },
   (t) => [uniqueIndex("signup_invite_email_uq").on(t.email)],
 );
+
+// El aviso para todos (/admin/configuracion): uno a la vez, arriba en la app, el login y el registro hasta ends_at.
+// "info" (la marca) o "important" (rojo, como las alertas); message_en, opcional (vacío: se ve message). Quitarlo
+// borra la fila. published_at también es su versión: quien lo cerró lo vuelve a ver si se publica otro o cambia.
+export const appNotice = pgTable(
+  "app_notice",
+  {
+    id: integer("id").primaryKey().default(1),
+    message: text("message").notNull(),
+    messageEn: text("message_en"),
+    tone: text("tone").notNull(),
+    endsAt: timestamp("ends_at", { withTimezone: true }).notNull(),
+    publishedAt: timestamp("published_at", { withTimezone: true }).notNull().defaultNow(),
+    publishedBy: text("published_by").references(() => user.id, { onDelete: "set null" }),
+  },
+  (t) => [check("app_notice_single_row", sql`${t.id} = 1`), check("app_notice_tone", sql`${t.tone} in ('info', 'important')`)],
+);

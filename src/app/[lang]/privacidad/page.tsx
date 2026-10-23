@@ -119,6 +119,11 @@ export default function PrivacyPage() {
               </p>
             </li>
             <li>
+              <strong>Los avisos generales:</strong> si ocultas con la ✕ un aviso de la app (por ejemplo, de un
+              mantenimiento), una cookie de tu navegador (<code>aviso-cerrado</code>) lo recuerda. Dura 32 días y no
+              se asocia a tu cuenta.
+            </li>
+            <li>
               <strong>Estadísticas de uso anónimas:</strong> con Vercel Web Analytics contamos:
               <ul>
                 <li>qué páginas se visitan y desde qué sitio llegaste;</li>

@@ -41,7 +41,8 @@ const PAGES = {
   "/admin/bot": "requiere sesión de admin con la verificación en dos pasos activa (requireAdmin); sin el texto de los mensajes",
   "/admin/salud":
     "requiere sesión de admin con la verificación en dos pasos activa (requireAdmin); solo nombres de variables (nunca sus valores), tamaños y cantidades",
-  "/admin/configuracion": "requiere sesión de admin con la verificación en dos pasos activa (requireAdmin); la configuración global de la app y los correos invitados",
+  "/admin/configuracion":
+    "requiere sesión de admin con la verificación en dos pasos activa (requireAdmin); la configuración global de la app, los correos invitados y el aviso para todos",
   "/admin/seguridad": "requiere sesión de admin; es donde se configura la verificación en dos pasos (requireAdminRole)",
 } as const;
 
@@ -103,6 +104,9 @@ const SERVER_ACTIONS = {
   changeSignupModeAction: "requireAdmin + código de Google Authenticator; solo uno de los modos (src/modules/auth/signup-modes.ts)",
   addSignupInviteAction: "requireAdmin; un correo válido que no tenga cuenta; queda en el historial (sin código: README → Riesgos aceptados)",
   removeSignupInviteAction: "requireAdmin; solo quita una invitación; queda en el historial (sin código: README → Riesgos aceptados)",
+  publishNoticeAction:
+    "requireAdmin + código de Google Authenticator; el aviso para todos: texto de hasta 200 caracteres, uno de los dos tipos y fin en los próximos 31 días",
+  removeNoticeAction: "requireAdmin + código de Google Authenticator; solo quita el aviso para todos",
   chooseFixedExpenseAction:
     "requireUser; solo los gastos fijos propios (el dueño sale de la sesión); agregar exige un egreso propio con esa descripción",
   saveFixedNoteAction:
@@ -392,6 +396,7 @@ describe("administración", () => {
         "src/modules/admin/health/system.ts",
         "src/modules/admin/bot/resend.ts",
         "src/modules/admin/configuracion/signup.ts",
+        "src/modules/admin/configuracion/notice.ts",
       ]),
     );
   });

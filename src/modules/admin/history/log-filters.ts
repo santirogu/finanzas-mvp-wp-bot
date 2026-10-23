@@ -76,6 +76,8 @@ export const ADMIN_EVENT_TYPES = [
   "signup_mode_changed",
   "signup_invite_added",
   "signup_invite_removed",
+  "notice_published",
+  "notice_removed",
 ] as const;
 
 /** El chip "Acciones del admin": todo lo que hizo un admin, sea del tipo que sea. */
@@ -226,6 +228,9 @@ export function groupByDay<T extends { createdAt: Date }>(entries: T[], today: s
   return groups;
 }
 
+/** Cuántos caracteres del texto de un aviso se ven en el historial. */
+const NOTICE_EXCERPT = 60;
+
 const DETAIL_TEXTS = {
   es: {
     note: (note: string) => `motivo: ${note}`,
@@ -236,6 +241,8 @@ const DETAIL_TEXTS = {
     monthly: (tokens: string) => `${tokens} tokens al mes`,
     change: (now: string, before: string | null) => `ahora ${now}${before === null ? "" : ` (antes ${before})`}`,
     signupModes: { open: "abiertos", closed: "cerrados", invite: "solo con invitación" },
+    noticeTones: { info: "información", important: "importante" },
+    until: (date: string) => `hasta el ${date}`,
     resent: (n: number) => `${n} ${n === 1 ? "reenviada" : "reenviadas"}`,
     failedAgain: (n: number) => `${n} no ${n === 1 ? "salió" : "salieron"} otra vez`,
   },
@@ -248,6 +255,8 @@ const DETAIL_TEXTS = {
     monthly: (tokens: string) => `${tokens} tokens a month`,
     change: (now: string, before: string | null) => `now ${now}${before === null ? "" : ` (before ${before})`}`,
     signupModes: { open: "open", closed: "closed", invite: "invitation only" },
+    noticeTones: { info: "information", important: "important" },
+    until: (date: string) => `until ${date}`,
     resent: (n: number) => `${n} resent`,
     failedAgain: (n: number) => `${n} didn't go out again`,
   },
@@ -274,6 +283,13 @@ export function eventDetail(details: AccountEventDetails, locale: Locale = DEFAU
   if (details.model) parts.push(t.change(botModelName(details.model), details.previousModel ? botModelName(details.previousModel) : null));
   if (details.signupMode) {
     parts.push(t.change(t.signupModes[details.signupMode], details.previousSignupMode ? t.signupModes[details.previousSignupMode] : null));
+  }
+  if (details.notice) {
+    // El texto del aviso, corto (el completo se ve en Configuración mientras siga publicado).
+    const { message, tone, endsAt } = details.notice;
+    parts.push(`“${message.length > NOTICE_EXCERPT ? `${message.slice(0, NOTICE_EXCERPT).trimEnd()}…` : message}”`);
+    if (tone in t.noticeTones) parts.push(t.noticeTones[tone]);
+    parts.push(t.until(formatDateTime(new Date(endsAt), locale)));
   }
   if (details.resent !== undefined) {
     parts.push(`${t.resent(details.resent)}${details.failed ? ` · ${t.failedAgain(details.failed)}` : ""}`);

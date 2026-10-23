@@ -27,9 +27,13 @@ export function proxy(request: NextRequest) {
 
   if (ALWAYS_PUBLIC.includes(pathname)) return localized(request);
   // La sesión ya no sirve (la validó requireUser): se borra la cookie y se muestra el login, en vez
-  // de mandarlo al dashboard por la cookie vieja (ver src/lib/expired-session.ts).
+  // de mandarlo al dashboard por la cookie vieja (ver src/lib/expired-session.ts). Se borra en una redirección a
+  // la misma dirección, no en la respuesta que arma la página: el login se arma en cada pedido (el aviso para
+  // todos) y, en esa respuesta, Next repetía las cookies vacías y sin Max-Age=0 (no se borraban, y la sesión nueva
+  // no servía). Sin ninguna cookie de sesión, se muestra el login: no hay círculo.
   if (pathname === "/login" && request.nextUrl.searchParams.get(EXPIRED_SESSION_PARAM.name) === EXPIRED_SESSION_PARAM.value) {
-    const response = localized(request);
+    if (!SESSION_COOKIE_NAMES.some((name) => request.cookies.has(name))) return localized(request);
+    const response = NextResponse.redirect(request.nextUrl);
     for (const name of SESSION_COOKIE_NAMES) {
       response.cookies.set(name, "", {
         path: "/",

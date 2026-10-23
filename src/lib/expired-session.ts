@@ -3,7 +3,8 @@
 //
 // El proxy solo mira si la cookie existe (src/proxy.ts), así que mandaría /login al dashboard y el
 // dashboard, que sí valida la sesión, de vuelta al login: un círculo sin fin. Por eso requireUser
-// manda a EXPIRED_SESSION_LOGIN y ahí el proxy borra la cookie vieja y deja ver el login.
+// manda a EXPIRED_SESSION_LOGIN y ahí el proxy borra la cookie vieja (en una redirección a la misma dirección)
+// y deja ver el login.
 
 export const EXPIRED_SESSION_PARAM = { name: "sesion", value: "vencida" } as const;
 export const EXPIRED_SESSION_LOGIN = `/login?${EXPIRED_SESSION_PARAM.name}=${EXPIRED_SESSION_PARAM.value}`;
