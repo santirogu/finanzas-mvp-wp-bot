@@ -38,7 +38,9 @@ export async function WhatsAppCard() {
       {link ? (
         <div className="mt-3 space-y-3 text-sm">
           <p className="text-muted">
-            {t.linked} <span className="whitespace-nowrap font-medium text-foreground">{maskPhone(link.phone)}</span>. {t.tryIt}{" "}
+            {/* El número no se corta con espacios que no se parten, no con white-space: nowrap: Safari mide de menos
+                ese texto y, entre 428 y 442 px (los iPhone Pro Max), lo dejaba salirse de la tarjeta. */}
+            {t.linked} <span className="font-medium text-foreground">{maskPhone(link.phone).replaceAll(" ", " ")}</span>. {t.tryIt}{" "}
             <em lang="es">{t.example}</em>.
           </p>
           <UnlinkWhatsApp />
