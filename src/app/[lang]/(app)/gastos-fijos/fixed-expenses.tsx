@@ -9,6 +9,7 @@ import { useLocale, useTexts } from "@/i18n/client";
 import { texts } from "@/i18n/texts";
 import { formatShortDate } from "@/lib/dates";
 import { formatMoney, formatPercent, formatShare } from "@/lib/money";
+import type { FixedMonthView, FixedStatusView } from "@/modules/reports/fixed-month";
 import { chooseFixedExpenseAction, type FixedExpenseState, type FixedNoteState, saveFixedNoteAction } from "@/modules/reports/actions";
 import { changeDirection, type FixedHistoryEntry, NOTE_MAX_LENGTH, pctLabel } from "@/modules/reports/history";
 import type { FixedOption, RecurringExpense } from "@/modules/reports/recurring";
@@ -97,6 +98,7 @@ const TEXTS = texts(
 export function FixedExpenses({
   items,
   histories,
+  month,
   removed,
   candidates,
   total,
@@ -107,6 +109,8 @@ export function FixedExpenses({
   items: RecurringExpense[];
   /** El historial de cada gasto, por su clave. */
   histories: Record<string, FixedHistory>;
+  /** El estado de este mes: cuántos se pagaron y, por clave, el de cada gasto (src/modules/reports/fixed-month.ts). */
+  month: FixedMonthView;
   removed: FixedOption[];
   candidates: FixedOption[];
   /** Lo que suman al mes. */
@@ -126,9 +130,24 @@ export function FixedExpenses({
         <p className="py-8 text-center text-sm text-muted">{t.none}</p>
       ) : (
         <>
+          {/* Lo que falta, a la derecha (sobre los montos); si no cabe, baja solo a la línea siguiente. */}
+          {month.summary && (
+            <p className="flex flex-wrap items-baseline justify-between gap-x-3 border-b border-border pb-3 text-sm">
+              <span className="font-medium">{month.summary.paid}</span>
+              {month.summary.pending && <span className="whitespace-nowrap text-muted">{month.summary.pending}</span>}
+            </p>
+          )}
           <ul className="divide-y divide-border">
             {items.map((item) => (
-              <FixedItem key={item.key} item={item} history={histories[item.key]} periodMonths={periodMonths} money={money} />
+              <FixedItem
+                key={item.key}
+                item={item}
+                // Por clave, solo las propias: una descripción como "constructor" no puede leer lo que trae cualquier objeto.
+                history={Object.hasOwn(histories, item.key) ? histories[item.key] : undefined}
+                status={Object.hasOwn(month.statuses, item.key) ? month.statuses[item.key] : undefined}
+                periodMonths={periodMonths}
+                money={money}
+              />
             ))}
           </ul>
           {/* El total, alineado con los montos de arriba (deja el lugar del ✕: 44 px, o 32 con mouse, más el espacio). */}
@@ -177,8 +196,43 @@ type Money = (n: number) => string;
 
 const signed = (n: number, money: Money) => (n > 0 ? `+${money(n)}` : money(n));
 
+// El estado del mes de cada gasto: pagado en el color de la marca (con ✓), atrasado en rojo (como en los próximos
+// pagos del Resumen) y lo demás, apagado.
+const STATUS_COLORS: Record<FixedStatusView["tone"], string> = {
+  paid: "font-medium text-brand",
+  pending: "text-muted",
+  overdue: "font-medium text-danger",
+  skipped: "text-muted",
+};
+
+/** Un ✓ (decorativo: el texto ya dice "Pagado"). */
+function CheckIcon() {
+  return (
+    <svg viewBox="0 0 20 20" fill="currentColor" className="size-3.5 shrink-0" aria-hidden>
+      <path
+        fillRule="evenodd"
+        d="M16.7 5.3a1 1 0 0 1 0 1.4l-8 8a1 1 0 0 1-1.4 0l-4-4a1 1 0 1 1 1.4-1.4L8 12.58l7.3-7.3a1 1 0 0 1 1.4 0Z"
+        clipRule="evenodd"
+      />
+    </svg>
+  );
+}
+
 /** Un gasto fijo: tocarlo abre el historial de su valor; el ✕ lo quita. */
-function FixedItem({ item, history, periodMonths, money }: { item: RecurringExpense; history?: FixedHistory; periodMonths: number; money: Money }) {
+function FixedItem({
+  item,
+  history,
+  status,
+  periodMonths,
+  money,
+}: {
+  item: RecurringExpense;
+  history?: FixedHistory;
+  /** Su estado este mes (sin pago esperado este mes, no hay). */
+  status?: FixedStatusView;
+  periodMonths: number;
+  money: Money;
+}) {
   const t = useTexts(TEXTS);
   const [open, setOpen] = useState(false);
   const panelId = useId();
@@ -201,6 +255,14 @@ function FixedItem({ item, history, periodMonths, money }: { item: RecurringExpe
               <span aria-hidden>{item.emoji} </span>
               {item.description}
             </span>{" "}
+            {status && (
+              <>
+                <span className={`mt-0.5 flex items-center gap-1 text-xs ${STATUS_COLORS[status.tone]}`}>
+                  {status.tone === "paid" && <CheckIcon />}
+                  {status.text}
+                </span>{" "}
+              </>
+            )}
             <span className="block text-xs text-muted">
               {t.inMonths(item.months, periodMonths)}
               {item.origin === "manual" && t.addedByYou}

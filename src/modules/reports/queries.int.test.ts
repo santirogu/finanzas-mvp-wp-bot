@@ -12,6 +12,7 @@ import {
   getExpensesByDay,
   getLargestExpenses,
   getMonthExpenses,
+  getFixedMonth,
   getMonthFact,
   getMonthFixed,
   getMonthlyTotals,
@@ -490,6 +491,52 @@ describe("getMonthFixed (Lo que te queda, en el Resumen)", () => {
     const ana = await createUser();
     await addTx({ userId: ana.id, description: "Mercado", amount: 400000, occurredOn: "2026-10-03" });
     expect(await getMonthFixed(ana.id, october, "2026-10-03")).toEqual({ pending: [], paid: 0, hasFixed: false });
+  });
+});
+
+describe("getFixedMonth (el estado del mes en Fijos)", () => {
+  it("de cada gasto fijo propio: pagado, falta, atrasado o 'ya no aplica'; sin los borrados ni lo de otra cuenta", async () => {
+    const ana = await createUser();
+    const beto = await createUser();
+    for (const month of ["07", "08", "09"]) {
+      await addTx({ userId: ana.id, description: "Arriendo", amount: 1800000, occurredOn: `2026-${month}-28` });
+      await addTx({ userId: ana.id, description: "Gimnasio", amount: 120000, occurredOn: `2026-${month}-01` });
+      await addTx({ userId: ana.id, description: "Internet", amount: 95000, occurredOn: `2026-${month}-02` });
+      await addTx({ userId: ana.id, description: "Seguro", amount: 60000, occurredOn: `2026-${month}-03` });
+      await addTx({ userId: beto.id, description: "Colegio", amount: 900000, occurredOn: `2026-${month}-04` });
+    }
+    await addTx({ userId: ana.id, description: "Gimnasio", amount: 130000, occurredOn: "2026-10-02" });
+    // Borrado no cuenta: el internet de octubre sigue atrasado.
+    await addTx({ userId: ana.id, description: "Internet", amount: 95000, occurredOn: "2026-10-02", deletedAt: new Date() });
+    await db.insert(fixedPaymentSkip).values([
+      { userId: ana.id, descriptionKey: "seguro", month: "2026-10" },
+      // La marca de Beto no le cambia nada a Ana.
+      { userId: beto.id, descriptionKey: "arriendo", month: "2026-10" },
+    ]);
+
+    const month = await getFixedMonth(ana.id, october, "2026-10-05");
+    expect(Object.fromEntries(month.statuses)).toEqual({
+      arriendo: { kind: "pending", date: "2026-10-28", overdue: false, usualDay: 28, approximate: false },
+      gimnasio: { kind: "paid", paidOn: "2026-10-02" },
+      internet: { kind: "pending", date: "2026-10-02", overdue: true, usualDay: 2, approximate: false },
+      seguro: { kind: "skipped" },
+    });
+    expect(month).toMatchObject({ paid: 1, expected: 3, pendingTotal: 1895000 });
+    // Lo que falta, igual que "Lo que te queda".
+    expect((await getMonthFixed(ana.id, october, "2026-10-05")).pending.reduce((sum, p) => sum + p.amount, 0)).toBe(1895000);
+    expect([...(await getFixedMonth(beto.id, october, "2026-10-05")).statuses.keys()]).toEqual(["colegio"]);
+  });
+});
+
+describe("getFixedExpenses: una descripción con el nombre de una propiedad de los objetos", () => {
+  it("'__proto__' es un gasto fijo más, con su historial (no cambia el objeto de los historiales)", async () => {
+    const ana = await createUser();
+    for (const month of ["08", "09", "10"]) await addTx({ userId: ana.id, description: "__proto__", amount: 5000, occurredOn: `2026-${month}-06` });
+    const { recurring, histories } = await getFixedExpenses(ana.id, reportPeriod(undefined, october), october);
+    expect(recurring.items.map((i) => i.key)).toEqual(["__proto__"]);
+    expect(Object.hasOwn(histories, "__proto__")).toBe(true);
+    expect(Object.getPrototypeOf(histories)).toBe(Object.prototype);
+    expect(histories["__proto__"]).toHaveLength(1);
   });
 });
 

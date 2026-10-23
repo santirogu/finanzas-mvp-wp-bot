@@ -23,6 +23,7 @@ import { type FixedHistoryEntry, fixedHistories } from "./history";
 import { getExpenseHistoryMonths, getFixedNotes, noteKey } from "./history-notes";
 import { getPaymentSkips } from "./payment-skips";
 import { type ReportPeriod, reportPeriod } from "./period";
+import { type FixedMonth, fixedMonth } from "./fixed-month";
 import { type MonthFixed, monthFixed } from "./remaining";
 import { type DescriptionMonthTotal, recurringExpenses, recurringFrom } from "./recurring";
 import { monthSeries, type MonthTotals, periodSummary } from "./summary";
@@ -232,10 +233,10 @@ export async function getFixedExpenses(userId: string, period: ReportPeriod, cur
   ]);
   const recurring = recurringExpenses(descriptions, period.months, choices, rule);
   const byKey = fixedHistories(historyMonths, recurring.items.map((item) => item.key));
-  const histories: Record<string, FixedHistoryEntry[]> = {};
-  for (const [key, entries] of byKey) {
-    histories[key] = entries.map((entry) => ({ ...entry, note: notes.get(noteKey(key, entry.month)) ?? null }));
-  }
+  // Con fromEntries: la clave de un gasto como "__proto__" queda como una más (asignada, cambiaría el prototipo).
+  const histories: Record<string, FixedHistoryEntry[]> = Object.fromEntries(
+    [...byKey].map(([key, entries]) => [key, entries.map((entry) => ({ ...entry, note: notes.get(noteKey(key, entry.month)) ?? null }))]),
+  );
   const { averageExpense } = periodSummary(monthSeries(period.months, monthly), current, firstActiveOf(activeMonths));
   return { recurring, histories, averageExpense };
 }
@@ -295,6 +296,15 @@ const getFixedPaymentsData = cache(async (userId: string, month: string) => {
 export async function getMonthFixed(userId: string, current: Month, today: string): Promise<MonthFixed> {
   const { items, history, skipped } = await getFixedPaymentsData(userId, monthParam(current));
   return monthFixed(items, history, skipped, today);
+}
+
+/**
+ * El estado del mes en curso de cada gasto fijo, para Fijos: pagado, falta (o atrasado) o "ya no aplica", y cuántos
+ * se pagaron. `today` (YYYY-MM-DD), en la zona de la persona.
+ */
+export async function getFixedMonth(userId: string, current: Month, today: string): Promise<FixedMonth> {
+  const { items, history, skipped } = await getFixedPaymentsData(userId, monthParam(current));
+  return fixedMonth(items, history, skipped, today);
 }
 
 /**

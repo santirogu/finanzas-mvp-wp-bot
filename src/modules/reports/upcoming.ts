@@ -96,6 +96,49 @@ function paymentsByKey(rows: HistoryMonth[], keys: Set<string>): Map<string, str
   return new Map([...byKey].map(([key, months]) => [key, [...months.values()].sort()]));
 }
 
+/** Lo que se espera de un gasto fijo: el día en que se suele pagar y cada pago esperado, con la fecha en que se pagó. */
+export type PaymentSchedule = {
+  /** El día del mes en que se suele pagar. */
+  day: number;
+  /** Con menos de PAYMENTS_FOR_DAY pagos: el día es aproximado. */
+  approximate: boolean;
+  /** Un pago por mes ("YYYY-MM"), con su fecha esperada y la del pago que contó para él (null si falta). */
+  due: { month: string; date: string; paidOn: string | null }[];
+};
+
+/**
+ * El calendario de pagos de cada gasto fijo (`items`), por su clave, a partir de los egresos por mes y descripción
+ * (`history`): desde el mes que corresponde a su primer pago hasta el siguiente al de `today` (YYYY-MM-DD). Sin
+ * pagos, el gasto no está. Lo comparten los avisos de próximos pagos y el estado del mes de Fijos.
+ */
+export function paymentSchedules(items: readonly Pick<FixedOption, "key">[], history: HistoryMonth[], today: string): Map<string, PaymentSchedule> {
+  const payments = paymentsByKey(history, new Set(items.map((item) => item.key)));
+  const current = monthOf(today);
+  const schedules = new Map<string, PaymentSchedule>();
+  for (const item of items) {
+    const dates = payments.get(item.key);
+    if (!dates) continue;
+    const recent = dates.slice(-PAYMENTS_FOR_DAY);
+    const day = usualDay(recent);
+    // Un pago por mes, desde el que corresponde al primer pago (si se pagó el 25 lo que se suele pagar el
+    // 5, es el del mes siguiente) hasta el del mes siguiente al actual (a fin de mes, el del 1 ya puede
+    // estar a menos de los días de anticipación; con 10, el del 5 también).
+    const due: PaymentSchedule["due"] = [];
+    for (let month = shiftMonth(monthOf(dates[0]), -1); monthParam(month) <= monthParam(shiftMonth(current, 1)); month = shiftMonth(month, 1)) {
+      const date = dateInMonth(monthParam(month), day);
+      if (daysBetween(dates[0], date) >= -HALF_MONTH) due.push({ month: monthParam(month), date, paidOn: null });
+    }
+    // Cada pago cuenta para la fecha esperada más cercana (pagar el 2 de noviembre lo de octubre, si se
+    // suele pagar el 30, cuenta para octubre). Los pagos van del más viejo al más nuevo: queda el primero.
+    for (const paid of dates) {
+      const nearest = due.reduce((best, d) => (Math.abs(daysBetween(paid, d.date)) < Math.abs(daysBetween(paid, best.date)) ? d : best));
+      if (Math.abs(daysBetween(paid, nearest.date)) <= HALF_MONTH) nearest.paidOn ??= paid;
+    }
+    schedules.set(item.key, { day, approximate: recent.length < PAYMENTS_FOR_DAY, due });
+  }
+  return schedules;
+}
+
 /**
  * Los pagos de los gastos fijos (`items`) que hay que avisar hoy (`today`, YYYY-MM-DD en la zona de la
  * persona), de la fecha más vieja a la más próxima. `history` son los egresos por mes y descripción (de
@@ -109,32 +152,15 @@ export function upcomingPayments(
   today: string,
   daysAhead: number = DAYS_AHEAD,
 ): UpcomingPayment[] {
-  const payments = paymentsByKey(history, new Set(items.map((item) => item.key)));
-  const current = monthOf(today);
-  const oldest = monthParam(shiftMonth(current, -MONTHS_BACK));
+  const schedules = paymentSchedules(items, history, today);
+  const oldest = monthParam(shiftMonth(monthOf(today), -MONTHS_BACK));
   const result: UpcomingPayment[] = [];
   for (const item of items) {
-    const dates = payments.get(item.key);
-    if (!dates) continue;
-    const recent = dates.slice(-PAYMENTS_FOR_DAY);
-    const day = usualDay(recent);
-    // Un pago por mes, desde el que corresponde al primer pago (si se pagó el 25 lo que se suele pagar el
-    // 5, es el del mes siguiente) hasta el del mes siguiente al actual (a fin de mes, el del 1 ya puede
-    // estar a menos de los días de anticipación; con 10, el del 5 también).
-    const due: { month: string; date: string; paid: boolean }[] = [];
-    for (let month = shiftMonth(monthOf(dates[0]), -1); monthParam(month) <= monthParam(shiftMonth(current, 1)); month = shiftMonth(month, 1)) {
-      const date = dateInMonth(monthParam(month), day);
-      if (daysBetween(dates[0], date) >= -HALF_MONTH) due.push({ month: monthParam(month), date, paid: false });
-    }
-    // Cada pago cuenta para la fecha esperada más cercana (pagar el 2 de noviembre lo de octubre, si se
-    // suele pagar el 30, cuenta para octubre).
-    for (const paid of dates) {
-      const nearest = due.reduce((best, d) => (Math.abs(daysBetween(paid, d.date)) < Math.abs(daysBetween(paid, best.date)) ? d : best));
-      if (Math.abs(daysBetween(paid, nearest.date)) <= HALF_MONTH) nearest.paid = true;
-    }
-    for (const d of due) {
+    const schedule = schedules.get(item.key);
+    if (!schedule) continue;
+    for (const d of schedule.due) {
       const days = daysBetween(today, d.date);
-      if (d.paid || days > daysAhead || d.month < oldest || skipped.has(`${item.key} ${d.month}`)) continue;
+      if (d.paidOn || days > daysAhead || d.month < oldest || skipped.has(`${item.key} ${d.month}`)) continue;
       result.push({
         key: item.key,
         description: item.description,
@@ -143,8 +169,8 @@ export function upcomingPayments(
         month: d.month,
         date: d.date,
         days,
-        usualDay: day,
-        approximate: recent.length < PAYMENTS_FOR_DAY,
+        usualDay: schedule.day,
+        approximate: schedule.approximate,
       });
     }
   }
