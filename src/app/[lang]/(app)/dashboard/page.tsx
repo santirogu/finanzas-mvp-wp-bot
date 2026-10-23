@@ -11,7 +11,8 @@ import { inMonthPhrase, monthHref, monthNav, selectedMonth } from "@/lib/month-n
 import { requireUser } from "@/lib/session";
 import { getBudgetProgress } from "@/modules/budgets/budgets";
 import { budgetRows } from "@/modules/budgets/progress";
-import { getMonthFixed, getUpcomingPayments } from "@/modules/reports/queries";
+import { monthFactText } from "@/modules/reports/month-fact";
+import { getMonthFact, getMonthFixed, getUpcomingPayments } from "@/modules/reports/queries";
 import { monthRemaining, remainingView } from "@/modules/reports/remaining";
 import { monthSavedNote } from "@/modules/reports/summary";
 import { upcomingItems, windowPhrase } from "@/modules/reports/upcoming";
@@ -51,6 +52,8 @@ const TEXTS = texts(
     budgets: (month: string) => `Presupuestos de ${month}`,
     editBudgets: "Editar",
     addBudgets: "Ponle un presupuesto a tus categorías",
+    fact: "Dato del mes",
+    factLink: "Ver en Reportes",
   },
   {
     en: {
@@ -67,6 +70,8 @@ const TEXTS = texts(
       budgets: (month) => `Budgets for ${month}`,
       editBudgets: "Edit",
       addBudgets: "Set a budget for your categories",
+      fact: "This month",
+      factLink: "See in Reports",
     },
   },
 );
@@ -94,7 +99,7 @@ async function Dashboard({ month }: { month: string | string[] | undefined }) {
   // Con el mes en curso, el anterior hasta el mismo día: contra el mes entero, a mitad de mes casi todo daría
   // "menos que septiembre".
   const beforeRange = isCurrent ? monthRangeUpTo(previous, today) : monthRange(previous.year, previous.month);
-  const [summary, before, byCategory, recent, activeMonths, upcoming, fixed, budgets] = await Promise.all([
+  const [summary, before, byCategory, recent, activeMonths, upcoming, fixed, budgets, fact] = await Promise.all([
     getMonthlySummary(user.id, range),
     getMonthlySummary(user.id, beforeRange),
     getTotalsByCategory(user.id, "expense", range, locale),
@@ -106,6 +111,8 @@ async function Dashboard({ month }: { month: string | string[] | undefined }) {
     isCurrent ? getMonthFixed(user.id, current, today) : null,
     // Los presupuestos son de ahora (el monto vale para el mes en curso).
     isCurrent ? getBudgetProgress(user.id, current, locale) : null,
+    // El dato del mes compara lo que va del mes en curso con lo mismo de los anteriores ("a esta altura").
+    isCurrent ? getMonthFact(user.id, current, today, locale) : null,
   ]);
   const money = (n: number) => formatMoney(n, user.currency, locale);
   const firstName = user.name.split(" ")[0];
@@ -199,6 +206,26 @@ async function Dashboard({ month }: { month: string | string[] | undefined }) {
               <p className="py-8 text-center text-sm text-muted">{t.noExpenses(inMonth)}</p>
             ) : (
               <CategoryChart slices={chartSlices(byCategory, summary.expense)} total={summary.expense} currency={user.currency} />
+            )}
+            {/* La categoría que más se salió de lo normal a esta altura del mes (src/modules/reports/month-fact.ts). */}
+            {fact && (
+              <section aria-labelledby="dato-del-mes" className="mt-3 space-y-1 border-t border-border pt-3 text-sm">
+                <h3 id="dato-del-mes" className="text-xs font-medium text-muted">
+                  {t.fact}
+                </h3>
+                <p className="flex items-start gap-2">
+                  <span aria-hidden className={`shrink-0 ${fact.direction === "up" ? "text-expense" : "text-income"}`}>
+                    {fact.direction === "up" ? "▲" : "▼"}
+                  </span>
+                  <span className="min-w-0">
+                    <span aria-hidden>{fact.emoji} </span>
+                    {monthFactText(fact, user.currency, locale)}{" "}
+                    <Link href="/reportes#categorias" className="font-medium text-brand underline-offset-2 hover:underline">
+                      {t.factLink}
+                    </Link>
+                  </span>
+                </p>
+              </section>
             )}
             {/* Sin presupuestos, la invitación a ponerlos (en el mes en curso: son de ahora). */}
             {budgets && budgets.length === 0 && (

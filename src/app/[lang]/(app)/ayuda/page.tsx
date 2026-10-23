@@ -12,7 +12,8 @@ import { BOT_COMMANDS, BOT_EXAMPLES, HELP_COMMAND } from "@/modules/bot/help";
 import { BIGGEST_SHOWN } from "@/modules/reports/biggest";
 import { CONTACT_EMAIL } from "@/lib/contact";
 import { MAX_TRANSACTIONS_PER_MESSAGE } from "@/modules/bot/limits";
-import { formatPercent } from "@/lib/money";
+import { formatMoney, formatPercent } from "@/lib/money";
+import { FACT_MIN_AMOUNT, FACT_MIN_SHARE } from "@/modules/reports/month-fact";
 import { PROJECTION_FROM_DAY } from "@/modules/reports/remaining";
 import { daysAheadPhrase, MAX_DAYS_AHEAD, MONTHS_BACK, PAYMENTS_FOR_DAY } from "@/modules/reports/upcoming";
 import { SEARCH_FROM } from "@/modules/transactions/search";
@@ -190,6 +191,12 @@ function SpanishTopics({ values }: { values: AppValues }) {
           por pagar. También te dice cuánto te da por día hasta fin de mes y, desde el día {PROJECTION_FROM_DAY}, cómo cerrarías el mes a
           tu ritmo de gasto.
         </p>
+        <p>
+          Debajo de <strong>Egresos por categoría</strong>, el <strong>Dato del mes</strong> te dice qué se salió de lo normal. Compara
+          lo que llevas este mes con lo que solías llevar a esta altura en tus últimos meses, sin los gastos fijos. Sale la categoría
+          que más subió en plata (al menos {formatPercent(FACT_MIN_SHARE)} y {formatMoney(FACT_MIN_AMOUNT, "COP")}) o, si ninguna, la que
+          más bajó.
+        </p>
       </Topic>
 
       <Topic title="Presupuestos">
@@ -294,6 +301,12 @@ function EnglishTopics({ values }: { values: AppValues }) {
           In the Overview, <strong>What&apos;s left this month</strong> takes what you&apos;ve spent and the bills still to pay from what
           came in. It also tells you how much that gives you a day until month&apos;s end and, from day {PROJECTION_FROM_DAY}, how you&apos;d
           end the month at your spending pace.
+        </p>
+        <p>
+          Below <strong>Expenses by category</strong>, <strong>This month</strong> tells you what&apos;s off its usual. It compares what
+          you have so far this month with what you usually had by this point, without bills. It shows the category that went up the most
+          in money (at least {formatPercent(FACT_MIN_SHARE, "en")} and {formatMoney(FACT_MIN_AMOUNT, "COP", "en")}) or, if none did, the
+          one that went down the most.
         </p>
       </Topic>
 

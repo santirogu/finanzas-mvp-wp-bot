@@ -532,6 +532,13 @@ La app está en español (el de siempre) y en inglés, toda la web (el bot de Wh
     faltan, más el gasto variable de cada día (los egresos que no son de gastos fijos) en los días que quedan;
     y lo que sobraría o faltaría. Las estimaciones van a la centena.
   - Los datos de los gastos fijos los comparte con los avisos (`getFixedPaymentsData`, con `cache`).
+- **El dato del mes** (`src/modules/reports/month-fact.ts`, `getMonthFact`): debajo de "Egresos por categoría",
+  solo con el mes en curso. La categoría de egresos que más se salió de lo normal: lo que lleva del 1 a hoy frente
+  al promedio de lo que llevaba del 1 al mismo día en los 3 meses anteriores con movimientos (si no hay ninguno, no
+  sale), sin los gastos fijos (pagar el arriendo un día antes no es un cambio de hábito). Sale la que más subió en
+  plata, con al menos 20 % y $20.000 de diferencia (así $5.000 → $20.000 no es "300 % más"), o, si ninguna subió,
+  la que más bajó; también una categoría nueva o una sin gastos este mes (decisiones del dueño). "Ver en Reportes"
+  lleva a sus categorías (`#categorias`; `ScrollToHash` baja hasta ahí cuando la sección llega).
 - **Próximos pagos en el Resumen** (`src/modules/reports/upcoming.ts`, `upcoming-payments.tsx`): los gastos
   fijos que tocan en los próximos días (3 si la persona no lo cambió) y los atrasados, del más viejo al
   más próximo. Solo en el mes actual y solo si hay alguno; los primeros 5 y el resto con "Mostrar más".

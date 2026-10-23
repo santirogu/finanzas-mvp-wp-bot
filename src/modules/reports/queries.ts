@@ -5,6 +5,8 @@ import { db } from "@/db";
 import { category, transaction } from "@/db/schema";
 import { DEFAULT_LOCALE, type Locale } from "@/i18n/locales";
 import { compareMonths, type Month, monthOf, monthParam, monthRange, shiftMonth } from "@/lib/dates";
+import { sumAmounts } from "@/lib/money";
+import { searchKey } from "@/lib/suggestions";
 import { getAppValues } from "@/modules/app-values/current";
 import { recurringRuleOf } from "@/modules/app-values/values";
 import { listActiveMonths } from "@/modules/transactions/queries";
@@ -16,6 +18,7 @@ import type { CsvMovement } from "./csv";
 import type { DayDescriptionTotal } from "./daily";
 import { getFixedChoices } from "./fixed-choices";
 import { getLastPayments } from "./fixed-payments";
+import { type CategoryToDate, type MonthFact, monthFact } from "./month-fact";
 import { type FixedHistoryEntry, fixedHistories } from "./history";
 import { getExpenseHistoryMonths, getFixedNotes, noteKey } from "./history-notes";
 import { getPaymentSkips } from "./payment-skips";
@@ -292,4 +295,49 @@ const getFixedPaymentsData = cache(async (userId: string, month: string) => {
 export async function getMonthFixed(userId: string, current: Month, today: string): Promise<MonthFixed> {
   const { items, history, skipped } = await getFixedPaymentsData(userId, monthParam(current));
   return monthFixed(items, history, skipped, today);
+}
+
+/**
+ * Los egresos de cada mes del 1 al día `day`, por categoría y descripción (sin mayúsculas ni espacios en los
+ * extremos), de `first` a `last`: lo que compara el dato del mes, que después descarta los gastos fijos.
+ */
+async function getCategoryDescriptionsToDate(userId: string, first: Month, last: Month, day: number, locale: Locale) {
+  const description = sql<string>`lower(trim(${transaction.description}))`;
+  const rows = await db
+    .select({
+      month: monthOfTransaction,
+      name: sql<string>`coalesce(${categoryNameIn(locale)}, ${NO_CATEGORIES[locale]})`,
+      emoji: sql<string>`coalesce(${category.emoji}, '•')`,
+      description,
+      total: sql<string>`sum(${transaction.amount})`,
+    })
+    .from(transaction)
+    .leftJoin(category, eq(category.id, transaction.categoryId))
+    .where(and(activeBetween(userId, first, last), eq(transaction.type, "expense"), sql`extract(day from ${transaction.occurredOn}) <= ${day}`))
+    .groupBy(monthOfTransaction, category.name, category.nameEn, category.emoji, description);
+  return rows.map((row) => ({ ...row, total: Number(row.total) }));
+}
+
+/**
+ * El dato del mes del Resumen (src/modules/reports/month-fact.ts): el mes en curso hasta hoy (`today`, YYYY-MM-DD
+ * en la zona de la persona) frente a los mismos días de los AVERAGE_MONTHS anteriores en que tuvo movimientos, sin
+ * los gastos fijos (con lo que marcó a mano). null si no hay con qué comparar o nada se salió de lo normal.
+ */
+export async function getMonthFact(userId: string, current: Month, today: string, locale: Locale = DEFAULT_LOCALE): Promise<MonthFact | null> {
+  const active = new Set(await listActiveMonths(userId));
+  const averaged = Array.from({ length: AVERAGE_MONTHS }, (_, i) => shiftMonth(current, i - AVERAGE_MONTHS)).filter((month) => active.has(monthParam(month)));
+  if (averaged.length === 0) return null;
+  const [rows, fixed] = await Promise.all([
+    getCategoryDescriptionsToDate(userId, averaged[0], current, Number(today.slice(8, 10)), locale),
+    getFixedPaymentsData(userId, monthParam(current)),
+  ]);
+  const fixedKeys = new Set(fixed.items.map((item) => item.key));
+  const totals = new Map<string, CategoryToDate>();
+  for (const row of rows) {
+    if (fixedKeys.has(searchKey(row.description))) continue;
+    const key = `${row.month} ${row.emoji} ${row.name}`;
+    const seen = totals.get(key);
+    totals.set(key, { month: row.month, name: row.name, emoji: row.emoji, total: sumAmounts([seen?.total ?? 0, row.total]) });
+  }
+  return monthFact([...totals.values()], current, averaged);
 }

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { ChangeLine } from "@/components/change-line";
+import { ScrollToHash } from "@/components/scroll-to-hash";
 import type { Locale } from "@/i18n/locales";
 import { getLocale, getTexts } from "@/i18n/server";
 import { texts } from "@/i18n/texts";
@@ -199,6 +200,8 @@ async function Reports({ period: param, calendar: calendarParam }: { period: Par
           />
         </>
       )}
+      {/* El dato del mes del Resumen enlaza a #categorias: la sección llega después (Suspense). */}
+      <ScrollToHash />
     </div>
   );
 }
@@ -392,7 +395,8 @@ function Categories({ categories, money, locale }: { categories: CategoryReport;
   const { rows, compared, averaged } = categories;
   const biggest = rows[0]?.share ?? 1;
   return (
-    <section className="card p-4" aria-label={t.categories}>
+    // id: el dato del mes del Resumen enlaza aquí (/reportes#categorias).
+    <section id="categorias" className="card scroll-mt-4 p-4" aria-label={t.categories}>
       <h2 className="font-semibold">{t.categories}</h2>
       <p className="mt-1 text-sm text-muted">
         {t.categoriesIntro}
