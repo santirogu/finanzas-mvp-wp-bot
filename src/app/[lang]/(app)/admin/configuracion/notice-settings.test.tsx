@@ -106,7 +106,11 @@ describe("NoticeSettings", () => {
     await userEvent.click(dialog().getByRole("radio", { name: /^Importante/ }));
     await userEvent.type(dialog().getByLabelText("Código de Google Authenticator"), "123456");
     await userEvent.click(dialog().getByRole("button", { name: "Publicar" }));
-    expect(dialog().getByLabelText("Hasta (hora de Colombia)")).toHaveAccessibleDescription(/Esa fecha ya pasó: elige una más adelante\./);
+    // La respuesta vuelve a montar los campos (el texto y el tipo cambiaron): con el CI cargado, a veces llegaba
+    // después de esta revisión. Se espera a que el error esté.
+    await vi.waitFor(() =>
+      expect(dialog().getByLabelText("Hasta (hora de Colombia)")).toHaveAccessibleDescription(/Esa fecha ya pasó: elige una más adelante\./),
+    );
     expect(dialog().getByLabelText("Aviso")).toHaveValue("Nuevo: presupuestos");
     expect(dialog().getByRole("radio", { name: /^Importante/ })).toBeChecked();
     expect(dialog().getByLabelText("Código de Google Authenticator")).toHaveValue("");
