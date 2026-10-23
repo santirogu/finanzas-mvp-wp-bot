@@ -561,10 +561,15 @@ function ModelDialog({
 }) {
   const locale = useLocale();
   const t = TEXTS[locale];
-  const [state, formAction, busy] = useSettingAction(changeBotModelAction, onDone);
+  // React vacía el formulario al terminar la acción y no vuelve a marcar los radios controlados: el modelo
+  // enviado vuelve con el estado y defaultChecked, como en los presupuestos. El código no: sirve una sola vez.
+  const [state, formAction, busy] = useActionState<BotSettingState & { model?: string }, FormData>(async (prev, formData) => {
+    const result = await changeBotModelAction(prev, formData);
+    if (result.message) onDone(result.message);
+    return { ...result, model: String(formData.get("model") ?? "") };
+  }, {});
   const { errors, formProps } = useFieldErrors(CODE_FIELD_TEXTS[locale]);
-  // Controlado: si el servidor rechaza el código, la elección sigue ahí.
-  const [chosen, setChosen] = useState<string>(isBotModel(current) ? current : BOT_MODELS[0].id);
+  const initial = isBotModel(current) ? current : BOT_MODELS[0].id;
   const errorId = useId();
   const message = state.field === "model" ? state.error : undefined;
 
@@ -586,8 +591,7 @@ function ModelDialog({
                   type="radio"
                   name="model"
                   value={model.id}
-                  checked={chosen === model.id}
-                  onChange={() => setChosen(model.id)}
+                  defaultChecked={(state.model ?? initial) === model.id}
                   className="mt-0.5 size-4 accent-[var(--brand)]"
                 />
                 <span className="min-w-0 text-sm">

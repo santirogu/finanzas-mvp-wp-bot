@@ -268,11 +268,15 @@ test("cambiar el modelo de Claude: el bot lo usa desde el siguiente mensaje y qu
   const model = () => settings(page).getByRole("listitem").filter({ hasText: "Modelo de Claude" });
   await expect(model()).toContainText("Claude Haiku 5.5: acertó 58 de 58 frases de prueba");
 
-  await test.step("con el código se elige Sonnet", async () => {
+  await test.step("con el código se elige Sonnet; con uno equivocado, la elección sigue", async () => {
     await settings(page).getByRole("button", { name: "Cambiar el modelo de Claude" }).click();
     await expect(dialog(page).getByRole("radio", { name: /Claude Haiku 5\.5 \(el de ahora\)/ })).toBeChecked();
     await dialog(page).getByRole("radio", { name: /Claude Sonnet 5\.5/ }).check();
     expect(await seriousViolations(page)).toEqual([]);
+    await confirmWith(page, wrongCode(secret), "Cambiar modelo");
+    await expect(codeField(page)).toHaveAttribute("aria-invalid", "true");
+    // React vacía el formulario al terminar la acción: Sonnet tiene que seguir marcado.
+    await expect(dialog(page).getByRole("radio", { name: /Claude Sonnet 5\.5/ })).toBeChecked();
     await confirmWith(page, codeFor(secret), "Cambiar modelo");
     await expect(toast(page, "El bot ahora usa Claude Sonnet 5.5, desde el siguiente mensaje.")).toBeVisible();
     await expect(model()).toContainText("Claude Sonnet 5.5: acertó 57 de 58 frases de prueba");

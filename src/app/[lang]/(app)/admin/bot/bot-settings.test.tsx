@@ -295,6 +295,30 @@ describe("BotSettings · modelo de Claude", () => {
     expect(dialog().getByRole("group", { name: "Modelo" })).toHaveAccessibleDescription("El bot ya usa ese modelo: elige otro.");
     expect(dialog().getByRole("radio", { name: /Claude Haiku 5\.5/ })).toBeChecked();
   });
+
+  // React vacía el formulario al terminar la acción: con radios controlados volvía a quedar marcado el de
+  // ahora y, al volver a enviar, se mandaba ese y no el elegido.
+  it("la elección del modelo sigue tras un código equivocado y se vuelve a enviar", async () => {
+    actions.changeBotModelAction.mockResolvedValue({ error: "El código no es correcto.", field: "code" });
+    render(<BotSettings {...props()} />);
+    await userEvent.click(section().getByRole("button", { name: "Cambiar el modelo de Claude" }));
+    await userEvent.click(dialog().getByRole("radio", { name: /Claude Sonnet 5\.5/ }));
+    await userEvent.type(dialog().getByLabelText("Código de Google Authenticator"), "111111");
+    await userEvent.click(dialog().getByRole("button", { name: "Cambiar modelo" }));
+    expect(await dialog().findByText("El código no es correcto.")).toBeInTheDocument();
+    expect(dialog().getByRole("radio", { name: /Claude Sonnet 5\.5/ })).toBeChecked();
+    expect(dialog().getByRole("radio", { name: /Claude Haiku 5\.5/ })).not.toBeChecked();
+    expect(dialog().getByLabelText("Código de Google Authenticator")).toHaveValue("");
+
+    actions.changeBotModelAction.mockResolvedValue({ message: "El bot ahora usa Claude Sonnet 5.5, desde el siguiente mensaje." });
+    // userEvent recuerda el valor de antes de que React limpiara el campo: se borra primero.
+    await userEvent.clear(dialog().getByLabelText("Código de Google Authenticator"));
+    await userEvent.type(dialog().getByLabelText("Código de Google Authenticator"), "123456");
+    await userEvent.click(dialog().getByRole("button", { name: "Cambiar modelo" }));
+    expect(await findToast()).toHaveTextContent("El bot ahora usa Claude Sonnet 5.5, desde el siguiente mensaje.");
+    const sent = actions.changeBotModelAction.mock.calls[1][1] as FormData;
+    expect([sent.get("model"), sent.get("code")]).toEqual(["claude-sonnet-5-5", "123456"]);
+  });
 });
 
 describe("BotSettings en inglés", () => {
