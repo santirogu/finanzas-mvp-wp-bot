@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LanguageSwitch } from "@/components/language-switch";
 import type { ReactNode } from "react";
 import { LogoMark, Logo } from "@/components/logo";
 import { getTexts } from "@/i18n/server";
@@ -76,17 +77,22 @@ export default async function Home() {
   const t = await getTexts(TEXTS);
   return (
     <div className="flex flex-1 flex-col">
-      <header className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4 px-6 py-5">
+      {/* El logo, el selector de idioma e "Iniciar sesión": en una pantalla muy angosta (320 px), los dos últimos
+          pasan a una segunda fila en vez de salirse de la pantalla. */}
+      <header className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-5 sm:px-6">
         <Logo className="text-xl" markClassName="size-8" />
-        <Link
-          href="/login"
-          className="inline-flex items-center rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-surface"
-        >
-          {t.login}
-        </Link>
+        <div className="flex items-center gap-2">
+          <LanguageSwitch />
+          <Link
+            href="/login"
+            className="inline-flex min-h-11 items-center whitespace-nowrap rounded-lg border border-border px-3 py-2 text-sm font-medium hover:bg-surface sm:px-4 pointer-fine:min-h-9"
+          >
+            {t.login}
+          </Link>
+        </div>
       </header>
 
-      <main className="mx-auto w-full max-w-5xl flex-1 px-6 pb-16">
+      <main className="mx-auto w-full max-w-5xl flex-1 px-4 pb-16 sm:px-6">
         <div className="grid grid-cols-1 items-center gap-12 py-10 lg:grid-cols-2 lg:py-16">
           <div>
             <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">{t.heading}</h1>
@@ -117,7 +123,7 @@ export default async function Home() {
         </section>
       </main>
 
-      <footer className="mx-auto w-full max-w-5xl px-6 pb-10 text-xs text-muted">
+      <footer className="mx-auto w-full max-w-5xl px-4 pb-10 text-xs text-muted sm:px-6">
         <Link href="/privacidad" className="underline underline-offset-2 hover:text-foreground">
           {t.privacy}
         </Link>

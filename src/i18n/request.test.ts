@@ -29,12 +29,10 @@ describe("getRequestLocale", () => {
     expect(await getRequestLocale()).toBe("es");
   });
 
-  it("sin la cookie, el idioma del navegador (como el proxy); la cookie manda sobre el navegador", async () => {
+  it("sin la cookie, en español aunque el navegador pida inglés (como el proxy)", async () => {
     jar.acceptLanguage = "en-US,en;q=0.9";
-    expect(await getRequestLocale()).toBe("en");
-    jar.cookies = { idioma: "es" };
     expect(await getRequestLocale()).toBe("es");
-    jar.cookies = { idioma: "fr" };
+    jar.cookies = { idioma: "en" };
     expect(await getRequestLocale()).toBe("en");
   });
 });

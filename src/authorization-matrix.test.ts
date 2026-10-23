@@ -70,6 +70,8 @@ const SERVER_ACTIONS = {
   signOutAction: "sin sesión no hay nada que cerrar",
   deleteAccountAction: "requireUser + contraseña + palabra de confirmación; solo la cuenta propia",
   saveLanguageAction: "requireUser; solo el idioma de la cuenta propia (y la cookie de este navegador)",
+  chooseLanguageAction:
+    "sin sesión: solo guarda la cookie del idioma en este navegador (no toca ninguna cuenta) y vuelve a la portada, el login o el registro, nunca a otra dirección",
   changePasswordAction:
     "requireUser + contraseña actual (con el bloqueo por intentos) + código de Google Authenticator si es admin; solo la cuenta propia; cierra las otras sesiones",
   finishTwoFactorSetupAction: "requireAdmin (con la verificación ya activa); cierra las demás sesiones propias",
@@ -112,7 +114,7 @@ const SERVER_ACTIONS = {
 } as const;
 
 // Acciones que no necesitan validar la sesión, con el porqué.
-const ACTIONS_WITHOUT_SESSION = ["signOutAction"];
+const ACTIONS_WITHOUT_SESSION = ["signOutAction", "chooseLanguageAction"];
 
 // Páginas privadas que no validan la sesión ellas mismas, con el porqué.
 const PAGES_WITHOUT_SESSION_CHECK: Record<string, string> = {

@@ -123,7 +123,7 @@ export const auth = betterAuth({
     after: createAuthMiddleware(async (ctx) => {
       const returned = ctx.context.returned;
       // Con el idioma elegido en Mi cuenta, el navegador donde se abre la sesión pasa a ver la app en ese
-      // idioma. Sin elegir, sigue el del navegador. Con la verificación en dos pasos, la contraseña sola
+      // idioma. Sin elegir, sigue la cookie que haya (o español). Con la verificación en dos pasos, la contraseña sola
       // todavía no abre la sesión: el idioma llega con el código (/two-factor/verify-*).
       const opened = ctx.context.newSession?.user as { locale?: unknown; twoFactorEnabled?: unknown } | undefined;
       const secondStepPending = ctx.path === "/sign-in/email" && opened?.twoFactorEnabled === true;

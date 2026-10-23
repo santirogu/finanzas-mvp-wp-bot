@@ -73,13 +73,11 @@ describe("proxy · idioma", () => {
     for (const value of ["fr", "", "ES", "EN", "es-CO", "en-US"]) expect(visit("/dashboard", cookie, `idioma=${value}`), value).toBe(inSpanish("/dashboard"));
   });
 
-  it("sin la cookie, en el idioma del navegador (sin guardar nada); la cookie manda sobre el navegador", () => {
-    expect(visit("/", undefined, "", "en-US,en;q=0.9")).toBe(`sigue a ${ORIGIN}/en`);
-    expect(visit("/login", undefined, "", "en-US,en;q=0.9")).toBe(`sigue a ${ORIGIN}/en/login`);
-    expect(visit("/dashboard", cookie, "", "fr-FR,fr;q=0.9,en;q=0.8")).toBe(`sigue a ${ORIGIN}/en/dashboard`);
-    expect(visit("/dashboard", cookie, "", "pt-BR")).toBe(inSpanish("/dashboard"));
-    expect(visit("/dashboard", cookie, "idioma=es", "en-US")).toBe(inSpanish("/dashboard"));
-    expect(visit("/privacidad", undefined, "", "en")).toBe(`sigue a ${ORIGIN}/en/privacidad`);
+  it("sin la cookie, en español aunque el navegador pida inglés (sin guardar nada); con la cookie, la cookie", () => {
+    expect(visit("/", undefined, "", "en-US,en;q=0.9")).toBe(inSpanish("/"));
+    expect(visit("/login", undefined, "", "en-US,en;q=0.9")).toBe(inSpanish("/login"));
+    expect(visit("/dashboard", cookie, "", "en")).toBe(inSpanish("/dashboard"));
+    expect(visit("/login", undefined, "idioma=en", "es-CO")).toBe(`sigue a ${ORIGIN}/en/login`);
     const response = proxy(new NextRequest(`${ORIGIN}/login`, { headers: { "accept-language": "en" } }));
     expect(response.headers.get("set-cookie")).toBeNull();
   });
