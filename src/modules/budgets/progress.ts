@@ -48,8 +48,41 @@ export function budgetProgress(budgets: Budget[], spent: ReadonlyMap<string, num
     .sort((a, b) => b.spent / b.amount - a.spent / a.amount || collator.compare(a.name, b.name));
 }
 
+const RANK: Readonly<Record<BudgetLevel, number>> = { ok: 0, near: 1, over: 2 };
+
+/** Un presupuesto que acaba de cruzar un umbral: el 80 % ("near") o el límite ("over"). */
+export type BudgetCrossing = Pick<Budget, "categoryId" | "name" | "amount"> & { level: "near" | "over"; spent: number; share: number };
+
+/**
+ * Los presupuestos que cruzan un umbral con lo que se acaba de registrar (`added`, lo que suma por categoría; `spent`,
+ * lo de la categoría en el mes ya con eso): llegar al 80 % o pasarse. Si cruza los dos de una vez, solo el de
+ * pasarse. Lo que ya estaba cerca o pasado no vuelve a avisar: así cada aviso sale una vez por mes y categoría, sin
+ * guardar nada (decisión del dueño).
+ */
+export function budgetCrossings(budgets: Budget[], spent: ReadonlyMap<string, number>, added: ReadonlyMap<string, number>): BudgetCrossing[] {
+  return budgets.flatMap((budget) => {
+    const plus = added.get(budget.categoryId) ?? 0;
+    if (plus <= 0) return [];
+    const after = spent.get(budget.categoryId) ?? 0;
+    const level = budgetLevel(after, budget.amount);
+    if (level === "ok" || RANK[level] <= RANK[budgetLevel(roundToCents(after - plus), budget.amount)]) return [];
+    return [
+      {
+        categoryId: budget.categoryId,
+        name: budget.name,
+        amount: budget.amount,
+        level,
+        spent: after,
+        share: Math.round((after / budget.amount) * 100),
+      },
+    ];
+  });
+}
+
 const TEXTS = texts(
   {
+    near: (name: string, spent: string, amount: string, share: string) => `${name}: llevas ${spent} de ${amount} (${share})`,
+    overBy: (name: string, over: string, spent: string, amount: string) => `${name}: te pasaste del presupuesto por ${over} (${spent} de ${amount})`,
     of: (spent: string, amount: string) => `${spent} de ${amount}`,
     left: (amount: string) => `Te quedan ${amount}`,
     over: (amount: string) => `Te pasaste por ${amount}`,
@@ -61,6 +94,8 @@ const TEXTS = texts(
       left: (amount) => `${amount} left`,
       over: (amount) => `${amount} over`,
       archived: "Archived category",
+      near: (name, spent, amount, share) => `${name}: ${spent} of ${amount} so far (${share})`,
+      overBy: (name, over, spent, amount) => `${name}: ${over} over budget (${spent} of ${amount})`,
     },
   },
 );
@@ -101,4 +136,17 @@ export function budgetRows(progress: BudgetProgress[], currency: string, locale:
     archived: p.archived ? t.archived : null,
     amountInput: amountInputValue(p.amount, locale),
   }));
+}
+
+/**
+ * El aviso de un presupuesto que cruzó un umbral: "Mercado: llevas $410.000,00 de $500.000,00 (82 %)" o "Mercado: te
+ * pasaste del presupuesto por $10.000,00 ($510.000,00 de $500.000,00)". El bot le pone su emoji adelante.
+ */
+export function budgetAlert(crossing: BudgetCrossing, currency: string, locale: Locale = DEFAULT_LOCALE): string {
+  const t = TEXTS[locale];
+  const money = (n: number) => formatMoney(n, currency, locale);
+  const percent = new Intl.NumberFormat(INTL_LOCALES[locale]);
+  return crossing.level === "over"
+    ? t.overBy(crossing.name, money(roundToCents(crossing.spent - crossing.amount)), money(crossing.spent), money(crossing.amount))
+    : t.near(crossing.name, money(crossing.spent), money(crossing.amount), formatPercent(percent.format(crossing.share), locale));
 }

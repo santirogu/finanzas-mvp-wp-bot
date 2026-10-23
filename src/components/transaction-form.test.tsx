@@ -161,6 +161,34 @@ describe("TransactionForm", () => {
     expect(action.mock.calls[0][1].get("amount")).toBe("25.900,50");
   });
 
+  it("si el egreso hizo llegar un presupuesto al 80 % o pasarse, lo deja a la vista (pasarse, en rojo) hasta el siguiente registro", async () => {
+    action.mockResolvedValueOnce({
+      ok: true,
+      message: "Egreso registrado",
+      budgetAlerts: [
+        { level: "near", text: "Mercado: llevas $85.000,00 de $100.000,00 (85 %)" },
+        { level: "over", text: "Ropa: te pasaste del presupuesto por $10.000,00 ($110.000,00 de $100.000,00)" },
+      ],
+    });
+    action.mockResolvedValueOnce({ ok: true, message: "Egreso registrado" });
+    renderForm();
+    const register = async () => {
+      await userEvent.type(screen.getByLabelText(/Monto/), "85000");
+      await userEvent.type(screen.getByLabelText(/^Descripción/), "Mercado");
+      await userEvent.click(screen.getByRole("button", { name: "Registrar egreso" }));
+    };
+
+    await register();
+    const notice = await screen.findByRole("status");
+    expect(within(notice).getByText("Mercado: llevas $85.000,00 de $100.000,00 (85 %)")).not.toHaveClass("text-danger");
+    expect(within(notice).getByText(/^Ropa: te pasaste del presupuesto/)).toHaveClass("text-danger");
+    expect(within(notice).getByRole("link", { name: "Ver presupuestos" })).toHaveAttribute("href", "/presupuestos");
+
+    await register();
+    await waitFor(() => expect(action).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(screen.queryByText(/^Mercado: llevas/)).toBeNull());
+  });
+
   it("envía lo escrito a la Server Action y avisa cuando se registró (aviso verde)", async () => {
     action.mockResolvedValue({ ok: true, message: "Egreso registrado" });
     renderForm();

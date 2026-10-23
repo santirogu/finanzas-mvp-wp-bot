@@ -4,6 +4,7 @@ import { db } from "@/db";
 import {
   botSetting,
   category,
+  categoryBudget,
   transaction,
   user as userTable,
   whatsappLink,
@@ -303,6 +304,46 @@ describe("handleIncomingMessage · registro de movimientos", () => {
     expect(sender.sent[0].body).toContain("Egreso Anotado: *Zapatos*");
     expect(sender.sent[0].body.replace(/ /g, " ")).toContain("*$1.500.000,00*");
     expect(await loggedMessage(msg.id)).toMatchObject({ status: "processed", userId: user.id });
+  });
+
+  it("si un egreso hace llegar una categoría al 80 % de su presupuesto o pasarse, lo dice una vez, antes del balance", async () => {
+    const user = await linkedUser();
+    const [mercado] = await db.select().from(category).where(and(eq(category.name, "Mercado"), isNull(category.userId)));
+    await db.insert(categoryBudget).values({ userId: user.id, categoryId: mercado.id, amount: 100000 });
+    const send = async (amount: number) => {
+      const { deps: d, sender } = deps(fakeExtractor([{ type: "expense", amount, description: "Mercado", category: "Mercado" }]));
+      await handleIncomingMessage(incoming(`mercado ${amount}`), d);
+      return sender.sent[0].body.replace(/\u00a0/g, " ").split("\n");
+    };
+
+    const near = await send(85000);
+    expect(near.slice(1, 4)).toEqual(["", "⚠️ Mercado: llevas $85.000,00 de $100.000,00 (85 %)", ""]);
+    expect(near[4]).toMatch(/^Balance de /);
+    // Ya cerca: otro egreso que no llega al límite no vuelve a avisar.
+    expect((await send(5000)).some((line) => line.includes("Mercado:"))).toBe(false);
+    expect((await send(15000)).find((line) => line.includes("Mercado:"))).toBe(
+      "🚨 Mercado: te pasaste del presupuesto por $5.000,00 ($105.000,00 de $100.000,00)",
+    );
+    // Ya pasado: no vuelve a avisar.
+    expect((await send(1000)).some((line) => line.includes("Mercado:"))).toBe(false);
+  });
+
+  it("un egreso de otro mes no avisa del presupuesto de este", async () => {
+    const user = await linkedUser();
+    const [mercado] = await db.select().from(category).where(and(eq(category.name, "Mercado"), isNull(category.userId)));
+    await db.insert(categoryBudget).values({ userId: user.id, categoryId: mercado.id, amount: 100000 });
+    const lastMonth = sameDayIn(shiftMonth(monthOf(todayInTimezone("America/Bogota")), -1), todayInTimezone("America/Bogota"));
+    const { deps: d, sender } = deps(
+      fakeExtractor(() => ({
+        ok: true,
+        reply: null,
+        usage: { model: "fake", inputTokens: 0, outputTokens: 0 },
+        transactions: [{ type: "expense", amount: 200000, description: "Mercado", category: "Mercado", date: lastMonth }],
+      })),
+    );
+    await handleIncomingMessage(incoming("mercado del mes pasado 200 mil"), d);
+    expect(sender.sent[0].body).not.toContain("presupuesto");
+    expect(sender.sent[0].body).not.toContain("⚠️");
   });
 
   it("guarda los centavos que entendió el bot, los muestra y deshacer los lista", async () => {

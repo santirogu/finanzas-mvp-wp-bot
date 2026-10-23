@@ -11,9 +11,22 @@ import { balanceChange, previousMonthReference } from "@/modules/transactions/mo
 import { BOT_COMMANDS, BOT_EXAMPLES } from "./help";
 import type { ParsedTransaction } from "./normalize";
 
+// El emoji de cada aviso de presupuesto: llegar al 80 % o pasarse.
+const BUDGET_ALERT_EMOJI = { near: "⚠️", over: "🚨" } as const;
+
+/**
+ * Lo que se registró, los avisos de los presupuestos que cruzaron un umbral con eso (`budgetAlerts`, ya armados con
+ * budgetAlert) y el balance del mes.
+ */
 export function registeredReply(
   items: ParsedTransaction[],
-  ctx: { today: string; currency: string; balance: number; range: MonthRange },
+  ctx: {
+    today: string;
+    currency: string;
+    balance: number;
+    range: MonthRange;
+    budgetAlerts?: { level: keyof typeof BUDGET_ALERT_EMOJI; text: string }[];
+  },
 ): string {
   const money = (n: number) => formatMoney(n, ctx.currency);
   const lines = items.map((t) => {
@@ -25,8 +38,10 @@ export function registeredReply(
     // Claude tomó un ingreso por un egreso.
     return `✅ ${label} ${BRAND_NAME}: *${t.description}* — ${money(t.amount)}${extras ? ` (${extras})` : ""}`;
   });
+  const alerts = (ctx.budgetAlerts ?? []).map((alert) => `${BUDGET_ALERT_EMOJI[alert.level]} ${alert.text}`);
   return [
     ...lines,
+    ...(alerts.length > 0 ? ["", ...alerts] : []),
     "",
     `Balance de ${formatMonthLabel(ctx.range).split(" de ")[0].toLowerCase()}: *${money(ctx.balance)}*`,
     "_Escribe *deshacer* si me equivoqué._",

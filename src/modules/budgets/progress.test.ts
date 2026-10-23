@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { type Budget, budgetLevel, budgetProgress, budgetRows, NEAR_SHARE } from "./progress";
+import { type Budget, budgetAlert, budgetCrossings, budgetLevel, budgetProgress, budgetRows, NEAR_SHARE } from "./progress";
 
 // Cuánto lleva cada categoría frente a su presupuesto, y sus textos.
 
@@ -75,5 +75,68 @@ describe("budgetRows (los textos)", () => {
     expect(row).toMatchObject({ spentOf: "$410,000.00 of $500,000.00", share: "82%", note: "$90,000.00 left", amountInput: "500,000.00" });
     const [over] = rows([budget("c", "Transport", 1000, true)], new Map([["c", 12500]]), "en");
     expect(over).toMatchObject({ share: "1,250%", note: "$11,500.00 over", archived: "Archived category" });
+  });
+});
+
+describe("budgetCrossings (los avisos: llegar al 80 % o pasarse, una vez)", () => {
+  const mercado = budget("m", "Mercado", 500000);
+  const cross = (spentAfter: number, added: number, budgets = [mercado]) =>
+    budgetCrossings(budgets, new Map([["m", spentAfter]]), new Map([["m", added]])).map(({ level, spent, share }) => ({ level, spent, share }));
+
+  it("avisa al cruzar el 80 % y al pasarse", () => {
+    expect(cross(410000, 30000)).toEqual([{ level: "near", spent: 410000, share: 82 }]);
+    expect(cross(400000, 0.01)).toEqual([{ level: "near", spent: 400000, share: 80 }]);
+    expect(cross(510000, 30000)).toEqual([{ level: "over", spent: 510000, share: 102 }]);
+  });
+
+  it("si cruza los dos de una vez, solo el de pasarse", () => {
+    expect(cross(600000, 300000)).toEqual([{ level: "over", spent: 600000, share: 120 }]);
+  });
+
+  it("lo que ya estaba cerca o pasado no vuelve a avisar; justo en el límite todavía no se pasó", () => {
+    expect(cross(450000, 30000)).toEqual([]);
+    expect(cross(700000, 50000)).toEqual([]);
+    expect(cross(500000, 50000)).toEqual([]);
+    expect(cross(399999.99, 100)).toEqual([]);
+  });
+
+  it("sin egreso nuevo en la categoría, o sin presupuesto, nada", () => {
+    expect(cross(600000, 0)).toEqual([]);
+    expect(budgetCrossings([mercado], new Map([["x", 999999]]), new Map([["x", 999999]]))).toEqual([]);
+    expect(cross(600000, 300000, [])).toEqual([]);
+  });
+
+  it("varias categorías a la vez", () => {
+    const transporte = budget("t", "Transporte", 100000);
+    const result = budgetCrossings(
+      [mercado, transporte],
+      new Map([
+        ["m", 420000],
+        ["t", 130000],
+      ]),
+      new Map([
+        ["m", 50000],
+        ["t", 40000],
+      ]),
+    );
+    expect(result.map((c) => [c.name, c.level])).toEqual([
+      ["Mercado", "near"],
+      ["Transporte", "over"],
+    ]);
+  });
+});
+
+describe("budgetAlert (el texto del aviso)", () => {
+  const nbsp = (text: string) => text.replace(/\u00a0/g, " ");
+  const crossing = (level: "near" | "over", spent: number, share: number) => ({ categoryId: "m", name: "Mercado", amount: 500000, level, spent, share });
+
+  it("cuánto lleva de cuánto, o por cuánto se pasó", () => {
+    expect(nbsp(budgetAlert(crossing("near", 410000, 82), "COP"))).toBe("Mercado: llevas $410.000,00 de $500.000,00 (82 %)");
+    expect(budgetAlert(crossing("over", 510000.5, 102), "COP")).toBe("Mercado: te pasaste del presupuesto por $10.000,50 ($510.000,50 de $500.000,00)");
+  });
+
+  it("en inglés", () => {
+    expect(budgetAlert(crossing("near", 410000, 82), "COP", "en")).toBe("Mercado: $410,000.00 of $500,000.00 so far (82%)");
+    expect(budgetAlert(crossing("over", 510000, 102), "COP", "en")).toBe("Mercado: $10,000.00 over budget ($510,000.00 of $500,000.00)");
   });
 });

@@ -6,12 +6,12 @@ import { category, categoryBudget, transaction } from "@/db/schema";
 import { DEFAULT_LOCALE, type Locale } from "@/i18n/locales";
 import { texts } from "@/i18n/texts";
 import type { MonthRange } from "@/lib/dates";
-import { formatMoney } from "@/lib/money";
+import { formatMoney, roundToCents } from "@/lib/money";
 import type { ToastTone } from "@/lib/toasts";
 import { categoryLabel } from "@/modules/transactions/category-name";
 import { isCategoryAvailable, listCategories } from "@/modules/transactions/queries";
 import { amountSchema } from "@/modules/transactions/validation";
-import { type Budget, type BudgetProgress, budgetProgress } from "./progress";
+import { type Budget, type BudgetCrossing, type BudgetProgress, budgetCrossings, budgetProgress } from "./progress";
 
 // Los presupuestos de la persona (/presupuestos y el Resumen): un monto por mes para una categoría de egresos, el
 // mismo cada mes hasta que lo cambie o lo quite (tabla category_budget). Reciben el userId ya validado por el Data
@@ -62,6 +62,30 @@ export async function getSpentByCategory(userId: string, range: MonthRange): Pro
 export async function getBudgetProgress(userId: string, range: MonthRange, locale: Locale = DEFAULT_LOCALE): Promise<BudgetProgress[]> {
   const [budgets, spent] = await Promise.all([listBudgets(userId, locale), getSpentByCategory(userId, range)]);
   return budgetProgress(budgets, spent, locale);
+}
+
+/** Un movimiento recién registrado, para los avisos de presupuesto. */
+export type AddedTransaction = { type: "income" | "expense"; categoryId: string | null; amount: number; occurredOn: string };
+
+/**
+ * Los presupuestos que cruzan un umbral con lo que se acaba de registrar (`added`): el 80 % o el límite
+ * (budgetCrossings). Solo cuentan los egresos con categoría del mes en curso (`current`): los avisos son de ahora.
+ * Lo usan la respuesta del bot y el formulario de Egresos.
+ */
+export async function getBudgetCrossings(
+  userId: string,
+  current: MonthRange,
+  added: AddedTransaction[],
+  locale: Locale = DEFAULT_LOCALE,
+): Promise<BudgetCrossing[]> {
+  const sums = new Map<string, number>();
+  for (const item of added) {
+    if (item.type !== "expense" || !item.categoryId || item.occurredOn < current.start || item.occurredOn >= current.end) continue;
+    sums.set(item.categoryId, roundToCents((sums.get(item.categoryId) ?? 0) + item.amount));
+  }
+  if (sums.size === 0) return [];
+  const [budgets, spent] = await Promise.all([listBudgets(userId, locale), getSpentByCategory(userId, current)]);
+  return budgetCrossings(budgets, spent, sums);
 }
 
 /** Las categorías de egresos que se pueden elegir para un presupuesto nuevo: las disponibles que todavía no tienen. */

@@ -13,6 +13,8 @@ import { currentMonthRange, monthOf } from "@/lib/dates";
 import { monthHref } from "@/lib/month-nav";
 import { TOAST_PARAM } from "@/lib/toasts";
 import { requireUser } from "@/lib/session";
+import { getBudgetCrossings } from "@/modules/budgets/budgets";
+import { budgetAlert } from "@/modules/budgets/progress";
 import { isCategoryAvailable, undoableSince } from "./queries";
 import { transactionSchema } from "./validation";
 
@@ -30,6 +32,8 @@ export type FormState = {
   values?: Record<string, string>;
   /** La fecha del movimiento registrado: si cae en otro mes que el de la lista, el aviso dice en cuál. */
   occurredOn?: string;
+  /** Los presupuestos que el egreso registrado hizo llegar al 80 % o pasar (src/modules/budgets/). */
+  budgetAlerts?: { level: "near" | "over"; text: string }[];
 };
 
 export async function createTransactionAction(
@@ -58,11 +62,21 @@ export async function createTransactionAction(
     source: "web",
   });
 
+  // Si el egreso hizo llegar una categoría al 80 % de su presupuesto o pasarse (solo los de este mes).
+  const crossings = await getBudgetCrossings(
+    user.id,
+    currentMonthRange(user.timezone),
+    [{ type: input.type, categoryId: input.categoryId ?? null, amount: input.amount, occurredOn: input.occurredOn }],
+    locale,
+  );
   refresh();
   return {
     ok: true,
     message: input.type === "income" ? t.income : t.expense,
     occurredOn: input.occurredOn,
+    ...(crossings.length > 0 && {
+      budgetAlerts: crossings.map((crossing) => ({ level: crossing.level, text: budgetAlert(crossing, user.currency, locale) })),
+    }),
   };
 }
 
