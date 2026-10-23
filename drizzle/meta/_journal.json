@@ -197,6 +197,13 @@
       "when": 1792728059085,
       "tag": "0027_registros-por-invitacion",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1792774066020,
+      "tag": "0028_aviso-para-todos",
+      "breakpoints": true
     }
   ]
 }

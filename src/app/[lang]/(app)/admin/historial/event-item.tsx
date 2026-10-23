@@ -52,6 +52,9 @@ const ICON_PATHS: Record<LogEntry["type"], ReactNode> = {
   signup_mode_changed: <path d="M6.5 9V7a3.5 3.5 0 0 1 7 0v2M5 9h10v7H5zM10 11.5v2" />,
   signup_invite_added: <path d="M3.5 5.5h13v9h-13zM3.5 5.5l6.5 5 6.5-5" />,
   signup_invite_removed: <path d="M3.5 5.5h13v9h-13zM3.5 5.5l6.5 5 6.5-5M7.5 17.5h5" />,
+  // Un megáfono; tachado al quitar el aviso.
+  notice_published: <path d="M3.5 8v4h2.5l5.5 3.5v-11L6 8H3.5zM14 8a3 3 0 0 1 0 4M15.5 6a6 6 0 0 1 0 8" />,
+  notice_removed: <path d="M3.5 8v4h2.5l5.5 3.5v-11L6 8H3.5zM3 3l14 14" />,
 };
 
 const ADMIN_COLOR = "bg-admin-surface text-admin";
@@ -80,6 +83,8 @@ const ICON_COLORS: Record<LogEntry["type"], string> = {
   signup_mode_changed: ADMIN_COLOR,
   signup_invite_added: ADMIN_COLOR,
   signup_invite_removed: ADMIN_COLOR,
+  notice_published: ADMIN_COLOR,
+  notice_removed: ADMIN_COLOR,
 };
 
 /** Los cambios de la configuración del bot (/admin/bot): no son de ninguna cuenta. */
@@ -93,7 +98,13 @@ const BOT_EVENTS: readonly LogEntry["type"][] = [
 ];
 
 /** Los cambios de la configuración de la app (/admin/configuracion): tampoco son de una cuenta. */
-const SETTINGS_EVENTS: readonly LogEntry["type"][] = ["signup_mode_changed", "signup_invite_added", "signup_invite_removed"];
+const SETTINGS_EVENTS: readonly LogEntry["type"][] = [
+  "signup_mode_changed",
+  "signup_invite_added",
+  "signup_invite_removed",
+  "notice_published",
+  "notice_removed",
+];
 
 /**
  * Con `filters`, tocar el nombre muestra solo los eventos de esa cuenta (en el Historial); sin
@@ -227,6 +238,10 @@ function spanishSentence(entry: LogEntry, { subject: who }: Who, phone: ReactNod
       return <>{admin} invitó a {entry.details.email ?? "alguien"} a crear una cuenta</>;
     case "signup_invite_removed":
       return entry.details.email ? <>{admin} quitó la invitación de {entry.details.email}</> : <>{admin} quitó una invitación</>;
+    case "notice_published":
+      return <>{admin} publicó un aviso para todos</>;
+    case "notice_removed":
+      return <>{admin} quitó el aviso para todos</>;
   }
 }
 
@@ -280,5 +295,9 @@ function englishSentence(entry: LogEntry, { subject, object, whose, account }: W
       return <>{admin} invited {entry.details.email ?? "someone"} to create an account</>;
     case "signup_invite_removed":
       return entry.details.email ? <>{admin} removed the invitation for {entry.details.email}</> : <>{admin} removed an invitation</>;
+    case "notice_published":
+      return <>{admin} published a notice for everyone</>;
+    case "notice_removed":
+      return <>{admin} removed the notice for everyone</>;
   }
 }

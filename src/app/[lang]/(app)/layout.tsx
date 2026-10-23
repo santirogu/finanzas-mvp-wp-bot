@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { Logo } from "@/components/logo";
+import { SiteNotice } from "@/components/site-notice";
 import { Toaster, UrlToasts } from "@/components/toaster";
 import { hasRole } from "@/lib/roles";
 import { requireUser } from "@/lib/session";
@@ -43,6 +44,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </Suspense>
           </div>
         </header>
+        {/* El aviso para todos de la administración, si hay uno vigente: mientras se lee, nada. */}
+        <Suspense fallback={null}>
+          <SiteNotice className="mx-auto w-full max-w-5xl px-4 pt-4" />
+        </Suspense>
         {/* id y tabIndex: si un aviso con el foco se cierra, el foco vuelve aquí (src/components/toaster.tsx). */}
         <main id="contenido" tabIndex={-1} className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 outline-none sm:py-8">
           {children}

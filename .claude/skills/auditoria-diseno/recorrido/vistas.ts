@@ -1,6 +1,6 @@
 import { randomInt } from "node:crypto";
 import { expect, type Page } from "@playwright/test";
-import { PASSWORD, adminCommand, closeToasts, uniqueEmail, visible } from "../../../../e2e/helpers";
+import { PASSWORD, adminCommand, closeToasts, toast, uniqueEmail, visible } from "../../../../e2e/helpers";
 import { MES_ANTERIOR, type Datos, type Persona } from "./datos";
 
 // Las páginas y los estados que recorre la auditoría. Para el modo "cambios", el skill elige las
@@ -451,10 +451,11 @@ export const VISTAS: Vista[] = [
     ruta: fija("/admin/configuracion"),
     preparar: async (page) => {
       const registros = visible(page.getByRole("region", { name: "Registros" }));
-      await registros.getByLabel("Correo", { exact: true }).fill(uniqueEmail());
+      const email = uniqueEmail();
+      await registros.getByLabel("Correo", { exact: true }).fill(email);
       await registros.getByRole("button", { name: "Invitar" }).click();
-      await expect(registros.getByRole("list", { name: "Correos invitados" }).getByRole("listitem").first()).toBeVisible();
-      // Sin el aviso de "Se invitó a…": tapaba el último "Quitar" al medir el foco.
+      // Sin el aviso de "Se invitó a…" (se espera a que salga): tapaba el último "Quitar" al medir el foco.
+      await expect(toast(page, `Se invitó a ${email}`)).toBeVisible();
       await closeToasts(page);
     },
   },
@@ -465,6 +466,17 @@ export const VISTAS: Vista[] = [
     ruta: fija("/admin/configuracion"),
     preparar: async (page) => {
       await visible(page.getByRole("button", { name: "Cambiar quién puede crear una cuenta" })).click();
+      await expect(dialogo(page)).toBeVisible();
+    },
+  },
+  // Solo se abre: publicarlo cambiaría lo que ven todos los grupos del recorrido.
+  {
+    id: "admin-configuracion-aviso",
+    titulo: "Administración: ventana para publicar el aviso para todos",
+    persona: "admin",
+    ruta: fija("/admin/configuracion"),
+    preparar: async (page) => {
+      await visible(page.getByRole("region", { name: "Aviso para todos" })).getByRole("button", { name: "Publicar un aviso" }).click();
       await expect(dialogo(page)).toBeVisible();
     },
   },

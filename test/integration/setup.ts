@@ -29,6 +29,8 @@ beforeEach(async () => {
   // La configuración de la app (/admin/configuracion): sin fila, los registros abiertos.
   await db.execute(sql`delete from app_setting`);
   await db.execute(sql`delete from signup_invite`);
+  // El aviso para todos: sin fila, ninguno.
+  await db.execute(sql`delete from app_notice`);
   await resetGlobalCategories();
 });
 

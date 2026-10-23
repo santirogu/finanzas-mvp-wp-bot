@@ -3,10 +3,13 @@ import { Suspense } from "react";
 import { getLocale } from "@/i18n/server";
 import { texts } from "@/i18n/texts";
 import { requireAdmin } from "@/lib/session";
+import { getNoticeSettings } from "@/modules/admin/configuracion/notice";
 import { getSignupSettings } from "@/modules/admin/configuracion/signup";
+import { toBogotaDateTime } from "@/modules/notice/notice";
 import { formatDate, formatDateTime } from "@/modules/admin/shared/filters";
 import { PageSkeleton } from "../../page-skeleton";
 import { adminMetadata } from "../admin-metadata";
+import { NoticeSettings } from "./notice-settings";
 import { SignupSettings } from "./signup-settings";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -25,14 +28,15 @@ export default function AdminSettingsPage() {
 }
 
 /**
- * La configuración de la app, para todas las cuentas. Por ahora, los registros (quién puede crear una cuenta);
- * lo que venga (un aviso para todos, los valores de las cuentas nuevas…) va aquí como otra tarjeta.
+ * La configuración de la app, para todas las cuentas: los registros (quién puede crear una cuenta) y el aviso para
+ * todos. Lo que venga (los valores de las cuentas nuevas…) va aquí como otra tarjeta.
  */
 async function AdminSettings() {
   // Rol de admin y verificación en dos pasos activa (sin ella, lleva a configurarla).
   await requireAdmin();
   const locale = await getLocale();
-  const settings = await getSignupSettings();
+  const [settings, notice] = await Promise.all([getSignupSettings(), getNoticeSettings()]);
+  const t = TEXTS[locale];
 
   return (
     <div className="space-y-4">
@@ -43,7 +47,20 @@ async function AdminSettings() {
           date: formatDate(invite.usedAt ?? invite.invitedAt, locale),
           used: invite.usedAt !== null,
         }))}
-        lastChange={settings.updated && `${settings.updated.by ?? TEXTS[locale].someAdmin} · ${formatDateTime(settings.updated.at, locale)}`}
+        lastChange={settings.updated && `${settings.updated.by ?? t.someAdmin} · ${formatDateTime(settings.updated.at, locale)}`}
+      />
+      <NoticeSettings
+        notice={
+          notice && {
+            message: notice.message,
+            messageEn: notice.messageEn,
+            tone: notice.tone,
+            endsAtInput: toBogotaDateTime(notice.endsAt),
+            endsAtLabel: formatDateTime(notice.endsAt, locale),
+            active: notice.active,
+            published: `${notice.published.by ?? t.someAdmin} · ${formatDateTime(notice.published.at, locale)}`,
+          }
+        }
       />
     </div>
   );

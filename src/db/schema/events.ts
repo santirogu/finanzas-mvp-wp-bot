@@ -33,6 +33,9 @@ export const accountEventType = pgEnum("account_event_type", [
   "signup_mode_changed",
   "signup_invite_added",
   "signup_invite_removed",
+  // El aviso para todos (también de Configuración): publicarlo (o cambiarlo) y quitarlo.
+  "notice_published",
+  "notice_removed",
 ]);
 
 /** Detalle de un evento: el motivo de una desvinculación o de un intento fallido. */
@@ -61,6 +64,8 @@ export type AccountEventDetails = {
   previousSignupMode?: "open" | "closed" | "invite";
   /** El correo invitado o quitado (signup_invite_added, signup_invite_removed): solo lo ve el admin. */
   email?: string;
+  /** El aviso que se publicó o se quitó (notice_published, notice_removed): el texto en español, el tipo y hasta cuándo. */
+  notice?: { message: string; tone: "info" | "important"; endsAt: string };
 };
 
 export const accountEvent = pgTable(

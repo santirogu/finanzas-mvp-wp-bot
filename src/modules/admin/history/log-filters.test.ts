@@ -81,6 +81,8 @@ describe("configuración", () => {
       "signup_mode_changed",
       "signup_invite_added",
       "signup_invite_removed",
+      "notice_published",
+      "notice_removed",
     ]);
     expect(DATE_PRESETS.map((p) => DATE_PRESET_LABELS[p])).toEqual([
       "Todo",
@@ -410,6 +412,15 @@ describe("formatos", () => {
     [{ signupMode: "closed" as const }, "ahora cerrados"],
     // El correo de una invitación va en la frase, no en el detalle.
     [{ email: "beto@test.local" }, ""],
+    // El aviso para todos: el texto (corto), el tipo y hasta cuándo, en hora de Colombia.
+    [
+      { notice: { message: "Mantenimiento el sábado de 8 a 9", tone: "important" as const, endsAt: "2026-10-26T01:00:00.000Z" } },
+      "“Mantenimiento el sábado de 8 a 9” · importante · hasta el 25 de oct. de 2026, 8:00 p. m.",
+    ],
+    [
+      { notice: { message: `${"a".repeat(58)} b ${"c".repeat(20)}`, tone: "info" as const, endsAt: "2026-10-26T01:00:00.000Z" } },
+      `“${"a".repeat(58)} b…” · información · hasta el 25 de oct. de 2026, 8:00 p. m.`,
+    ],
     [{ resent: 3, failed: 0 }, "3 reenviadas"],
     [{ resent: 1, failed: 1 }, "1 reenviada · 1 no salió otra vez"],
     [{ resent: 0, failed: 2 }, "0 reenviadas · 2 no salieron otra vez"],
@@ -486,6 +497,10 @@ describe("en inglés", () => {
     [{ monthlyLimit: 2_000_000, previousMonthlyLimit: null }, "now 2,000,000 tokens a month (before no limit)"],
     [{ model: "claude-opus-5-5", previousModel: "claude-haiku-5-5" }, "now Claude Opus 5.5 (before Claude Haiku 5.5)"],
     [{ signupMode: "open", previousSignupMode: "closed" }, "now open (before closed)"],
+    [
+      { notice: { message: "Maintenance", tone: "important", endsAt: "2026-10-26T01:00:00.000Z" } },
+      "“Maintenance” · important · until Oct 25, 2026, 8:00 PM",
+    ],
     [{ resent: 1 }, "1 resent"],
     [{ resent: 3, failed: 2 }, "3 resent · 2 didn't go out again"],
   ] as const)("el detalle %j", (details, expected) => {

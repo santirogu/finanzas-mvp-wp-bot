@@ -138,10 +138,22 @@ describe("proxy · sesión vencida (cookie vieja)", () => {
     return proxy(new NextRequest(`${ORIGIN}${path}`, { headers }));
   }
 
-  it.each(SESSION_COOKIES)("con %s deja ver el login en vez de mandarlo al dashboard (sin círculo)", (cookie) => {
+  it.each(SESSION_COOKIES)("con %s la borra en una redirección a la misma dirección, en vez de mandarlo al dashboard", (cookie) => {
     const response = visitExpired("/login?sesion=vencida", cookie);
+    expect(getRedirectUrl(response)).toBe(`${ORIGIN}/login?sesion=vencida`);
+    expect(response.headers.getSetCookie().some((c) => c.startsWith(`${cookie}=;`) && /Max-Age=0/i.test(c))).toBe(true);
+  });
+
+  it("ya sin la cookie, deja ver el login (sin círculo)", () => {
+    const response = proxy(new NextRequest(`${ORIGIN}/login?sesion=vencida`));
     expect(getRedirectUrl(response)).toBeNull();
     expect(getRewrittenUrl(response)).toBe(`${ORIGIN}/es/login?sesion=vencida`);
+    expect(response.headers.getSetCookie()).toEqual([]);
+  });
+
+  it("con solo otra cookie de sesión vieja (sin el token), también la borra", () => {
+    const response = visitExpired("/login?sesion=vencida", "better-auth.session_data");
+    expect(getRedirectUrl(response)).toBe(`${ORIGIN}/login?sesion=vencida`);
   });
 
   it("borra todas las cookies de sesión, con Secure en las de prefijo __Secure-", () => {
