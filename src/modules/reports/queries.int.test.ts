@@ -12,6 +12,7 @@ import {
   getExpensesByDay,
   getLargestExpenses,
   getMonthExpenses,
+  getMonthFact,
   getMonthFixed,
   getMonthlyTotals,
   getReport,
@@ -504,5 +505,49 @@ describe("en inglés: el nombre en inglés de la categoría (el que le puso el a
     expect((await getLargestExpenses(user.id, october, october, "en"))[0].categoryName).toBe("Groceries");
     expect((await listPeriodMovements(user.id, october, october, "en"))[0].categoryName).toBe("Groceries");
     expect((await listPeriodMovements(user.id, october, october))[0].categoryName).toBe("Mercado");
+  });
+});
+
+describe("getMonthFact (el dato del mes del Resumen)", () => {
+  it("lo que va del mes frente a los mismos días de los meses anteriores con movimientos, sin fijos ni otras cuentas", async () => {
+    const ana = await createUser();
+    const beto = await createUser();
+    const alimentacion = await globalCategory("Alimentación");
+    const transporte = await globalCategory("Transporte");
+    // Agosto y septiembre, hasta el 10: 100.000 en Alimentación cada uno; después del 10 no cuenta.
+    // Cada mes con otra descripción: si no, el mercado de todos los meses sería un gasto fijo (y no contaría).
+    for (const month of ["08", "09"]) {
+      await addTx({ userId: ana.id, amount: 100000, description: `Mercado ${month}`, categoryId: alimentacion.id, occurredOn: `2026-${month}-08` });
+      await addTx({ userId: ana.id, amount: 900000, description: `Mercado grande ${month}`, categoryId: alimentacion.id, occurredOn: `2026-${month}-25` });
+      // El arriendo es fijo (agosto a octubre): no cuenta aunque este mes se pagara antes.
+      await addTx({ userId: ana.id, amount: 1500000, description: "Arriendo", occurredOn: `2026-${month}-15` });
+    }
+    await addTx({ userId: ana.id, amount: 1500000, description: "Arriendo", occurredOn: "2026-10-02" });
+    // Octubre, hasta el 10: 160.000 en Alimentación (60 % más) y un egreso borrado y un ingreso que no cuentan.
+    await addTx({ userId: ana.id, amount: 160000, description: "Mercado de octubre", categoryId: alimentacion.id, occurredOn: "2026-10-05" });
+    await addTx({ userId: ana.id, amount: 500000, description: "Mercado borrado", categoryId: alimentacion.id, occurredOn: "2026-10-06", deletedAt: new Date() });
+    await addTx({ userId: ana.id, type: "income", amount: 500000, description: "Reembolso", categoryId: alimentacion.id, occurredOn: "2026-10-06" });
+    // Transporte bajó un poco, y lo de Beto no es de Ana.
+    await addTx({ userId: ana.id, amount: 50000, description: "Taxi", categoryId: transporte.id, occurredOn: "2026-09-03" });
+    await addTx({ userId: beto.id, amount: 5000000, description: "Mercado", categoryId: alimentacion.id, occurredOn: "2026-10-04" });
+
+    // Julio no tuvo movimientos: el promedio es de agosto y septiembre.
+    expect(await getMonthFact(ana.id, october, "2026-10-10")).toEqual({
+      direction: "up",
+      name: "Alimentación",
+      emoji: alimentacion.emoji,
+      current: 160000,
+      average: 100000,
+      pct: 60,
+      averaged: [m(8), m(9)],
+    });
+    // El día 7: en agosto y septiembre todavía no había mercado (era el 8). Es nueva.
+    expect(await getMonthFact(ana.id, october, "2026-10-07")).toMatchObject({ name: "Alimentación", current: 160000, average: 0, pct: null });
+  });
+
+  it("sin meses anteriores con movimientos, nada", async () => {
+    const ana = await createUser();
+    await addTx({ userId: ana.id, amount: 160000, description: "Mercado", occurredOn: "2026-10-05" });
+    expect(await getMonthFact(ana.id, october, "2026-10-10")).toBeNull();
   });
 });
