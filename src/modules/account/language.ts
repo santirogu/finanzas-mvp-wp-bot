@@ -6,7 +6,7 @@ import type { Locale } from "@/i18n/locales";
 import type { Theme } from "@/lib/theme";
 
 /**
- * El idioma que eligió en Mi cuenta: queda en su cuenta para ponérselo a cada navegador donde inicie
+ * El idioma que eligió en Configuración: queda en su cuenta para ponérselo a cada navegador donde inicie
  * sesión (src/lib/auth.ts). Solo el de la cuenta de la sesión (saveLanguageAction).
  */
 export async function saveAccountLocale(userId: string, locale: Locale): Promise<void> {
@@ -14,7 +14,7 @@ export async function saveAccountLocale(userId: string, locale: Locale): Promise
 }
 
 /**
- * La apariencia que eligió en Mi cuenta: queda en su cuenta para ponérsela a cada navegador donde inicie sesión
+ * La apariencia que eligió en Configuración: queda en su cuenta para ponérsela a cada navegador donde inicie sesión
  * (src/lib/auth.ts). Solo la de la cuenta de la sesión (saveThemeAction).
  */
 export async function saveAccountTheme(userId: string, theme: Theme): Promise<void> {

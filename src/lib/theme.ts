@@ -1,4 +1,4 @@
-// La apariencia de la app: la del sistema (por defecto), clara u oscura. Se elige en Mi cuenta y se guarda en
+// La apariencia de la app: la del sistema (por defecto), clara u oscura. Se elige en Configuración y se guarda en
 // la cuenta (user.theme, para cada navegador donde inicie sesión: src/lib/auth.ts) y en este navegador, en la
 // cookie `tema` (la lee el script del <head>, así que no es HttpOnly). Se aplica antes de pintar la página
 // también donde no hay sesión (el login, las páginas públicas, que se sirven prearmadas). Antes se guardaba
@@ -84,7 +84,7 @@ export function applySavedTheme() {
 
 /**
  * Guarda el tema en este navegador (la cookie y, para avisar a las otras pestañas, localStorage) y lo aplica de
- * inmediato. En la cuenta lo guarda aparte el selector de Mi cuenta (saveThemeAction).
+ * inmediato. En la cuenta lo guarda aparte el selector de Configuración (saveThemeAction).
  */
 export function saveTheme(theme: Theme) {
   const root = document.documentElement;

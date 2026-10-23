@@ -182,7 +182,7 @@ describe("TransactionForm", () => {
     const notice = await screen.findByRole("status");
     expect(within(notice).getByText("Mercado: llevas $85.000,00 de $100.000,00 (85 %)")).not.toHaveClass("text-danger");
     expect(within(notice).getByText(/^Ropa: te pasaste del presupuesto/)).toHaveClass("text-danger");
-    expect(within(notice).getByRole("link", { name: "Ver presupuestos" })).toHaveAttribute("href", "/presupuestos");
+    expect(within(notice).getByRole("link", { name: "Ver presupuestos" })).toHaveAttribute("href", "/configuracion#presupuestos");
 
     await register();
     await waitFor(() => expect(action).toHaveBeenCalledTimes(2));

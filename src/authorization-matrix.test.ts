@@ -29,7 +29,7 @@ const PAGES = {
   "/ingresos": "requiere sesión",
   "/egresos": "requiere sesión",
   "/gastos-fijos": "requiere sesión; solo los gastos fijos propios (sus marcas y notas, también)",
-  "/presupuestos": "requiere sesión; solo los presupuestos propios y lo que gastó la persona en cada categoría",
+  "/configuracion": "requiere sesión; solo la configuración propia (presupuestos y lo gastado por categoría, avisos, apariencia, idioma)",
   "/reportes": "requiere sesión; solo los movimientos propios",
   "/simulador": "requiere sesión; solo en desarrollo",
   "/movimientos/[id]/editar": "requiere sesión; solo movimientos propios (los demás dan 404)",

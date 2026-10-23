@@ -177,7 +177,7 @@ function SpanishTopics() {
           ahí (sigue en el Resumen).
         </p>
         <p>
-          En <A href="/cuenta">Mi cuenta → Notificaciones</A> puedes apagar los avisos o elegir con cuántos días de anticipación llegan
+          En <A href="/configuracion#notificaciones">Configuración → Notificaciones</A> puedes apagar los avisos o elegir con cuántos días de anticipación llegan
           (de 0, el mismo día, a {MAX_DAYS_AHEAD}).
         </p>
         <p>
@@ -189,7 +189,7 @@ function SpanishTopics() {
 
       <Topic title="Presupuestos">
         <p>
-          En <A href="/presupuestos">Presupuestos</A> le pones un tope por mes a las categorías de egresos que quieras cuidar: vale
+          En <A href="/configuracion#presupuestos">Configuración → Presupuestos</A> le pones un tope por mes a las categorías de egresos que quieras cuidar: vale
           todos los meses hasta que lo cambies o lo quites. Llegas ahí desde el <A href="/dashboard">Resumen</A>.
         </p>
         <p>
@@ -220,8 +220,9 @@ function SpanishTopics() {
 
       <Topic title="Tu cuenta y tus datos">
         <p>
-          En <A href="/cuenta">Mi cuenta</A> cambias tu contraseña (se cierran tus otras sesiones), conectas o desvinculas WhatsApp,
-          configuras las notificaciones y eliges la apariencia (clara, oscura o la de tu dispositivo).
+          En <A href="/cuenta">Mi cuenta</A> cambias tu contraseña (se cierran tus otras sesiones) y conectas o desvinculas WhatsApp. En{" "}
+          <A href="/configuracion">Configuración</A> pones tus presupuestos, configuras las notificaciones y eliges la apariencia (clara,
+          oscura o la de tu dispositivo) y el idioma.
         </p>
         <p>
           También puedes borrar tu cuenta en <strong>Eliminar mi cuenta</strong>: se borra todo de inmediato y no se puede deshacer. Lo que guardamos y por
@@ -278,7 +279,7 @@ function EnglishTopics() {
           it from there (it stays in the Overview).
         </p>
         <p>
-          In <A href="/cuenta">My account → Notifications</A> you can turn the notices off or choose how many days in advance they come
+          In <A href="/configuracion#notificaciones">Settings → Notifications</A> you can turn the notices off or choose how many days in advance they come
           (from 0, the same day, to {MAX_DAYS_AHEAD}).
         </p>
         <p>
@@ -290,7 +291,7 @@ function EnglishTopics() {
 
       <Topic title="Budgets">
         <p>
-          In <A href="/presupuestos">Budgets</A> you set a monthly limit for the expense categories you want to watch: it applies every
+          In <A href="/configuracion#presupuestos">Settings → Budgets</A> you set a monthly limit for the expense categories you want to watch: it applies every
           month until you change or remove it. You get there from the <A href="/dashboard">Overview</A>.
         </p>
         <p>
@@ -323,8 +324,9 @@ function EnglishTopics() {
 
       <Topic title="Your account and your data">
         <p>
-          In <A href="/cuenta">My account</A> you change your password (your other sessions are signed out), connect or unlink WhatsApp,
-          set up notifications and choose the appearance (light, dark or your device&apos;s).
+          In <A href="/cuenta">My account</A> you change your password (your other sessions are signed out) and connect or unlink
+          WhatsApp. In <A href="/configuracion">Settings</A> you set your budgets, set up notifications and choose the appearance (light,
+          dark or your device&apos;s) and the language.
         </p>
         <p>
           You can also delete your account in <strong>Delete my account</strong>: everything is deleted right away and it can&apos;t be undone. What we keep

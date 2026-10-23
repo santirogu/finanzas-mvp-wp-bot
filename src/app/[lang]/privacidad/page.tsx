@@ -56,7 +56,7 @@ export default function PrivacyPage() {
               guardan hasta que elimines tu cuenta.
             </li>
             <li>
-              <strong>Tu configuración de las notificaciones:</strong> si en <strong>Mi cuenta</strong> prendes
+              <strong>Tu configuración de las notificaciones:</strong> si en <strong>Configuración</strong> prendes
               o apagas los avisos de próximos pagos, o cambias con cuántos días de anticipación llegan, guardamos
               esa elección. Se guarda hasta que elimines tu cuenta.
             </li>
@@ -65,7 +65,7 @@ export default function PrivacyPage() {
               notificación como leída, guardamos cuál fue y cuándo, hasta que elimines tu cuenta.
             </li>
             <li>
-              <strong>Tus presupuestos:</strong> si en <strong>Presupuestos</strong> le pones un tope por mes a
+              <strong>Tus presupuestos:</strong> si en <strong>Configuración → Presupuestos</strong> le pones un tope por mes a
               una categoría de egresos, guardamos la categoría y el monto. Se guardan hasta que los quites o
               elimines tu cuenta.
             </li>
@@ -83,7 +83,7 @@ export default function PrivacyPage() {
               que identifica la red) y navegador, usados solo para mantener tu sesión segura.
             </li>
             <li>
-              <strong>Tu preferencia de apariencia:</strong> si en <strong>Mi cuenta</strong> eliges{" "}
+              <strong>Tu preferencia de apariencia:</strong> si en <strong>Configuración</strong> eliges{" "}
               <strong>Sistema</strong>, <strong>Claro</strong> u <strong>Oscuro</strong>, se guarda en dos lugares:
               <ul>
                 <li>
@@ -96,7 +96,7 @@ export default function PrivacyPage() {
               </ul>
             </li>
             <li>
-              <strong>Tu idioma:</strong> si eliges el idioma en <strong>Mi cuenta</strong>, se guarda en dos
+              <strong>Tu idioma:</strong> si eliges el idioma en <strong>Configuración</strong>, se guarda en dos
               lugares:
               <ul>
                 <li>

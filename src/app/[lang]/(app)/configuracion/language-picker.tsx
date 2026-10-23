@@ -12,7 +12,7 @@ const NAMES: Record<Locale, string> = { es: "Español", en: "English" };
 
 const TEXTS = texts({ legend: "Idioma", saving: "Guardando…" }, { en: { legend: "Language", saving: "Saving…" } });
 
-/** "Español · English": se guarda al elegirlo y Mi cuenta vuelve a cargar en ese idioma (saveLanguageAction). */
+/** "Español · English": se guarda al elegirlo y Configuración vuelve a cargar en ese idioma (saveLanguageAction). */
 export function LanguagePicker() {
   const locale = useLocale();
   return (

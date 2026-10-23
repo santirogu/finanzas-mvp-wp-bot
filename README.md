@@ -256,12 +256,13 @@ src/
   app/[lang]/                       Las páginas, una vez por idioma (el proxy agrega el idioma por dentro: ver Idiomas)
     (auth)/login, (auth)/registro   Páginas públicas de acceso
     (app)/dashboard                 Resumen: balance del mes (y frente al anterior), lo que te queda, presupuestos, últimos movimientos, gastos por categoría (dona)
-    (app)/cuenta                    Mi cuenta: tus datos, seguridad (cambiar la contraseña), WhatsApp, apariencia y eliminar la cuenta
+    (app)/cuenta                    Mi cuenta: tus datos, seguridad (cambiar la contraseña), WhatsApp y eliminar la cuenta
+    (app)/configuracion             Configuración: presupuestos, avisos de próximos pagos, apariencia e idioma
     (app)/ingresos, (app)/egresos   Formulario + listado del mes (vista compartida)
     (app)/reportes                  Reportes: 12 meses (o un año), barras por mes, categorías frente a su promedio, gastos fijos, los más grandes y qué días gastas más
     (app)/presupuestos              Presupuestos: un monto por mes por categoría de egresos y cómo va cada uno (se llega desde el Resumen)
     (app)/month-nav.tsx             Navegador de meses (flechas y tarjeta del año) del Resumen, Ingresos y Egresos
-    (app)/account-menu.tsx          Menú de la cuenta del encabezado (iniciales, escudo de admin, Mi cuenta y Salir)
+    (app)/account-menu.tsx          Menú de la cuenta del encabezado (iniciales, escudo de admin, Mi cuenta, Configuración, Ayuda y Salir)
   app/api/auth/[...all]             Endpoints de Better Auth
   i18n/                             Idiomas: la lista, los textos de cada uno (dictionaries/) y la ruta sin el idioma
   db/schema/                        Tablas: auth (user, session…) y finanzas (category, transaction)
@@ -312,7 +313,7 @@ logo es un globo de chat con un ✓, con el verde azulado de la app (`--brand`).
 La app está en español (el de siempre) y en inglés, toda la web (el bot de WhatsApp sigue en español).
 
 - **Cuál ve cada quien:**
-  1. el que eligió en **Mi cuenta → Idioma** (`saveLanguageAction`): se guarda en su cuenta
+  1. el que eligió en **Configuración → Idioma** (`saveLanguageAction`): se guarda en su cuenta
      (`user.locale`) y en la cookie `idioma` de ese navegador, por un año;
   2. si no eligió en ese navegador, el de su cuenta: al iniciar sesión (también tras el segundo paso de un
      admin), Better Auth le pone la cookie (`hooks.after` en `src/lib/auth.ts`);
@@ -396,7 +397,7 @@ La app está en español (el de siempre) y en inglés, toda la web (el bot de Wh
   - **Lo que viene:** cambiar el correo se ve en "Tus datos", apagado con "Pronto". Llega cuando la app
     pueda enviar correos para confirmar el nuevo: sin eso, un correo mal escrito dejaría a la persona sin
     poder entrar. La moneda se muestra ("Peso colombiano (COP)") con "Pronto: USD y EUR".
-- **Apariencia: Sistema, Claro u Oscuro** (Mi cuenta, `src/lib/theme.ts`).
+- **Apariencia: Sistema, Claro u Oscuro** (Configuración, `src/lib/theme.ts`).
   - **Dónde se guarda:** al elegirla, en la cuenta (`user.theme`, con `saveThemeAction`) y en la cookie `tema` de
     ese navegador, por un año. Al iniciar sesión en otro navegador (también tras el segundo paso de un admin),
     Better Auth le pone la cookie desde la cuenta (`hooks.after` en `src/lib/auth.ts`), como con el idioma. Sin
@@ -494,10 +495,15 @@ La app está en español (el de siempre) y en inglés, toda la web (el bot de Wh
     Cerrado, cada gasto dice su último cambio ("11% desde marzo"). A cada cambio se le puede escribir
     una nota (hasta 280 caracteres; tabla `fixed_expense_note`), solo de un mes en que la persona pagó
     ese gasto; vaciarla la borra.
-- **Presupuestos** (`/presupuestos`, `src/modules/budgets/`, tabla `category_budget`): un monto por mes para una
-  categoría de egresos, el mismo cada mes hasta que la persona lo cambie o lo quite (decisiones del dueño). Sin
-  pestaña propia: se llega desde el Resumen.
-  - **La página:** cómo va cada uno en el mes en curso, "Agregar un presupuesto" (con las categorías de egresos
+- **Configuración** (`/configuracion`, en el menú de la cuenta, entre Mi cuenta y Ayuda): cómo funciona la app para
+  la persona, con un índice arriba y una tarjeta por sección: Presupuestos, Notificaciones, Apariencia e Idioma. Lo que
+  se agregue después (la moneda, el recordatorio de registro, las categorías propias) va ahí como otra sección. **Mi
+  cuenta** se queda con quién es y su seguridad: sus datos, la contraseña, WhatsApp y eliminar la cuenta (decisión
+  del dueño). Mi cuenta tiene un enlace a Configuración para quien busque ahí lo que se movió.
+- **Presupuestos** (Configuración → Presupuestos, `src/modules/budgets/`, tabla `category_budget`): un monto por mes
+  para una categoría de egresos, el mismo cada mes hasta que la persona lo cambie o lo quite (decisiones del dueño).
+  Se llega también desde el Resumen; `/presupuestos`, la dirección de antes, redirige ahí (`next.config.ts`).
+  - **La sección:** cómo va cada uno en el mes en curso, "Agregar un presupuesto" (con las categorías de egresos
     disponibles que todavía no tienen), "Cambiar" (el monto) y "Quitar". Uno nuevo solo con una categoría que la
     persona puede ver y no está archivada; el de una que el admin archivó se puede cambiar. Si el admin elimina la
     categoría, el presupuesto se va con ella (cascada).
@@ -540,7 +546,7 @@ La app está en español (el de siempre) y en inglés, toda la web (el bot de Wh
     "Marcar como leído" (o "Marcar todas como leídas"), que la saca de la campana (tabla
     `notification_read`) pero el aviso sigue en el Resumen. Se cierra con Escape, al tocar fuera o al
     salir con Tab, como el menú de la cuenta. Con los avisos apagados, no hay campana.
-  - **Mi cuenta → Notificaciones** (`notification-settings.tsx`, `upcoming-settings.ts`, tabla
+  - **Configuración → Notificaciones** (`notification-settings.tsx`, `upcoming-settings.ts`, tabla
     `notification_setting`): prenderlos o apagarlos (apagados no se avisa nada, tampoco los atrasados) y
     con cuántos días de anticipación, de 0 (el mismo día) a 10, en un campo numérico con su error en
     español debajo. Se guarda con el botón; apagados, el campo queda inactivo y los días se conservan.
@@ -553,7 +559,7 @@ La app está en español (el de siempre) y en inglés, toda la web (el bot de Wh
   - **Atrasados:** los que no tienen pago, hasta 3 meses atrás (`MONTHS_BACK`), en rojo. "Este pago ya no
     aplica" oculta solo el de ese mes (tabla `fixed_payment_skip`); para no avisar más de un gasto, se
     quita en Fijos.
-- **Ayuda** (`/ayuda`, desde el menú de la cuenta, entre Mi cuenta y Salir): cómo usar la app por temas
+- **Ayuda** (`/ayuda`, desde el menú de la cuenta, entre Configuración y Salir): cómo usar la app por temas
   que se abren (registrar movimientos, el bot de WhatsApp, gastos fijos y avisos, reportes y descargas,
   tu cuenta y tus datos). Los números salen de las constantes de la app y los comandos del bot, de la
   misma lista que su respuesta a "ayuda" (`src/modules/bot/help.ts`): si algo cambia, la ayuda también.
@@ -841,7 +847,7 @@ Hay dos roles (`src/lib/roles.ts`), guardados en la columna `user.role`, y un ad
 
 | Rol | Quién | Qué ve |
 |---|---|---|
-| `user` | Toda cuenta al registrarse | Resumen, Ingresos, Egresos, Fijos, Reportes y Mi cuenta |
+| `user` | Toda cuenta al registrarse | Resumen, Ingresos, Egresos, Fijos, Reportes, Mi cuenta y Configuración |
 | `admin` | Quien recibe el rol del super admin (en Usuarios) o desde la terminal | Todo lo de `user` y la sección de administración (pestaña **Admin**), con verificación en dos pasos obligatoria. Su etiqueta va en violeta |
 | super admin | Un admin con la marca `user.super_admin`: uno solo, puesto solo desde la terminal (`pnpm admin:super`) | Todo lo de `admin` y, además, dar y quitar el rol de admin en Usuarios. Su etiqueta ("Super admin") y su escudo van en dorado |
 

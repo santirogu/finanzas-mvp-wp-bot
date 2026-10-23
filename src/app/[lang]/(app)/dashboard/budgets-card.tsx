@@ -10,7 +10,7 @@ export function BudgetsCard({ title, edit, rows }: { title: string; edit: string
         <h2 id="presupuestos" className="font-semibold">
           {title}
         </h2>
-        <Link href="/presupuestos" className="inline-flex min-h-11 items-center text-sm font-medium text-brand pointer-fine:min-h-6">
+        <Link href="/configuracion#presupuestos" className="inline-flex min-h-11 items-center text-sm font-medium text-brand pointer-fine:min-h-6">
           {edit}
         </Link>
       </div>
