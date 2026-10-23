@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { CurrentUser } from "@/lib/session";
+import type { BotAlert } from "@/modules/bot/alert-rules";
 import type { RegisterReminder, ReminderSettings } from "@/modules/reminders/register-reminder";
 import type { UpcomingPayment } from "@/modules/reports/upcoming";
 
@@ -10,6 +11,9 @@ const data = vi.hoisted(() => ({
   read: new Set<string>(),
   reminderSettings: { enabled: true, days: 3 } as ReminderSettings,
   reminder: null as RegisterReminder | null,
+  role: "user" as CurrentUser["role"],
+  twoFactorEnabled: false,
+  alerts: [] as BotAlert[],
 }));
 vi.mock("@/lib/session", () => ({
   requireUser: vi.fn(async (): Promise<CurrentUser> => ({
@@ -18,11 +22,13 @@ vi.mock("@/lib/session", () => ({
     email: "ana@test.local",
     timezone: "America/Bogota",
     currency: "COP",
-    role: "user",
+    role: data.role,
     superAdmin: false,
-    twoFactorEnabled: false,
+    twoFactorEnabled: data.twoFactorEnabled,
   })),
+  canAdminister: (user: CurrentUser) => user.role === "admin" && user.twoFactorEnabled,
 }));
+vi.mock("@/modules/admin/bot/alerts", () => ({ botAlerts: vi.fn(async () => data.alerts) }));
 vi.mock("@/modules/reports/queries", () => ({ getUpcomingPayments: vi.fn(async () => data.upcoming) }));
 vi.mock("@/modules/notifications/reads", () => ({ getReadNotifications: vi.fn(async () => data.read) }));
 vi.mock("@/modules/reminders/reminders", () => ({
@@ -35,6 +41,7 @@ vi.mock("@/modules/reports/actions", () => ({ skipFixedPaymentAction: vi.fn(), r
 const { UserNotifications } = await import("./user-notifications");
 const { getUpcomingPayments } = await import("@/modules/reports/queries");
 const { getRegisterReminder } = await import("@/modules/reminders/reminders");
+const { botAlerts } = await import("@/modules/admin/bot/alerts");
 
 const payment = (key: string): UpcomingPayment & { category: string } => ({
   key,
@@ -54,6 +61,10 @@ beforeEach(() => {
   data.read = new Set();
   data.reminderSettings = { enabled: true, days: 3 };
   data.reminder = null;
+  data.role = "user";
+  data.twoFactorEnabled = false;
+  data.alerts = [{ kind: "monthly_limit", resetsOn: "2026-11-01" }];
+  vi.mocked(botAlerts).mockClear();
 });
 
 describe("UserNotifications", () => {
@@ -97,6 +108,49 @@ describe("UserNotifications", () => {
     render(await UserNotifications());
     expect(screen.getByRole("button", { name: "Notificaciones: 1 sin leer" })).toBeVisible();
     expect(screen.queryByRole("link", { name: "Ver los próximos pagos en el Resumen", hidden: true })).toBeNull();
+  });
+
+  it("a quien no es admin no le busca las alertas del bot", async () => {
+    render(await UserNotifications());
+    expect(botAlerts).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Notificaciones: 2 sin leer" })).toBeVisible();
+  });
+
+  it("a un admin sin la verificación en dos pasos tampoco (no puede entrar a la administración)", async () => {
+    data.role = "admin";
+    render(await UserNotifications());
+    expect(botAlerts).not.toHaveBeenCalled();
+  });
+
+  it("a un admin con la verificación, las alertas del bot primero, en su idioma, con su id", async () => {
+    data.role = "admin";
+    data.twoFactorEnabled = true;
+    data.read = new Set(["pago|2026-10|arriendo"]);
+    render(await UserNotifications());
+    expect(screen.getByRole("button", { name: "Notificaciones: 2 sin leer" })).toBeVisible();
+    expect(screen.getAllByText(/tope mensual|Próximos pagos/).map((p) => p.textContent)).toEqual([
+      "Se alcanzó el tope mensual de tokens: Claude está en pausa hasta el 1 de noviembre",
+      "Próximos pagos de tus gastos fijos.",
+    ]);
+  });
+
+  it("la alerta leída no cuenta; si vuelve a pasar (el mes siguiente), sí", async () => {
+    data.role = "admin";
+    data.twoFactorEnabled = true;
+    data.read = new Set(["bot|monthly_limit|2026-11-01"]);
+    render(await UserNotifications());
+    expect(screen.getByRole("button", { name: "Notificaciones: 2 sin leer" })).toBeVisible();
+  });
+
+  it("al admin con alertas no se le apaga la campana aunque apague los avisos y el recordatorio", async () => {
+    data.role = "admin";
+    data.twoFactorEnabled = true;
+    data.upcoming = { enabled: false, days: 3, payments: [] };
+    data.reminderSettings = { enabled: false, days: 3 };
+    render(await UserNotifications());
+    expect(screen.getByRole("button", { name: "Notificaciones: 1 sin leer" })).toBeVisible();
+    data.alerts = [];
+    expect(await UserNotifications()).toBeNull();
   });
 
   it("con los avisos de pagos y el recordatorio apagados (Configuración), no hay campana", async () => {
