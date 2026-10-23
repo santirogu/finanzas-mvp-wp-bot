@@ -3,8 +3,8 @@ import { formatMonthName, monthOf, todayInTimezone } from "../src/lib/dates";
 import { seriousViolations } from "./admin";
 import { addBudget, addTransaction, register, test, toast, visible } from "./helpers";
 
-// Los presupuestos de punta a punta: la invitación del Resumen, ponerlos (con el error de un campo vacío), cómo van
-// en /presupuestos y en el Resumen, cambiarlos y quitarlos.
+// Los presupuestos de punta a punta: la invitación del Resumen, ponerlos (con el error de un campo vacío), el aviso al
+// registrar el egreso que llega al 80 %, cómo van en /presupuestos y en el Resumen, cambiarlos y quitarlos.
 
 const month = formatMonthName(monthOf(todayInTimezone("America/Bogota")));
 const row = (page: Page, name: string) => visible(page.getByRole("main").getByRole("listitem").filter({ hasText: name }));
@@ -39,6 +39,11 @@ test("Presupuestos: ponerlos, cómo van en el Resumen, cambiarlos y quitarlos @p
     await page.goto("/egresos");
     await addTransaction(page, { amount: "85000", description: "Almuerzos de la semana", category: "Alimentación" });
     await expect(toast(page, /^Egreso registrado$/)).toBeVisible();
+    // Con este egreso llegó al 85 %: el aviso queda a la vista, con el enlace a los presupuestos.
+    const notice = visible(page.getByRole("status").filter({ hasText: "Alimentación: llevas" }));
+    await expect(notice).toContainText("Alimentación: llevas $85.000,00 de $100.000,00 (85 %)");
+    await expect(notice.getByRole("link", { name: "Ver presupuestos" })).toHaveAttribute("href", "/presupuestos");
+    expect(await seriousViolations(page)).toEqual([]);
 
     await page.goto("/presupuestos");
     await expect(row(page, "Alimentación")).toContainText("$85.000,00 de $100.000,00");

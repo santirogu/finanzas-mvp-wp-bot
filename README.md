@@ -505,6 +505,16 @@ La app está en español (el de siempre) y en inglés, toda la web (el bot de Wh
     más pasada) a la más lejos, con "Te quedan…" o "Te pasaste por…" (en rojo). Desde el 80 % (`NEAR_SHARE`)
     resalta la línea. Sin presupuestos, un enlace en "Egresos por categoría" invita a ponerlos.
   - Cuenta lo gastado en la categoría en el mes (sin los borrados); los movimientos sin categoría no suman a ninguno.
+  - **Los avisos** (`budgetCrossings`, `getBudgetCrossings`): cuando un egreso del mes en curso hace llegar una
+    categoría al 80 % o pasarse, una vez (si cruza los dos de una vez, solo el de pasarse). No se guarda qué se
+    avisó: avisa el egreso que cruza el umbral (antes, por debajo; con él, por encima), así que lo que ya estaba
+    cerca o pasado no vuelve a avisar. Llegan:
+    - en la respuesta del bot al registrar, entre lo registrado y el balance ("⚠️ Mercado: llevas…", "🚨 …te
+      pasaste del presupuesto por…"), sin plantillas de Meta: va dentro de la conversación que abrió la persona
+      (decisión del dueño). Un mensaje que Meta reenvía no guarda nada, así que no avisa dos veces;
+    - en Egresos, debajo del formulario, a la vista hasta el siguiente registro (un aviso emergente se iría
+      solo), con "Ver presupuestos". "Registrar pago" (los próximos pagos) no avisa: la tarjeta del Resumen ya lo
+      muestra al lado.
 - **Lo que te queda este mes** (`src/modules/reports/remaining.ts`, `month-remaining.tsx`): en el Resumen, solo
   con el mes en curso y si ya hubo ingresos (antes del sueldo todo saldría negativo).
   - **Lo libre:** ingresos − egresos − los gastos fijos que faltan por pagar este mes (sin pagar ni marcados "ya

@@ -4,6 +4,8 @@ import { db } from "@/db";
 import { whatsappMessage } from "@/db/schema";
 import { envVar } from "@/lib/env";
 import { compareMonths, currentMonthRange, monthRange, monthRangeUpTo, shiftMonth, todayInTimezone } from "@/lib/dates";
+import { getBudgetCrossings } from "@/modules/budgets/budgets";
+import { budgetAlert } from "@/modules/budgets/progress";
 import { describeError } from "@/lib/safe-log";
 import {
   createTransactionsFromMessage,
@@ -172,14 +174,15 @@ async function respond(
       // Con la descripción (y la categoría) que ya usó en su historial: "pago claro amor" queda como
       // "Claro Postpago Cata Amor". La respuesta muestra lo que quedó guardado.
       const items = await withHistoryDescriptions(user.id, intent.items, categories, today);
-      await createTransactionsFromMessage({
+      const saved = await createTransactionsFromMessage({
         userId: user.id,
         currency: user.currency,
         messageId: msg.id,
         items,
         categories,
       });
-      const summary = await getMonthlySummary(user.id, range);
+      // Los presupuestos que cruzaron el 80 % o el límite con estos egresos (solo los de este mes).
+      const [summary, crossings] = await Promise.all([getMonthlySummary(user.id, range), getBudgetCrossings(user.id, range, saved)]);
       return {
         ...base,
         reply: replies.registeredReply(items, {
@@ -187,6 +190,7 @@ async function respond(
           currency: user.currency,
           balance: summary.balance,
           range,
+          budgetAlerts: crossings.map((crossing) => ({ level: crossing.level, text: budgetAlert(crossing, user.currency) })),
         }),
       };
     }

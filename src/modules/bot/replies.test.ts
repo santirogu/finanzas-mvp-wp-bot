@@ -57,6 +57,31 @@ describe("registeredReply", () => {
     );
   });
 
+  it("con los avisos de presupuesto, entre lo registrado y el balance, cada uno con su emoji", () => {
+    const text = registeredReply(
+      [{ type: "expense", amount: 25000, description: "Almuerzo", category: "Alimentación", occurredOn: "2026-10-13" }],
+      {
+        today: "2026-10-13",
+        currency: "COP",
+        balance: 1220000,
+        range,
+        budgetAlerts: [
+          { level: "near", text: "Alimentación: llevas $410.000,00 de $500.000,00 (82 %)" },
+          { level: "over", text: "Transporte: te pasaste del presupuesto por $10.000,00 ($310.000,00 de $300.000,00)" },
+        ],
+      },
+    );
+    expect(nbsp(text).split("\n")).toEqual([
+      "✅ Egreso Anotado: *Almuerzo* — $25.000,00 (Alimentación)",
+      "",
+      "⚠️ Alimentación: llevas $410.000,00 de $500.000,00 (82 %)",
+      "🚨 Transporte: te pasaste del presupuesto por $10.000,00 ($310.000,00 de $300.000,00)",
+      "",
+      "Balance de octubre: *$1.220.000,00*",
+      "_Escribe *deshacer* si me equivoqué._",
+    ]);
+  });
+
   it("confirma con los centavos que se escribieron", () => {
     const text = registeredReply(
       [{ type: "expense", amount: 25900.5, description: "Almuerzo", category: "Alimentación", occurredOn: "2026-10-13" }],

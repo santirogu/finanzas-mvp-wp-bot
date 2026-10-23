@@ -21,7 +21,7 @@ vi.mock("@/lib/session", () => ({
 }));
 vi.mock("next/cache", () => ({ refresh: vi.fn() }));
 
-const { getBudgetProgress, getSpentByCategory, listBudgetCategories, listBudgets, removeBudget, saveBudget } = await import("./budgets");
+const { getBudgetCrossings, getBudgetProgress, getSpentByCategory, listBudgetCategories, listBudgets, removeBudget, saveBudget } = await import("./budgets");
 const { removeBudgetAction, saveBudgetAction } = await import("./actions");
 
 const form = (values: Record<string, string>) => {
@@ -165,6 +165,29 @@ describe("getSpentByCategory, getBudgetProgress y listBudgetCategories", () => {
     expect(options).not.toContain(restaurantes.id);
     expect(options).not.toContain(salario.id);
     expect((await listBudgetCategories(beto.id)).map((c) => c.id)).toContain(mercado.id);
+  });
+});
+
+describe("getBudgetCrossings (los avisos de lo recién registrado)", () => {
+  it("solo cuentan los egresos con categoría de este mes, y solo los presupuestos propios", async () => {
+    const ana = await createUser();
+    const beto = await createUser();
+    const mercado = await globalCategory("Mercado");
+    const salario = await globalCategory("Salario", "income");
+    await saveBudget(cop(ana.id), { categoryId: mercado.id, amount: "100.000" });
+    await db.insert(transaction).values({ userId: ana.id, type: "expense", amount: 85000, description: "Mercado", categoryId: mercado.id, occurredOn: "2026-10-10" });
+    await db.insert(transaction).values({ userId: beto.id, type: "expense", amount: 85000, description: "Mercado", categoryId: mercado.id, occurredOn: "2026-10-10" });
+    const added = (values: Partial<{ type: "income" | "expense"; categoryId: string | null; amount: number; occurredOn: string }>) => [
+      { type: "expense" as const, categoryId: mercado.id, amount: 85000, occurredOn: "2026-10-10", ...values },
+    ];
+
+    expect((await getBudgetCrossings(ana.id, october, added({}))).map((c) => [c.name, c.level, c.share])).toEqual([["Mercado", "near", 85]]);
+    // Beto no tiene presupuesto: lo de Ana no le avisa nada.
+    expect(await getBudgetCrossings(beto.id, october, added({}))).toEqual([]);
+    expect(await getBudgetCrossings(ana.id, october, added({ type: "income", categoryId: salario.id }))).toEqual([]);
+    expect(await getBudgetCrossings(ana.id, october, added({ categoryId: null }))).toEqual([]);
+    expect(await getBudgetCrossings(ana.id, october, added({ occurredOn: "2026-09-30" }))).toEqual([]);
+    expect(await getBudgetCrossings(ana.id, october, [])).toEqual([]);
   });
 });
 

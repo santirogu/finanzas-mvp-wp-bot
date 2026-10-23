@@ -52,6 +52,7 @@ const TEXTS = texts(
     date: "Fecha",
     proposed: (category: string) => `Se eligió la categoría ${category}, la de la última vez.`,
     elsewhere: (month: string) => ` en ${month}`,
+    budgets: "Ver presupuestos",
     pending: "Guardando…",
     save: "Guardar cambios",
     cancel: "Cancelar",
@@ -75,6 +76,7 @@ const TEXTS = texts(
       date: "Date",
       proposed: (category) => `We chose ${category}, like last time.`,
       elsewhere: (month) => ` in ${month}`,
+      budgets: "See budgets",
       pending: "Saving…",
       save: "Save changes",
       cancel: "Cancel",
@@ -280,6 +282,21 @@ export function TransactionForm({
         <Link href={cancelHref} className="block text-center text-sm font-medium text-muted">
           {t.cancel}
         </Link>
+      )}
+
+      {/* Los presupuestos que este egreso hizo llegar al 80 % o pasar: a la vista hasta el próximo registro (un
+          aviso emergente se iría solo). Pasarse, en rojo, como las alertas. */}
+      {state.ok && state.budgetAlerts && state.budgetAlerts.length > 0 && (
+        <div role="status" className="space-y-1 rounded-lg border border-border px-3 py-2 text-sm">
+          {state.budgetAlerts.map((alert) => (
+            <p key={alert.text} className={alert.level === "over" ? "font-medium text-danger" : "font-medium"}>
+              {alert.text}
+            </p>
+          ))}
+          <Link href="/presupuestos" className="inline-flex min-h-11 items-center font-medium text-brand pointer-fine:min-h-6">
+            {t.budgets}
+          </Link>
+        </div>
       )}
 
       {/* Los errores que no son de un campo ("No encontramos ese movimiento"); lo que salió bien va en un

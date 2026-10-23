@@ -1,7 +1,7 @@
-import { eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "@/db";
-import { category, transaction } from "@/db/schema";
+import { category, categoryBudget, transaction } from "@/db/schema";
 import type { CurrentUser } from "@/lib/session";
 import { activeTransactions, createUser } from "../../../test/integration/factories";
 import { requestLocale } from "../../../test/integration/locale";
@@ -85,6 +85,25 @@ describe("createTransactionAction", () => {
         categoryId: null,
       }),
     ]);
+  });
+
+  it("si el egreso hace llegar su categoría al 80 % del presupuesto o pasarse, lo devuelve (una vez, solo con los de este mes)", async () => {
+    const user = await signIn();
+    const [mercado] = await db.select().from(category).where(and(eq(category.name, "Mercado"), isNull(category.userId)));
+    await db.insert(categoryBudget).values({ userId: user.id, categoryId: mercado.id, amount: 100000 });
+    const add = async (amount: string, occurredOn = "2026-10-13") =>
+      (await createTransactionAction({ ok: false }, form({ ...validExpense, amount, categoryId: mercado.id, occurredOn }))).budgetAlerts?.map(
+        (alert) => ({ ...alert, text: alert.text.replace(/\u00a0/g, " ") }),
+      );
+
+    expect(await add("85.000")).toEqual([{ level: "near", text: "Mercado: llevas $85.000,00 de $100.000,00 (85 %)" }]);
+    expect(await add("5.000")).toBeUndefined();
+    // Uno de septiembre no cuenta para el presupuesto de octubre.
+    expect(await add("999.999", "2026-09-10")).toBeUndefined();
+    expect(await add("20.000")).toEqual([
+      { level: "over", text: "Mercado: te pasaste del presupuesto por $10.000,00 ($110.000,00 de $100.000,00)" },
+    ]);
+    expect(await add("1.000")).toBeUndefined();
   });
 
   it("guarda los centavos escritos después de la coma, exactos", async () => {

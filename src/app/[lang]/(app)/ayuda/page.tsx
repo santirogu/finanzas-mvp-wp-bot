@@ -196,6 +196,10 @@ function SpanishTopics() {
           En el Resumen ves cuánto llevas de cada una en el mes y cuánto te queda. Desde el {formatPercent(NEAR_SHARE)} del presupuesto,
           la línea se resalta; si te pasas, sale en rojo con cuánto.
         </p>
+        <p>
+          Cuando un egreso de este mes hace llegar una categoría al {formatPercent(NEAR_SHARE)} o pasarse, te avisamos una vez. Si lo
+          registras por WhatsApp, el aviso va en la respuesta del bot; en Egresos, debajo del formulario.
+        </p>
       </Topic>
 
       <Topic title="Reportes y descargas">
@@ -292,6 +296,10 @@ function EnglishTopics() {
         <p>
           In the Overview you see how much you&apos;ve spent in each one this month and how much you have left. From{" "}
           {formatPercent(NEAR_SHARE, "en")} of the budget the line stands out; if you go over, it turns red and shows by how much.
+        </p>
+        <p>
+          When an expense this month takes a category to {formatPercent(NEAR_SHARE, "en")} or over its budget, we let you know once. If
+          you add it on WhatsApp, the notice comes in the bot&apos;s reply; in Expenses, below the form.
         </p>
       </Topic>
 
