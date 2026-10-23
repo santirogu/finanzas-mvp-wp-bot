@@ -171,7 +171,10 @@ jobs:
     needs: e2e-cambios
     if: needs.e2e-cambios.outputs.e2e == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # Una parte tarda unos 4 minutos, pero instalar las dependencias de los navegadores (apt) depende del espejo
+    # de Ubuntu: algunos días tardó más de 12 minutos y, con 15 de tope, se cortaban partes sin ninguna prueba
+    # fallida (#187, #190).
+    timeout-minutes: 25
     strategy:
       # Si una parte falla, las otras terminan igual: así se ven todas las pruebas que fallaron.
       fail-fast: false
