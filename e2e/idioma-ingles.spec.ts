@@ -378,19 +378,29 @@ test("elegir el idioma en Mi cuenta: la app cambia, y la cuenta lo lleva a otro 
   });
 });
 
-test("la primera visita, sin elegir, en el idioma del navegador @principal", async ({ browser }) => {
-  for (const [locale, lang, heading] of [
-    ["en-US", "en", "Sign in"],
-    ["fr-FR", "es", "Inicia sesión"],
-  ] as const) {
-    const context = await browser.newContext({ locale });
-    const page = await context.newPage();
-    await page.goto("/login");
-    await expect(page.locator("html")).toHaveAttribute("lang", lang);
-    await expect(visible(page.getByRole("heading", { level: 1, name: heading }))).toBeVisible();
-    expect((await context.cookies()).map((c) => c.name)).not.toContain("idioma");
-    await context.close();
-  }
+test("la primera visita es en español aunque el navegador esté en inglés; ES · EN lo cambia y se recuerda @principal", async ({ browser }) => {
+  const context = await browser.newContext({ locale: "en-US" });
+  const page = await context.newPage();
+  await page.goto("/");
+  await expect(page.locator("html")).toHaveAttribute("lang", "es");
+  expect((await context.cookies()).map((c) => c.name)).not.toContain("idioma");
+  const languages = visible(page.getByRole("group", { name: "Idioma" }));
+  await expect(languages.getByRole("button", { name: "Español" })).toHaveAttribute("aria-pressed", "true");
+
+  // EN: la misma página, en inglés, y queda guardado para las demás.
+  await languages.getByRole("button", { name: "English" }).click();
+  await expect(page.locator("html")).toHaveAttribute("lang", "en");
+  await expect(page).toHaveURL(/\/$/);
+  await expect(visible(page.getByRole("group", { name: "Language" }).getByRole("button", { name: "English" }))).toHaveAttribute("aria-pressed", "true");
+  await page.goto("/login");
+  await expect(visible(page.getByRole("heading", { level: 1, name: "Sign in" }))).toBeVisible();
+  expect(await seriousViolations(page)).toEqual([]);
+
+  // ES desde el login: se queda en el login, en español.
+  await visible(page.getByRole("group", { name: "Language" })).getByRole("button", { name: "Español" }).click();
+  await expect(visible(page.getByRole("heading", { level: 1, name: "Inicia sesión" }))).toBeVisible();
+  await expect(page).toHaveURL(/\/login$/);
+  await context.close();
 });
 
 test("cambiar de idioma no cambia la apariencia elegida (ni al elegirlo ni al entrar con la cuenta) @principal", async ({ page, browser }) => {

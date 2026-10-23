@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getSessionCookie } from "better-auth/cookies";
-import { LOCALE_COOKIE, requestLocaleOf } from "./i18n/locales";
+import { LOCALE_COOKIE, localeOf } from "./i18n/locales";
 import { EXPIRED_SESSION_PARAM, SESSION_COOKIE_NAMES } from "./lib/expired-session";
 
 const PUBLIC_ONLY = ["/", "/login", "/registro"];
@@ -9,12 +9,12 @@ const PUBLIC_ONLY = ["/", "/login", "/registro"];
 const ALWAYS_PUBLIC = ["/privacidad", "/eliminar-datos", "/cuenta-eliminada"];
 
 /**
- * La página en el idioma de la cookie o, sin ella, en el del navegador: por dentro, /dashboard se arma como
+ * La página en el idioma de la cookie o, sin ella, en español: por dentro, /dashboard se arma como
  * /es/dashboard (src/app/[lang]/, src/i18n/locales.ts), y el navegador sigue viendo /dashboard.
  */
 function localized(request: NextRequest) {
   const url = request.nextUrl.clone();
-  const locale = requestLocaleOf(request.cookies.get(LOCALE_COOKIE)?.value, request.headers.get("accept-language"));
+  const locale = localeOf(request.cookies.get(LOCALE_COOKIE)?.value);
   url.pathname = `/${locale}${url.pathname === "/" ? "" : url.pathname}`;
   return NextResponse.rewrite(url);
 }

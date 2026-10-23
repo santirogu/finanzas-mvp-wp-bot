@@ -316,16 +316,19 @@ La app está en español (el de siempre) y en inglés, toda la web (el bot de Wh
      (`user.locale`) y en la cookie `idioma` de ese navegador, por un año;
   2. si no eligió en ese navegador, el de su cuenta: al iniciar sesión (también tras el segundo paso de un
      admin), Better Auth le pone la cookie (`hooks.after` en `src/lib/auth.ts`);
-  3. si no, el que pide el navegador (`Accept-Language`, `negotiateLocale` en `src/i18n/locales.ts`), sin
-     guardar nada: la primera visita sale en inglés si el navegador lo prefiere antes que el español.
+  3. sin sesión, el que eligió en el selector **ES · EN** de la portada, el login o el registro
+     (`src/components/language-switch.tsx`, `chooseLanguageAction`): solo la cookie, por un año, y vuelve a la
+     misma página (nunca a otra dirección: `LANGUAGE_SWITCH_PAGES`);
+  4. si no, español, aunque el navegador pida otro idioma (decisión del dueño: el público es colombiano y el
+     bot y las páginas legales están en español).
 
   `user.locale` es `null` hasta que la persona elige (la base solo acepta `es` o `en`), y nadie más lo
   cambia: Better Auth lo tiene con `input: false`. La política de privacidad lo explica.
 
 - **Las direcciones no llevan el idioma.** Las páginas están en `src/app/[lang]/` y el proxy
-  (`src/proxy.ts`) arma cada una, por dentro, en el idioma de la cookie `idioma` (o, sin ella, en el del
-  navegador): `/dashboard` se arma como `/es/dashboard` (o `/en/dashboard`), y el navegador sigue viendo
-  `/dashboard`. Sin ninguno de los dos, en español (`src/i18n/locales.ts`).
+  (`src/proxy.ts`) arma cada una, por dentro, en el idioma de la cookie `idioma` (o, sin ella, en español):
+  `/dashboard` se arma como `/es/dashboard` (o `/en/dashboard`), y el navegador sigue viendo `/dashboard`
+  (`src/i18n/locales.ts`).
 - **Por qué así:** el `<html lang>` y los textos salen del segmento (`next/root-params`), sin leer
   cookies al armar la página. Las páginas públicas (inicio, login, registro, privacidad) siguen
   prearmadas, una vez por idioma.

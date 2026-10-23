@@ -99,7 +99,10 @@ export default function PrivacyPage() {
                   en una cookie de tu navegador (<code>idioma</code>), que dura un año.
                 </li>
               </ul>
-              <p>Si no lo eliges, usamos el idioma que pide tu navegador, sin guardarlo.</p>
+              <p>
+                Si no lo eliges, la app sale en español. Sin sesión, puedes cambiarlo arriba en la portada, al
+                iniciar sesión o al registrarte: se guarda solo en esa cookie de tu navegador.
+              </p>
             </li>
             <li>
               <strong>Estadísticas de uso anónimas:</strong> con Vercel Web Analytics contamos:
