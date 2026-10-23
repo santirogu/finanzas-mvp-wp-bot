@@ -31,6 +31,8 @@ beforeEach(async () => {
   await db.execute(sql`delete from signup_invite`);
   // El aviso para todos: sin fila, ninguno.
   await db.execute(sql`delete from app_notice`);
+  // Los valores de la app: sin fila, los de siempre (los avisos prendidos con 3 días, el 80 %, 3 de 4 meses).
+  await db.execute(sql`delete from app_values`);
   await resetGlobalCategories();
 });
 

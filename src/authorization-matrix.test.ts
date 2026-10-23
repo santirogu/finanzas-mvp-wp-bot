@@ -42,7 +42,7 @@ const PAGES = {
   "/admin/salud":
     "requiere sesión de admin con la verificación en dos pasos activa (requireAdmin); solo nombres de variables (nunca sus valores), tamaños y cantidades",
   "/admin/configuracion":
-    "requiere sesión de admin con la verificación en dos pasos activa (requireAdmin); la configuración global de la app, los correos invitados y el aviso para todos",
+    "requiere sesión de admin con la verificación en dos pasos activa (requireAdmin); la configuración global de la app, los correos invitados, el aviso para todos y los valores de la app",
   "/admin/seguridad": "requiere sesión de admin; es donde se configura la verificación en dos pasos (requireAdminRole)",
 } as const;
 
@@ -107,6 +107,8 @@ const SERVER_ACTIONS = {
   publishNoticeAction:
     "requireAdmin + código de Google Authenticator; el aviso para todos: texto de hasta 200 caracteres, uno de los dos tipos y fin en los próximos 31 días",
   removeNoticeAction: "requireAdmin + código de Google Authenticator; solo quita el aviso para todos",
+  changeAppValuesAction:
+    "requireAdmin + código de Google Authenticator; los avisos por defecto y los umbrales, dentro de sus rangos (src/modules/app-values/values.ts)",
   chooseFixedExpenseAction:
     "requireUser; solo los gastos fijos propios (el dueño sale de la sesión); agregar exige un egreso propio con esa descripción",
   saveFixedNoteAction:
@@ -397,6 +399,7 @@ describe("administración", () => {
         "src/modules/admin/bot/resend.ts",
         "src/modules/admin/configuracion/signup.ts",
         "src/modules/admin/configuracion/notice.ts",
+        "src/modules/admin/configuracion/values.ts",
       ]),
     );
   });

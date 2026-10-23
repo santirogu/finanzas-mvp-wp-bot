@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { db } from "@/db";
-import { category, fixedExpenseChoice, fixedExpenseNote, fixedPaymentSkip, notificationSetting, transaction } from "@/db/schema";
+import { appValues, category, fixedExpenseChoice, fixedExpenseNote, fixedPaymentSkip, notificationSetting, transaction } from "@/db/schema";
 import { listCategories } from "@/modules/transactions/queries";
 import { createUser } from "../../../test/integration/factories";
 import { reportPeriod } from "./period";
@@ -364,6 +364,25 @@ describe("getFixedExpenses (la pestaña Fijos)", () => {
     expect(recurring.total).toBe(2750000);
     // Agosto (1.800.000) y septiembre (2.750.000); octubre va en curso.
     expect(averageExpense).toEqual({ amount: 2275000, months: 2, withoutCurrent: true });
+  });
+
+  it("cuándo un gasto es fijo lo eligió el admin (Valores de la app), también con meses de antes del período", async () => {
+    const ana = await createUser();
+    // En 2 de los últimos 3 meses: con la regla de siempre (3 de 4) no es fijo.
+    for (const month of ["09", "10"]) await addTx({ userId: ana.id, description: "Gimnasio", amount: 90000, occurredOn: `2026-${month}-05` });
+    // En enero, con un período corto: cuenta lo de noviembre y diciembre de 2025 (la ventana de 4 meses).
+    for (const date of ["2025-11-07", "2025-12-07", "2026-01-07"]) await addTx({ userId: ana.id, description: "Seguro", amount: 50000, occurredOn: date });
+    const fixedIn = async (month: { year: number; month: number }) =>
+      (await getFixedExpenses(ana.id, reportPeriod(undefined, month), month)).recurring.items.map((i) => i.description);
+
+    expect(await fixedIn(october)).toEqual([]);
+    expect(await fixedIn(m(1))).toEqual(["Seguro"]);
+    await db.insert(appValues).values({ id: 1, upcomingEnabled: true, upcomingDays: 3, budgetNearShare: 80, recurringMinMonths: 2, recurringWindow: 3 });
+    expect(await fixedIn(october)).toEqual(["Gimnasio"]);
+    // Con 6 meses de ventana y 3 de mínimo, el seguro sigue (los meses de 2025 se consultan aunque el período empiece en enero).
+    await db.update(appValues).set({ recurringMinMonths: 3, recurringWindow: 6 });
+    expect(await fixedIn(m(1))).toEqual(["Seguro"]);
+    expect(await fixedIn(october)).toEqual([]);
   });
 
   it("sin movimientos, sin gastos fijos ni promedio", async () => {

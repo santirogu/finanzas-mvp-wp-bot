@@ -28,6 +28,20 @@ describe("recurringFrom", () => {
   it("en un período más corto (un año que recién empieza), los meses de antes que faltan", () => {
     expect(recurringFrom(months(1, 2))).toEqual(m(11, 2025));
   });
+
+  it("con otra ventana (Valores de la app), desde los meses de esa", () => {
+    expect(recurringFrom(months(1, 2), 6)).toEqual(m(9, 2025));
+    expect(recurringFrom(months(7, 10), 3)).toEqual(m(7));
+  });
+});
+
+describe("recurringExpenses · con otra regla (Valores de la app)", () => {
+  it("2 de los últimos 3 meses: aparece uno que con 3 de 4 no estaba; con 4 de 6, se va", () => {
+    const rows = [...every("Gimnasio", 90000, 9, 10), ...every("Arriendo", 1800000, 5, 6, 7, 8, 9, 10)];
+    expect(recurringExpenses(rows, twelve).items.map((i) => i.description)).toEqual(["Arriendo"]);
+    expect(recurringExpenses(rows, twelve, undefined, { minMonths: 2, window: 3 }).items.map((i) => i.description)).toEqual(["Arriendo", "Gimnasio"]);
+    expect(recurringExpenses(every("Netflix", 44900, 8, 9, 10), twelve, undefined, { minMonths: 4, window: 6 }).items).toEqual([]);
+  });
 });
 
 describe("recurringExpenses", () => {

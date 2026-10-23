@@ -41,7 +41,7 @@ test("Inicio muestra una tarjeta por módulo, con su resumen @principal", async 
   // Las E2E que cambian la configuración de la app van aparte (e2e/configuracion-*.spec.ts) y la dejan abierta.
   const settings = cards(page).filter({ hasText: "Configuración" });
   await expect(settings.getByRole("link")).toHaveAttribute("href", "/admin/configuracion");
-  await expect(settings).toContainText("Los registros y el aviso para todos");
+  await expect(settings).toContainText("Los registros, el aviso para todos y los valores");
   await expect(settings).toContainText("Registros abiertos");
   expect(await seriousViolations(page)).toEqual([]);
 });

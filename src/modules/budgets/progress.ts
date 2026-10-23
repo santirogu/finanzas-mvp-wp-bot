@@ -2,10 +2,11 @@ import { DEFAULT_LOCALE, INTL_LOCALES, type Locale } from "@/i18n/locales";
 import { texts } from "@/i18n/texts";
 import { amountInputValue, formatMoney, formatPercent, roundToCents } from "@/lib/money";
 
-// Los presupuestos del mes (la tarjeta del Resumen y /presupuestos): cuánto lleva cada categoría frente a su
-// presupuesto. Desde NEAR_SHARE se acerca; si lo supera, se pasó. Los avisos usan los mismos umbrales.
+// Los presupuestos del mes (la tarjeta del Resumen y Configuración): cuánto lleva cada categoría frente a su
+// presupuesto. Desde `nearShare` (el que eligió el admin en Valores de la app; si no, NEAR_SHARE) se acerca; si lo
+// supera, se pasó. Los avisos usan los mismos umbrales.
 
-/** Desde qué porcentaje del presupuesto una categoría "se acerca" al límite. */
+/** Desde qué porcentaje del presupuesto una categoría "se acerca" al límite, si el admin no eligió otro. */
 export const NEAR_SHARE = 80;
 
 export type Budget = {
@@ -29,43 +30,53 @@ export type BudgetProgress = Budget & {
 };
 
 /** En qué punto está lo gastado frente al presupuesto. */
-export function budgetLevel(spent: number, amount: number): BudgetLevel {
+export function budgetLevel(spent: number, amount: number, nearShare = NEAR_SHARE): BudgetLevel {
   if (spent > amount) return "over";
-  return spent * 100 >= amount * NEAR_SHARE ? "near" : "ok";
+  return spent * 100 >= amount * nearShare ? "near" : "ok";
 }
 
 /**
  * Cada presupuesto con lo que lleva su categoría este mes (`spent`, por id de categoría), de la que está más cerca
  * del límite (o más pasada) a la más lejos; si empatan, por nombre.
  */
-export function budgetProgress(budgets: Budget[], spent: ReadonlyMap<string, number>, locale: Locale = DEFAULT_LOCALE): BudgetProgress[] {
+export function budgetProgress(
+  budgets: Budget[],
+  spent: ReadonlyMap<string, number>,
+  locale: Locale = DEFAULT_LOCALE,
+  nearShare = NEAR_SHARE,
+): BudgetProgress[] {
   const collator = new Intl.Collator(locale);
   return budgets
     .map((budget) => {
       const total = spent.get(budget.categoryId) ?? 0;
-      return { ...budget, spent: total, share: Math.round((total / budget.amount) * 100), level: budgetLevel(total, budget.amount) };
+      return { ...budget, spent: total, share: Math.round((total / budget.amount) * 100), level: budgetLevel(total, budget.amount, nearShare) };
     })
     .sort((a, b) => b.spent / b.amount - a.spent / a.amount || collator.compare(a.name, b.name));
 }
 
 const RANK: Readonly<Record<BudgetLevel, number>> = { ok: 0, near: 1, over: 2 };
 
-/** Un presupuesto que acaba de cruzar un umbral: el 80 % ("near") o el límite ("over"). */
+/** Un presupuesto que acaba de cruzar un umbral: el de "se acerca" ("near", el 80 % de siempre) o el límite ("over"). */
 export type BudgetCrossing = Pick<Budget, "categoryId" | "name" | "amount"> & { level: "near" | "over"; spent: number; share: number };
 
 /**
  * Los presupuestos que cruzan un umbral con lo que se acaba de registrar (`added`, lo que suma por categoría; `spent`,
- * lo de la categoría en el mes ya con eso): llegar al 80 % o pasarse. Si cruza los dos de una vez, solo el de
+ * lo de la categoría en el mes ya con eso): llegar a `nearShare` o pasarse. Si cruza los dos de una vez, solo el de
  * pasarse. Lo que ya estaba cerca o pasado no vuelve a avisar: así cada aviso sale una vez por mes y categoría, sin
  * guardar nada (decisión del dueño).
  */
-export function budgetCrossings(budgets: Budget[], spent: ReadonlyMap<string, number>, added: ReadonlyMap<string, number>): BudgetCrossing[] {
+export function budgetCrossings(
+  budgets: Budget[],
+  spent: ReadonlyMap<string, number>,
+  added: ReadonlyMap<string, number>,
+  nearShare = NEAR_SHARE,
+): BudgetCrossing[] {
   return budgets.flatMap((budget) => {
     const plus = added.get(budget.categoryId) ?? 0;
     if (plus <= 0) return [];
     const after = spent.get(budget.categoryId) ?? 0;
-    const level = budgetLevel(after, budget.amount);
-    if (level === "ok" || RANK[level] <= RANK[budgetLevel(roundToCents(after - plus), budget.amount)]) return [];
+    const level = budgetLevel(after, budget.amount, nearShare);
+    if (level === "ok" || RANK[level] <= RANK[budgetLevel(roundToCents(after - plus), budget.amount, nearShare)]) return [];
     return [
       {
         categoryId: budget.categoryId,

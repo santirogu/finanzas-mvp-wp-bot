@@ -482,7 +482,8 @@ La app está en español (el de siempre) y en inglés, toda la web (el bot de Wh
   sección de Reportes; ahí ya no se muestran (tampoco en el PDF), pero se siguen descontando de los
   gastos más grandes y del gasto por día.
   - **Qué cuenta como fijo** (`src/modules/reports/recurring.ts`): los egresos con la misma
-    descripción (sin importar mayúsculas, tildes ni espacios) en al menos 3 de los últimos 4 meses, y no más de 2 veces en ninguno de ellos:
+    descripción (sin importar mayúsculas, tildes ni espacios) en al menos 3 de los últimos 4 meses (el admin lo
+    cambia en Configuración → Valores de la app), y no más de 2 veces en ninguno de ellos:
     "Almuerzo" o "Taxi" se repiten todos los meses, pero muchas veces, y no son fijos. Cada uno con lo
     que sumó el último de esos meses en que apareció, el total al mes y qué parte del gasto promedio
     es. Se detectan solos, y también se marcan a mano (`fixed-choices.ts`, tabla `fixed_expense_choice`):
@@ -509,11 +510,11 @@ La app está en español (el de siempre) y en inglés, toda la web (el bot de Wh
     persona puede ver y no está archivada; el de una que el admin archivó se puede cambiar. Si el admin elimina la
     categoría, el presupuesto se va con ella (cascada).
   - **En el Resumen**, solo con el mes en curso: una barra por presupuesto, de la categoría más cerca del límite (o
-    más pasada) a la más lejos, con "Te quedan…" o "Te pasaste por…" (en rojo). Desde el 80 % (`NEAR_SHARE`)
-    resalta la línea. Sin presupuestos, un enlace en "Egresos por categoría" invita a ponerlos.
+    más pasada) a la más lejos, con "Te quedan…" o "Te pasaste por…" (en rojo). Desde el 80 % (`NEAR_SHARE`; el
+    admin lo cambia en Configuración → Valores de la app) resalta la línea. Sin presupuestos, un enlace en "Egresos por categoría" invita a ponerlos.
   - Cuenta lo gastado en la categoría en el mes (sin los borrados); los movimientos sin categoría no suman a ninguno.
   - **Los avisos** (`budgetCrossings`, `getBudgetCrossings`): cuando un egreso del mes en curso hace llegar una
-    categoría al 80 % o pasarse, una vez (si cruza los dos de una vez, solo el de pasarse). No se guarda qué se
+    categoría al 80 % (o el de Valores de la app) o pasarse, una vez (si cruza los dos de una vez, solo el de pasarse). No se guarda qué se
     avisó: avisa el egreso que cruza el umbral (antes, por debajo; con él, por encima), así que lo que ya estaba
     cerca o pasado no vuelve a avisar. Llegan:
     - en la respuesta del bot al registrar, entre lo registrado y el balance ("⚠️ Mercado: llevas…", "🚨 …te
@@ -551,7 +552,8 @@ La app está en español (el de siempre) y en inglés, toda la web (el bot de Wh
     `notification_setting`): prenderlos o apagarlos (apagados no se avisa nada, tampoco los atrasados) y
     con cuántos días de anticipación, de 0 (el mismo día) a 10, en un campo numérico con su error en
     español debajo. Se guarda con el botón; apagados, el campo queda inactivo y los días se conservan.
-    Sin guardar nada: prendidos, con 3 días. Vale en todos los dispositivos.
+    Sin guardar nada: los de Valores de la app (si el admin no los cambió, prendidos, con 3 días). Vale en todos
+    los dispositivos.
   - **La fecha esperada:** la mediana de los días del mes de los últimos 3 pagos (resiste uno fuera de lo
     normal: el 5, el 5 y el 20 dan el 5); con menos pagos, con los que haya y "aprox.". Un 31 en un mes
     más corto es su último día, y los pagos alrededor del cambio de mes (el 30, el 31, el 1) van juntos.
@@ -938,7 +940,7 @@ actúa con permisos de admin.
 | Bot de WhatsApp | `/admin/bot` | Activo: qué pasó con los mensajes, consumo de Claude y errores, sin el texto |
 | Categorías | `/admin/categorias` | Activo: crear, editar, archivar, restaurar y eliminar las de ingresos y egresos |
 | Salud del sistema | `/admin/salud` | Activo: el estado de la app (lo mismo que `/api/health`), la versión, la base, la limpieza diaria, las conexiones del bot y los despliegues recientes |
-| Configuración | `/admin/configuracion` | Activo: quién puede crear una cuenta (registros abiertos, cerrados o solo con invitación), los correos invitados y el aviso para todos |
+| Configuración | `/admin/configuracion` | Activo: quién puede crear una cuenta (registros abiertos, cerrados o solo con invitación), los correos invitados, el aviso para todos y los valores de la app (los avisos por defecto y los umbrales) |
 | Seguridad | `/admin/seguridad` | Activo: la verificación en dos pasos del admin |
 
 - **Registro único** (`src/modules/admin/modules.ts`): de ahí salen la subnavegación y las tarjetas.
@@ -1145,8 +1147,8 @@ sus valores; tamaños y cantidades). Se revisa al abrir la página (`src/modules
 ### Configuración de la app
 
 En **`/admin/configuracion`** el admin cambia lo que vale para toda la app (`src/modules/admin/configuracion/`):
-los **registros** (quién puede crear una cuenta) y el **aviso para todos**. Lo que venga (los valores de las
-cuentas nuevas…) va aquí como otra tarjeta.
+los **registros** (quién puede crear una cuenta), el **aviso para todos** y los **valores de la app**. Lo que venga
+va aquí como otra tarjeta.
 
 | Registros | Qué pasa en `/registro` |
 |---|---|
@@ -1180,6 +1182,19 @@ del registro, por ejemplo "Mantenimiento el sábado de 8 a 9" o "Nuevo: presupue
 - Lo lee `src/modules/notice/current-notice.ts` en cada pedido (`src/components/site-notice.tsx`, dentro de
   Suspense en los layouts de la app y de entrar), sin sesión.
 
+**Los valores de la app** (`app_values`, una sola fila; sin ella, los de siempre de `src/modules/app-values/values.ts`):
+
+| Valor | De siempre | Rango | A quién le aplica |
+|---|---|---|---|
+| Avisos de próximos pagos: prendidos y con cuántos días | Prendidos, 3 días | 0 a 10 días | A quien no eligió los suyos en Configuración → Notificaciones (sin fila en `notification_setting`); quien los eligió conserva los suyos |
+| Desde qué % un presupuesto "se acerca" | 80 % | 50 a 95 | A todas las cuentas: el Resumen, Configuración, el aviso del formulario y el del bot |
+| Cuándo un egreso es fijo: en al menos N de los últimos M meses | 3 de 4 | M de 3 a 6; N de 2 a M | A todas las cuentas: Fijos, Reportes (los descuenta), los próximos pagos y "Lo que te queda" |
+
+- Cambiarlos pide el código de Google Authenticator y queda en el historial con los de antes.
+- Los lee `src/modules/app-values/current.ts` (una consulta por pedido, con `cache`), sin sesión: las consultas
+  de cada cuenta, el bot y las páginas que los explican (Fijos y la Ayuda).
+- La base revisa los rangos (`check`), como el servidor.
+
 ### Historial de las cuentas
 
 La tabla `account_event` (`src/modules/account/events.ts`) guarda el historial de registro y
@@ -1203,6 +1218,7 @@ administrador.
 | `login_unlocked`, `sessions_revoked`, `account_suspended`, `account_reactivated`, `account_deleted` | Acciones del admin en `/admin/usuarios` (y `whatsapp_unlinked` con `by_admin`) | `admin_id`: quién lo hizo; `details.note`: el motivo de una suspensión |
 | `signup_mode_changed`, `signup_invite_added`, `signup_invite_removed` | Acciones del admin en `/admin/configuracion`; sin cuenta | El modo nuevo y el de antes; el correo invitado (sale si esa persona elimina su cuenta) |
 | `notice_published`, `notice_removed` | El aviso para todos, en `/admin/configuracion`; sin cuenta | El texto en español, el tipo y la fecha de fin |
+| `app_values_changed` | Los valores de la app, en `/admin/configuracion`; sin cuenta | Los nuevos y los de antes |
 
 Las acciones del admin llevan `admin_id` (su cuenta) y tienen su chip, **Acciones del admin**, en los
 filtros del Historial; también se ven en el detalle de cada cuenta. Si se borra la cuenta del admin, la

@@ -4,13 +4,17 @@ import { refresh } from "next/cache";
 import { requireAdmin } from "@/lib/session";
 import { publishNotice, removeNotice } from "@/modules/admin/configuracion/notice";
 import { addSignupInvite, removeSignupInvite, setSignupMode } from "@/modules/admin/configuracion/signup";
+import { setAppValues } from "@/modules/admin/configuracion/values";
+import type { AppValueField } from "@/modules/app-values/values";
 
 // La configuración de la app desde /admin/configuracion. Cada acción valida el rol antes que nada; el código de
-// Google Authenticator (para cambiar el modo de los registros y el aviso, no para las invitaciones), los datos y el
-// registro en el historial se resuelven en src/modules/admin/configuracion/ (signup.ts y notice.ts).
+// Google Authenticator (para cambiar el modo de los registros, el aviso y los valores, no para las invitaciones), los
+// datos y el registro en el historial se resuelven en src/modules/admin/configuracion/ (signup.ts, notice.ts y
+// values.ts).
 
 export type SignupSettingState = { error?: string; field?: "code" | "mode" | "email"; message?: string };
 export type NoticeState = { error?: string; field?: "code" | "message" | "messageEn" | "tone" | "endsAt"; message?: string };
+export type AppValuesState = { error?: string; field?: "code" | AppValueField; message?: string };
 
 type Result<F> = { ok: true; message: string } | { ok: false; error: string; field?: F };
 
@@ -52,4 +56,18 @@ export async function publishNoticeAction(_prev: NoticeState, formData: FormData
 export async function removeNoticeAction(_prev: NoticeState, formData: FormData): Promise<NoticeState> {
   await requireAdmin();
   return settle(await removeNotice({ code: String(formData.get("code") ?? "") }));
+}
+
+export async function changeAppValuesAction(_prev: AppValuesState, formData: FormData): Promise<AppValuesState> {
+  await requireAdmin();
+  return settle(
+    await setAppValues({
+      upcomingEnabled: formData.get("upcomingEnabled"),
+      upcomingDays: formData.get("upcomingDays"),
+      budgetNearShare: formData.get("budgetNearShare"),
+      recurringMinMonths: formData.get("recurringMinMonths"),
+      recurringWindow: formData.get("recurringWindow"),
+      code: String(formData.get("code") ?? ""),
+    }),
+  );
 }

@@ -36,6 +36,8 @@ export const accountEventType = pgEnum("account_event_type", [
   // El aviso para todos (también de Configuración): publicarlo (o cambiarlo) y quitarlo.
   "notice_published",
   "notice_removed",
+  // Los valores de la app (también de Configuración): los avisos por defecto y los umbrales.
+  "app_values_changed",
 ]);
 
 /** Detalle de un evento: el motivo de una desvinculación o de un intento fallido. */
@@ -66,6 +68,18 @@ export type AccountEventDetails = {
   email?: string;
   /** El aviso que se publicó o se quitó (notice_published, notice_removed): el texto en español, el tipo y hasta cuándo. */
   notice?: { message: string; tone: "info" | "important"; endsAt: string };
+  /** Cómo quedaron los valores de la app, y cómo estaban (app_values_changed). */
+  appValues?: AppValuesDetail;
+  previousAppValues?: AppValuesDetail;
+};
+
+/** Los valores de la app, como los guarda el historial (src/modules/app-values/values.ts). */
+export type AppValuesDetail = {
+  upcomingEnabled: boolean;
+  upcomingDays: number;
+  budgetNearShare: number;
+  recurringMinMonths: number;
+  recurringWindow: number;
 };
 
 export const accountEvent = pgTable(

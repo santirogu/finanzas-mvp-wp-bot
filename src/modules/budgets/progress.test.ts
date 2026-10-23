@@ -13,6 +13,13 @@ describe("budgetLevel", () => {
     expect(budgetLevel(500000.01, 500000)).toBe("over");
     expect(budgetLevel(0, 500000)).toBe("ok");
   });
+
+  it("con otro porcentaje (Valores de la app), cerca desde ese", () => {
+    expect(budgetLevel(300000, 500000, 60)).toBe("near");
+    expect(budgetLevel(299999.99, 500000, 60)).toBe("ok");
+    expect(budgetLevel(450000, 500000, 95)).toBe("ok");
+    expect(budgetLevel(500000.01, 500000, 95)).toBe("over");
+  });
 });
 
 describe("budgetProgress", () => {
@@ -31,6 +38,11 @@ describe("budgetProgress", () => {
       ["Mercado", 520000, 52, "ok"],
       ["Ropa", 0, 0, "ok"],
     ]);
+  });
+
+  it("con otro porcentaje, cerca desde ese", () => {
+    expect(budgetProgress(budgets, spent, "es", 50).find((b) => b.name === "Mercado")?.level).toBe("near");
+    expect(budgetProgress(budgets, spent, "es", 90).find((b) => b.name === "Restaurantes")?.level).toBe("ok");
   });
 
   it("si van igual, por nombre", () => {
@@ -91,6 +103,14 @@ describe("budgetCrossings (los avisos: llegar al 80 % o pasarse, una vez)", () =
 
   it("si cruza los dos de una vez, solo el de pasarse", () => {
     expect(cross(600000, 300000)).toEqual([{ level: "over", spent: 600000, share: 120 }]);
+  });
+
+  it("con otro porcentaje, avisa al cruzar ese", () => {
+    const at = (spentAfter: number, added: number, nearShare: number) =>
+      budgetCrossings([mercado], new Map([["m", spentAfter]]), new Map([["m", added]]), nearShare).map(({ level }) => level);
+    expect(at(260000, 20000, 50)).toEqual(["near"]);
+    expect(at(410000, 30000, 90)).toEqual([]);
+    expect(at(460000, 30000, 90)).toEqual(["near"]);
   });
 
   it("lo que ya estaba cerca o pasado no vuelve a avisar; justo en el límite todavía no se pasó", () => {
