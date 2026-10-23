@@ -78,6 +78,9 @@ describe("configuración", () => {
       "bot_monthly_limit_changed",
       "bot_model_changed",
       "bot_replies_resent",
+      "signup_mode_changed",
+      "signup_invite_added",
+      "signup_invite_removed",
     ]);
     expect(DATE_PRESETS.map((p) => DATE_PRESET_LABELS[p])).toEqual([
       "Todo",
@@ -402,6 +405,11 @@ describe("formatos", () => {
     // El modelo de Claude, con su nombre (uno que no está en la lista, con su id).
     [{ model: "claude-sonnet-5-5", previousModel: "claude-haiku-5-5" }, "ahora Claude Sonnet 5.5 (antes Claude Haiku 5.5)"],
     [{ model: "claude-haiku-5-5", previousModel: "claude-modelo-x" }, "ahora Claude Haiku 5.5 (antes claude-modelo-x)"],
+    // Quién puede crear una cuenta (Configuración del admin).
+    [{ signupMode: "invite" as const, previousSignupMode: "open" as const }, "ahora solo con invitación (antes abiertos)"],
+    [{ signupMode: "closed" as const }, "ahora cerrados"],
+    // El correo de una invitación va en la frase, no en el detalle.
+    [{ email: "beto@test.local" }, ""],
     [{ resent: 3, failed: 0 }, "3 reenviadas"],
     [{ resent: 1, failed: 1 }, "1 reenviada · 1 no salió otra vez"],
     [{ resent: 0, failed: 2 }, "0 reenviadas · 2 no salieron otra vez"],
@@ -477,6 +485,7 @@ describe("en inglés", () => {
     [{ limits: { perHour: 30, perDay: 1500 } }, "now 30 per hour and 1,500 per day"],
     [{ monthlyLimit: 2_000_000, previousMonthlyLimit: null }, "now 2,000,000 tokens a month (before no limit)"],
     [{ model: "claude-opus-5-5", previousModel: "claude-haiku-5-5" }, "now Claude Opus 5.5 (before Claude Haiku 5.5)"],
+    [{ signupMode: "open", previousSignupMode: "closed" }, "now open (before closed)"],
     [{ resent: 1 }, "1 resent"],
     [{ resent: 3, failed: 2 }, "3 resent · 2 didn't go out again"],
   ] as const)("el detalle %j", (details, expected) => {

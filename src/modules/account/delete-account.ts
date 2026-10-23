@@ -1,7 +1,7 @@
 import "server-only";
-import { and, eq, inArray, isNotNull, isNull, ne, or, type SQL } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull, ne, or, sql, type SQL } from "drizzle-orm";
 import { db } from "@/db";
-import { accountEvent, loginFailure, user, whatsappLink, whatsappMessage } from "@/db/schema";
+import { accountEvent, loginFailure, signupInvite, user, whatsappLink, whatsappMessage } from "@/db/schema";
 import { recordEvent } from "./events";
 
 /**
@@ -13,7 +13,9 @@ import { recordEvent } from "./events";
  *    los que tuvo antes), por ejemplo antes de vincularlos;
  *  - los intentos fallidos de login, que se guardan por correo;
  *  - los intentos fallidos de vinculación desde sus números, que no tienen cuenta (los demás eventos
- *    de su historial se borran en cascada con el usuario).
+ *    de su historial se borran en cascada con el usuario);
+ *  - la invitación de su correo (Configuración del admin), y el correo en los eventos del admin que la
+ *    agregaron o la quitaron: quedan como "invitó a alguien".
  */
 type Executor = Pick<typeof db, "select" | "selectDistinct">;
 
@@ -78,7 +80,13 @@ export async function deleteAccountData(userId: string, { deletedBy }: { deleted
 
     await tx.delete(whatsappMessage).where(accountMessages(userId, phones));
     await tx.delete(accountEvent).where(accountEvents(userId, phones));
-    await tx.delete(loginFailure).where(eq(loginFailure.email, account.email.toLowerCase()));
+    const email = account.email.toLowerCase();
+    await tx.delete(loginFailure).where(eq(loginFailure.email, email));
+    await tx.delete(signupInvite).where(eq(signupInvite.email, email));
+    await tx
+      .update(accountEvent)
+      .set({ details: sql`${accountEvent.details} - 'email'` })
+      .where(and(inArray(accountEvent.type, ["signup_invite_added", "signup_invite_removed"]), sql`${accountEvent.details}->>'email' = ${email}`));
     await tx.delete(user).where(eq(user.id, userId));
     if (deletedBy) await recordEvent({ type: "account_deleted", userId: null, adminId: deletedBy }, tx);
     return true;

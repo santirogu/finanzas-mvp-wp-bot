@@ -6,6 +6,7 @@ import { texts } from "@/i18n/texts";
 import { requireAdmin } from "@/lib/session";
 import { botSummary } from "@/modules/admin/bot/bot-activity";
 import { categoriesSummary } from "@/modules/admin/categories/categories";
+import { signupSummary } from "@/modules/admin/configuracion/signup";
 import { problemLabel } from "@/modules/admin/health/health-view";
 import { healthSummary } from "@/modules/admin/health/system";
 import { historySummary } from "@/modules/admin/history/events-log";
@@ -32,6 +33,8 @@ const TEXTS = texts(
     limit: "Tope mensual alcanzado · ",
     bot: (today: number, failed: number) => `${plural(today, "mensaje", "mensajes")} hoy · ${plural(failed, "error", "errores")}`,
     categories: (expense: number, income: number) => `${expense} de egresos · ${income} de ingresos`,
+    signup: { open: "Registros abiertos", invite: "Registros solo con invitación", closed: "Registros cerrados" },
+    pendingInvites: (n: number) => plural(n, "invitación pendiente", "invitaciones pendientes"),
     security: "Verificación en dos pasos activa",
     healthy: "Todo en orden",
     problems: (n: number) => plural(n, "problema", "problemas"),
@@ -48,6 +51,8 @@ const TEXTS = texts(
       limit: "Monthly limit reached · ",
       bot: (today, failed) => `${plural(today, "message", "messages")} today · ${plural(failed, "error", "errors")}`,
       categories: (expense, income) => `${expense} for expenses · ${income} for income`,
+      signup: { open: "Sign-ups open", invite: "Sign-ups by invitation only", closed: "Sign-ups closed" },
+      pendingInvites: (n) => plural(n, "pending invitation", "pending invitations"),
       security: "Two-step verification on",
       healthy: "All good",
       problems: (n) => plural(n, "problem", "problems"),
@@ -72,18 +77,21 @@ async function AdminHome() {
   await requireAdmin();
   const locale = await getLocale();
   const t = TEXTS[locale];
-  const [history, users, bot, categories, health] = await Promise.all([
+  const [history, users, bot, categories, health, signup] = await Promise.all([
     historySummary(),
     usersSummary(),
     botSummary(),
     categoriesSummary(),
     healthSummary(),
+    signupSummary(),
   ]);
   const summaries: Partial<Record<AdminModuleId, string>> = {
     historial: t.history(history.today, history.failedToday),
     usuarios: [t.accounts(users.total), t.withWhatsApp(users.withWhatsApp), ...(users.suspended > 0 ? [t.suspended(users.suspended)] : [])].join(" · "),
     bot: `${bot.claudePaused ? t.paused : bot.monthlyLimitReached ? t.limit : ""}${t.bot(bot.today, bot.failedToday)}`,
     categorias: t.categories(categories.expense, categories.income),
+    // Las invitaciones pendientes solo cuentan con los registros solo con invitación.
+    configuracion: [t.signup[signup.mode], ...(signup.mode === "invite" ? [t.pendingInvites(signup.pending)] : [])].join(" · "),
     seguridad: t.security,
   };
   // Salud, como un semáforo: en verde si todo está en orden; en rojo, cuántos problemas y cuáles.

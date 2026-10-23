@@ -74,6 +74,12 @@ export default function PrivacyPage() {
               contenido de los mensajes que envías al bot, junto con las respuestas del bot.
             </li>
             <li>
+              <strong>Si te invitamos a crear una cuenta:</strong> guardamos el correo invitado, quién lo invitó y
+              cuándo, y la fecha en que creaste tu cuenta. El correo también queda en el registro de cambios de la
+              administración. Si eliminas tu cuenta, se borran ambos; si no la creaste, puedes pedirnos que los
+              borremos.
+            </li>
+            <li>
               <strong>Historial de tu cuenta:</strong> la fecha en que te registraste y la de cada cambio de tu
               contraseña (nunca la contraseña). También la de cada vinculación, desvinculación o intento de
               vinculación de WhatsApp, con el número usado.
@@ -176,6 +182,10 @@ export default function PrivacyPage() {
               archivarlas o eliminarlas. Para decidirlo, ve cuántos movimientos usa cada una, en total y
               sin saber de quién son ni por cuánto. Si elimina una categoría, tus movimientos que la
               tenían pasan a “Otros”; si la archiva, la conservan.
+            </li>
+            <li>
+              Decidir quién crea una cuenta: el administrador abre o cierra los registros, o los deja solo con
+              invitación. Ve los correos invitados y si ya crearon su cuenta.
             </li>
             <li>
               Cuidar el funcionamiento del bot de WhatsApp. El administrador ve, por cuenta o por número:

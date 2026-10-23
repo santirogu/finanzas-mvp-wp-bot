@@ -81,6 +81,7 @@ textos.
 | Entrar (botón), iniciar sesión | Sign in, sign in | loguearse, login; log in | |
 | Salir (botón), cerrar sesión | Sign out, sign out | log out | |
 | Crear cuenta, registrarte | Create account, sign up | | |
+| los registros: abiertos, solo con invitación, cerrados | sign-ups: open, invitation only, closed | inscripciones; registrations | Quién puede crear una cuenta (Configuración del admin). Se "invita" un correo y se "quita" la invitación. |
 | contraseña | password | clave, password | "Clave" solo en la configuración de Google Authenticator, que la llama así. |
 | correo | email | email, e-mail, mail | "Correo electrónico" se acepta la primera vez en las páginas legales. |
 | verificación en dos pasos | two-step verification | 2FA, doble factor | |

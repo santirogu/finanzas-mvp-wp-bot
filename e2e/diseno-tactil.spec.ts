@@ -277,8 +277,11 @@ test("en pantallas táctiles las páginas caben y los campos no hacen zoom @tact
       insert into whatsapp_message (id, phone, body, status, intent, processed_at, ai_requested_at)
       values (${`wamid.tactil.${randomUUID()}`}, '573000000001', 'mensaje de prueba', 'processed',
               ${sql.json({ kind: "reply", text: "", usage })}, now(), now())`;
+    // Un invitado con un correo larguísimo (sin espacios): se parte en Configuración. Con los registros abiertos,
+    // invitar no cambia quién puede crear una cuenta.
+    await sql`insert into signup_invite (email) values (${`${"invitado-con-un-nombre-muy-largo".repeat(2)}.${randomUUID()}@finanzas-e2e.test`})`;
     await sql.end();
-    for (const path of ["/admin", "/admin/usuarios", "/admin/historial", "/admin/bot", "/admin/salud", "/admin/seguridad"]) {
+    for (const path of ["/admin", "/admin/usuarios", "/admin/historial", "/admin/bot", "/admin/salud", "/admin/configuracion", "/admin/seguridad"]) {
       await open(page, path);
       await expectFitsOnScreens(page, path);
     }

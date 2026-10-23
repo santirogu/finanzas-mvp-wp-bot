@@ -15,6 +15,7 @@ import {
   notificationSetting,
   loginFailure,
   session,
+  signupInvite,
   transaction,
   twoFactor,
   user,
@@ -259,5 +260,33 @@ describe("deleteAccountData", () => {
     await deleteAccountData(row.id);
 
     expect(await db.select().from(loginFailure).where(eq(loginFailure.email, "dani@test.local"))).toEqual([]);
+  });
+
+  it("borra su invitación y quita su correo de los eventos de las invitaciones, sin tocar los de otros", async () => {
+    const admin = await signUp("admin@test.local");
+    await db.insert(signupInvite).values([{ email: "eva@test.local" }, { email: "otra@test.local" }]);
+    await db.insert(accountEvent).values([
+      { type: "signup_invite_added", adminId: admin, details: { email: "eva@test.local" } },
+      { type: "signup_invite_removed", adminId: admin, details: { email: "eva@test.local" } },
+      { type: "signup_invite_added", adminId: admin, details: { email: "otra@test.local" } },
+      { type: "signup_mode_changed", adminId: admin, details: { signupMode: "invite", previousSignupMode: "open" } },
+    ]);
+    // Con mayúsculas al registrarse: Better Auth lo guarda en minúsculas, como las invitaciones.
+    await auth.api.signUpEmail({ body: { name: "Eva", email: "Eva@Test.local", password: "clave-segura-123" } });
+    const [eva] = await db.select({ id: user.id }).from(user).where(eq(user.email, "eva@test.local"));
+
+    await deleteAccountData(eva.id);
+
+    expect(await db.select({ email: signupInvite.email }).from(signupInvite)).toEqual([{ email: "otra@test.local" }]);
+    const details = await db.select({ type: accountEvent.type, details: accountEvent.details }).from(accountEvent).where(eq(accountEvent.adminId, admin));
+    expect(details).toEqual(
+      expect.arrayContaining([
+        { type: "signup_invite_added", details: {} },
+        { type: "signup_invite_removed", details: {} },
+        { type: "signup_invite_added", details: { email: "otra@test.local" } },
+        { type: "signup_mode_changed", details: { signupMode: "invite", previousSignupMode: "open" } },
+      ]),
+    );
+    expect(details).toHaveLength(4);
   });
 });

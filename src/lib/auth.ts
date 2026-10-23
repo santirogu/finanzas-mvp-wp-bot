@@ -9,6 +9,8 @@ import { db, schema } from "@/db";
 import { localeCookieOptions } from "@/i18n/cookie";
 import { LOCALE_COOKIE, isLocale } from "@/i18n/locales";
 import { isTheme, THEME_KEY } from "@/lib/theme";
+import { AUTH_ERROR_TEXTS } from "@/lib/auth-errors";
+import { checkSignup, markInviteUsed } from "@/modules/auth/signup-policy";
 import { themeCookieOptions } from "@/lib/theme-cookie";
 import { recordEvent } from "@/modules/account/events";
 import { SUSPENDED_MESSAGE, isSuspended } from "@/modules/account/suspension";
@@ -103,6 +105,13 @@ export const auth = betterAuth({
       if (ctx.path === "/sign-up/email") {
         const name = parseAccountName(ctx.body?.name);
         if (!name.ok) throw APIError.from("BAD_REQUEST", { code: "INVALID_NAME", message: name.error });
+        // Los registros cerrados o solo con invitación (Configuración del admin): se revisa aquí, en el servidor,
+        // no solo en la página.
+        const signup = await checkSignup(ctx.body?.email);
+        if (!signup.ok) {
+          const code = signup.reason === "closed" ? "SIGNUP_CLOSED" : "SIGNUP_NOT_INVITED";
+          throw APIError.from("FORBIDDEN", { code, message: AUTH_ERROR_TEXTS.es.codes[code] });
+        }
         return { context: { body: { ...ctx.body, name: name.value } } };
       }
       if (!ctx.path.startsWith("/two-factor/")) return;
@@ -169,6 +178,12 @@ export const auth = betterAuth({
             await recordEvent({ type: "registered", userId: created.id });
           } catch (error) {
             console.error("[historial] no se pudo registrar el evento de registro", created.id, describeError(error));
+          }
+          // Si entró con una invitación, queda marcada como usada (Configuración del admin).
+          try {
+            await markInviteUsed(created.email);
+          } catch (error) {
+            console.error("[registros] no se pudo marcar la invitación como usada", created.id, describeError(error));
           }
         },
       },
