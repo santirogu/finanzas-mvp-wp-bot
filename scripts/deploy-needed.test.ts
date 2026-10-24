@@ -17,7 +17,7 @@ describe("filesRequiringDeploy", () => {
     ["pruebas E2E", ["e2e/flujo-principal.spec.ts", "e2e/helpers.ts", "playwright.config.ts"]],
     [
       "herramientas de desarrollo",
-      ["scripts/bot-eval.ts", "scripts/meta-subscribe.sh", "scripts/conventional-commit.mjs"],
+      ["scripts/bot-eval.ts", "src/modules/bot/eval/cases.ts", "src/modules/bot/eval/grade.ts", "scripts/meta-subscribe.sh", "scripts/conventional-commit.mjs"],
     ],
     [
       "configuración local",
@@ -39,6 +39,7 @@ describe("filesRequiringDeploy", () => {
 
   it.each([
     "src/modules/bot/interpret.ts",
+    "src/modules/bot/evaluator.ts",
     "src/app/[lang]/(app)/dashboard/page.tsx",
     "public/app-icon-1024.png",
     "drizzle/0002_nueva_tabla.sql",

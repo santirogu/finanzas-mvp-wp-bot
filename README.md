@@ -57,7 +57,7 @@ pnpm dev                        # http://localhost:3000 (antes, copia la base lo
 | `pnpm admin:grant <correo>` · `admin:revoke` · `admin:super` · `admin:list` | Da o quita el rol de admin, marca al super admin o lista los admins (ver Seguridad → Roles) |
 | `pnpm admin:reset-2fa <correo>` | Reinicia la verificación en dos pasos de un admin que perdió el celular y los códigos de respaldo |
 | `pnpm bot:try 'texto'` | Muestra cómo interpreta el bot un mensaje (usa la API de Claude). Usa comillas simples si el texto tiene `$` |
-| `pnpm bot:eval` | Corre el set de ~55 frases de prueba del bot y reporta aciertos, latencia y costo |
+| `pnpm bot:eval` | Corre el set de frases de prueba del bot (con los mensajes trampa) y reporta aciertos, latencia y costo. Cuesta créditos |
 | `pnpm brand:assets` | Regenera los íconos y la imagen para compartir a partir del logo (ver Estructura → Marca) |
 
 > No uses `pnpm setup` (es un comando propio de pnpm que modifica tu shell). El script del proyecto se llama `db:setup`.
@@ -223,8 +223,20 @@ pnpm dev                        # http://localhost:3000 (antes, copia la base lo
     job junta sus reportes en un resumen.
   - **En local**, `pnpm test:mutation:cambios` muta lo que cambiaste frente a `origin/main` (con lo que
     no está en un commit) y lo que agregaste a la lista.
-- **Evaluación del bot** (`pnpm bot:eval`): 56 frases contra la API real de Claude. Tiene costo,
-  por eso no corre en CI.
+- **Evaluación del bot** (`pnpm bot:eval`, `src/modules/bot/eval/`): 65 frases contra la API real de Claude, con
+  7 **mensajes trampa** (que revele sus instrucciones o una clave, que se salga de su papel, que confirme un borrado
+  que no hizo, que invente cifras de otra persona, un JSON o una instrucción escondida en la descripción para que
+  registre lo que no pasó). Tiene costo (unos US$0,02 por corrida con Haiku).
+  - **En local**, a mano y con permiso del dueño: falla con cualquier caso mal (`--min` cambia el mínimo).
+  - **Cada lunes** (7:17 a. m. en Bogotá) y con *Actions → Evaluación del bot → Run workflow* (eligiendo el
+    modelo), `.github/workflows/bot-eval.yml`: falla si cae una trampa o si el resto acierta menos del 95 %, y GitHub
+    le avisa al dueño por correo. El detalle queda en el resumen de la corrida. Nunca corre en PRs (el repositorio
+    es público y la corrida usa un secreto) y el secreto solo llega al paso que llama a Claude.
+  - **La API key del CI** es una aparte, con tope de gasto (decisión del dueño): en la [consola de
+    Anthropic](https://console.anthropic.com), un workspace solo para la evaluación con un límite de gasto mensual
+    (por ejemplo US$1) y una key en él; en GitHub, *Settings → Secrets and variables → Actions → New repository
+    secret* con el nombre `ANTHROPIC_API_KEY_EVAL`. Sin el secreto, el workflow no hace nada (deja un aviso).
+    Para cambiarla, se crea otra, se reemplaza el secreto y se borra la vieja en la consola.
 
 Con Docker, `pnpm db:up` crea también la base `finanzas_test` la primera vez.
 
@@ -1312,6 +1324,7 @@ hacen falta:
 |---|---|---|
 | `@esbuild-kit/core-utils>esbuild: ^0.25.4` | `drizzle-kit` 0.31 trae `esbuild` 0.18, vulnerable ([GHSA-67mh-4wv8-2f99](https://github.com/advisories/GHSA-67mh-4wv8-2f99)). Verificado: `drizzle-kit generate`, `check` y `migrate` siguen funcionando | `drizzle-kit` deje de depender de `@esbuild-kit` |
 | `typed-rest-client>qs: ^6.16.0` | Stryker 10.0.0 usa `typed-rest-client` 2.x con `qs` vulnerable (3 avisos de DoS) | Stryker actualice `typed-rest-client` a 3.x |
+| `undici@>=8.0.0 <8.12.2: 8.12.2` | `jsdom` (pruebas de componentes; también lo trae `vitest`) usa `undici` 8.12.1, con un DoS alto ([GHSA-xjj6-f33q-929c](https://github.com/advisories/GHSA-xjj6-f33q-929c)). Solo en desarrollo y en el CI. Forzada en vez de `pnpm update undici`, que re-resolvía otras dependencias (el `@babel/core` que ve Next); la 8.12.3 todavía no cumple los 7 días de `minimum-release-age` | `jsdom` traiga `undici` 8.12.2 o más nueva |
 
 **Avisos ignorados en `pnpm audit`** (`package.json → pnpm.auditConfig.ignoreGhsas`). El CI audita
 todas las dependencias, también las de desarrollo, porque `drizzle-kit` y `tsx` corren con la base de

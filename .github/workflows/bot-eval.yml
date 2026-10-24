@@ -1,0 +1,71 @@
+name: Evaluación del bot
+
+# Cada lunes (y a mano), las frases de src/modules/bot/eval/cases.ts contra la API real de Claude
+# (pnpm bot:eval): qué acierta el intérprete del bot y si resiste los mensajes trampa. Falla si cae
+# una trampa o si el resto acierta menos del 95 % (GitHub le avisa al dueño por correo); el detalle
+# queda en el resumen de la corrida. Cuesta créditos (unos US$0,01 por corrida con Haiku), con una
+# API key solo para esto: el secreto ANTHROPIC_API_KEY_EVAL, de un workspace de Anthropic con tope de
+# gasto (README → Evaluación del bot). Sin el secreto no hace nada. Nunca corre en PRs: el repositorio
+# es público y la corrida usa un secreto.
+on:
+  schedule:
+    - cron: "17 12 * * 1" # lunes 7:17 a. m. en Bogotá (en punto, GitHub atrasa las corridas programadas)
+  workflow_dispatch:
+    inputs:
+      model:
+        description: "Modelo de Claude"
+        type: choice
+        default: claude-haiku-5-5
+        options:
+          - claude-haiku-5-5
+          - claude-sonnet-5-5
+          - claude-opus-5-5
+
+permissions:
+  contents: read
+
+# Una corrida a la vez (una manual y la del lunes no gastan el doble a la par).
+concurrency:
+  group: bot-eval
+  cancel-in-progress: false
+
+jobs:
+  eval:
+    name: Evaluar el bot
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      # Solo si existe el secreto: el secreto en sí va únicamente al paso que llama a Claude (no a la
+      # instalación de dependencias).
+      HAS_KEY: ${{ secrets.ANTHROPIC_API_KEY_EVAL != '' }}
+    steps:
+      - name: Sin el secreto, no corre
+        if: env.HAS_KEY != 'true'
+        run: echo "::notice title=Evaluación del bot::Falta el secreto ANTHROPIC_API_KEY_EVAL (README → Evaluación del bot). No se evaluó nada."
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: env.HAS_KEY == 'true'
+        with:
+          # Sin el token de GitHub en .git/config mientras corre código de terceros.
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        if: env.HAS_KEY == 'true'
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: env.HAS_KEY == 'true'
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - if: env.HAS_KEY == 'true'
+        run: pnpm install --frozen-lockfile
+
+      - name: Evaluar (falla si cae una trampa o acierta menos del 95 %)
+        if: env.HAS_KEY == 'true'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY_EVAL }}
+          # El de siempre (src/modules/bot/models.ts) o el que se eligió al lanzarla a mano. Por variable de
+          # entorno, no interpolado en el comando.
+          BOT_MODEL: ${{ inputs.model || 'claude-haiku-5-5' }}
+        run: pnpm bot:eval --min 95
