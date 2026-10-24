@@ -1324,6 +1324,7 @@ hacen falta:
 |---|---|---|
 | `@esbuild-kit/core-utils>esbuild: ^0.25.4` | `drizzle-kit` 0.31 trae `esbuild` 0.18, vulnerable ([GHSA-67mh-4wv8-2f99](https://github.com/advisories/GHSA-67mh-4wv8-2f99)). Verificado: `drizzle-kit generate`, `check` y `migrate` siguen funcionando | `drizzle-kit` deje de depender de `@esbuild-kit` |
 | `typed-rest-client>qs: ^6.16.0` | Stryker 10.0.0 usa `typed-rest-client` 2.x con `qs` vulnerable (3 avisos de DoS) | Stryker actualice `typed-rest-client` a 3.x |
+| `undici@>=8.0.0 <8.12.2: 8.12.2` | `jsdom` (pruebas de componentes; también lo trae `vitest`) usa `undici` 8.12.1, con un DoS alto ([GHSA-xjj6-f33q-929c](https://github.com/advisories/GHSA-xjj6-f33q-929c)). Solo en desarrollo y en el CI. Forzada en vez de `pnpm update undici`, que re-resolvía otras dependencias (el `@babel/core` que ve Next); la 8.12.3 todavía no cumple los 7 días de `minimum-release-age` | `jsdom` traiga `undici` 8.12.2 o más nueva |
 
 **Avisos ignorados en `pnpm audit`** (`package.json → pnpm.auditConfig.ignoreGhsas`). El CI audita
 todas las dependencias, también las de desarrollo, porque `drizzle-kit` y `tsx` corren con la base de

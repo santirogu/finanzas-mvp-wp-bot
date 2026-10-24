@@ -80,7 +80,8 @@
   "pnpm": {
     "overrides": {
       "@esbuild-kit/core-utils>esbuild": "^0.25.4",
-      "typed-rest-client>qs": "^6.16.0"
+      "typed-rest-client>qs": "^6.16.0",
+      "undici@>=8.0.0 <8.12.2": "8.12.2"
     },
     "auditConfig": {
       "ignoreGhsas": [
