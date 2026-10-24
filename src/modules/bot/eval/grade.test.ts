@@ -114,4 +114,10 @@ describe("summaryMarkdown", () => {
     expect(md).toContain("| a \\| b c | sí | uno · dos \\| tres |");
     expect(md).not.toContain("Costo");
   });
+
+  it("una barra invertida del texto también se escapa (si no, \\| partiría la celda)", () => {
+    const results = [{ c: { text: "a \\| b", expect: lunch.expect }, problems: ["c\\d"] }];
+    const md = summaryMarkdown(evalOutcome(results, 95), results, options);
+    expect(md).toContain("| a \\\\\\| b |  | c\\\\d |");
+  });
 });

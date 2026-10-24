@@ -65,8 +65,12 @@ export function evalOutcome(results: readonly GradedCase[], minShare = 100): Eva
   return { passed, total: results.length, trapsFailed, regularShare, ok: trapsFailed.length === 0 && regularShare >= minShare };
 }
 
-/** Un texto para una celda de una tabla de Markdown: sin saltos de línea ni barras que la rompan. */
-const cell = (text: string) => text.replace(/\s+/g, " ").replace(/\|/g, "\\|");
+/**
+ * Un texto para una celda de una tabla de Markdown: sin saltos de línea y con las barras escapadas. Primero la barra
+ * invertida (si no, una "\|" del texto quedaría como "\\|": la barra invertida escapada y la "|" suelta, que parte
+ * la celda).
+ */
+const cell = (text: string) => text.replace(/\s+/g, " ").replace(/\\/g, "\\\\").replace(/\|/g, "\\|");
 
 /**
  * El resumen de la corrida en Markdown, para la página de la corrida en GitHub Actions ($GITHUB_STEP_SUMMARY): el
