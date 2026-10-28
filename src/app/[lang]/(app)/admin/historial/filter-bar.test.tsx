@@ -43,7 +43,7 @@ describe("FilterBar", () => {
 
   it("el botón Filtros dice cuántos hay activos (también para lectores de pantalla)", () => {
     render(<FilterBar filters={f({ types: ["registered", "whatsapp_linked"], date: "7d" })} panelOpen={false} />);
-    expect(filtersButton()).toHaveAccessibleName("Filtros (activos: 3)");
+    expect(filtersButton()).toHaveAccessibleName("Filtros: 3 activos");
   });
 
   it("abre y cierra el panel; abierto, el formulario pide que vuelva abierto", async () => {
@@ -131,7 +131,7 @@ describe("FilterBar en inglés", () => {
   it("la búsqueda, los tipos de evento y la fecha", async () => {
     render(<FilterBar filters={f({ types: ["registered"] })} panelOpen />, { wrapper: InEnglish });
     expect(screen.getByRole("searchbox", { name: "Search" })).toHaveAttribute("placeholder", "Name, email or number");
-    expect(screen.getByRole("button", { name: /^Filters/ })).toHaveAccessibleName("Filters (active: 1)");
+    expect(screen.getByRole("button", { name: /^Filters/ })).toHaveAccessibleName("Filters: 1 active");
     expect(screen.getAllByRole("group").map((g) => g.querySelector("legend")?.textContent)).toEqual(["Event type", "Date"]);
     expect(screen.getByRole("checkbox", { name: "Sign-ups" })).toBeChecked();
     expect(screen.getByRole("checkbox", { name: "Admin actions" })).not.toBeChecked();
