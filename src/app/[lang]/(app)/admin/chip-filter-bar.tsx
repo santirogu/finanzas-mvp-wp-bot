@@ -123,6 +123,8 @@ export function ChipFilterBar({
             <path d="M3 5h14M6 10h8M8.5 15h3" />
           </svg>
           {t.filters}
+          {/* Un espacio de verdad (en pantalla separa el gap): sin él, el texto visible sería "Filtros2". */}
+          {activeCount > 0 && " "}
           {activeCount > 0 && (
             <span aria-hidden className="rounded-full bg-brand px-1.5 text-xs leading-5 text-brand-foreground">
               {activeCount}
