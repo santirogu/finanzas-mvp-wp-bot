@@ -8,8 +8,8 @@ import { texts } from "@/i18n/texts";
 import { DATE_PRESETS, DATE_PRESET_TEXTS, type DateFilter } from "@/modules/admin/shared/filters";
 
 const TEXTS = texts(
-  { search: "Buscar", filters: "Filtros", active: (n: number) => `Filtros (activos: ${n})`, from: "Desde", to: "Hasta", apply: "Aplicar" },
-  { en: { search: "Search", filters: "Filters", active: (n) => `Filters (active: ${n})`, from: "From", to: "To", apply: "Apply" } },
+  { search: "Buscar", filters: "Filtros", active: (n: number) => `Filtros: ${n} ${n === 1 ? "activo" : "activos"}`, from: "Desde", to: "Hasta", apply: "Aplicar" },
+  { en: { search: "Search", filters: "Filters", active: (n) => `Filters: ${n} active`, from: "From", to: "To", apply: "Apply" } },
 );
 
 // La barra de filtros de los listados de administración: búsqueda y botón "Filtros", con un panel
@@ -114,6 +114,7 @@ export function ChipFilterBar({
           type="button"
           aria-expanded={open}
           aria-controls={panelId}
+          // Con filtros activos se ve "Filtros 2": el nombre empieza igual ("Filtros: 2 activos", WCAG 2.5.3).
           aria-label={activeCount > 0 ? t.active(activeCount) : t.filters}
           onClick={() => setOpen(!open)}
           className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-border px-3 text-sm font-medium hover:bg-background"
@@ -122,6 +123,8 @@ export function ChipFilterBar({
             <path d="M3 5h14M6 10h8M8.5 15h3" />
           </svg>
           {t.filters}
+          {/* Un espacio de verdad (en pantalla separa el gap): sin él, el texto visible sería "Filtros2". */}
+          {activeCount > 0 && " "}
           {activeCount > 0 && (
             <span aria-hidden className="rounded-full bg-brand px-1.5 text-xs leading-5 text-brand-foreground">
               {activeCount}

@@ -80,10 +80,13 @@ export function AccountMenu({
         type="button"
         aria-expanded={open}
         aria-controls={cardId}
-        aria-label={`${t.account}: ${name || email}${roleName ? `, ${roleName}` : ""}`}
         onClick={() => setOpen(!open)}
         className={`inline-flex min-h-11 items-center gap-1 rounded-full border py-1 pl-1 pr-2 transition hover:bg-background pointer-fine:min-h-0 ${open ? "border-brand" : "border-border"}`}
       >
+        {/* El nombre del botón, para el lector de pantalla ("Tu cuenta: Ana Pérez, admin"). Como texto y no como
+            aria-label: las iniciales son el dibujo del avatar, no su nombre (con aria-label, axe pide que el nombre
+            contenga lo que se ve, WCAG 2.5.3). */}
+        <span className="sr-only">{`${t.account}: ${name || email}${roleName ? `, ${roleName}` : ""}`}</span>
         {/* El escudo se apoya en el contenedor y sobresale del círculo a propósito; las iniciales van
             en su propio círculo (así ningún texto se sale de su caja). */}
         <span aria-hidden className="relative size-8 shrink-0">

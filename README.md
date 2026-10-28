@@ -819,7 +819,7 @@ justifica.
 | **Eliminar una cuenta reinicia el contador de intentos de vinculación de su número** | Conservar esos intentos contradiría "al eliminar la cuenta se borra su historial". Aprovecharlo exige registrarse y vincular el número cada 5 intentos, contra un millón de códigos que viven 10 minutos | Se agregue un contador sin datos personales (por ejemplo, el número con hash, por una hora) |
 | **Si el registro de npm no responde, la auditoría de dependencias deja un aviso y el CI sigue**, solo si `pnpm-lock.yaml` no cambió (`scripts/dependency-audit.mjs`) | Un timeout del registro frenó el despliegue de #176 sin ninguna vulnerabilidad de por medio. Esas dependencias ya pasaron la auditoría: en un PR, las de la base; en `main`, las del PR, que la regla "Proteger main" exige al día. Lo único que se atrasa es ver un aviso publicado después: lo muestran la próxima corrida y Dependabot. Si el lockfile cambió, o no se puede comparar (con "Run workflow"), falla como ante una vulnerabilidad | El aviso amarillo apareciera en varias corridas seguidas (días sin auditar) |
 | **El filtro de enlaces de las respuestas del bot usa una lista de terminaciones** (`.com`, `.co`, `.net`…) | Una terminación rara pasaría, pero la respuesta solo le llega a quien escribió, y además tiene largo máximo | Hubiera respuestas reales con enlaces de otra terminación |
-| **El CLI de Vercel del despliegue trae 16 avisos sin versión corregida en su rama** (`.github/vercel-cli/`): 13 de `undici` 5.x, 2 de `@fastify/busboy` 2.x (llega con `undici` 5) y 1 de `braces` | El CLI usa `undici` 5 como cliente HTTP solo contra la API de Vercel, por HTTPS. Los avisos requieren que un servidor malicioso responda, WebSockets (el despliegue no los usa), o encabezados o cuerpos que controle un atacante (son fijos nuestros). `braces` recibe patrones del propio proyecto. Los demás avisos se corrigieron con overrides (ver "Versiones forzadas de dependencias") | Una versión del CLI pase a `undici` 6 o más (Dependabot la propone) |
+| **El CLI de Vercel del despliegue trae 20 avisos sin versión corregida en su rama** (`.github/vercel-cli/`): 17 de `undici` 5.x, 2 de `@fastify/busboy` 2.x (llega con `undici` 5) y 1 de `zod` 3.x | El CLI usa `undici` 5 como cliente HTTP solo contra la API de Vercel, por HTTPS. Los avisos requieren que un servidor malicioso responda (también los dos de TLS de octubre de 2026: una renegociación de TLS 1.2 que tumba el proceso, y callbacks propios de TLS, que el CLI no usa), WebSockets (el despliegue no los usa), o encabezados o cuerpos que controle un atacante (son fijos nuestros). `zod` 3 solo valida el resumen de compilación de los "backends" de Vercel (Express y similares, que este proyecto no usa), nunca datos de afuera; su arreglo solo existe en `zod` 4 y el CLI más nuevo sigue en `zod` 3. Los demás avisos se corrigieron con overrides (ver "Versiones forzadas de dependencias") | Una versión del CLI pase a `undici` 6 o más, o a `zod` 4 (Dependabot la propone) |
 
 **Analítica y velocidad:** [Vercel Web Analytics](https://vercel.com/docs/analytics) y
 [Speed Insights](https://vercel.com/docs/speed-insights) (`<Analytics />` y `<SpeedInsights />` en
@@ -1325,6 +1325,7 @@ hacen falta:
 | `@esbuild-kit/core-utils>esbuild: ^0.25.4` | `drizzle-kit` 0.31 trae `esbuild` 0.18, vulnerable ([GHSA-67mh-4wv8-2f99](https://github.com/advisories/GHSA-67mh-4wv8-2f99)). Verificado: `drizzle-kit generate`, `check` y `migrate` siguen funcionando | `drizzle-kit` deje de depender de `@esbuild-kit` |
 | `typed-rest-client>qs: ^6.16.0` | Stryker 10.0.0 usa `typed-rest-client` 2.x con `qs` vulnerable (3 avisos de DoS) | Stryker actualice `typed-rest-client` a 3.x |
 | `undici@>=8.0.0 <8.12.2: 8.12.2` | `jsdom` (pruebas de componentes; también lo trae `vitest`) usa `undici` 8.12.1, con un DoS alto ([GHSA-xjj6-f33q-929c](https://github.com/advisories/GHSA-xjj6-f33q-929c)). Solo en desarrollo y en el CI. Forzada en vez de `pnpm update undici`, que re-resolvía otras dependencias (el `@babel/core` que ve Next); la 8.12.3 todavía no cumple los 7 días de `minimum-release-age` | `jsdom` traiga `undici` 8.12.2 o más nueva |
+| `fast-uri@>=3.0.0 <3.1.9: 3.1.9` | `ajv` (lo usa Stryker, solo para la mutación) trae `fast-uri` 3.1.8, con 4 avisos (2 moderados y 2 bajos: [GHSA-w74x-v6f9-j3xg](https://github.com/advisories/GHSA-w74x-v6f9-j3xg) y otros) sobre cómo normaliza URLs. Solo en desarrollo y en el CI. Editado a mano en el lockfile, como `undici`, para no re-resolver el resto | `ajv` traiga `fast-uri` 3.1.9 o más nueva |
 
 **Avisos ignorados en `pnpm audit`** (`package.json → pnpm.auditConfig.ignoreGhsas`). El CI audita
 todas las dependencias, también las de desarrollo, porque `drizzle-kit` y `tsx` corren con la base de
@@ -1360,14 +1361,14 @@ token de Vercel a mano).
   `pnpm audit` de la app.
 - **Cómo actualizarlo:** Dependabot lo propone (con `cooldown`), o a mano: cambia la versión en
   `.github/vercel-cli/package.json` y corre `pnpm install --dir .github/vercel-cli`.
-- **Versiones forzadas del CLI** (`.github/vercel-cli/package.json → pnpm.overrides`): corrigen 22
+- **Versiones forzadas del CLI** (`.github/vercel-cli/package.json → pnpm.overrides`): corrigen 26
   avisos de sus dependencias internas, siempre dentro de la misma versión mayor para no romperlo:
   - `tar` 7.5.22 (incluido un aviso crítico);
   - `minimatch` 10.2.6;
   - `js-yaml` 4.3.2;
   - `smol-toml` 1.9.0;
   - `path-to-regexp` 6.3.0 y 8.4.2;
-  - `ajv` 8.18.0;
+  - `ajv` 8.18.0, con `fast-uri` 3.1.9;
   - `undici` 5.29.0.
 
   Verificado con un `vercel build` local completo. Al actualizar el CLI, bórralas y vuelve a correr

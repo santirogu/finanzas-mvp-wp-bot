@@ -69,7 +69,7 @@ test("el admin ve el historial de otras cuentas como línea de tiempo y lo filtr
     for (let i = 0; i < 3; i++) await expect(events(page).nth(i)).toContainText(betoEmail);
     // La búsqueda queda como filtro activo, con su ✕.
     await expect(visible(page.getByRole("link", { name: `Quitar filtro: “${betoEmail}”` }))).toBeVisible();
-    await expect(filtersButton(page)).toHaveAccessibleName("Filtros (activos: 1)");
+    await expect(filtersButton(page)).toHaveAccessibleName("Filtros: 1 activo");
     expect(await seriousViolations(page)).toEqual([]);
   });
 
@@ -89,7 +89,7 @@ test("el admin ve el historial de otras cuentas como línea de tiempo y lo filtr
     await expect(filtersButton(page)).toHaveAttribute("aria-expanded", "true");
     await toggleChip(page, "Registros", "checkbox");
     await expect(summary(page, "2 eventos")).toBeVisible();
-    await expect(filtersButton(page)).toHaveAccessibleName("Filtros (activos: 3)");
+    await expect(filtersButton(page)).toHaveAccessibleName("Filtros: 3 activos");
     expect(await seriousViolations(page)).toEqual([]);
   });
 

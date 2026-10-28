@@ -6,8 +6,9 @@ import { LOCALES, type Locale } from "@/i18n/locales";
 import { useAppPathname } from "@/i18n/navigation";
 import { texts } from "@/i18n/texts";
 
-// Cada idioma con su abreviatura a la vista y su nombre en ese idioma para el lector de pantalla (el nombre
-// empieza con la abreviatura: así también lo encuentra quien lo dice en voz alta).
+// Cada idioma con su abreviatura a la vista y, para el lector de pantalla, también su nombre en ese idioma: el
+// nombre del botón es "ES Español" (empieza con lo que se ve, WCAG 2.5.3: así lo encuentra también quien lo dice
+// en voz alta).
 const SHORT: Record<Locale, string> = { es: "ES", en: "EN" };
 const NAMES: Record<Locale, string> = { es: "Español", en: "English" };
 
@@ -32,7 +33,7 @@ export function LanguageSwitch() {
             name="locale"
             value={option}
             lang={option}
-            aria-label={NAMES[option]}
+            aria-label={`${SHORT[option]} ${NAMES[option]}`}
             aria-pressed={option === locale}
             className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md px-2 text-xs font-semibold text-muted transition hover:text-foreground aria-pressed:bg-brand aria-pressed:text-brand-foreground pointer-fine:min-h-8 pointer-fine:min-w-9"
           >

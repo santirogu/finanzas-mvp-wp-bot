@@ -64,7 +64,8 @@ describe("MonthNav", () => {
     expect(screen.getByRole("group", { name: "Elegir un mes" })).toBe(card());
     expect(card()).toBeVisible();
     expect(shownYear()).toBe("2026");
-    expect(within(card()).getAllByRole("listitem").map((li) => li.textContent)).toEqual([
+    // Lo que se ve (la abreviatura); el nombre completo es para el lector de pantalla.
+    expect(within(card()).getAllByRole("listitem").map((li) => li.querySelector("[aria-hidden]")?.textContent)).toEqual([
       "ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sept", "oct", "nov", "dic",
     ]);
   });

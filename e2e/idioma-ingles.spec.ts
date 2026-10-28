@@ -237,7 +237,7 @@ test("en inglés: la administración (Seguridad, el inicio, Usuarios y una acci�
     const account = visible(page.getByRole("list", { name: "Accounts" })).getByRole("listitem").first();
     await expect(account).toContainText("Beto Inglés");
     await expect(account).toContainText(/No WhatsApp · Signed up: [A-Z][a-z]{2} \d{1,2}, \d{4}/);
-    const filters = visible(page.getByRole("button", { name: "Filters (active: 1)" }));
+    const filters = visible(page.getByRole("button", { name: "Filters: 1 active" }));
     await filters.click();
     await expect(visible(page.getByRole("group", { name: "Status" }))).toContainText("Sign-in locked");
     expect(await seriousViolations(page)).toEqual([]);
