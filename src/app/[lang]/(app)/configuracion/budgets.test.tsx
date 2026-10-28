@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { BudgetState } from "@/modules/budgets/actions";
 import type { BudgetRow } from "@/modules/budgets/progress";
 import { findToast, renderWithToaster as render } from "../../../../../test/toaster";
@@ -33,16 +33,6 @@ const section = () => within(screen.getByRole("region", { name: "Presupuestos" }
 const dialog = () => within(screen.getByRole("dialog"));
 
 // jsdom no abre ventanas modales: basta con marcarla abierta y avisar al cerrarla.
-beforeAll(() => {
-  HTMLDialogElement.prototype.showModal = function (this: HTMLDialogElement) {
-    this.setAttribute("open", "");
-  };
-  HTMLDialogElement.prototype.close = function (this: HTMLDialogElement) {
-    this.removeAttribute("open");
-    this.dispatchEvent(new Event("close"));
-  };
-});
-
 beforeEach(() => {
   save.mockReset();
   remove.mockReset();

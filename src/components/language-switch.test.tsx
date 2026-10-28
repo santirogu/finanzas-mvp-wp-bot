@@ -22,8 +22,8 @@ const group = (name = "Idioma") => within(screen.getByRole("group", { name }));
 describe("LanguageSwitch", () => {
   it("ES y EN, cada uno con su nombre en su idioma; el de la página, marcado", () => {
     render(<LanguageSwitch />);
-    const spanish = group().getByRole("button", { name: "Español" });
-    const english = group().getByRole("button", { name: "English" });
+    const spanish = group().getByRole("button", { name: "ES Español" });
+    const english = group().getByRole("button", { name: "EN English" });
     expect(spanish).toHaveTextContent("ES");
     expect(spanish).toHaveAttribute("lang", "es");
     expect(spanish).toHaveAttribute("aria-pressed", "true");
@@ -35,7 +35,7 @@ describe("LanguageSwitch", () => {
   it("manda el idioma tocado y la página donde está (sin el idioma de adelante)", async () => {
     const user = userEvent.setup();
     render(<LanguageSwitch />);
-    await user.click(group().getByRole("button", { name: "English" }));
+    await user.click(group().getByRole("button", { name: "EN English" }));
     expect(choose).toHaveBeenCalledOnce();
     expect(Object.fromEntries(choose.mock.calls[0][0])).toEqual({ to: "/login", locale: "en" });
   });
@@ -43,7 +43,7 @@ describe("LanguageSwitch", () => {
   it("en inglés, el grupo se llama Language y EN está marcado", () => {
     navigation.pathname = "/en";
     render(<LanguageSwitch />, { wrapper: InEnglish });
-    expect(group("Language").getByRole("button", { name: "English" })).toHaveAttribute("aria-pressed", "true");
+    expect(group("Language").getByRole("button", { name: "EN English" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByDisplayValue("/")).toHaveAttribute("name", "to");
   });
 });

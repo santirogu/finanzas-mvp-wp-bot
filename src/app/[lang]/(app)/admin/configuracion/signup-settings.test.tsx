@@ -1,6 +1,6 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { findToast, renderWithToaster as render, toasts } from "../../../../../../test/toaster";
 import type { SignupSettingsProps } from "./signup-settings";
 
@@ -16,16 +16,6 @@ vi.mock("./actions", () => actions);
 const { SignupSettings } = await import("./signup-settings");
 
 // jsdom no tiene showModal ni close: lo mínimo para abrir y cerrar la ventana.
-beforeAll(() => {
-  HTMLDialogElement.prototype.showModal = function (this: HTMLDialogElement) {
-    this.setAttribute("open", "");
-  };
-  HTMLDialogElement.prototype.close = function (this: HTMLDialogElement) {
-    this.removeAttribute("open");
-    this.dispatchEvent(new Event("close"));
-  };
-});
-
 beforeEach(() => {
   for (const action of Object.values(actions)) action.mockReset();
 });

@@ -1,6 +1,6 @@
 import { fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { MarkReadState } from "@/modules/notifications/actions";
 import type { BellNotification } from "@/modules/notifications/notifications";
 import type { UpcomingItem } from "@/modules/reports/upcoming";
@@ -52,16 +52,6 @@ const reminder = (days = 4, firstTime = false): Extract<BellNotification, { kind
 const bell = () => screen.getByRole("button", { name: /^Notificaciones/ });
 const panel = () => within(screen.getByRole("group", { name: "Notificaciones" }));
 const sent = (call = 0) => markRead.mock.calls[call][1].getAll("id");
-
-beforeAll(() => {
-  HTMLDialogElement.prototype.showModal = function (this: HTMLDialogElement) {
-    this.setAttribute("open", "");
-  };
-  HTMLDialogElement.prototype.close = function (this: HTMLDialogElement) {
-    this.removeAttribute("open");
-    this.dispatchEvent(new Event("close"));
-  };
-});
 
 beforeEach(() => {
   markRead.mockReset();

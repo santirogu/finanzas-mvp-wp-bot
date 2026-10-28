@@ -1,6 +1,6 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_APP_VALUES } from "@/modules/app-values/values";
 import { findToast, renderWithToaster as render, toasts } from "../../../../../../test/toaster";
 
@@ -12,16 +12,6 @@ vi.mock("./actions", () => actions);
 const { ValuesSettings } = await import("./values-settings");
 
 // jsdom no tiene showModal ni close: lo mínimo para abrir y cerrar la ventana.
-beforeAll(() => {
-  HTMLDialogElement.prototype.showModal = function (this: HTMLDialogElement) {
-    this.setAttribute("open", "");
-  };
-  HTMLDialogElement.prototype.close = function (this: HTMLDialogElement) {
-    this.removeAttribute("open");
-    this.dispatchEvent(new Event("close"));
-  };
-});
-
 beforeEach(() => {
   actions.changeAppValuesAction.mockReset();
 });

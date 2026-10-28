@@ -1,7 +1,7 @@
 import { screen, within } from "@testing-library/react";
 import { findToast, renderWithToaster as render, toasts } from "../../../../../../test/toaster";
 import userEvent from "@testing-library/user-event";
-import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ManagedCategory } from "./category-manager";
 
 // Las Server Actions se simulan: aquí se prueba la interfaz. Lo que hacen de verdad se prueba en
@@ -18,16 +18,6 @@ vi.mock("./actions", () => actions);
 const { CategoryManager } = await import("./category-manager");
 
 // jsdom no tiene showModal ni close.
-beforeAll(() => {
-  HTMLDialogElement.prototype.showModal = function (this: HTMLDialogElement) {
-    this.setAttribute("open", "");
-  };
-  HTMLDialogElement.prototype.close = function (this: HTMLDialogElement) {
-    this.removeAttribute("open");
-    this.dispatchEvent(new Event("close"));
-  };
-});
-
 beforeEach(() => {
   for (const action of Object.values(actions)) action.mockReset();
 });
@@ -113,12 +103,15 @@ describe("la lista", () => {
     expect(panel).not.toBeVisible();
   });
 
-  it("al elegir una acción del '⋯', el foco pasa al '⋯' (el navegador lo devuelve ahí al cancelar la ventana)", async () => {
+  it("al elegir una acción del '⋯', el foco pasa al '⋯': el navegador lo devuelve ahí al cancelar la ventana", async () => {
     renderManager();
     const more = within(row("Mercado")).getByRole("button", { name: "Más acciones para Mercado" });
     await userEvent.click(more);
     await userEvent.click(within(row("Mercado")).getByRole("button", { name: /^Archivar/ }));
-    expect(dialog()).toBeInTheDocument();
+    // Abierta, el foco está en la ventana; al cancelarla vuelve al '⋯' (no al menú, que ya se cerró).
+    expect(dialog()).toContainElement(document.activeElement as HTMLElement);
+    await userEvent.click(within(dialog()).getByRole("button", { name: "Cancelar" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
     expect(more).toHaveFocus();
   });
 

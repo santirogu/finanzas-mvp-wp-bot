@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { PaymentSkipState, RegisterPaymentState } from "@/modules/reports/actions";
 import type { UpcomingItem } from "@/modules/reports/upcoming";
 import { findToast, renderWithToaster as render } from "../../../../../test/toaster";
@@ -36,16 +36,6 @@ const rows = () => card().getAllByRole("listitem");
 const TODAY = "2026-10-20";
 
 // jsdom no abre ventanas modales: basta con marcarla abierta y avisar al cerrarla.
-beforeAll(() => {
-  HTMLDialogElement.prototype.showModal = function (this: HTMLDialogElement) {
-    this.setAttribute("open", "");
-  };
-  HTMLDialogElement.prototype.close = function (this: HTMLDialogElement) {
-    this.removeAttribute("open");
-    this.dispatchEvent(new Event("close"));
-  };
-});
-
 beforeEach(() => {
   action.mockReset();
   register.mockReset();
