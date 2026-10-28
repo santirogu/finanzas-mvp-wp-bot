@@ -1323,7 +1323,7 @@ hacen falta:
 | Override | Por qué | Quitar cuando |
 |---|---|---|
 | `@esbuild-kit/core-utils>esbuild: ^0.25.4` | `drizzle-kit` 0.31 trae `esbuild` 0.18, vulnerable ([GHSA-67mh-4wv8-2f99](https://github.com/advisories/GHSA-67mh-4wv8-2f99)). Verificado: `drizzle-kit generate`, `check` y `migrate` siguen funcionando | `drizzle-kit` deje de depender de `@esbuild-kit` |
-| `typed-rest-client>qs: ^6.16.0` | Stryker 10.0.0 usa `typed-rest-client` 2.x con `qs` vulnerable (3 avisos de DoS) | Stryker actualice `typed-rest-client` a 3.x |
+| `typed-rest-client>qs: ^6.16.1` | Stryker 10.0.0 usa `typed-rest-client` 2.x con `qs` vulnerable (4 avisos de DoS; el último, [GHSA-6pq8-jhm2-2vcw](https://github.com/advisories/GHSA-6pq8-jhm2-2vcw), corregido en 6.16.1). Solo en desarrollo | Stryker actualice `typed-rest-client` a 3.x |
 | `undici@>=8.0.0 <8.12.2: 8.12.2` | `jsdom` (pruebas de componentes; también lo trae `vitest`) usa `undici` 8.12.1, con un DoS alto ([GHSA-xjj6-f33q-929c](https://github.com/advisories/GHSA-xjj6-f33q-929c)). Solo en desarrollo y en el CI. Forzada en vez de `pnpm update undici`, que re-resolvía otras dependencias (el `@babel/core` que ve Next); la 8.12.3 todavía no cumple los 7 días de `minimum-release-age` | `jsdom` traiga `undici` 8.12.2 o más nueva |
 | `fast-uri@>=3.0.0 <3.1.9: 3.1.9` | `ajv` (lo usa Stryker, solo para la mutación) trae `fast-uri` 3.1.8, con 4 avisos (2 moderados y 2 bajos: [GHSA-w74x-v6f9-j3xg](https://github.com/advisories/GHSA-w74x-v6f9-j3xg) y otros) sobre cómo normaliza URLs. Solo en desarrollo y en el CI. Editado a mano en el lockfile, como `undici`, para no re-resolver el resto | `ajv` traiga `fast-uri` 3.1.9 o más nueva |
 
