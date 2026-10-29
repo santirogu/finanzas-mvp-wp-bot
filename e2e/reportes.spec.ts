@@ -178,7 +178,8 @@ test("Reportes: las cifras del período, el gráfico, las categorías y los gast
     await chip.click();
     await expect(page).toHaveURL(/\/reportes\?periodo=1-mes$/);
     await expect(chip).toHaveAttribute("aria-current", "page");
-    await expect(visible(page.getByText(formatMonthLabel(current), { exact: true }))).toBeVisible();
+    // El rango, debajo del título (el calendario de "¿Qué días gastas más?" también dice el mes).
+    await expect(visible(page.locator("h1 + p"))).toHaveText(formatMonthLabel(current));
     await expect(stat(page, "Ingresos")).toContainText("$4.000.000,00");
     await expect(stat(page, "Egresos")).toContainText("$1.800.000,00");
     await expect(stat(page, "Gasto promedio por mes")).toHaveCount(0);

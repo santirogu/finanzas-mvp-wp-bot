@@ -335,7 +335,7 @@ function EnglishTopics({ values, A }: { values: AppValues; A: PageLink }) {
 
       <Topic title="Reports and downloads">
         <p>
-          In <A href="/reportes">Reports</A> you see how you&apos;re doing over the last 12, 6, or 3 months, this month, or a year:
+          In <A href="/reportes">Reports</A> you see how you&apos;re doing over the last 12, 6 or 3 months, this month or a year:
         </p>
         <ul className="list-disc space-y-1 pl-5">
           <li>your figures and the income and expenses of each month;</li>
