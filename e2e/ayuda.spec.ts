@@ -133,9 +133,10 @@ test("después de ver la Ayuda sin sesión y entrar, la Ayuda es la de la app", 
   await expect(page.getByRole("heading", { level: 1, name: "Ayuda" })).toBeVisible();
   await page.getByRole("banner").getByRole("link", { name: "Iniciar sesión" }).click();
   await page.getByRole("link", { name: "Regístrate" }).click();
-  await page.getByLabel("Nombre").fill("Ana Pérez");
-  await page.getByLabel("Correo").fill(uniqueEmail());
-  await page.getByLabel("Contraseña").fill(PASSWORD);
+  // El login queda montado, pero oculto (Next 16): sus campos también se llaman Correo y Contraseña.
+  await visible(page.getByLabel("Nombre")).fill("Ana Pérez");
+  await visible(page.getByLabel("Correo")).fill(uniqueEmail());
+  await visible(page.getByLabel("Contraseña")).fill(PASSWORD);
   await page.getByRole("button", { name: "Crear cuenta" }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
   await closeTutorial(page, "Omitir");

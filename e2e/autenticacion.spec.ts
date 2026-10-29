@@ -32,7 +32,7 @@ test.describe("sin sesión", () => {
     expect(response.headers()["content-type"]).toContain("application/xml");
     // Con la URL de la app con la que corre (BETTER_AUTH_URL), no con la que se compiló.
     const locs = [...(await response.text()).matchAll(/<loc>(.+?)<\/loc>/g)].map(([, loc]) => loc);
-    const paths = ["/", "/registro", "/login", "/privacidad", "/eliminar-datos"];
+    const paths = ["/", "/registro", "/login", "/ayuda", "/privacidad", "/eliminar-datos"];
     expect(locs).toEqual(paths.map((path) => (path === "/" ? baseURL : `${baseURL}${path}`)));
     for (const path of paths) {
       const page = await request.get(path, { maxRedirects: 0 });
