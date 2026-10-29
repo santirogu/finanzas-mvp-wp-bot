@@ -29,14 +29,15 @@ test("el admin ve qué pasó con los mensajes de una cuenta y su consumo de Clau
   browser,
   request,
 }) => {
-  // Beto vincula su número y usa el bot: un gasto, un comando, una pregunta y un audio.
+  // Beto envía un audio antes de vincular su número (queda sin cuenta), lo vincula y usa el bot: un gasto, un comando
+  // y una pregunta.
   const beto = await newPerson(browser);
   const phone = newPhone();
   await register(beto, "Beto Bot");
   await goToWhatsApp(beto);
   await beto.getByRole("button", { name: "Conectar WhatsApp" }).click();
   const code = (await visible(beto.getByText(/^VINCULAR \d{6}$/)).textContent())!.replace("VINCULAR ", "");
-  const messages = [`VINCULAR ${code}`, "almuerzo 25.900,50", "balance", "hola, ¿cómo vas?", null];
+  const messages = [null, `VINCULAR ${code}`, "almuerzo 25.900,50", "balance", "hola, ¿cómo vas?"];
   for (const [i, text] of messages.entries()) {
     await sendWhatsApp(request, phone, text);
     await nthReply(request, phone, i + 1);
@@ -106,7 +107,7 @@ test("el admin ve qué pasó con los mensajes de una cuenta y su consumo de Clau
     await expect.poll(() => new URL(page.url()).searchParams.get("resultado")).toBeNull();
   });
 
-  await test.step("Por cuenta: Beto y el audio (llegó sin cuenta), con su orden y su enlace a Usuarios", async () => {
+  await test.step("Por cuenta: Beto y el audio (llegó antes de vincular, sin cuenta), con su orden y su enlace a Usuarios", async () => {
     const accounts = visible(page.getByRole("list", { name: "Cuentas" })).getByRole("listitem");
     await expect(accounts).toHaveCount(2);
     await expect(accounts.nth(0)).toContainText("Beto Bot");
