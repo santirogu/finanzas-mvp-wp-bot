@@ -6,8 +6,11 @@
 //   POST /graph/<versión>/<teléfono>/messages  → guarda el mensaje que "envió" el bot
 //   GET  /mensajes?to=<número>                 → los mensajes que recibió ese número
 //   POST /anthropic/v1/messages                → respuesta fija según el texto del usuario
-//   GET  /claude                               → los textos que la app le pidió interpretar
+//   GET  /claude                               → los textos que la app le pidió interpretar ("[foto] …" si
+//                                                 venían con una foto)
 //   GET  /graph/<versión>/<teléfono>           → el número del bot (Probar conexiones en /admin/salud)
+//   GET  /graph/<versión>/<id de una foto>     → la dirección de una foto (MEDIA), como la da Meta
+//   GET  /media-file/<id>                      → la foto (con el token, como en Meta)
 //   GET  /anthropic/v1/models/<modelo>         → el modelo del bot (Probar conexiones)
 //   POST /fallar?servicio=whatsapp|claude      → la próxima consulta de ese servicio responde 401
 //   POST /fallar?servicio=envio&to=<número>     → el próximo mensaje a ese número no sale (400 de Meta)
@@ -44,6 +47,12 @@ const RELEASES = [
   },
 ];
 
+// Las fotos que "recibió" el WhatsApp falso, por su id: la de una factura (un PNG de 1×1 basta). El Claude
+// falso la reconoce por sus bytes, así la prueba ve que el bot le mandó la foto que bajó de Meta.
+const RECEIPT_PNG = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
+const MEDIA = new Map([["7770001", RECEIPT_PNG]]);
+const RECEIPT = [{ type: "expense", amount: 85400, description: "Éxito", category: "Mercado" }];
+
 // Lo que "entiende" el Claude falso: frases fijas de las pruebas.
 const INTERPRETATIONS = [
   {
@@ -79,14 +88,22 @@ function json(response, status, body) {
   response.end(JSON.stringify(body));
 }
 
-/** Respuesta con la forma de la Messages API, con el JSON que pide el esquema del bot. */
-function claudeResponse(model, userMessage) {
+/**
+ * Respuesta con la forma de la Messages API, con el JSON que pide el esquema del bot. `content` es el texto del
+ * mensaje o, con una foto, la lista de bloques (la imagen y el texto).
+ */
+function claudeResponse(model, content) {
+  const blocks = Array.isArray(content) ? content : [{ type: "text", text: typeof content === "string" ? content : "" }];
+  const userMessage = blocks.find((b) => b.type === "text")?.text ?? "";
+  const image = blocks.find((b) => b.type === "image");
   const text = userMessage.match(/<mensaje>\n([\s\S]*?)\n<\/mensaje>/)?.[1] ?? "";
   const today = userMessage.match(/\((\d{4}-\d{2}-\d{2})\)/)?.[1];
-  claudeRequests.push(text);
-  const found = INTERPRETATIONS.find((i) => i.match.test(text));
-  const output = found
-    ? { transactions: found.transactions.map((t) => ({ ...t, date: today })), reply: null }
+  claudeRequests.push(image ? `[foto] ${text}`.trim() : text);
+  const transactions = image
+    ? image.source?.data === RECEIPT_PNG ? RECEIPT : null
+    : INTERPRETATIONS.find((i) => i.match.test(text))?.transactions;
+  const output = transactions
+    ? { transactions: transactions.map((t) => ({ ...t, date: today })), reply: null }
     : { transactions: [], reply: "¿Cuánto fue y en qué? (respuesta del Claude falso)" };
   return {
     id: `msg_falso_${claudeRequests.length}`,
@@ -128,8 +145,7 @@ const server = createServer(async (request, response) => {
 
     if (request.method === "POST" && url.pathname === "/anthropic/v1/messages") {
       const body = JSON.parse(await readBody(request));
-      const userMessage = body.messages?.at(-1)?.content;
-      return json(response, 200, claudeResponse(body.model, typeof userMessage === "string" ? userMessage : ""));
+      return json(response, 200, claudeResponse(body.model, body.messages?.at(-1)?.content));
     }
 
     if (request.method === "GET" && url.pathname === "/claude") return json(response, 200, claudeRequests);
@@ -144,6 +160,24 @@ const server = createServer(async (request, response) => {
       const service = url.searchParams.get("servicio");
       failNext.add(service === "envio" ? `envio:${url.searchParams.get("to")}` : service);
       return json(response, 200, { ok: true });
+    }
+
+    // Las fotos: Meta da primero la dirección (con el token) y desde ahí se baja el archivo (también con el token).
+    const mediaId = url.pathname.match(/^\/graph\/[^/]+\/(\d+)$/)?.[1] ?? url.pathname.match(/^\/media-file\/(\d+)$/)?.[1];
+    if (request.method === "GET" && mediaId && MEDIA.has(mediaId)) {
+      if (!request.headers.authorization?.startsWith("Bearer ")) return json(response, 401, { error: { message: "sin token", code: 190 } });
+      const file = Buffer.from(MEDIA.get(mediaId), "base64");
+      if (url.pathname.startsWith("/graph/")) {
+        return json(response, 200, {
+          messaging_product: "whatsapp",
+          url: `http://localhost:${PORT}/media-file/${mediaId}`,
+          mime_type: "image/png",
+          file_size: file.length,
+          id: mediaId,
+        });
+      }
+      response.writeHead(200, { "content-type": "image/png", "content-length": file.length });
+      return response.end(file);
     }
 
     if (request.method === "GET" && /^\/graph\/[^/]+\/[^/]+$/.test(url.pathname)) {

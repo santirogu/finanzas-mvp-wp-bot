@@ -18,6 +18,11 @@ import {
   linkInvalidReply,
   linkRateLimitedReply,
   notLinkedReply,
+  photoDownloadFailedReply,
+  photoFallbackReply,
+  photoFormatReply,
+  photoManyReply,
+  photoUnreadableReply,
   registeredReply,
   suspendedReply,
   tooManyTransactionsReply,
@@ -253,6 +258,8 @@ describe("textos fijos del bot", () => {
         "• _almuerzo 25 mil y taxi 12 mil_",
         "• _me pagaron la quincena 2.100.000_",
         "",
+        "📸 O envíame la foto de una factura y registro el total.",
+        "",
         "También entiendo:",
         "• *balance* — cómo vas este mes",
         "• *balance septiembre* o *balance mes pasado* — otro mes",
@@ -265,7 +272,7 @@ describe("textos fijos del bot", () => {
   it("errores y vinculación", () => {
     expect(linkInvalidReply).toBe("Ese código no es válido o ya venció. Pide otro en *Mi cuenta*: toca *Conectar WhatsApp*.");
     expect(linkRateLimitedReply).toBe("Recibí demasiados códigos equivocados desde este número. Espera una hora y vuelve a intentarlo.");
-    expect(unsupportedTypeReply).toBe("Por ahora solo entiendo mensajes de texto ✍️");
+    expect(unsupportedTypeReply).toBe("Por ahora solo entiendo mensajes de texto ✍️ y fotos de facturas 🧾");
     // El error puede llegar después de guardar: que revise antes de enviarlo de nuevo.
     expect(errorReply).toBe("Tuve un problema con tu mensaje 😕. Revisa en la web si quedó y, si no, envíamelo de nuevo en un momento.");
     expect(aiUnavailableReply).toBe(
@@ -275,14 +282,22 @@ describe("textos fijos del bot", () => {
 
   it("con Claude en pausa (/admin/bot): primero que no lo registró, después dónde registrarlo y los comandos que siguen", () => {
     expect(aiPausedReply("https://finanzas.app")).toBe(
-      "No registré tu mensaje: por ahora no puedo entender mensajes escritos libremente 🛠️. Regístralo en la web, en *Egresos* o *Ingresos*: https://finanzas.app/egresos. Siguen funcionando *balance*, *reporte*, *deshacer* y *ayuda*.",
+      "No registré tu mensaje: por ahora no puedo entender mensajes escritos libremente ni fotos 🛠️. Regístralo en la web, en *Egresos* o *Ingresos*: https://finanzas.app/egresos. Siguen funcionando *balance*, *reporte*, *deshacer* y *ayuda*.",
     );
   });
 
   it("con el tope mensual de tokens alcanzado: lo mismo que en pausa", () => {
     expect(aiMonthlyLimitReply("https://finanzas.app")).toBe(
-      "No registré tu mensaje: este mes ya usé todo mi cupo para entender mensajes escritos libremente 🛠️. Regístralo en la web, en *Egresos* o *Ingresos*: https://finanzas.app/egresos. Siguen funcionando *balance*, *reporte*, *deshacer* y *ayuda*.",
+      "No registré tu mensaje: este mes ya usé todo mi cupo para entender mensajes escritos libremente y fotos 🛠️. Regístralo en la web, en *Egresos* o *Ingresos*: https://finanzas.app/egresos. Siguen funcionando *balance*, *reporte*, *deshacer* y *ayuda*.",
     );
+  });
+
+  it("fotos de facturas que no se registraron: qué pasó y cómo seguir, siempre con la opción de escribirlo", () => {
+    expect(photoFallbackReply).toBe("No encontré una factura en la foto. Envíame una foto más clara del recibo o escríbeme el gasto, por ejemplo “almuerzo 25 mil”.");
+    expect(photoUnreadableReply).toBe("No logré leer el total de la factura. Envíame una foto más clara o escríbeme el gasto, por ejemplo “almuerzo 25 mil”.");
+    expect(photoManyReply).toBe("No registré nada: necesito una sola factura por foto. Envíamelas una por una o escríbeme el gasto, por ejemplo “almuerzo 25 mil”.");
+    expect(photoFormatReply).toBe("No pude abrir esa imagen. Envíame la factura como foto o escríbeme el gasto, por ejemplo “almuerzo 25 mil”.");
+    expect(photoDownloadFailedReply).toBe("No pude descargar tu foto 😕. Envíamela de nuevo en un momento o escríbeme el gasto, por ejemplo “almuerzo 25 mil”.");
   });
 
   it("límites del bot: primero que no registró nada", () => {

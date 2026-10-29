@@ -1,9 +1,10 @@
 import { formatLongDate } from "@/lib/dates";
 import { parseCommand, type BotCommand } from "./commands";
-import type { Extractor, Usage } from "./claude-extractor";
+import type { ExtractionResult, Extractor, Usage } from "./claude-extractor";
 import { MAX_TRANSACTIONS_PER_MESSAGE } from "./limits";
 import { normalizeReply, normalizeTransactions, type CategoryNames, type ParsedTransaction } from "./normalize";
-import { tooManyTransactionsReply } from "./replies";
+import { PHOTO_MAX_DAYS_BACK, type PhotoImage } from "./photo";
+import { photoFallbackReply, photoManyReply, photoUnreadableReply, tooManyTransactionsReply } from "./replies";
 
 export type BotIntent =
   | BotCommand
@@ -12,6 +13,7 @@ export type BotIntent =
   | { kind: "error"; reason: string; usage?: Usage };
 
 const MAX_MESSAGE_LENGTH = 1000;
+const TOO_LONG_REPLY = "Tu mensaje es muy largo. Envíamelo en partes más cortas.";
 
 const FALLBACK_REPLY =
   "No logré identificar un ingreso o un egreso en tu mensaje. Prueba con algo como “gasté 20 mil en almuerzo”.";
@@ -34,7 +36,7 @@ export async function interpretMessage(
 
   if (trimmed.length > MAX_MESSAGE_LENGTH) {
     // Un mensaje puede traer varios movimientos (hasta MAX_TRANSACTIONS_PER_MESSAGE): lo que sobra es el largo.
-    return { kind: "reply", text: "Tu mensaje es muy largo. Envíamelo en partes más cortas." };
+    return { kind: "reply", text: TOO_LONG_REPLY };
   }
 
   const result = await extractor({
@@ -43,9 +45,7 @@ export async function interpretMessage(
     categories: ctx.categories,
   });
 
-  if (!result.ok) {
-    return { kind: "error", reason: result.detail ? `${result.reason}: ${result.detail}` : result.reason, usage: result.usage };
-  }
+  if (!result.ok) return errorIntent(result);
 
   // Más de los que caben en una respuesta (o un mensaje hecho para gastar): no se registra ninguno.
   if (result.transactions.length > MAX_TRANSACTIONS_PER_MESSAGE) {
@@ -60,4 +60,41 @@ export async function interpretMessage(
     return { kind: "reply", text: "No entendí el monto. Escríbeme el movimiento completo con su monto, por ejemplo “almuerzo 25 mil”.", usage: result.usage };
   }
   return { kind: "reply", text: normalizeReply(result.reply) ?? FALLBACK_REPLY, usage: result.usage };
+}
+
+const errorIntent = (result: Extract<ExtractionResult, { ok: false }>): BotIntent => ({
+  kind: "error",
+  reason: result.detail ? `${result.reason}: ${result.detail}` : result.reason,
+  usage: result.usage,
+});
+
+/**
+ * Convierte la foto de una factura (con lo que escribió junto a ella) en una intención del bot: un solo egreso
+ * con el total, con la fecha impresa si es de los últimos PHOTO_MAX_DAYS_BACK días (si no, la de hoy). Sin
+ * comandos: el texto de una foto es una pista para Claude, no una orden.
+ */
+export async function interpretPhoto(
+  photo: { image: PhotoImage; caption: string | null },
+  ctx: { today: string; categories: CategoryNames },
+  extractor: Extractor,
+): Promise<BotIntent> {
+  const caption = photo.caption?.trim() ?? "";
+  if (caption.length > MAX_MESSAGE_LENGTH) return { kind: "reply", text: TOO_LONG_REPLY };
+
+  const result = await extractor({
+    text: caption,
+    image: photo.image,
+    today: { iso: ctx.today, long: formatLongDate(ctx.today) },
+    categories: ctx.categories,
+  });
+  if (!result.ok) return errorIntent(result);
+
+  // Una factura es un movimiento: si la IA propone varios (los productos uno por uno, o varias facturas), no se
+  // adivina cuál es el total.
+  if (result.transactions.length > 1) return { kind: "reply", text: photoManyReply, usage: result.usage };
+  const items = normalizeTransactions(result.transactions, { ...ctx, maxDaysBack: PHOTO_MAX_DAYS_BACK });
+  if (items.length > 0) return { kind: "transactions", items, usage: result.usage };
+  // Propuso el movimiento pero no pasó la validación (el total en 0 o ilegible).
+  if (result.transactions.length > 0) return { kind: "reply", text: photoUnreadableReply, usage: result.usage };
+  return { kind: "reply", text: normalizeReply(result.reply) ?? photoFallbackReply, usage: result.usage };
 }

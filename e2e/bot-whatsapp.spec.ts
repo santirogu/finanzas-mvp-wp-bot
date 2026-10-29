@@ -3,7 +3,7 @@ import { expect } from "@playwright/test";
 import { FAKE_SERVICES_URL } from "./fake-config";
 import { formatMonthLabel, formatMonthName, monthOf, monthParam, shiftMonth, todayInTimezone } from "../src/lib/dates";
 import { addTransaction, goToWhatsApp, openTab, register, test, toast, visible } from "./helpers";
-import { newPhone, nthReply, sendWhatsApp, sentTo } from "./whatsapp";
+import { newPhone, nthReply, sendWhatsApp, sendWhatsAppPhoto, sentTo } from "./whatsapp";
 
 // El bot de WhatsApp de punta a punta: los mensajes llegan al webhook firmados igual que los manda
 // Meta, la app los procesa en el servidor real de Next y responde a un WhatsApp falso
@@ -111,6 +111,18 @@ test("vincular el número desde Mi cuenta y llevar las cuentas por WhatsApp", as
     expect(reply).toContain("Más detalle en *Reportes*: http://localhost:3100/reportes");
     expect((await (await request.get(`${FAKE_SERVICES_URL}/claude`)).json()).length).toBe(claudeBefore);
   });
+
+  await test.step("la foto de una factura queda registrada con su total: el bot la baja de Meta y se la manda a Claude", async () => {
+    await sendWhatsAppPhoto(request, phone, "mercado del mes");
+    expect(await nthReply(request, phone, 10)).toMatch(/✅ Egreso Anotado: \*Éxito\* — \$85\.400,00 \(Mercado\)/);
+    // El Claude falso solo la entiende si le llegaron los mismos bytes de la foto.
+    expect(await (await request.get(`${FAKE_SERVICES_URL}/claude`)).json()).toContain("[foto] mercado del mes");
+
+    await page.reload();
+    const row = visible(page.getByRole("listitem").filter({ hasText: "Éxito" }));
+    await expect(row).toContainText("Mercado · vía WhatsApp");
+    await expect(row).toContainText(/−\$85\.400,00/);
+  });
 });
 
 test("un número sin vincular recibe instrucciones y no puede usar el bot", async ({ request }) => {
@@ -161,10 +173,10 @@ test("si Meta entrega el mismo mensaje dos veces, se procesa una sola vez", asyn
   expect(await sentTo(request, phone)).toHaveLength(2);
 });
 
-test("a un audio responde que por ahora solo entiende texto", async ({ request }) => {
+test("a un audio responde que por ahora solo entiende textos y fotos", async ({ request }) => {
   const phone = newPhone();
   await sendWhatsApp(request, phone, null);
-  expect(await nthReply(request, phone, 1)).toBe("Por ahora solo entiendo mensajes de texto ✍️");
+  expect(await nthReply(request, phone, 1)).toBe("Por ahora solo entiendo mensajes de texto ✍️ y fotos de facturas 🧾");
 });
 
 test("el bot guarda la descripción que ya está en el historial, con su categoría @principal", async ({ page, request }) => {

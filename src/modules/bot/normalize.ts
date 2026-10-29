@@ -47,14 +47,14 @@ function isCalendarDate(iso: string): boolean {
   return new Date(Date.UTC(year, month - 1, day)).toISOString().slice(0, 10) === iso;
 }
 
-function normalizeDate(proposed: string, today: string): string {
+function normalizeDate(proposed: string, today: string, maxDaysBack: number): string {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(proposed) || !isCalendarDate(proposed)) return today;
   const time = Date.parse(`${proposed}T00:00:00Z`);
   // Nunca fechas futuras ni absurdamente viejas.
   // Stryker disable next-line EqualityOperator: si la fecha es la de hoy, devuelve hoy en los dos casos
   if (proposed > today) return today;
   const daysBack = (Date.parse(`${today}T00:00:00Z`) - time) / 86_400_000;
-  return daysBack > MAX_DAYS_BACK ? today : proposed;
+  return daysBack > maxDaysBack ? today : proposed;
 }
 
 function normalizeDescription(text: string): string {
@@ -62,9 +62,10 @@ function normalizeDescription(text: string): string {
   return clean ? clean.charAt(0).toUpperCase() + clean.slice(1) : "";
 }
 
+/** `maxDaysBack`: hasta cuántos días atrás vale la fecha que propone la IA (por defecto, un año); más vieja, hoy. */
 export function normalizeTransactions(
   raw: readonly RawTransaction[],
-  ctx: { today: string; categories: CategoryNames },
+  ctx: { today: string; categories: CategoryNames; maxDaysBack?: number },
 ): ParsedTransaction[] {
   const result: ParsedTransaction[] = [];
   for (const item of raw) {
@@ -78,7 +79,7 @@ export function normalizeTransactions(
       amount,
       description: description || (item.type === "income" ? "Ingreso" : "Gasto"),
       category: matchCategory(item.category, ctx.categories[item.type]),
-      occurredOn: normalizeDate(item.date, ctx.today),
+      occurredOn: normalizeDate(item.date, ctx.today, ctx.maxDaysBack ?? MAX_DAYS_BACK),
     });
   }
   return result;

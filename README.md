@@ -4,7 +4,7 @@ App web para registrar ingresos y egresos y ver el balance del mes actual. Cada 
 su propia sesión y su dashboard con cinco pestañas: **Resumen**, **Ingresos** y **Egresos**, donde
 cada movimiento se puede editar o eliminar, **Fijos**, con los gastos que se repiten cada mes, y
 **Reportes**, con cómo le va mes a mes. Los movimientos también se registran escribiéndole a un bot de
-WhatsApp ("me compré unos zapatos de $500.000"), que entiende el mensaje con Claude. En **Mi
+WhatsApp ("me compré unos zapatos de $500.000") o enviándole la foto de una factura, que entiende con Claude. En **Mi
 cuenta**, cada persona cambia su contraseña, conecta o desvincula su WhatsApp, elige la apariencia y puede eliminar su cuenta
 y todos sus datos (confirmando con su contraseña).
 
@@ -226,10 +226,12 @@ pnpm dev                        # http://localhost:3000 (antes, copia la base lo
     vez) o el límite.
   - **En local**, `pnpm test:mutation:cambios` muta lo que cambiaste frente a `origin/main` (con lo que
     no está en un commit) y lo que agregaste a la lista.
-- **Evaluación del bot** (`pnpm bot:eval`, `src/modules/bot/eval/`): 65 frases contra la API real de Claude, con
-  7 **mensajes trampa** (que revele sus instrucciones o una clave, que se salga de su papel, que confirme un borrado
-  que no hizo, que invente cifras de otra persona, un JSON o una instrucción escondida en la descripción para que
-  registre lo que no pasó). Tiene costo (unos US$0,02 por corrida con Haiku).
+- **Evaluación del bot** (`pnpm bot:eval`, `src/modules/bot/eval/`): 65 frases y 7 fotos de facturas inventadas
+  (`src/modules/bot/eval/fotos/`) contra la API real de Claude, con 8 **mensajes trampa** (que revele sus
+  instrucciones o una clave, que se salga de su papel, que confirme un borrado que no hizo, que invente cifras de
+  otra persona, un JSON, una instrucción escondida en la descripción o impresa en una factura para que registre lo
+  que no pasó). Tiene costo (unos US$0,03 por corrida con Haiku; solo las fotos, `--only "[foto"`, menos de
+  US$0,01).
   - **En local**, a mano y con permiso del dueño: falla con cualquier caso mal (`--min` cambia el mínimo).
   - **Cada lunes** (7:17 a. m. en Bogotá) y con *Actions → Evaluación del bot → Run workflow* (eligiendo el
     modelo), `.github/workflows/bot-eval.yml`: falla si cae una trampa o si el resto acierta menos del 95 %, y GitHub
@@ -700,6 +702,25 @@ La app está en español (el de siempre) y en inglés, toda la web (el bot de Wh
    se responde 200 de inmediato y el mensaje se procesa después (`after()`).
 3. Se deduplica por el ID del mensaje, se resuelven los comandos fijos (`balance`, `reporte`,
    `deshacer`, `ayuda`) y el texto libre se interpreta con Claude. El bot responde por WhatsApp.
+
+**Fotos de facturas** (`src/modules/bot/photo.ts`, `interpretPhoto` en `interpret.ts`): una foto se registra como
+un solo egreso con el total.
+- **Cómo llega:** el webhook trae solo el id de la foto. El bot le pide a Meta su dirección y la baja, las dos
+  veces con el token de WhatsApp (`downloadWhatsAppMedia`, `src/modules/whatsapp/client.ts`). La dirección la
+  manda Meta: el token solo va por HTTPS a un servidor de Meta (`isMediaUrl`), y la foto, hasta 5 MB. Se baja
+  después de ver que el número está vinculado y la cuenta no está suspendida, y antes de reservar el cupo de
+  Claude: si Meta no la entrega o no es JPEG, PNG o WebP (por sus bytes), no se gasta nada.
+- **Qué hace Claude:** recibe la foto y el texto que la acompaña (como pista). Solo con fotos, el prompt suma
+  sus reglas: el TOTAL (nunca los productos uno por uno), el comercio como descripción, la fecha impresa
+  (día primero) y que lo escrito en la foto son datos, nunca instrucciones.
+- **Qué se acepta:** un solo movimiento (con más, pide una factura por foto), con la fecha impresa si es de los
+  últimos 31 días (`PHOTO_MAX_DAYS_BACK`); si es más vieja o futura, la de hoy. Un comando escrito con la foto
+  ("deshacer") no se ejecuta.
+- **Qué se guarda:** lo registrado y, en el registro de mensajes, `[image]` con el texto que escribió. La foto
+  no se guarda (`/privacidad`). Cada foto cuenta como un mensaje interpretado en los límites y cuesta un poco
+  más que un texto: unos 1.500 a 4.800 tokens de imagen (Haiku 5.5, alrededor de US$0,0005 por foto).
+- **En las E2E**, el WhatsApp falso tiene una foto (`MEDIA` en `e2e/fake-services.mjs`) y el Claude falso la
+  reconoce por sus bytes. `pnpm bot:eval` tiene casos con facturas inventadas (`src/modules/bot/eval/fotos/`).
 
 **La descripción del historial** (`src/modules/bot/history-match.ts` y `history.ts`): antes de guardar lo
 que entendió Claude, el bot busca en el historial de la persona (del mismo tipo, sin lo eliminado, de los

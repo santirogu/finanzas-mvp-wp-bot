@@ -75,10 +75,38 @@ describe("extractMessages", () => {
         from: "573001112233",
         type: "text",
         text: "balance",
+        image: null,
         timestamp: 1791950000,
         profileName: "Santiago",
       },
     ]);
+  });
+
+  it("de una foto toma su id y el texto que la acompaña, sin espacios ni el carácter nulo", () => {
+    const [withCaption, withoutCaption, blankCaption] = extractMessages(
+      webhook([
+        { id: "wamid.F", from: "573001112233", timestamp: "1", type: "image", image: { id: "1029384756", mime_type: "image/jpeg", caption: "  almuerzo\u0000 con Juan " } },
+        { id: "wamid.G", from: "573001112233", timestamp: "1", type: "image", image: { id: "1029384757" } },
+        { id: "wamid.H", from: "573001112233", timestamp: "1", type: "image", image: { id: "1029384758", caption: " \u0000 " } },
+      ]),
+    );
+    expect(withCaption).toMatchObject({ type: "image", text: null, image: { id: "1029384756", caption: "almuerzo con Juan" } });
+    expect(withoutCaption.image).toEqual({ id: "1029384757", caption: null });
+    expect(blankCaption.image).toEqual({ id: "1029384758", caption: null });
+  });
+
+  it("ignora la foto con un id que no es un número (iría en la dirección de descarga) o sin id", () => {
+    const messages = extractMessages(
+      webhook([
+        { id: "w1", from: "57", type: "image", image: { id: "../../me?x=1" } },
+        { id: "w2", from: "57", type: "image", image: { id: 1029384756 } },
+        { id: "w3", from: "57", type: "image", image: { id: "1".repeat(41) } },
+        { id: "w4", from: "57", type: "image" },
+        { id: "w5", from: "57", type: "image", image: { id: "1029384756", caption: 7 } },
+        { id: "w6", from: "57", type: "sticker", image: { id: "1029384756" } },
+      ]),
+    );
+    expect(messages.map((m) => m.image)).toEqual([null, null, null, null, { id: "1029384756", caption: null }, null]);
   });
 
   it("quita el carácter nulo del texto (Postgres no lo acepta y el mensaje se perdería)", () => {
@@ -90,7 +118,7 @@ describe("extractMessages", () => {
     const payload = webhook([
       { id: "wamid.B", from: "573001112233", timestamp: "1", type: "audio", audio: {} },
     ]);
-    expect(extractMessages(payload)[0]).toMatchObject({ type: "audio", text: null });
+    expect(extractMessages(payload)[0]).toMatchObject({ type: "audio", text: null, image: null });
   });
 
   it("ignora notificaciones de estado y payloads ajenos", () => {

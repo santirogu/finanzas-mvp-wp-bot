@@ -3,7 +3,8 @@ import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { z } from "zod";
 import type { CategoryNames, RawTransaction } from "./normalize";
 import { resolveBotModel } from "./models";
-import { buildSystemPrompt, buildUserMessage } from "./prompt";
+import type { PhotoImage } from "./photo";
+import { buildPhotoMessage, buildSystemPrompt, buildUserMessage } from "./prompt";
 import { envVar } from "@/lib/env";
 import { describeError } from "@/lib/safe-log";
 import { CHECK_TIMEOUT_MS, type ServiceCheck } from "@/lib/service-check";
@@ -32,7 +33,10 @@ const extractionSchema = z.object({
 });
 
 export type ExtractionInput = {
+  /** El mensaje o, con una foto, lo que escribió con ella (puede ser ""). */
   text: string;
+  /** La foto de una factura, si el mensaje es una (src/modules/bot/photo.ts). */
+  image?: PhotoImage;
   today: { iso: string; long: string };
   categories: CategoryNames;
   /** El modelo que eligió el admin (src/modules/bot/settings.ts); sin él, botModel(). */
@@ -69,10 +73,16 @@ function getClient() {
   return client;
 }
 
+// La foto primero y después el texto: así lo recomienda Anthropic para las imágenes.
+const photoContent = (image: PhotoImage, caption: string, today: ExtractionInput["today"]) => [
+  { type: "image" as const, source: { type: "base64" as const, media_type: image.mediaType, data: image.data } },
+  { type: "text" as const, text: buildPhotoMessage(caption, today) },
+];
+
 // Los modelos Haiku no tienen fallback del lado del servidor.
 const supportsServerFallback = (model: string) => !model.includes("haiku");
 
-export const claudeExtractor: Extractor = async ({ text, today, categories, model = botModel() }) => {
+export const claudeExtractor: Extractor = async ({ text, image, today, categories, model = botModel() }) => {
   // Sin credenciales el SDK lanza un Error genérico; mejor detectarlo antes.
   if (!envVar("ANTHROPIC_API_KEY") && !envVar("ANTHROPIC_AUTH_TOKEN")) {
     return { ok: false, reason: "not_configured" };
@@ -82,8 +92,8 @@ export const claudeExtractor: Extractor = async ({ text, today, categories, mode
       model,
       // Alcanza para MAX_TRANSACTIONS_PER_MESSAGE movimientos; acota el costo de cada llamada.
       max_tokens: 2048,
-      system: buildSystemPrompt(categories),
-      messages: [{ role: "user", content: buildUserMessage(text, today) }],
+      system: buildSystemPrompt(categories, { photo: Boolean(image) }),
+      messages: [{ role: "user", content: image ? photoContent(image, text, today) : buildUserMessage(text, today) }],
       output_config: { effort: botEffort(), format: betaZodOutputFormat(extractionSchema) },
       // Si un clasificador de seguridad rechaza el mensaje, el servidor reintenta
       // con el modelo recomendado en lugar de devolver el rechazo.

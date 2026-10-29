@@ -212,3 +212,113 @@ describe("checkWhatsAppConnection", () => {
     expect(fetchMock.mock.calls[0][0]).toMatch(/^http:\/\/localhost:3101\/graph\/v26\.0\/1418230944702354\?fields=/);
   });
 });
+
+describe("isMediaUrl", () => {
+  it.each([
+    ["https://lookaside.fbsbx.com/whatsapp_business/attachments/?mid=1", true],
+    ["https://scontent.whatsapp.net/v/t61/foto.jpg", true],
+    ["https://graph.facebook.com/v26.0/1", true],
+    ["http://lookaside.fbsbx.com/foto", false],
+    ["https://fbsbx.com.atacante.example/foto", false],
+    ["https://atacantefbsbx.com/foto", false],
+    ["https://atacante.example/?u=lookaside.fbsbx.com", false],
+    ["no es una dirección", false],
+    [42, false],
+    [null, false],
+  ])("con Meta de verdad, %s → %s", async (url, expected) => {
+    const { isMediaUrl } = await loadClient();
+    expect(isMediaUrl(url, "https://graph.facebook.com")).toBe(expected);
+  });
+
+  it("en las E2E acepta solo el mismo servidor falso de WHATSAPP_API_URL", async () => {
+    const { isMediaUrl } = await loadClient();
+    expect(isMediaUrl("http://localhost:3101/media-file/1", "http://localhost:3101/graph")).toBe(true);
+    expect(isMediaUrl("http://localhost:3999/media-file/1", "http://localhost:3101/graph")).toBe(false);
+    expect(isMediaUrl("http://localhost:3101/media-file/1", "https://graph.facebook.com")).toBe(false);
+  });
+});
+
+describe("downloadWhatsAppMedia", () => {
+  const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3]);
+  const info = (body: Record<string, unknown>) => new Response(JSON.stringify(body), { status: 200 });
+
+  it("pide la dirección con el token y baja la foto de Meta, también con el token", async () => {
+    fetchMock
+      .mockResolvedValueOnce(info({ url: "https://lookaside.fbsbx.com/whatsapp_business/attachments/?mid=9", file_size: 7 }))
+      .mockResolvedValueOnce(new Response(jpeg));
+    const { downloadWhatsAppMedia } = await loadClient();
+
+    expect(await downloadWhatsAppMedia("1029384756")).toEqual({ ok: true, data: jpeg });
+    const [[infoUrl, infoInit], [fileUrl, fileInit]] = fetchMock.mock.calls;
+    expect(infoUrl).toBe("https://graph.facebook.com/v26.0/1029384756");
+    expect(fileUrl).toBe("https://lookaside.fbsbx.com/whatsapp_business/attachments/?mid=9");
+    expect(infoInit.headers).toEqual({ Authorization: "Bearer EAAtoken" });
+    expect(fileInit.headers).toEqual({ Authorization: "Bearer EAAtoken" });
+  });
+
+  it("nunca manda el token a una dirección que no es de Meta", async () => {
+    fetchMock.mockResolvedValueOnce(info({ url: "https://atacante.example/foto.jpg" }));
+    const { downloadWhatsAppMedia } = await loadClient();
+
+    expect(await downloadWhatsAppMedia("1029384756")).toEqual({ ok: false, error: "archivo: dirección de descarga inesperada" });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("no pide nada con un id que no es un número ni sin WhatsApp configurado", async () => {
+    const { downloadWhatsAppMedia } = await loadClient();
+    expect(await downloadWhatsAppMedia("../me")).toEqual({ ok: false, error: "id de archivo inválido" });
+    vi.stubEnv("WHATSAPP_ACCESS_TOKEN", "");
+    expect(await downloadWhatsAppMedia("1029384756")).toEqual({ ok: false, error: "WhatsApp sin configurar" });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("no baja una foto de más de 5 MB: ni si Meta lo avisa ni si llega más grande", async () => {
+    const url = "https://lookaside.fbsbx.com/foto";
+    const big = MAX + 1;
+    fetchMock.mockResolvedValueOnce(info({ url, file_size: big }));
+    const { downloadWhatsAppMedia, MAX_MEDIA_BYTES } = await loadClient();
+    expect(MAX_MEDIA_BYTES).toBe(MAX);
+    expect(await downloadWhatsAppMedia("1")).toEqual({ ok: false, error: `archivo: muy pesado (${big} bytes)` });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    fetchMock.mockResolvedValueOnce(info({ url })).mockResolvedValueOnce(new Response("x", { headers: { "content-length": String(big) } }));
+    expect(await downloadWhatsAppMedia("1")).toEqual({ ok: false, error: `descarga: muy pesado (${big} bytes)` });
+
+    fetchMock.mockResolvedValueOnce(info({ url, file_size: 10 })).mockResolvedValueOnce(new Response(new Uint8Array(big)));
+    expect(await downloadWhatsAppMedia("1")).toEqual({ ok: false, error: `descarga: muy pesado (${big} bytes)` });
+
+    // Justo en el tope, sí.
+    fetchMock.mockResolvedValueOnce(info({ url, file_size: MAX })).mockResolvedValueOnce(new Response(new Uint8Array(MAX)));
+    expect(await downloadWhatsAppMedia("1")).toMatchObject({ ok: true });
+  });
+
+  it("devuelve el error de Meta (recortado), el de la descarga y los de red, sin lanzar", async () => {
+    const url = "https://lookaside.fbsbx.com/foto";
+    const { downloadWhatsAppMedia } = await loadClient();
+
+    fetchMock.mockResolvedValueOnce(new Response(`{"error":{"code":100}}${"x".repeat(500)}`, { status: 400 }));
+    const meta = await downloadWhatsAppMedia("1");
+    expect(meta).toMatchObject({ ok: false, error: expect.stringMatching(/^archivo: 400 \{"error":\{"code":100\}\}x+$/) });
+    expect(!meta.ok && meta.error.length).toBe("archivo: 400 ".length + 300);
+
+    fetchMock.mockResolvedValueOnce(info({ url })).mockResolvedValueOnce(new Response("", { status: 404 }));
+    expect(await downloadWhatsAppMedia("1")).toEqual({ ok: false, error: "descarga: 404" });
+
+    fetchMock.mockResolvedValueOnce(new Response("no es json"));
+    expect(await downloadWhatsAppMedia("1")).toMatchObject({ ok: false, error: expect.stringMatching(/^archivo: SyntaxError/) });
+
+    fetchMock.mockRejectedValueOnce(new DOMException("The operation timed out.", "TimeoutError"));
+    expect(await downloadWhatsAppMedia("1")).toMatchObject({ ok: false, error: expect.stringMatching(/^archivo: TimeoutError/) });
+  });
+
+  it("en las E2E baja la foto del servidor falso", async () => {
+    vi.stubEnv("WHATSAPP_API_URL", "http://localhost:3101/graph");
+    fetchMock.mockResolvedValueOnce(info({ url: "http://localhost:3101/media-file/1" })).mockResolvedValueOnce(new Response(jpeg));
+    const { downloadWhatsAppMedia } = await loadClient();
+
+    expect(await downloadWhatsAppMedia("1")).toEqual({ ok: true, data: jpeg });
+    expect(fetchMock.mock.calls.map(([u]) => u)).toEqual(["http://localhost:3101/graph/v26.0/1", "http://localhost:3101/media-file/1"]);
+  });
+});
+
+const MAX = 5 * 1024 * 1024;

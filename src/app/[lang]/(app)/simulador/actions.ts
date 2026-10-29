@@ -24,6 +24,7 @@ export async function simulateMessageAction(phone: string, text: string): Promis
       id: `sim.${randomUUID()}`,
       from: phone.replace(/\D/g, ""),
       text,
+      image: null,
       type: "text",
       timestamp: Math.floor(Date.now() / 1000),
       profileName: null,
@@ -31,6 +32,8 @@ export async function simulateMessageAction(phone: string, text: string): Promis
     {
       extractor: claudeExtractor,
       send: async () => ({ ok: true }),
+      // Solo simula textos: nunca descarga fotos.
+      download: async () => ({ ok: false, error: "el simulador no recibe fotos" }),
       appUrl: getAppUrl(),
     },
   );

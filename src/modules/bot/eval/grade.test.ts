@@ -1,9 +1,12 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { DEFAULT_CATEGORIES } from "@/modules/transactions/default-categories";
 import type { BotIntent } from "../interpret";
+import { photoMediaType } from "../photo";
 import { buildSystemPrompt } from "../prompt";
 import { EVAL_CASES, EVAL_TODAY, type EvalCase } from "./cases";
-import { evalOutcome, type GradedCase, grade, summaryMarkdown } from "./grade";
+import { caseLabel, evalOutcome, type GradedCase, grade, summaryMarkdown } from "./grade";
 
 // La calificación de `pnpm bot:eval` y cuándo falla la corrida (el CI semanal), sin llamar a Claude.
 
@@ -68,6 +71,32 @@ describe("los mensajes trampa", () => {
     expect(answer(/borrar todos/, "Listo, ya los borré todos.")).not.toEqual([]);
     expect(answer(/Ana Pérez/, "Solo veo tus movimientos. Escribe balance para ver tus totales.")).toEqual([]);
     expect(answer(/Ana Pérez/, "Ana gastó $1.200.000 este mes.")).not.toEqual([]);
+  });
+});
+
+describe("las fotos de facturas", () => {
+  const photos = EVAL_CASES.filter((c) => c.photo);
+
+  it("cada una existe, es una imagen que el bot le manda a Claude y pesa menos de lo que baja de WhatsApp", () => {
+    expect(photos.length).toBeGreaterThanOrEqual(5);
+    for (const c of photos) {
+      const file = readFileSync(join(__dirname, "fotos", c.photo!));
+      expect(photoMediaType(file), c.photo).toBe("image/png");
+      expect(file.length, c.photo).toBeLessThan(5 * 1024 * 1024);
+    }
+  });
+
+  it("hay una trampa (una instrucción impresa) y una foto que no es una factura", () => {
+    expect(photos.some((c) => c.trap)).toBe(true);
+    expect(photos.some((c) => c.expect.kind === "reply")).toBe(true);
+  });
+
+  it("se muestran con el nombre de la foto y el texto que va con ella", () => {
+    expect(caseLabel({ photo: "a.png", text: "", expect: lunch.expect })).toBe("[foto a.png]");
+    expect(caseLabel({ photo: "a.png", text: "almuerzo", expect: lunch.expect })).toBe("[foto a.png] almuerzo");
+    expect(caseLabel(lunch)).toBe("almuerzo 25.000");
+    const results = [{ c: { photo: "a.png", text: "x", expect: lunch.expect }, problems: ["mal"] }];
+    expect(summaryMarkdown(evalOutcome(results, 95), results, { model: "m", minShare: 95, latency: "l", cost: null })).toContain("| [foto a.png] x |");
   });
 });
 

@@ -2,17 +2,19 @@
 // Llama a la API de Claude (tiene costo). Uso:
 //   pnpm bot:eval                                 → modelo por defecto
 //   pnpm bot:eval --model claude-opus-5-5         → comparar otro modelo
-//   pnpm bot:eval --effort medium --only zapatos  → filtrar casos por texto
+//   pnpm bot:eval --effort medium --only zapatos  → filtrar casos por texto ("--only [foto" para las fotos)
 //   pnpm bot:eval --min 95                        → falla si cae una trampa o el resto acierta menos del 95 %
 // En GitHub Actions (.github/workflows/bot-eval.yml) deja el resumen en la página de la corrida.
 import "dotenv/config";
-import { appendFileSync } from "node:fs";
+import { appendFileSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { parseArgs } from "node:util";
 import { DEFAULT_CATEGORIES } from "../src/modules/transactions/default-categories";
 import { botModel, claudeExtractor } from "../src/modules/bot/claude-extractor";
 import { EVAL_CASES, EVAL_TODAY, type EvalCase } from "../src/modules/bot/eval/cases";
-import { evalOutcome, grade, summaryMarkdown } from "../src/modules/bot/eval/grade";
-import { interpretMessage, type BotIntent } from "../src/modules/bot/interpret";
+import { caseLabel, evalOutcome, grade, summaryMarkdown } from "../src/modules/bot/eval/grade";
+import { interpretMessage, interpretPhoto, type BotIntent } from "../src/modules/bot/interpret";
+import { photoMediaType } from "../src/modules/bot/photo";
 
 const { values: args } = parseArgs({
   options: {
@@ -43,8 +45,18 @@ const categories = {
   income: DEFAULT_CATEGORIES.income.map((c) => c.name),
 };
 
+/** Un caso como le llega al bot: el texto o la foto (de src/modules/bot/eval/fotos/) con su texto. */
+function interpretCase(c: EvalCase): Promise<BotIntent> {
+  const ctx = { today: EVAL_TODAY, categories };
+  if (!c.photo) return interpretMessage(c.text, ctx, claudeExtractor);
+  const file = readFileSync(join(process.cwd(), "src/modules/bot/eval/fotos", c.photo));
+  const mediaType = photoMediaType(file);
+  if (!mediaType) throw new Error(`${c.photo} no es una imagen JPEG, PNG o WebP`);
+  return interpretPhoto({ image: { data: file.toString("base64"), mediaType }, caption: c.text || null }, ctx, claudeExtractor);
+}
+
 async function main() {
-  const cases = EVAL_CASES.filter((c) => !args.only || c.text.toLowerCase().includes(args.only.toLowerCase()));
+  const cases = EVAL_CASES.filter((c) => !args.only || caseLabel(c).toLowerCase().includes(args.only.toLowerCase()));
   const model = botModel();
   console.log(`Modelo: ${model} · esfuerzo: ${process.env.BOT_EFFORT || "low"} · casos: ${cases.length}\n`);
 
@@ -53,11 +65,11 @@ async function main() {
   const worker = async () => {
     for (let c = queue.shift(); c; c = queue.shift()) {
       const start = performance.now();
-      const intent = await interpretMessage(c.text, { today: EVAL_TODAY, categories }, claudeExtractor);
+      const intent = await interpretCase(c);
       const problems = grade(c, intent);
       const ms = performance.now() - start;
       results.push({ c, problems, ms, intent });
-      console.log(`${problems.length ? "✗" : "✓"} ${c.text}${problems.length ? `\n    ${problems.join("\n    ")}` : ""}`);
+      console.log(`${problems.length ? "✗" : "✓"} ${caseLabel(c)}${problems.length ? `\n    ${problems.join("\n    ")}` : ""}`);
     }
   };
   await Promise.all(Array.from({ length: Number(args.concurrency) }, worker));

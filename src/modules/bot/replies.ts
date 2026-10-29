@@ -159,6 +159,8 @@ export const helpReply = (name?: string) =>
     "",
     ...BOT_EXAMPLES.map((example) => `• _${example}_`),
     "",
+    "📸 O envíame la foto de una factura y registro el total.",
+    "",
     "También entiendo:",
     ...BOT_COMMANDS.map(
       (c) =>
@@ -185,7 +187,16 @@ export const linkInvalidReply =
   "Ese código no es válido o ya venció. Pide otro en *Mi cuenta*: toca *Conectar WhatsApp*.";
 export const linkRateLimitedReply =
   "Recibí demasiados códigos equivocados desde este número. Espera una hora y vuelve a intentarlo.";
-export const unsupportedTypeReply = "Por ahora solo entiendo mensajes de texto ✍️";
+export const unsupportedTypeReply = "Por ahora solo entiendo mensajes de texto ✍️ y fotos de facturas 🧾";
+
+// Las fotos de facturas (src/modules/bot/interpret.ts → interpretPhoto): cuando no quedó registrada, cómo seguir.
+const WRITE_IT = "escríbeme el gasto, por ejemplo “almuerzo 25 mil”";
+export const photoFallbackReply = `No encontré una factura en la foto. Envíame una foto más clara del recibo o ${WRITE_IT}.`;
+export const photoUnreadableReply = `No logré leer el total de la factura. Envíame una foto más clara o ${WRITE_IT}.`;
+export const photoManyReply = `No registré nada: necesito una sola factura por foto. Envíamelas una por una o ${WRITE_IT}.`;
+export const photoFormatReply = `No pude abrir esa imagen. Envíame la factura como foto o ${WRITE_IT}.`;
+// No se descargó (Meta no respondió): puede ser pasajero.
+export const photoDownloadFailedReply = `No pude descargar tu foto 😕. Envíamela de nuevo en un momento o ${WRITE_IT}.`;
 // El error puede llegar después de guardar (handle-message.ts): que revise antes de enviarlo de nuevo, para no
 // registrarlo dos veces.
 export const errorReply =
@@ -202,9 +213,9 @@ export const tooManyTransactionsReply = (max: number) =>
   `No registré ninguno: tu mensaje trae más de ${max} movimientos. Envíamelos en varios mensajes, hasta ${max} en cada uno.`;
 /** Cuando el admin pausó Claude en /admin/bot: los comandos siguen, el texto libre se registra en la web. */
 export const aiPausedReply = (appUrl: string) =>
-  `No registré tu mensaje: por ahora no puedo entender mensajes escritos libremente 🛠️. ${registerOnWeb(appUrl)} ${STILL_WORKING}`;
+  `No registré tu mensaje: por ahora no puedo entender mensajes escritos libremente ni fotos 🛠️. ${registerOnWeb(appUrl)} ${STILL_WORKING}`;
 /** Cuando se usó el tope mensual de tokens de /admin/bot: hasta el mes siguiente, como en pausa. */
 export const aiMonthlyLimitReply = (appUrl: string) =>
-  `No registré tu mensaje: este mes ya usé todo mi cupo para entender mensajes escritos libremente 🛠️. ${registerOnWeb(appUrl)} ${STILL_WORKING}`;
+  `No registré tu mensaje: este mes ya usé todo mi cupo para entender mensajes escritos libremente y fotos 🛠️. ${registerOnWeb(appUrl)} ${STILL_WORKING}`;
 export const aiUnavailableReply =
   "No registré tu mensaje: por ahora solo entiendo *balance*, *reporte*, *deshacer* y *ayuda*. Muy pronto podrás registrar tus movimientos escribiendo como hablas ✍️.";
