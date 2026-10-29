@@ -616,7 +616,7 @@ La app está en español (el de siempre) y en inglés, toda la web (el bot de Wh
     (`src/app/[lang]/ayuda-publica/`, `PUBLIC_VERSIONS` en `src/proxy.ts`; esa dirección por dentro lleva a
     `/ayuda`). Se enlaza desde la portada (arriba y en el pie), el login y el registro. Dice lo mismo
     (`help-content.tsx`), pero las páginas de la app van en negrita y no como enlace (llevarían al login), sin
-    las pestañas ni el tutorial, y con el selector de idioma.
+    las pestañas ni el tutorial, y con el selector de idioma y, al final, "Crear cuenta".
   - Esos enlaces no se precargan (`prefetch={false}`): con sesión, `/ayuda` es otra página, y la precargada sin
     sesión podría quedar en el navegador después de entrar.
 - **Tutorial de bienvenida** (`src/components/welcome-tutorial.tsx`, `src/modules/tutorial/`): una ventana con

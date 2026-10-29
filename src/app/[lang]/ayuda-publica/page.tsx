@@ -12,19 +12,24 @@ import { PageSkeleton } from "../(app)/page-skeleton";
 import { HELP_TEXTS, HelpContent } from "../(app)/ayuda/help-content";
 
 // La Ayuda para quien no tiene sesión: el proxy la arma en /ayuda (src/proxy.ts), la misma dirección de la Ayuda de
-// la app. Dice lo mismo, con la barra de la portada en vez de las pestañas y sin el tutorial de bienvenida.
+// la app. Dice lo mismo, con la barra de la portada en vez de las pestañas, sin el tutorial de bienvenida y, al
+// final, con "Crear cuenta".
 
 const TEXTS = texts(
   {
     description: `Cómo usar ${BRAND_NAME}: registrar tus movimientos, el bot de WhatsApp, los gastos fijos, los presupuestos, los reportes y las preguntas frecuentes.`,
     login: "Iniciar sesión",
     privacy: "Política de privacidad",
+    noAccount: "¿No tienes cuenta?",
+    register: "Crear cuenta",
   },
   {
     en: {
       description: `How to use ${BRAND_NAME}: adding your transactions, the WhatsApp bot, bills, budgets, reports and frequently asked questions.`,
       login: "Sign in",
       privacy: "Privacy policy",
+      noAccount: "Don't have an account?",
+      register: "Create account",
     },
   },
 );
@@ -62,10 +67,13 @@ export default async function PublicHelpPage() {
         </Suspense>
       </main>
 
+      {/* Con el mismo ancho que <main> y, adentro, el de la columna del texto: alineado con él, no suelto a la izquierda. */}
       <footer className="mx-auto w-full max-w-5xl px-4 pb-10 text-xs text-muted sm:px-6">
-        <Link href="/privacidad" className="underline underline-offset-2 hover:text-foreground">
-          {t.privacy}
-        </Link>
+        <div className="mx-auto max-w-2xl">
+          <Link href="/privacidad" className="underline underline-offset-2 hover:text-foreground">
+            {t.privacy}
+          </Link>
+        </div>
       </footer>
     </div>
   );
@@ -74,6 +82,18 @@ export default async function PublicHelpPage() {
 async function PublicHelp() {
   // Los valores de la app (los que eligió el admin) se leen en cada pedido, no al compilar.
   await connection();
-  const [locale, values] = await Promise.all([getLocale(), getAppValues()]);
-  return <HelpContent locale={locale} values={values} signedIn={false} />;
+  const [locale, values, t] = await Promise.all([getLocale(), getAppValues(), getTexts(TEXTS)]);
+  return (
+    <>
+      <HelpContent locale={locale} values={values} signedIn={false} />
+      {/* Para quien lee la Ayuda antes de registrarse. Llega con el contenido (no antes, debajo del esqueleto): así no
+          salta cuando el contenido aparece. */}
+      <div className="card mx-auto mt-4 flex max-w-2xl flex-wrap items-center justify-between gap-3 p-4">
+        <p className="text-sm font-medium">{t.noAccount}</p>
+        <Link href="/registro" className="btn-primary">
+          {t.register}
+        </Link>
+      </div>
+    </>
+  );
 }

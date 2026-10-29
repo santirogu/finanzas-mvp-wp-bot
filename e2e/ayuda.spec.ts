@@ -82,7 +82,14 @@ test("Ayuda sin sesión: desde la portada, el login y el registro, en /ayuda, co
   await expect(topics.locator("details")).toHaveCount(6);
   await expect(faq.locator("details")).toHaveCount(12);
 
-  await test.step("las páginas de la app van en negrita (su enlace llevaría al login); la privacidad y el correo, con enlace", async () => {
+  await test.step("al final, para crear la cuenta; el pie, alineado con el texto (no suelto a la izquierda)", async () => {
+    await expect(page.getByRole("main").getByRole("link", { name: "Crear cuenta" })).toHaveAttribute("href", "/registro");
+    const title = await page.getByRole("heading", { level: 1, name: "Ayuda" }).boundingBox();
+    const privacy = await page.getByRole("contentinfo").getByRole("link", { name: "Política de privacidad" }).boundingBox();
+    expect(Math.round(privacy!.x)).toBe(Math.round(title!.x));
+  });
+
+  await test.step("las páginas de la app van en negrita (su enlace llevaría al login); la privacidad, el correo y el registro, con enlace", async () => {
     const closed = page.locator("main details:not([open])");
     while ((await closed.count()) > 0) await closed.first().locator("summary").click();
     const bot = topics.locator("details").filter({ has: page.locator("summary", { hasText: "El bot de WhatsApp" }) });
@@ -91,7 +98,7 @@ test("Ayuda sin sesión: desde la portada, el login y el registro, en /ayuda, co
     }
     await expect(bot.locator("strong", { hasText: "Mi cuenta" })).toBeVisible();
     const hrefs = await page.getByRole("main").getByRole("link").evaluateAll((links) => links.map((link) => link.getAttribute("href")));
-    expect([...new Set(hrefs)].sort()).toEqual(["/privacidad", `mailto:${CONTACT_EMAIL}`]);
+    expect([...new Set(hrefs)].sort()).toEqual(["/privacidad", "/registro", `mailto:${CONTACT_EMAIL}`]);
     const { violations } = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
     expect(violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => v.id)).toEqual([]);
   });
