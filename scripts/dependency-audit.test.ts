@@ -111,6 +111,20 @@ describe("runCli", () => {
     });
   });
 
+  it("con varias, una por línea (primero las críticas) y qué hacer", () => {
+    const result = run("cambio", { status: 1, stdout: report({ 1: advisory("high", "a"), 2: advisory("critical", "b") }) });
+    expect(result.error).toBe(
+      [
+        "✗ Vulnerabilidades altas o críticas (2):\n",
+        formatAdvisories([advisory("critical", "b"), advisory("high", "a")]).join("\n"),
+        "\nActualiza el paquete (o fuerza la versión corregida en package.json → pnpm.overrides). Si no\n" +
+          "tiene versión corregida y no se puede explotar aquí, va en pnpm.auditConfig.ignoreGhsas, con su\n" +
+          "porqué en el README (Versiones forzadas de dependencias).",
+      ].join("\n"),
+    );
+    expect(result.error).toContain("  • crítica · b: Falla en b\n");
+  });
+
   it.each(["sin-cambios", "cambio"])("una vulnerabilidad falla siempre (lockfile: %s)", (lockfile) => {
     const result = run(lockfile, { status: 1, stdout: report({ 1: advisory("critical", "next") }) });
     expect(result.code).toBe(1);
@@ -146,7 +160,11 @@ describe("runCli", () => {
   ])("si el registro no responde y pnpm-lock.yaml %s, falla", (_, lockfile) => {
     const result = run(lockfile, { status: 0, stdout: TIMEOUT }, "/tmp/resumen");
     expect(result.code).toBe(1);
-    expect(result.error).toContain("✗ El registro de npm no respondió y pnpm-lock.yaml cambió (o no se pudo comparar)");
+    expect(result.error).toContain(
+      "✗ El registro de npm no respondió y pnpm-lock.yaml cambió (o no se pudo comparar): hay\n" +
+        "  dependencias sin auditar. Vuelve a correr el job cuando npm se recupere\n" +
+        "  (https://status.npmjs.org).\n",
+    );
     expect(result.error).toContain(TIMEOUT);
     expect(result.log).toBe("");
     expect(result.appended).toEqual([]);

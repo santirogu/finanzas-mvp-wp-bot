@@ -99,7 +99,10 @@ const ENGLISH: Readonly<Record<AdminModuleId, Pick<AdminModule, "label" | "descr
 export const adminModules = (locale: Locale = DEFAULT_LOCALE): readonly AdminModule[] =>
   locale === "es" ? ADMIN_MODULES : ADMIN_MODULES.map((m) => ({ ...m, ...ENGLISH[m.id] }));
 
-export const activeAdminModules = (locale: Locale = DEFAULT_LOCALE) => adminModules(locale).filter((m) => m.status === "activo");
+/** Solo los activos: los que vienen ("pronto") se anuncian en Inicio, pero todavía no se navega a ellos. */
+export const onlyActive = <T extends Pick<AdminModule, "status">>(modules: readonly T[]) => modules.filter((m) => m.status === "activo");
+
+export const activeAdminModules = (locale: Locale = DEFAULT_LOCALE) => onlyActive(adminModules(locale));
 
 /** Los chips de la subnavegación: Inicio y los módulos activos. */
 export const adminNavItems = (locale: Locale = DEFAULT_LOCALE) => [

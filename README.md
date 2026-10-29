@@ -219,8 +219,11 @@ pnpm dev                        # http://localhost:3000 (antes, copia la base lo
     hasta el lunes). Si no cambió ninguno, lo dice y termina. Al cerrar o fusionar el PR, la corrida que
     quede se cancela.
   - **Cada lunes** sobre `main` y con *Actions → Mutation testing → Run workflow*, la lista completa,
-    repartida en partes de ~45 minutos (parejas por tamaño del código) que corren a la vez; un último
-    job junta sus reportes en un resumen.
+    repartida en hasta 12 partes (parejas por tamaño del código) que corren a la vez; un último job junta
+    sus reportes en un resumen. Con 12 partes, cada una lleva 1/12 del código: en octubre de 2026, 70–92
+    minutos, con un límite de 150 por parte (con 90, tres se cortaron el 26 de octubre). Si el código sigue
+    creciendo y se acercan a 150, sube `MAX_SHARDS` (`scripts/mutation-targets.mjs`; GitHub da 20 jobs a la
+    vez) o el límite.
   - **En local**, `pnpm test:mutation:cambios` muta lo que cambiaste frente a `origin/main` (con lo que
     no está en un commit) y lo que agregaste a la lista.
 - **Evaluación del bot** (`pnpm bot:eval`, `src/modules/bot/eval/`): 65 frases contra la API real de Claude, con

@@ -7,7 +7,7 @@ name: Mutation testing
 #   · en un PR con la etiqueta "mutation-testing" (y en cada push mientras la tenga) se mutan solo
 #     los archivos de esa lista que el PR cambió, y los que agrega a la lista: unos minutos;
 #   · cada lunes sobre main y a mano (Actions → Mutation testing → Run workflow), la lista completa,
-#     repartida en partes de ~45 minutos que corren a la vez.
+#     repartida en hasta 12 partes que corren a la vez (70–92 minutos cada una en octubre de 2026).
 # No es check obligatorio.
 on:
   pull_request:
@@ -83,7 +83,9 @@ jobs:
       matrix:
         include: ${{ fromJSON(needs.targets.outputs.matrix) }}
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    # Con el tope de 12 partes (MAX_SHARDS), cada una lleva ~1/12 del código: en octubre de 2026, 70–92 min. Con
+    # 150 hay margen para que el código crezca (~60 %) sin que las partes se corten (README → Pruebas y CI).
+    timeout-minutes: 150
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

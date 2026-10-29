@@ -18,19 +18,23 @@ export const MARK_MAX = 50;
 /** El id de un aviso de próximo pago: el mes del pago y la clave del gasto. */
 export const paymentNotificationId = (item: Pick<UpcomingItem, "key" | "month">) => `pago|${item.month}|${item.key}`;
 
-// Todos los tipos de alerta del bot: si se agrega uno en alert-rules.ts, el compilador pide sumarlo aquí.
-const BOT_ALERT_KINDS: Record<BotAlertKind, true> = {
-  whatsapp_token: true,
-  whatsapp_send: true,
-  claude_key: true,
-  claude_model: true,
-  claude_credits: true,
-  claude_config: true,
-  claude_failing: true,
-  monthly_limit: true,
-  monthly_limit_near: true,
-  stuck_messages: true,
-};
+// Todos los tipos de alerta del bot: si se agrega uno en alert-rules.ts, el compilador pide sumarlo aquí
+// (MissingBotAlertKind deja de ser never).
+const BOT_ALERT_KINDS = [
+  "whatsapp_token",
+  "whatsapp_send",
+  "claude_key",
+  "claude_model",
+  "claude_credits",
+  "claude_config",
+  "claude_failing",
+  "monthly_limit",
+  "monthly_limit_near",
+  "stuck_messages",
+] as const satisfies readonly BotAlertKind[];
+type MissingBotAlertKind = Exclude<BotAlertKind, (typeof BOT_ALERT_KINDS)[number]>;
+const allBotAlertKinds: [MissingBotAlertKind] extends [never] ? true : MissingBotAlertKind = true;
+void allBotAlertKinds;
 
 /**
  * El id de una alerta del bot: su tipo y desde cuándo pasa. Si se arregla y vuelve a pasar, es otra (vuelve a la
@@ -59,7 +63,7 @@ export const isNotificationId = (value: unknown): value is string =>
   value.length <= NOTIFICATION_ID_MAX &&
   (/^pago\|\d{4}-(0[1-9]|1[0-2])\|.+$/.test(value) ||
     REMINDER_ID.test(value) ||
-    Object.hasOwn(BOT_ALERT_KINDS, BOT_ID.exec(value)?.[1] ?? ""));
+    (BOT_ALERT_KINDS as readonly string[]).includes(BOT_ID.exec(value)?.[1] ?? ""));
 
 /** Una alerta del bot para la campana: su id y cómo se lee (src/modules/admin/bot/alerts-view.ts). */
 export type BellBotAlert = { id: string; alert: BotAlertView };

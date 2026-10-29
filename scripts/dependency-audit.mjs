@@ -57,9 +57,10 @@ export function classifyAudit({ status, stdout, stderr = "" }) {
 
 /** Las vulnerabilidades, de la más grave a la menos, con lo necesario para decidir qué hacer. */
 export function formatAdvisories(advisories) {
-  const order = ["critical", "high"];
+  // Primero las críticas (las demás son altas: la auditoría pide solo esas dos).
+  const rank = (advisory) => (advisory.severity === "critical" ? 0 : 1);
   return [...advisories]
-    .sort((a, b) => order.indexOf(a.severity) - order.indexOf(b.severity))
+    .sort((a, b) => rank(a) - rank(b))
     .flatMap((a) => [
       `  • ${SEVERITY[a.severity] ?? a.severity} · ${a.module_name}: ${a.title}`,
       `    Versiones vulnerables: ${a.vulnerable_versions} · corregidas: ${a.patched_versions}`,

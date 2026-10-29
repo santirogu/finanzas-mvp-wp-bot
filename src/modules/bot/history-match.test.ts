@@ -10,6 +10,13 @@ describe("meaningfulWords", () => {
     expect(meaningfulWords("de la")).toEqual([]);
     expect(meaningfulWords("Plan 5G-Max")).toEqual(["plan", "5g", "max"]);
   });
+
+  it.each(["a", "al", "con", "de", "del", "el", "en", "la", "las", "lo", "los", "mi", "mis", "para", "por", "su", "sus", "un", "una", "y"])(
+    "'%s' no cuenta",
+    (word) => {
+      expect(meaningfulWords(`pago ${word} claro`)).toEqual(["pago", "claro"]);
+    },
+  );
 });
 
 describe("matchHistory", () => {
@@ -28,6 +35,8 @@ describe("matchHistory", () => {
     // Con menos letras, solo al comienzo: "ago" no está en "postpago".
     expect(matchHistory("ago claro", [entry("Postpago Claro")])).toBeNull();
     expect(matchHistory("ne claro", [entry("Netflix Claro")])).toBeNull();
+    // Igual, aunque tenga menos de 3 letras: "tv" está en "Plan TV Cable".
+    expect(matchHistory("tv cable", [entry("Plan TV Cable")])?.description).toBe("Plan TV Cable");
   });
 
   it("sin importar tildes, mayúsculas, el orden ni las palabras que no cuentan", () => {
