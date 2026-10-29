@@ -192,7 +192,7 @@ de Vercel ni muevas las migraciones fuera del job `deploy`.
   (`src/i18n/request.ts`) y lo pasa a la función que arma el mensaje. `user.locale` solo lo cambia
   Configuración (`saveLanguageAction`); la cookie `idioma`, Configuración y el inicio de sesión (`src/lib/auth.ts`).
   Sin cookie, español (decisión del dueño: el idioma del navegador no cuenta); sin sesión se cambia con el
-  selector de la portada, el login y el registro (`chooseLanguageAction`, que solo vuelve a esas páginas).
+  selector de la portada, el login, el registro y la Ayuda (`chooseLanguageAction`, que solo vuelve a esas páginas).
 - **E2E que cambian algo de toda la app** (pausar Claude, los topes del bot, los registros): van en
   `e2e/configuracion-*.spec.ts`, el proyecto "configuracion" de Playwright, que corre aparte y de a un
   archivo (README → Pruebas y CI). En paralelo con las demás les cambiaría lo que responde el bot o no

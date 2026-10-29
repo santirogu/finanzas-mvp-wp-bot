@@ -87,6 +87,16 @@ export const VISTAS: Vista[] = [
   { id: "privacidad", titulo: "Política de privacidad", ruta: fija("/privacidad") },
   { id: "eliminar-datos", titulo: "Eliminar mis datos", ruta: fija("/eliminar-datos") },
   { id: "cuenta-eliminada", titulo: "Cuenta eliminada", ruta: fija("/cuenta-eliminada") },
+  {
+    // Sin sesión, /ayuda es la versión pública (src/proxy.ts): la barra de la portada y las páginas de la app en negrita.
+    id: "ayuda-sin-sesion",
+    titulo: "Ayuda sin sesión con todos los temas y las preguntas frecuentes abiertos",
+    ruta: fija("/ayuda"),
+    preparar: async (page) => {
+      for (const tema of await visible(page.locator("details summary")).all()) await tema.click();
+      await expect(visible(page.locator("details[open]"))).toHaveCount(6 + 12);
+    },
+  },
 
   // Una cuenta nueva, sin movimientos
   { id: "resumen-vacio", titulo: "Resumen sin movimientos", persona: "vacia", ruta: fija("/dashboard") },

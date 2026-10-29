@@ -1,6 +1,7 @@
 import { readdirSync } from "node:fs";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { PUBLIC_VERSIONS } from "@/proxy";
 import robots, { PRIVATE_PATHS, PUBLIC_EXCEPTIONS } from "./robots";
 
 // Fuera de un pedido, connection() no tiene a qué esperar.
@@ -32,8 +33,15 @@ function routesIn(dir: string, base = ""): string[] {
 }
 
 const APP = path.join(__dirname);
-const privateRoutes = routesIn(path.join(APP, "[lang]", "(app)"));
-const publicRoutes = routesIn(APP).filter((route) => !privateRoutes.includes(route) && !route.startsWith("/api"));
+const appRoutes = routesIn(path.join(APP, "[lang]", "(app)"));
+// Las páginas de la app con versión sin sesión (la Ayuda) son públicas: la versión sin sesión se ve en la dirección
+// de la de la app (la suya, por dentro, no es una dirección).
+const publicVersions = [...PUBLIC_VERSIONS.values()];
+const privateRoutes = appRoutes.filter((route) => !PUBLIC_VERSIONS.has(route));
+const publicRoutes = [
+  ...routesIn(APP).filter((route) => !appRoutes.includes(route) && !route.startsWith("/api") && !publicVersions.includes(route)),
+  ...PUBLIC_VERSIONS.keys(),
+];
 
 describe("robots.txt", () => {
   it("deja indexar lo público, bloquea la parte privada y la API, y apunta al sitemap", async () => {
@@ -42,7 +50,7 @@ describe("robots.txt", () => {
       rules: {
         userAgent: "*",
         allow: ["/", "/cuenta-eliminada"],
-        disallow: ["/dashboard", "/ingresos", "/egresos", "/gastos-fijos", "/reportes", "/configuracion", "/movimientos/", "/cuenta", "/ayuda", "/admin", "/simulador", "/api/"],
+        disallow: ["/dashboard", "/ingresos", "/egresos", "/gastos-fijos", "/reportes", "/configuracion", "/movimientos/", "/cuenta", "/admin", "/simulador", "/api/"],
       },
       sitemap: "https://finanzas.co/sitemap.xml",
     });
@@ -54,8 +62,8 @@ describe("robots.txt", () => {
     expect(allowed("/api/health")).toBe(false);
   });
 
-  it("deja ver todas las páginas públicas (también /cuenta-eliminada, aunque empieza como /cuenta)", () => {
-    expect([...publicRoutes].sort()).toEqual(["/", "/cuenta-eliminada", "/eliminar-datos", "/login", "/privacidad", "/registro"]);
+  it("deja ver todas las páginas públicas (también /cuenta-eliminada, aunque empieza como /cuenta, y la Ayuda)", () => {
+    expect([...publicRoutes].sort()).toEqual(["/", "/ayuda", "/cuenta-eliminada", "/eliminar-datos", "/login", "/privacidad", "/registro"]);
     for (const route of publicRoutes) expect(allowed(route), route).toBe(true);
   });
 });

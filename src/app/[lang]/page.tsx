@@ -32,6 +32,7 @@ const TEXTS = texts(
       { icon: "lock", title: "Tus datos son tuyos", body: "Sin conectar tu banco y sin anuncios. Borras tu cuenta y tus datos cuando quieras." },
     ],
     privacy: "Política de privacidad",
+    help: "Ayuda",
   },
   {
     en: {
@@ -57,6 +58,7 @@ const TEXTS = texts(
         { icon: "lock", title: "Your data is yours", body: "No bank connection and no ads. Delete your account and your data whenever you want." },
       ],
       privacy: "Privacy policy",
+      help: "Help",
     },
   },
 );
@@ -77,11 +79,20 @@ export default async function Home() {
   const t = await getTexts(TEXTS);
   return (
     <div className="flex flex-1 flex-col">
-      {/* El logo, el selector de idioma e "Iniciar sesión": en una pantalla muy angosta (320 px), los dos últimos
-          pasan a una segunda fila en vez de salirse de la pantalla. */}
+      {/* El logo, la Ayuda, el selector de idioma e "Iniciar sesión": en una pantalla muy angosta (320 px), los tres
+          últimos pasan a una segunda fila en vez de salirse de la pantalla. */}
       <header className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-5 sm:px-6">
         <Logo className="text-xl" markClassName="size-8" />
         <div className="flex items-center gap-2">
+          {/* Sin precargar: con sesión, /ayuda es otra página, y la precargada podría quedar en el navegador después
+              de entrar (src/proxy.ts). */}
+          <Link
+            href="/ayuda"
+            prefetch={false}
+            className="inline-flex min-h-11 items-center rounded-lg px-2 text-sm font-medium text-muted hover:text-foreground pointer-fine:min-h-9"
+          >
+            {t.help}
+          </Link>
           <LanguageSwitch />
           <Link
             href="/login"
@@ -123,7 +134,10 @@ export default async function Home() {
         </section>
       </main>
 
-      <footer className="mx-auto w-full max-w-5xl px-4 pb-10 text-xs text-muted sm:px-6">
+      <footer className="mx-auto flex w-full max-w-5xl flex-wrap gap-x-4 gap-y-2 px-4 pb-10 text-xs text-muted sm:px-6">
+        <Link href="/ayuda" prefetch={false} className="underline underline-offset-2 hover:text-foreground">
+          {t.help}
+        </Link>
         <Link href="/privacidad" className="underline underline-offset-2 hover:text-foreground">
           {t.privacy}
         </Link>

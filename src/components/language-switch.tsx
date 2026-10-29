@@ -15,16 +15,17 @@ const NAMES: Record<Locale, string> = { es: "Español", en: "English" };
 const TEXTS = texts({ label: "Idioma" }, { en: { label: "Language" } });
 
 /**
- * "ES · EN" para quien no tiene sesión (la portada, el login y el registro): guarda el idioma en este navegador
- * y vuelve a la misma página (chooseLanguageAction). Sin JavaScript también funciona: es un formulario.
+ * "ES · EN" para quien no tiene sesión (la portada, el login, el registro y la Ayuda): guarda el idioma en este
+ * navegador y vuelve a la misma página (chooseLanguageAction). Sin JavaScript también funciona: es un formulario.
+ * `to`: adónde vuelve, si la dirección no es la de la página (la Ayuda pública se arma por dentro con otra).
  */
-export function LanguageSwitch() {
+export function LanguageSwitch({ to }: { to?: string }) {
   const locale = useLocale();
   const pathname = useAppPathname();
   const t = useTexts(TEXTS);
   return (
     <form action={chooseLanguageAction}>
-      <input type="hidden" name="to" value={pathname} />
+      <input type="hidden" name="to" value={to ?? pathname} />
       <div role="group" aria-label={t.label} className="flex gap-0.5 rounded-lg border border-border p-0.5">
         {LOCALES.map((option) => (
           <button

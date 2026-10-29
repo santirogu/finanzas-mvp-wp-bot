@@ -6,7 +6,7 @@ import { localeCookieOptions } from "./cookie";
 import { isLocale, LANGUAGE_SWITCH_PAGES, LOCALE_COOKIE } from "./locales";
 
 /**
- * El selector de idioma de quien no tiene sesión (la portada, el login y el registro): guarda la cookie del
+ * El selector de idioma de quien no tiene sesión (la portada, el login, el registro y la Ayuda): guarda la cookie del
  * idioma en este navegador y vuelve a la misma página (`to`), ya en ese idioma. No toca ninguna cuenta: con
  * sesión, el idioma se elige en Configuración. Si `to` no es una de esas páginas, vuelve a la portada.
  */

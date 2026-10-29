@@ -3,7 +3,7 @@ import { dirname, join, relative, resolve } from "node:path";
 import { NextRequest } from "next/server";
 import { getRedirectUrl } from "next/experimental/testing/server";
 import { describe, expect, it } from "vitest";
-import { proxy } from "./proxy";
+import { proxy, PUBLIC_VERSIONS } from "./proxy";
 
 // Matriz de autorización: inventario de TODAS las entradas de la app (páginas, rutas de API y
 // Server Actions) con la protección que debe tener cada una. Si agregas una entrada, esta prueba
@@ -24,7 +24,8 @@ const PAGES = {
   "/cuenta-eliminada": "pública siempre (se llega justo después de eliminar la cuenta)",
   "/[...rest]": "la 404 de las direcciones que no existen: solo llama a notFound() (sin sesión, el proxy manda al login)",
   "/cuenta": "requiere sesión",
-  "/ayuda": "requiere sesión; solo textos de ayuda (no lee datos de la persona)",
+  "/ayuda": "pública: con sesión, la de la app (valida la sesión); sin sesión, el proxy arma /ayuda-publica. Solo textos de ayuda (no lee datos de la persona)",
+  "/ayuda-publica": "la Ayuda sin sesión: el proxy la arma en /ayuda y esta dirección lleva a /ayuda. Solo textos de ayuda",
   "/dashboard": "requiere sesión",
   "/ingresos": "requiere sesión",
   "/egresos": "requiere sesión",
@@ -265,8 +266,10 @@ describe("páginas", () => {
   const privatePages = Object.entries(PAGES)
     .filter(([, rule]) => rule.startsWith("requiere sesión"))
     .map(([path]) => path);
-  // La 404 ([...rest]) no es una dirección: la arma cualquier dirección que no sea una página.
-  const publicPages = Object.keys(PAGES).filter((p) => !privatePages.includes(p) && p !== "/[...rest]");
+  // La 404 ([...rest]) no es una dirección: la arma cualquier dirección que no sea una página. Tampoco la versión sin
+  // sesión de una página de la app (/ayuda-publica): se ve en la dirección de esa página.
+  const publicVersions = [...PUBLIC_VERSIONS.values()];
+  const publicPages = Object.keys(PAGES).filter((p) => !privatePages.includes(p) && p !== "/[...rest]" && !publicVersions.includes(p));
 
   const visitWithoutSession = (path: string) =>
     getRedirectUrl(proxy(new NextRequest(`https://finanzas.test${path}`))) ?? "sigue";
@@ -296,6 +299,17 @@ describe("páginas", () => {
       expect(file, route).toBeDefined();
       expect(reachesRequireUser(file!), route).toBe(true);
       expect(visitWithoutSession(route), route).toBe("https://finanzas.test/login");
+    }
+  });
+
+  it("una página con versión sin sesión valida la sesión en la de la app (requireUser); la otra no tiene dirección propia", () => {
+    expect(PUBLIC_VERSIONS.size).toBeGreaterThan(0);
+    for (const [path, version] of PUBLIC_VERSIONS) {
+      const file = pageFiles.find((f) => routeOf(f) === path);
+      expect(file, path).toBeDefined();
+      expect(reachesRequireUser(file!), path).toBe(true);
+      expect(pageFiles.map(routeOf), version).toContain(version);
+      expect(visitWithoutSession(version), version).toBe(`https://finanzas.test${path}`);
     }
   });
 

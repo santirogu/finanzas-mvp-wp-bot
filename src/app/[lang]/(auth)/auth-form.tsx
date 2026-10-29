@@ -38,6 +38,7 @@ const TEXTS = texts(
     fix: "Sí, corregir",
     keepEmail: "Si tu correo está bien escrito, toca “Crear cuenta” de nuevo.",
     pending: "Un momento…",
+    help: "¿Necesitas ayuda?",
   },
   {
     en: {
@@ -61,6 +62,7 @@ const TEXTS = texts(
       fix: "Yes, fix it",
       keepEmail: "If your email is spelled right, tap “Create account” again.",
       pending: "One moment…",
+      help: "Need help?",
     },
   },
 );
@@ -228,6 +230,13 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
         {page.other}
         <Link href={isRegister ? "/login" : "/registro"} className="font-medium text-brand">
           {page.otherLink}
+        </Link>
+      </p>
+      {/* La Ayuda sin sesión (también para quien olvidó la contraseña). Sin precargar: con sesión, /ayuda es otra
+          página, y la precargada podría quedar en el navegador después de entrar (src/proxy.ts). */}
+      <p className="mt-3 text-center text-sm">
+        <Link href="/ayuda" prefetch={false} className="font-medium text-brand">
+          {t.help}
         </Link>
       </p>
     </div>

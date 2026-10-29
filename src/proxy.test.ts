@@ -87,6 +87,29 @@ describe("proxy · idioma", () => {
   });
 });
 
+describe("proxy · la Ayuda, con o sin sesión en la misma dirección", () => {
+  const cookie = SESSION_COOKIES[0];
+
+  it("sin sesión arma la versión pública en /ayuda, en el idioma de la cookie y con los parámetros", () => {
+    expect(visit("/ayuda")).toBe(inSpanish("/ayuda-publica"));
+    expect(visit("/ayuda?tema=bot", undefined, "idioma=en")).toBe(`sigue a ${ORIGIN}/en/ayuda-publica?tema=bot`);
+  });
+
+  it.each(SESSION_COOKIES)("con sesión (%s), la de la app", (session) => {
+    expect(visit("/ayuda", session)).toBe(inSpanish("/ayuda"));
+    expect(visit("/ayuda", session, "idioma=en")).toBe(`sigue a ${ORIGIN}/en/ayuda`);
+  });
+
+  it("la versión pública no tiene dirección propia: con sesión o sin ella, lleva a /ayuda", () => {
+    expect(visit("/ayuda-publica")).toBe(`${ORIGIN}/ayuda`);
+    expect(visit("/ayuda-publica?x=1", cookie)).toBe(`${ORIGIN}/ayuda`);
+  });
+
+  it("solo la dirección exacta: lo que empieza como /ayuda sigue siendo privado", () => {
+    for (const path of ["/ayuda/algo", "/ayudas", "/ayuda-publica/algo"]) expect(visit(path), path).toBe(`${ORIGIN}/login`);
+  });
+});
+
 describe("proxy · matcher", () => {
   const runsOn = (url: string) => unstable_doesMiddlewareMatch({ config, url });
 
