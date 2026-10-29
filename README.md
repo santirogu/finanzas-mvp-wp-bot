@@ -337,7 +337,7 @@ La app está en español (el de siempre) y en inglés, toda la web (el bot de Wh
      (`user.locale`) y en la cookie `idioma` de ese navegador, por un año;
   2. si no eligió en ese navegador, el de su cuenta: al iniciar sesión (también tras el segundo paso de un
      admin), Better Auth le pone la cookie (`hooks.after` en `src/lib/auth.ts`);
-  3. sin sesión, el que eligió en el selector **ES · EN** de la portada, el login o el registro
+  3. sin sesión, el que eligió en el selector **ES · EN** de la portada, el login, el registro o la Ayuda
      (`src/components/language-switch.tsx`, `chooseLanguageAction`): solo la cookie, por un año, y vuelve a la
      misma página (nunca a otra dirección: `LANGUAGE_SWITCH_PAGES`);
   4. si no, español, aunque el navegador pida otro idioma (decisión del dueño: el público es colombiano y el
@@ -611,7 +611,14 @@ La app está en español (el de siempre) y en inglés, toda la web (el bot de Wh
   que se abren (registrar movimientos, el bot de WhatsApp, gastos fijos y avisos, reportes y descargas,
   tu cuenta y tus datos). Los números salen de las constantes de la app y los comandos del bot, de la
   misma lista que su respuesta a "ayuda" (`src/modules/bot/help.ts`): si algo cambia, la ayuda también.
-  Con sesión y sin contacto, por ahora. Arriba, **Ver el tutorial de bienvenida** lo vuelve a abrir.
+  Arriba, **Ver el tutorial de bienvenida** lo vuelve a abrir.
+  - **Sin sesión** (decisión del dueño) se ve en la misma dirección: el proxy arma la versión pública
+    (`src/app/[lang]/ayuda-publica/`, `PUBLIC_VERSIONS` en `src/proxy.ts`; esa dirección por dentro lleva a
+    `/ayuda`). Se enlaza desde la portada (arriba y en el pie), el login y el registro. Dice lo mismo
+    (`help-content.tsx`), pero las páginas de la app van en negrita y no como enlace (llevarían al login), sin
+    las pestañas ni el tutorial, y con el selector de idioma.
+  - Esos enlaces no se precargan (`prefetch={false}`): con sesión, `/ayuda` es otra página, y la precargada sin
+    sesión podría quedar en el navegador después de entrar.
 - **Tutorial de bienvenida** (`src/components/welcome-tutorial.tsx`, `src/modules/tutorial/`): una ventana con
   cinco pasos cortos (qué es la app, el Resumen y cómo registrar, el bot de WhatsApp con el enlace a Mi cuenta,
   Fijos y sus avisos, Reportes y presupuestos), con Atrás, Siguiente y Omitir.

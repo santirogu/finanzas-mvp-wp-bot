@@ -40,6 +40,14 @@ describe("LanguageSwitch", () => {
     expect(Object.fromEntries(choose.mock.calls[0][0])).toEqual({ to: "/login", locale: "en" });
   });
 
+  it("con `to`, vuelve ahí en vez de a la ruta de la página (la Ayuda pública se arma por dentro en otra)", async () => {
+    const user = userEvent.setup();
+    navigation.pathname = "/es/ayuda-publica";
+    render(<LanguageSwitch to="/ayuda" />);
+    await user.click(group().getByRole("button", { name: "EN English" }));
+    expect(Object.fromEntries(choose.mock.calls[0][0])).toEqual({ to: "/ayuda", locale: "en" });
+  });
+
   it("en inglés, el grupo se llama Language y EN está marcado", () => {
     navigation.pathname = "/en";
     render(<LanguageSwitch />, { wrapper: InEnglish });

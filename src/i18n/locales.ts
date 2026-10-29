@@ -1,7 +1,7 @@
 // Los idiomas de la app (README → Idiomas). La dirección no lleva el idioma: el proxy (src/proxy.ts)
 // manda cada página, por dentro, a src/app/[lang]/ según la cookie `idioma` o, sin ella, en español (decisión
 // del dueño: el idioma del navegador no cuenta), y el navegador sigue viendo /dashboard (se arma como
-// /es/dashboard). Quien no tiene sesión lo cambia con el selector de la portada, el login y el registro. Así las
+// /es/dashboard). Quien no tiene sesión lo cambia con el selector de la portada, el login, el registro y la Ayuda. Así las
 // páginas públicas se prearman una vez por idioma y el <html lang> sale del segmento (next/root-params),
 // sin leer cookies al armarlas.
 
@@ -24,7 +24,7 @@ export const LOCALE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
  * Las páginas con el selector de idioma para quien no tiene sesión (src/components/language-switch.tsx): las
  * únicas a las que vuelve chooseLanguageAction, que nunca va a una dirección que mande el formulario.
  */
-export const LANGUAGE_SWITCH_PAGES: readonly string[] = ["/", "/login", "/registro"];
+export const LANGUAGE_SWITCH_PAGES: readonly string[] = ["/", "/login", "/registro", "/ayuda"];
 
 export const isLocale = (value: unknown): value is Locale => LOCALES.includes(value as Locale);
 

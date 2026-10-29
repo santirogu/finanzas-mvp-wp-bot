@@ -2,10 +2,11 @@ import type { MetadataRoute } from "next";
 import { connection } from "next/server";
 import { getAppUrl } from "@/lib/app-url";
 
-// Los buscadores pueden indexar la portada, el login, el registro y las páginas legales; nunca
+// Los buscadores pueden indexar la portada, el login, el registro, la Ayuda y las páginas legales; nunca
 // la parte privada ni la API. No es una medida de seguridad (esas páginas igual exigen sesión):
 // solo evita que los buscadores intenten entrar y terminen indexando la página de login.
-// src/app/robots.test.ts exige que toda página de la parte privada (src/app/[lang]/(app)) esté aquí.
+// src/app/robots.test.ts exige que toda página de la parte privada (src/app/[lang]/(app)) esté aquí, salvo las
+// que tienen versión sin sesión en la misma dirección (la Ayuda: PUBLIC_VERSIONS en src/proxy.ts).
 export const PRIVATE_PATHS = [
   "/dashboard",
   "/ingresos",
@@ -15,7 +16,6 @@ export const PRIVATE_PATHS = [
   "/configuracion",
   "/movimientos/",
   "/cuenta",
-  "/ayuda",
   "/admin",
   "/simulador",
   "/api/",

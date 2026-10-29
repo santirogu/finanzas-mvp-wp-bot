@@ -27,10 +27,11 @@ describe("chooseLanguageAction", () => {
     expect(jar.set).toHaveBeenCalledWith("idioma", "en", expect.objectContaining({ path: "/", maxAge: 365 * 24 * 60 * 60, httpOnly: true, sameSite: "lax" }));
     await expect(chooseLanguageAction(form({ locale: "es", to: "/registro" }))).rejects.toThrow("NEXT_REDIRECT /registro");
     await expect(chooseLanguageAction(form({ locale: "es", to: "/" }))).rejects.toThrow("NEXT_REDIRECT /");
+    await expect(chooseLanguageAction(form({ locale: "en", to: "/ayuda" }))).rejects.toThrow("NEXT_REDIRECT /ayuda");
   });
 
-  it("solo vuelve a la portada, el login o el registro: cualquier otra dirección, a la portada", async () => {
-    for (const to of ["https://otro.example", "//otro.example", "/dashboard", "/login?x=1", ""]) {
+  it("solo vuelve a la portada, el login, el registro o la Ayuda: cualquier otra dirección, a la portada", async () => {
+    for (const to of ["https://otro.example", "//otro.example", "/dashboard", "/login?x=1", "/ayuda-publica", ""]) {
       await expect(chooseLanguageAction(form({ locale: "en", to })), to).rejects.toThrow(/^NEXT_REDIRECT \/$/);
     }
     await expect(chooseLanguageAction(form({ locale: "en" }))).rejects.toThrow(/^NEXT_REDIRECT \/$/);
