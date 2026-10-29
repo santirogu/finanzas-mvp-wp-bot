@@ -5,6 +5,7 @@ import {
   aiPausedReply,
   aiRateLimitedReply,
   aiUnavailableReply,
+  amountUnclearReply,
   balanceReply,
   errorReply,
   futureMonthReply,
@@ -18,6 +19,7 @@ import {
   linkInvalidReply,
   linkRateLimitedReply,
   notLinkedReply,
+  notUnderstoodReply,
   photoDownloadFailedReply,
   photoFallbackReply,
   photoFormatReply,
@@ -25,6 +27,7 @@ import {
   photoUnreadableReply,
   registeredReply,
   suspendedReply,
+  tooLongReply,
   tooManyTransactionsReply,
   undoReply,
   unsupportedTypeReply,
@@ -50,7 +53,7 @@ describe("registeredReply", () => {
           occurredOn: "2026-10-13",
         },
       ],
-      { today: "2026-10-13", currency: "COP", balance: 2700000, range },
+      { today: "2026-10-13", currency: "COP", balance: 2700000, range, locale: "es" },
     );
     expect(nbsp(text)).toBe(
       [
@@ -70,6 +73,7 @@ describe("registeredReply", () => {
         currency: "COP",
         balance: 1220000,
         range,
+        locale: "es",
         budgetAlerts: [
           { level: "near", text: "Alimentación: llevas $410.000,00 de $500.000,00 (82 %)" },
           { level: "over", text: "Transporte: te pasaste del presupuesto por $10.000,00 ($310.000,00 de $300.000,00)" },
@@ -90,7 +94,7 @@ describe("registeredReply", () => {
   it("confirma con los centavos que se escribieron", () => {
     const text = registeredReply(
       [{ type: "expense", amount: 25900.5, description: "Almuerzo", category: "Alimentación", occurredOn: "2026-10-13" }],
-      { today: "2026-10-13", currency: "COP", balance: -25900.5, range },
+      { today: "2026-10-13", currency: "COP", balance: -25900.5, range, locale: "es" },
     );
     expect(text).toContain("✅ Egreso Anotado: *Almuerzo* — $25.900,50 (Alimentación)");
     expect(text).toContain("Balance de octubre: *−$25.900,50*");
@@ -115,7 +119,7 @@ describe("registeredReply", () => {
             occurredOn: "2026-10-13",
           },
         ],
-        { today: "2026-10-13", currency: "COP", balance: 70000, range },
+        { today: "2026-10-13", currency: "COP", balance: 70000, range, locale: "es" },
       ),
     );
     expect(text).toContain("Egreso Anotado: *Gasolina* — $30.000,00 (Transporte · 12 de oct.)");
@@ -129,7 +133,7 @@ describe("balanceReply", () => {
       nbsp(
         balanceReply(
           { income: 3200000, expense: 500000, balance: 2700000, count: 2 },
-          { currency: "COP", range },
+          { currency: "COP", range, locale: "es" },
         ),
       ),
     ).toBe(
@@ -144,13 +148,13 @@ describe("balanceReply", () => {
 
   it("con centavos", () => {
     expect(
-      balanceReply({ income: 100000.5, expense: 45900.25, balance: 54100.25, count: 2 }, { currency: "COP", range }),
+      balanceReply({ income: 100000.5, expense: 45900.25, balance: 54100.25, count: 2 }, { currency: "COP", range, locale: "es" }),
     ).toContain("Ingresos: $100.000,50\nEgresos: $45.900,25\nBalance: *$54.100,25*");
   });
 
   it("invita a registrar si no hay movimientos", () => {
     expect(
-      balanceReply({ income: 0, expense: 0, balance: 0, count: 0 }, { currency: "COP", range }),
+      balanceReply({ income: 0, expense: 0, balance: 0, count: 0 }, { currency: "COP", range, locale: "es" }),
     ).toContain("Aún no tienes movimientos en octubre de 2026");
   });
 
@@ -158,16 +162,16 @@ describe("balanceReply", () => {
   const summary = (balance: number, count = 3) => ({ income: balance > 0 ? balance : 0, expense: balance < 0 ? -balance : 0, balance, count });
 
   it("con el mes anterior, una línea más con cómo cambió el balance (como en el Resumen)", () => {
-    const up = balanceReply(summary(2940627.25), { currency: "COP", range, previous: { month: september, summary: summary(1136648.5), upToToday: false } });
+    const up = balanceReply(summary(2940627.25), { currency: "COP", range, locale: "es", previous: { month: september, summary: summary(1136648.5), upToToday: false } });
     expect(nbsp(up).split("\n").at(-1)).toBe("_↗ $1.803.978,75 más que septiembre_");
-    const down = balanceReply(summary(100000), { currency: "COP", range, previous: { month: september, summary: summary(250000), upToToday: false } });
+    const down = balanceReply(summary(100000), { currency: "COP", range, locale: "es", previous: { month: september, summary: summary(250000), upToToday: false } });
     expect(nbsp(down).split("\n").at(-1)).toBe("_↘ $150.000,00 menos que septiembre_");
-    const same = balanceReply(summary(100000), { currency: "COP", range, previous: { month: september, summary: summary(100000), upToToday: false } });
+    const same = balanceReply(summary(100000), { currency: "COP", range, locale: "es", previous: { month: september, summary: summary(100000), upToToday: false } });
     expect(nbsp(same).split("\n").at(-1)).toBe("_Igual que septiembre_");
   });
 
   it("con el mes en curso, contra el anterior hasta el mismo día", () => {
-    const reply = balanceReply(summary(100000), { currency: "COP", range, previous: { month: september, summary: summary(250000), upToToday: true } });
+    const reply = balanceReply(summary(100000), { currency: "COP", range, locale: "es", previous: { month: september, summary: summary(250000), upToToday: true } });
     expect(nbsp(reply).split("\n").at(-1)).toBe("_↘ $150.000,00 menos que a esta altura de septiembre_");
   });
 
@@ -175,6 +179,7 @@ describe("balanceReply", () => {
     const reply = balanceReply(summary(100000), {
       currency: "COP",
       range: { year: 2025, month: 12 },
+      locale: "es",
       previous: { month: { year: 2025, month: 11 }, summary: summary(0, 0), upToToday: false },
     });
     expect(reply.split("\n")).toHaveLength(4);
@@ -184,7 +189,7 @@ describe("balanceReply", () => {
 
 describe("tooOldMonthReply", () => {
   it("dice desde cuándo hay balances y cómo pedir otro", () => {
-    expect(tooOldMonthReply).toBe(
+    expect(tooOldMonthReply("es")).toBe(
       "Solo puedo darte balances desde enero de 2000. Prueba con *balance* (este mes) o *balance mes pasado*.",
     );
   });
@@ -192,7 +197,7 @@ describe("tooOldMonthReply", () => {
 
 describe("futureMonthReply", () => {
   it("dice que el mes todavía no llega y cómo pedir otro", () => {
-    expect(futureMonthReply({ year: 2026, month: 12 })).toBe(
+    expect(futureMonthReply({ year: 2026, month: 12 }, "es")).toBe(
       "Diciembre de 2026 todavía no llega 🙂. Prueba con *balance* (este mes) o *balance mes pasado*.",
     );
   });
@@ -200,39 +205,44 @@ describe("futureMonthReply", () => {
 
 describe("undoReply", () => {
   it("informa si no hay nada que deshacer", () => {
-    expect(undoReply([], "COP")).toContain("No encontré");
+    expect(undoReply([], "COP", "es")).toContain("No encontré");
   });
 });
 
 describe("mensajes de vinculación y ayuda", () => {
   it("saluda por el primer nombre o sin nombre", () => {
     // El vocativo va entre comas (Ortografía de la RAE).
-    expect(helpReply("Ana Pérez")).toMatch(/^Hola, Ana 👋\n/);
-    expect(helpReply()).toMatch(/^Hola 👋\n/);
-    expect(linkedReply("Ana Pérez")).toContain("¡Listo, Ana!");
-    expect(linkedReply("")).toContain("¡Listo!");
+    expect(helpReply("es", "Ana Pérez")).toMatch(/^Hola, Ana 👋\n/);
+    expect(helpReply("es")).toMatch(/^Hola 👋\n/);
+    expect(linkedReply("Ana Pérez", "es")).toContain("¡Listo, Ana!");
+    expect(linkedReply("", "es")).toContain("¡Listo!");
   });
 
-  it("indica dónde vincular el número, que hay que enviar VINCULAR con el código, y dónde crear la cuenta", () => {
+  it("indica dónde vincular el número, que hay que enviar VINCULAR con el código, y dónde crear la cuenta; debajo, en inglés", () => {
     expect(notLinkedReply("https://finanzas.test")).toBe(
       [
         "Hola 👋",
         "Este número aún no está vinculado a una cuenta. Entra a https://finanzas.test/cuenta (*Mi cuenta*), toca *Conectar WhatsApp* y envíame el mensaje que te aparece: *VINCULAR* y el código.",
         "",
         "Si no tienes cuenta, créala en https://finanzas.test/registro.",
+        "",
+        "Hi 👋",
+        "This number isn't linked to an account yet. Go to https://finanzas.test/cuenta (*My account*), tap *Connect WhatsApp* and send me the message you see: *LINK* and the code.",
+        "",
+        "If you don't have an account, create one at https://finanzas.test/registro.",
       ].join("\n"),
     );
   });
 
   it("a una cuenta suspendida le dice que no registra nada ni responde, y cómo escribirnos, sin el motivo", () => {
-    expect(suspendedReply).toBe(
+    expect(suspendedReply("es")).toBe(
       `Tu cuenta está suspendida, así que no puedo registrar movimientos ni responder tus consultas. Si crees que es un error, escríbenos a ${CONTACT_EMAIL}.`,
     );
   });
 
   it("lista lo que se deshizo", () => {
     expect(
-      undoReply([{ description: "Café", amount: 6500, type: "expense" }], "COP").replace(
+      undoReply([{ description: "Café", amount: 6500, type: "expense" }], "COP", "es").replace(
         /\u00a0/g,
         " ",
       ),
@@ -240,7 +250,7 @@ describe("mensajes de vinculación y ayuda", () => {
   });
 
   it("lista lo que se deshizo, con sus centavos", () => {
-    expect(undoReply([{ description: "Café", amount: 6500.5, type: "expense" }], "COP")).toBe(
+    expect(undoReply([{ description: "Café", amount: 6500.5, type: "expense" }], "COP", "es")).toBe(
       "Listo, eliminé:\n🗑️ Café — $6.500,50",
     );
   });
@@ -249,7 +259,7 @@ describe("mensajes de vinculación y ayuda", () => {
 describe("textos fijos del bot", () => {
   // Protege los textos que ve el usuario: un cambio accidental (o un texto vacío) rompe esta prueba.
   it("ayuda", () => {
-    expect(helpReply("Ana Pérez")).toBe(
+    expect(helpReply("es", "Ana Pérez")).toBe(
       [
         "Hola, Ana 👋",
         "Escríbeme tus ingresos y gastos como se los contarías a alguien:",
@@ -270,53 +280,56 @@ describe("textos fijos del bot", () => {
   });
 
   it("errores y vinculación", () => {
-    expect(linkInvalidReply).toBe("Ese código no es válido o ya venció. Pide otro en *Mi cuenta*: toca *Conectar WhatsApp*.");
-    expect(linkRateLimitedReply).toBe("Recibí demasiados códigos equivocados desde este número. Espera una hora y vuelve a intentarlo.");
-    expect(unsupportedTypeReply).toBe("Por ahora solo entiendo mensajes de texto ✍️ y fotos de facturas 🧾");
+    expect(linkInvalidReply("es")).toBe("Ese código no es válido o ya venció. Pide otro en *Mi cuenta*: toca *Conectar WhatsApp*.");
+    expect(linkRateLimitedReply("es")).toBe("Recibí demasiados códigos equivocados desde este número. Espera una hora y vuelve a intentarlo.");
+    expect(unsupportedTypeReply("es")).toBe("Por ahora solo entiendo mensajes de texto ✍️ y fotos de facturas 🧾");
     // El error puede llegar después de guardar: que revise antes de enviarlo de nuevo.
-    expect(errorReply).toBe("Tuve un problema con tu mensaje 😕. Revisa en la web si quedó y, si no, envíamelo de nuevo en un momento.");
-    expect(aiUnavailableReply).toBe(
+    expect(errorReply("es")).toBe("Tuve un problema con tu mensaje 😕. Revisa en la web si quedó y, si no, envíamelo de nuevo en un momento.");
+    expect(aiUnavailableReply("es")).toBe(
       "No registré tu mensaje: por ahora solo entiendo *balance*, *reporte*, *deshacer* y *ayuda*. Muy pronto podrás registrar tus movimientos escribiendo como hablas ✍️.",
     );
   });
 
   it("con Claude en pausa (/admin/bot): primero que no lo registró, después dónde registrarlo y los comandos que siguen", () => {
-    expect(aiPausedReply("https://finanzas.app")).toBe(
+    expect(aiPausedReply("https://finanzas.app", "es")).toBe(
       "No registré tu mensaje: por ahora no puedo entender mensajes escritos libremente ni fotos 🛠️. Regístralo en la web, en *Egresos* o *Ingresos*: https://finanzas.app/egresos. Siguen funcionando *balance*, *reporte*, *deshacer* y *ayuda*.",
     );
   });
 
   it("con el tope mensual de tokens alcanzado: lo mismo que en pausa", () => {
-    expect(aiMonthlyLimitReply("https://finanzas.app")).toBe(
+    expect(aiMonthlyLimitReply("https://finanzas.app", "es")).toBe(
       "No registré tu mensaje: este mes ya usé todo mi cupo para entender mensajes escritos libremente y fotos 🛠️. Regístralo en la web, en *Egresos* o *Ingresos*: https://finanzas.app/egresos. Siguen funcionando *balance*, *reporte*, *deshacer* y *ayuda*.",
     );
   });
 
   it("fotos de facturas que no se registraron: qué pasó y cómo seguir, siempre con la opción de escribirlo", () => {
-    expect(photoFallbackReply).toBe("No encontré una factura en la foto. Envíame una foto más clara del recibo o escríbeme el gasto, por ejemplo “almuerzo 25 mil”.");
-    expect(photoUnreadableReply).toBe("No logré leer el total de la factura. Envíame una foto más clara o escríbeme el gasto, por ejemplo “almuerzo 25 mil”.");
-    expect(photoManyReply).toBe("No registré nada: necesito una sola factura por foto. Envíamelas una por una o escríbeme el gasto, por ejemplo “almuerzo 25 mil”.");
-    expect(photoFormatReply).toBe("No pude abrir esa imagen. Envíame la factura como foto o escríbeme el gasto, por ejemplo “almuerzo 25 mil”.");
-    expect(photoDownloadFailedReply).toBe("No pude descargar tu foto 😕. Envíamela de nuevo en un momento o escríbeme el gasto, por ejemplo “almuerzo 25 mil”.");
+    expect(photoFallbackReply("es")).toBe("No encontré una factura en la foto. Envíame una foto más clara del recibo o escríbeme el gasto, por ejemplo “almuerzo 25 mil”.");
+    expect(photoUnreadableReply("es")).toBe("No logré leer el total de la factura. Envíame una foto más clara o escríbeme el gasto, por ejemplo “almuerzo 25 mil”.");
+    expect(photoManyReply("es")).toBe("No registré nada: necesito una sola factura por foto. Envíamelas una por una o escríbeme el gasto, por ejemplo “almuerzo 25 mil”.");
+    expect(photoFormatReply("es")).toBe("No pude abrir esa imagen. Envíame la factura como foto o escríbeme el gasto, por ejemplo “almuerzo 25 mil”.");
+    expect(photoDownloadFailedReply("es")).toBe("No pude descargar tu foto 😕. Envíamela de nuevo en un momento o escríbeme el gasto, por ejemplo “almuerzo 25 mil”.");
   });
 
   it("límites del bot: primero que no registró nada", () => {
-    expect(aiRateLimitedReply).toBe(
+    expect(aiRateLimitedReply("es")).toBe(
       "No registré este mensaje: recibí muchos en poco tiempo. Espera un rato y envíamelo de nuevo. Mientras tanto, puedes escribir *balance*, *reporte*, *deshacer* o *ayuda*, o registrarlo en la web.",
     );
-    expect(tooManyTransactionsReply(20)).toBe("No registré ninguno: tu mensaje trae más de 20 movimientos. Envíamelos en varios mensajes, hasta 20 en cada uno.");
+    expect(tooManyTransactionsReply(20, "es")).toBe("No registré ninguno: tu mensaje trae más de 20 movimientos. Envíamelos en varios mensajes, hasta 20 en cada uno.");
   });
 
   it("los mensajes que no registran nada lo dicen al empezar", () => {
-    for (const reply of [aiRateLimitedReply, tooManyTransactionsReply(20), aiPausedReply("x"), aiMonthlyLimitReply("x"), aiUnavailableReply]) {
+    for (const reply of [aiRateLimitedReply("es"), tooManyTransactionsReply(20, "es"), aiPausedReply("x", "es"), aiMonthlyLimitReply("x", "es"), aiUnavailableReply("es")]) {
       expect(reply).toMatch(/^No registré /);
+    }
+    for (const reply of [aiRateLimitedReply("en"), tooManyTransactionsReply(20, "en"), aiPausedReply("x", "en"), aiMonthlyLimitReply("x", "en"), aiUnavailableReply("en")]) {
+      expect(reply).toMatch(/^I didn't add /);
     }
   });
 });
 
 describe("reportReply", () => {
   const october = { year: 2026, month: 10 };
-  const ctx = { currency: "COP", appUrl: "https://finanzas.app" };
+  const ctx = { currency: "COP", appUrl: "https://finanzas.app", locale: "es" } as const;
   const summary: PeriodSummary = {
     income: 33350000,
     expense: 10977000,
@@ -405,7 +418,152 @@ describe("reportReply", () => {
   });
 
   it("un año futuro o de antes del 2000", () => {
-    expect(futureYearReply(2027)).toBe("2027 todavía no llega 🙂. Prueba con *reporte* (los últimos 12 meses) o *reporte* y un año que ya pasó.");
-    expect(tooOldYearReply).toBe("Solo puedo darte reportes desde el 2000. Prueba con *reporte* (los últimos 12 meses) o *reporte 2025*.");
+    expect(futureYearReply(2027, "es")).toBe("2027 todavía no llega 🙂. Prueba con *reporte* (los últimos 12 meses) o *reporte* y un año que ya pasó.");
+    expect(tooOldYearReply("es")).toBe("Solo puedo darte reportes desde el 2000. Prueba con *reporte* (los últimos 12 meses) o *reporte 2025*.");
+  });
+});
+
+// Una cuenta en inglés: lo mismo, con los montos y las fechas de EE. UU. y los comandos en inglés.
+describe("en inglés", () => {
+  const october = { year: 2026, month: 10 };
+
+  it("lo que se registró, con la fecha de otro día, los avisos y el balance del mes", () => {
+    const text = registeredReply(
+      [
+        { type: "expense", amount: 25900.5, description: "Lunch", category: "Food", occurredOn: "2026-10-12" },
+        { type: "income", amount: 100000, description: "Sale", category: null, occurredOn: "2026-10-13" },
+      ],
+      {
+        today: "2026-10-13",
+        currency: "COP",
+        balance: -1500,
+        range,
+        locale: "en",
+        budgetAlerts: [{ level: "near", text: "Food: you're at $410,000.00 of $500,000.00 (82%)" }],
+      },
+    );
+    expect(text.split("\n")).toEqual([
+      "✅ Expense noted: *Lunch* — $25,900.50 (Food · Oct 12)",
+      "✅ Income noted: *Sale* — $100,000.00",
+      "",
+      "⚠️ Food: you're at $410,000.00 of $500,000.00 (82%)",
+      "",
+      "October balance: *−$1,500.00*",
+      "_Send *undo* if I got it wrong._",
+    ]);
+  });
+
+  it("el balance de un mes, con la comparación con el anterior", () => {
+    const reply = balanceReply(
+      { income: 3200000, expense: 500000, balance: 2700000, count: 2 },
+      { currency: "COP", range, locale: "en", previous: { month: { year: 2026, month: 9 }, summary: { income: 0, expense: 100000, balance: -100000, count: 1 }, upToToday: true } },
+    );
+    expect(reply.split("\n")).toEqual([
+      "📊 *October 2026*",
+      "Income: $3,200,000.00",
+      "Expenses: $500,000.00",
+      "Balance: *$2,700,000.00*",
+      "_↗ $2,800,000.00 more than at this point in September_",
+    ]);
+    expect(balanceReply({ income: 0, expense: 0, balance: 0, count: 0 }, { currency: "COP", range, locale: "en" })).toBe(
+      "You don't have any transactions in October 2026 yet. Send me something like “spent 20k on lunch”.",
+    );
+  });
+
+  it("el reporte, con el período en inglés (sin pasarlo a minúscula)", () => {
+    const summary: PeriodSummary = {
+      income: 33350000,
+      expense: 10977000,
+      balance: 22373000,
+      saved: "67",
+      averageExpense: { amount: 3748000, months: 3, withoutCurrent: true },
+      topMonth: { month: october, expense: 7229000 },
+    };
+    const categories: CategoryReport = {
+      total: 10977000,
+      compared: null,
+      averaged: [],
+      rows: [{ emoji: "🏠", name: "Housing", total: 7000000, share: 0, color: 0, change: null }],
+    };
+    const recurring = { items: [{}], total: 1800000 };
+    const ctx = { currency: "COP", appUrl: "https://finanzas.app", locale: "en" } as const;
+    expect(reportReply({ summary, categories, recurring }, reportPeriod(undefined, october, "en"), ctx).split("\n")).toEqual([
+      "📊 *Report from November 2025 to October 2026*",
+      "Income: $33,350,000.00",
+      "Expenses: $10,977,000.00",
+      "Balance: *$22,373,000.00* (you saved 67%)",
+      "Average spending per month: $3,748,000.00",
+      "Month with the most spending: October 2026 ($7,229,000.00)",
+      "Where your money went: 🏠 Housing 64%",
+      "Bills: $1,800,000.00 a month",
+      "",
+      "More details in *Reports*: https://finanzas.app/reportes",
+    ]);
+    const overspent = { ...summary, saved: "overspent" as const };
+    const january = reportReply({ summary: overspent, categories, recurring }, reportPeriod("2026", { year: 2026, month: 1 }, "en"), ctx);
+    expect(january).toMatch(/^📊 \*Report for January 2026\*\n/);
+    expect(january).toContain("(you spent more than you earned)");
+    const empty = { ...summary, income: 0, expense: 0, saved: null, averageExpense: null, topMonth: null };
+    const none = { summary: empty, categories: { ...categories, rows: [], total: 0 }, recurring: { items: [], total: 0 } };
+    expect(reportReply(none, reportPeriod(undefined, october, "en"), ctx)).toBe(
+      "You don't have any transactions from November 2025 to October 2026. Send me something like “spent 20k on lunch” and you'll see how you're doing here.",
+    );
+    expect(reportReply(none, reportPeriod("2026", { year: 2026, month: 1 }, "en"), ctx)).toMatch(/^You don't have any transactions in January 2026\./);
+  });
+
+  it("la ayuda, con sus ejemplos y sus comandos en inglés", () => {
+    expect(helpReply("en", "Ana Pérez")).toBe(
+      [
+        "Hi, Ana 👋",
+        "Send me your income and expenses the way you'd tell someone:",
+        "",
+        "• _I bought some shoes for $500.000_",
+        "• _lunch 25k and taxi 12k_",
+        "• _I got paid 2.100.000_",
+        "",
+        "📸 Or send me a photo of a receipt and I'll add the total.",
+        "",
+        "I also understand:",
+        "• *balance* — how you're doing this month",
+        "• *balance september* or *balance last month* — another month",
+        "• *report* — your last 12 months (or *report 2025*, a year)",
+        "• *undo* — deletes the last thing I added",
+      ].join("\n"),
+    );
+    expect(helpReply("en")).toMatch(/^Hi 👋\n/);
+  });
+
+  it("vincular, deshacer y los meses que no se pueden pedir", () => {
+    expect(linkedReply("Ana Pérez", "en")).toBe("✅ All set, Ana! Your WhatsApp is linked.\n\nTry sending me: _spent 20k on lunch_");
+    expect(linkedReply("", "en")).toMatch(/^✅ All set! /);
+    expect(linkInvalidReply("en")).toBe("That code isn't valid or has expired. Get another one in *My account*: tap *Connect WhatsApp*.");
+    expect(linkRateLimitedReply("en")).toBe("I got too many wrong codes from this number. Wait an hour and try again.");
+    expect(undoReply([{ description: "Coffee", amount: 6500.5, type: "expense" }], "COP", "en")).toBe("Done, I deleted:\n🗑️ Coffee — $6,500.50");
+    expect(undoReply([], "COP", "en")).toBe("I didn't find any transactions added on WhatsApp to undo.");
+    expect(futureMonthReply({ year: 2026, month: 12 }, "en")).toBe("December 2026 isn't here yet 🙂. Try *balance* (this month) or *balance last month*.");
+    expect(tooOldMonthReply("en")).toMatch(/^I can only give you balances from January 2000\./);
+    expect(futureYearReply(2027, "en")).toBe("2027 isn't here yet 🙂. Try *report* (the last 12 months) or *report* and a year that already passed.");
+    expect(tooOldYearReply("en")).toMatch(/^I can only give you reports from 2000 on\./);
+  });
+
+  it("los avisos: cuenta suspendida, tipo de mensaje, fotos, errores y Claude en pausa", () => {
+    expect(suspendedReply("en")).toBe(
+      `Your account is suspended, so I can't add transactions or answer your questions. If you think it's a mistake, write to us at ${CONTACT_EMAIL}.`,
+    );
+    expect(unsupportedTypeReply("en")).toBe("For now I only understand text messages ✍️ and photos of receipts 🧾");
+    for (const reply of [photoFallbackReply, photoUnreadableReply, photoManyReply, photoFormatReply, photoDownloadFailedReply]) {
+      expect(reply("en")).toMatch(/ or type the expense, for example “lunch 25k”\.$/);
+    }
+    expect(errorReply("en")).toBe("I had a problem with your message 😕. Check on the web whether it was added and, if not, send it to me again in a moment.");
+    expect(aiPausedReply("https://finanzas.app", "en")).toBe(
+      "I didn't add your message: for now I can't understand freely written messages or photos 🛠️. Add it on the web, in *Expenses* or *Income*: https://finanzas.app/egresos. *balance*, *report*, *undo* and *help* still work.",
+    );
+  });
+
+  it("los textos fijos del intérprete", () => {
+    expect(tooLongReply("es")).toBe("Tu mensaje es muy largo. Envíamelo en partes más cortas.");
+    expect(tooLongReply("en")).toBe("Your message is too long. Send it to me in shorter parts.");
+    expect(notUnderstoodReply("en")).toBe("I couldn't find any income or expense in your message. Try something like “spent 20k on lunch”.");
+    expect(amountUnclearReply("en")).toBe("I didn't understand the amount. Send me the whole transaction with its amount, for example “lunch 25k”.");
   });
 });

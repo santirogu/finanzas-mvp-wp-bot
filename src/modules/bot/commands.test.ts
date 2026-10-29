@@ -241,3 +241,118 @@ describe("reportYear", () => {
     expect(reportYear({ year: 99 }, october)).toEqual({ tooOld: true });
   });
 });
+
+// Los comandos se entienden en los dos idiomas, sea cual sea el de la cuenta (decisión del dueño).
+describe("parseCommand · en inglés", () => {
+  it.each([
+    "balance",
+    "my balance",
+    "What's my balance?",
+    // El apóstrofo curvo del teclado del iPhone.
+    "What’s my balance?",
+    "what is my balance",
+    "summary",
+    "balance this month",
+    "How much did I spend?",
+    "how much have I spent this month",
+    "how much money did I make",
+    "how much i've spent",
+    "how much I have received this month",
+    "how much did I get",
+    "how much have I earned",
+    "How am I doing?",
+    "my expenses this month",
+    "what are my expenses",
+  ])("%j es el balance de este mes", (text) => {
+    expect(parseCommand(text)).toEqual({ kind: "command", command: "balance" });
+  });
+
+  it.each([
+    ["balance september", { month: 9 }],
+    ["Balance for September", { month: 9 }],
+    ["summary of march 2025", { month: 3, year: 2025 }],
+    ["balance in dec", { month: 12 }],
+    ["balance aug", { month: 8 }],
+    ["balance jan", { month: 1 }],
+    ["balance apr", { month: 4 }],
+    ["balance feb", { month: 2 }],
+    ["balance june", { month: 6 }],
+    ["balance july", { month: 7 }],
+    ["balance october", { month: 10 }],
+    ["balance november", { month: 11 }],
+    ["balance december", { month: 12 }],
+    ["balance february", { month: 2 }],
+    ["balance january of 2025", { month: 1, year: 2025 }],
+    ["September balance", { month: 9 }],
+    ["my march 2025 summary", { month: 3, year: 2025 }],
+    ["how much did I spend in september", { month: 9 }],
+    ["How did I do in August 2025?", { month: 8, year: 2025 }],
+    ["my income for may", { month: 5 }],
+    ["my spending during july", { month: 7 }],
+    ["what were my expenses in march", { month: 3 }],
+    ["balance last month", "previous"],
+    ["balance for the previous month", "previous"],
+    ["balance for last month", "previous"],
+    ["last month's balance", "previous"],
+    ["Last month’s balance", "previous"],
+    ["how much did I spend last month", "previous"],
+    ["my expenses in the last month", "previous"],
+  ])("%j", (text, period) => {
+    expect(balanceOf(text)).toEqual(period);
+  });
+
+  it.each([
+    ["report", {}],
+    ["my report", {}],
+    ["Report for the last 12 months", {}],
+    ["report last 12 months", {}],
+    ["report 2025", { period: { year: 2025 } }],
+    ["report for 2025", { period: { year: 2025 } }],
+    ["report of the year 2024", { period: { year: 2024 } }],
+    ["2025 report", { period: { year: 2025 } }],
+    ["my 2025 report", { period: { year: 2025 } }],
+    ["report this year", { period: "this-year" }],
+    ["report for this year", { period: "this-year" }],
+    ["annual report", { period: "this-year" }],
+    ["yearly report", { period: "this-year" }],
+    ["this year's report", { period: "this-year" }],
+  ])("%s es el reporte", (text, expected) => {
+    expect(parseCommand(text)).toEqual({ kind: "command", command: "report", ...expected });
+  });
+
+  it.each(["undo", "Undo!", "delete", "remove", "undo last", "delete the last one", "remove last"])("%j es deshacer", (text) => {
+    expect(parseCommand(text)).toEqual({ kind: "command", command: "undo" });
+  });
+
+  it.each(["help", "Hi", "hello!", "hey", "menu", "commands", "Good morning"])("%j es la ayuda", (text) => {
+    expect(parseCommand(text)).toEqual({ kind: "command", command: "help" });
+  });
+
+  it.each([
+    "spent 20k on lunch",
+    "how much did I spend on food",
+    "my expenses for groceries",
+    "report of my expenses",
+    "I want the report",
+    "undo the lunch",
+    "hi, I spent 20k",
+    "balance next month",
+    "september",
+  ])("%j no es un comando (va a Claude)", (text) => {
+    expect(parseCommand(text)).toBeNull();
+  });
+});
+
+describe("parseCommand · vincular", () => {
+  it("con VINCULAR o LINK y el código, con el idioma de la palabra que usó", () => {
+    expect(parseCommand("VINCULAR 482913")).toEqual({ kind: "link", code: "482913", locale: "es" });
+    expect(parseCommand("LINK 482913")).toEqual({ kind: "link", code: "482913", locale: "en" });
+    expect(parseCommand("link   482913")).toEqual({ kind: "link", code: "482913", locale: "en" });
+  });
+
+  it("sin el código de 6 dígitos, o con algo más, no es vincular", () => {
+    for (const text of ["LINK", "link 48291", "link 4829133", "link my account 482913", "482913"]) {
+      expect(parseCommand(text)?.kind).not.toBe("link");
+    }
+  });
+});

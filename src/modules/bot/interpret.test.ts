@@ -10,7 +10,7 @@ const categories: CategoryNames = {
   expense: DEFAULT_CATEGORIES.expense.map((c) => c.name),
   income: DEFAULT_CATEGORIES.income.map((c) => c.name),
 };
-const ctx = { today: "2026-10-13", categories };
+const ctx = { today: "2026-10-13", categories, locale: "es" } as const;
 const usage = { model: "test", inputTokens: 0, outputTokens: 0 };
 
 const fakeExtractor = (result: ExtractionResult) => vi.fn<Extractor>().mockResolvedValue(result);
@@ -31,7 +31,7 @@ describe("parseCommand", () => {
   });
 
   it("reconoce el código de vinculación", () => {
-    expect(parseCommand("VINCULAR 482913")).toEqual({ kind: "link", code: "482913" });
+    expect(parseCommand("VINCULAR 482913")).toEqual({ kind: "link", code: "482913", locale: "es" });
     expect(parseCommand("vincular 1234")).toBeNull();
   });
 
@@ -249,7 +249,7 @@ describe("interpretMessage", () => {
       date: "2026-10-13",
     }));
     const intent = await interpretMessage("muchos gastos", ctx, fakeExtractor({ ok: true, transactions: many, reply: null, usage }));
-    expect(intent).toEqual({ kind: "reply", text: tooManyTransactionsReply(20), usage });
+    expect(intent).toEqual({ kind: "reply", text: tooManyTransactionsReply(20, "es"), usage });
 
     const twenty = await interpretMessage(
       "veinte gastos",
@@ -403,7 +403,7 @@ describe("parseCommand · solo comandos exactos", () => {
   it("acepta variaciones de los comandos", () => {
     expect(parseCommand("deshacer último")).toEqual({ kind: "command", command: "undo" });
     expect(parseCommand("¡¡Balance!!")).toEqual({ kind: "command", command: "balance" });
-    expect(parseCommand("vincular   482913")).toEqual({ kind: "link", code: "482913" });
+    expect(parseCommand("vincular   482913")).toEqual({ kind: "link", code: "482913", locale: "es" });
   });
 });
 
@@ -530,21 +530,21 @@ describe("interpretPhoto", () => {
 
   it("si la IA propone varios movimientos, no registra ninguno y pide una factura por foto", async () => {
     const intent = await interpretPhoto({ image, caption: null }, ctx, fakeExtractor(ok([receipt, { ...receipt, amount: 1200 }])));
-    expect(intent).toEqual({ kind: "reply", text: photoManyReply, usage });
+    expect(intent).toEqual({ kind: "reply", text: photoManyReply("es"), usage });
   });
 
   it("si el total no pasa la validación, pide una foto más clara", async () => {
     const intent = await interpretPhoto({ image, caption: null }, ctx, fakeExtractor(ok([{ ...receipt, amount: 0 }])));
-    expect(intent).toEqual({ kind: "reply", text: photoUnreadableReply, usage });
+    expect(intent).toEqual({ kind: "reply", text: photoUnreadableReply("es"), usage });
   });
 
   it("si no es una factura, responde lo que dijo la IA (normalizado) o una respuesta fija", async () => {
     const said = await interpretPhoto({ image, caption: null }, ctx, fakeExtractor(ok([], 'Es una foto de un perro. Escríbeme el gasto, por ejemplo "almuerzo 25 mil".')));
     expect(said).toEqual({ kind: "reply", text: "Es una foto de un perro. Escríbeme el gasto, por ejemplo “almuerzo 25 mil”.", usage });
     const withLink = await interpretPhoto({ image, caption: null }, ctx, fakeExtractor(ok([], "Revisa www.estafa.co")));
-    expect(withLink).toEqual({ kind: "reply", text: photoFallbackReply, usage });
+    expect(withLink).toEqual({ kind: "reply", text: photoFallbackReply("es"), usage });
     const empty = await interpretPhoto({ image, caption: null }, ctx, fakeExtractor(ok([], null)));
-    expect(empty).toEqual({ kind: "reply", text: photoFallbackReply, usage });
+    expect(empty).toEqual({ kind: "reply", text: photoFallbackReply("es"), usage });
   });
 
   it("con un texto de más de 1.000 caracteres no llama a la IA", async () => {
@@ -566,5 +566,43 @@ describe("interpretPhoto", () => {
       reason: "rate_limited",
       usage: undefined,
     });
+  });
+});
+
+// En una cuenta en inglés, las respuestas fijas del intérprete van en inglés; lo que escribe Claude, tal cual.
+describe("interpretMessage e interpretPhoto · en inglés", () => {
+  const en = { ...ctx, locale: "en" } as const;
+  const shoes = { type: "expense" as const, amount: 0, description: "Shoes", category: "Ropa", date: "2026-10-13" };
+
+  it("los comandos en inglés no llaman a la IA", async () => {
+    const extractor = fakeExtractor({ ok: true, transactions: [], reply: null, usage });
+    expect(await interpretMessage("report 2025", en, extractor)).toEqual({ kind: "command", command: "report", period: { year: 2025 } });
+    expect(await interpretMessage("deshacer", en, extractor)).toEqual({ kind: "command", command: "undo" });
+    expect(extractor).not.toHaveBeenCalled();
+  });
+
+  it("muy largo, demasiados movimientos, sin monto o sin entender nada", async () => {
+    const none = fakeExtractor({ ok: true, transactions: [], reply: null, usage });
+    expect(await interpretMessage("spent ".repeat(200), en, none)).toEqual({ kind: "reply", text: "Your message is too long. Send it to me in shorter parts." });
+    const many = Array.from({ length: 21 }, (_, i) => ({ ...shoes, amount: 1000 + i }));
+    expect(await interpretMessage("a lot", en, fakeExtractor({ ok: true, transactions: many, reply: null, usage }))).toEqual({
+      kind: "reply",
+      text: tooManyTransactionsReply(20, "en"),
+      usage,
+    });
+    expect(await interpretMessage("shoes", en, fakeExtractor({ ok: true, transactions: [shoes], reply: null, usage }))).toMatchObject({
+      text: "I didn't understand the amount. Send me the whole transaction with its amount, for example “lunch 25k”.",
+    });
+    expect(await interpretMessage("hmm", en, none)).toMatchObject({
+      text: "I couldn't find any income or expense in your message. Try something like “spent 20k on lunch”.",
+    });
+  });
+
+  it("las fotos que no se registraron", async () => {
+    const photo = { image: { data: "", mediaType: "image/png" as const }, caption: null };
+    const said = (transactions: (typeof shoes)[]) => fakeExtractor({ ok: true, transactions, reply: null, usage });
+    expect(await interpretPhoto(photo, en, said([shoes, shoes]))).toEqual({ kind: "reply", text: photoManyReply("en"), usage });
+    expect(await interpretPhoto(photo, en, said([shoes]))).toEqual({ kind: "reply", text: photoUnreadableReply("en"), usage });
+    expect(await interpretPhoto(photo, en, said([]))).toEqual({ kind: "reply", text: photoFallbackReply("en"), usage });
   });
 });

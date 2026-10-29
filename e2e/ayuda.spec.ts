@@ -26,9 +26,9 @@ test("Ayuda: se abre desde el menú de la cuenta, con sus temas cerrados y lo mi
   await test.step("el bot de WhatsApp: los mismos ejemplos y comandos de su respuesta a 'ayuda'", async () => {
     await topic("El bot de WhatsApp").locator("summary").click();
     const bot = topic("El bot de WhatsApp");
-    for (const example of BOT_EXAMPLES) await expect(bot).toContainText(example);
-    for (const { command, description } of BOT_COMMANDS) {
-      await expect(bot.locator("li", { hasText: description.es }).locator("strong").first()).toHaveText(command);
+    for (const example of BOT_EXAMPLES.es) await expect(bot).toContainText(example);
+    for (const { command, description } of BOT_COMMANDS.es) {
+      await expect(bot.locator("li", { hasText: description }).locator("strong").first()).toHaveText(command);
     }
   });
 
@@ -93,8 +93,8 @@ test("Ayuda sin sesión: desde la portada, el login y el registro, en /ayuda, co
     const closed = page.locator("main details:not([open])");
     while ((await closed.count()) > 0) await closed.first().locator("summary").click();
     const bot = topics.locator("details").filter({ has: page.locator("summary", { hasText: "El bot de WhatsApp" }) });
-    for (const { command, description } of BOT_COMMANDS) {
-      await expect(bot.locator("li", { hasText: description.es }).locator("strong").first()).toHaveText(command);
+    for (const { command, description } of BOT_COMMANDS.es) {
+      await expect(bot.locator("li", { hasText: description }).locator("strong").first()).toHaveText(command);
     }
     await expect(bot.locator("strong", { hasText: "Mi cuenta" })).toBeVisible();
     const hrefs = await page.getByRole("main").getByRole("link").evaluateAll((links) => links.map((link) => link.getAttribute("href")));

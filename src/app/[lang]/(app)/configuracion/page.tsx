@@ -25,7 +25,7 @@ const TEXTS = texts(
     appearanceIntro:
       "Con “Sistema”, la app se ve clara u oscura según tu celular o computador. Se guarda en tu cuenta: la ves así en cualquier dispositivo donde inicies sesión.",
     language: "Idioma",
-    languageIntro: "Se guarda en tu cuenta: ves la app en este idioma en cualquier dispositivo donde inicies sesión. El bot de WhatsApp sigue respondiendo en español.",
+    languageIntro: "Se guarda en tu cuenta: ves la app en este idioma en cualquier dispositivo donde inicies sesión, y el bot de WhatsApp te responde en él.",
   },
   {
     en: {
@@ -37,7 +37,7 @@ const TEXTS = texts(
       appearanceIntro:
         "With “System”, the app looks light or dark depending on your phone or computer. It's saved to your account: you see it this way on any device where you sign in.",
       language: "Language",
-      languageIntro: "It's saved to your account: you see the app in this language on any device where you sign in. The WhatsApp bot still answers in Spanish.",
+      languageIntro: "It's saved to your account: you see the app in this language on any device where you sign in, and the WhatsApp bot answers you in it.",
     },
   },
 );

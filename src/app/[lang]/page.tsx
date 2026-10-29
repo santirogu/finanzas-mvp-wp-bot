@@ -2,12 +2,14 @@ import Link from "next/link";
 import { LanguageSwitch } from "@/components/language-switch";
 import type { ReactNode } from "react";
 import { LogoMark, Logo } from "@/components/logo";
-import { getTexts } from "@/i18n/server";
+import type { Locale } from "@/i18n/locales";
+import { getLocale, getTexts } from "@/i18n/server";
 import { texts } from "@/i18n/texts";
 import { BRAND_NAME } from "@/lib/brand";
+import { formatMoney } from "@/lib/money";
 
-// La página de inicio: qué es Anotado, una conversación de ejemplo con el bot y para qué sirve. El ejemplo
-// va en español también en inglés (el bot todavía responde en español: lo dice la nota de abajo).
+// La página de inicio: qué es Anotado, una conversación de ejemplo con el bot y para qué sirve. El ejemplo va
+// en el idioma de la página, como responde el bot a una cuenta en ese idioma.
 
 const TEXTS = texts(
   {
@@ -16,7 +18,15 @@ const TEXTS = texts(
     register: "Crear cuenta",
     login: "Iniciar sesión",
     example: "Una conversación de ejemplo con el bot",
-    exampleNote: null as string | null,
+    // Resumido de lo que responde el bot (src/modules/bot/replies.ts).
+    chat: {
+      first: "gasté 25 mil en almuerzo",
+      second: "y 12 mil de taxi",
+      registered: `Egreso ${BRAND_NAME}`,
+      lunch: { description: "Almuerzo", category: "Alimentación" },
+      taxi: { description: "Taxi", category: "Transporte" },
+      balance: "Balance del mes",
+    },
     featuresTitle: `Qué hace ${BRAND_NAME}`,
     features: [
       {
@@ -41,7 +51,14 @@ const TEXTS = texts(
       register: "Create account",
       login: "Sign in",
       example: "An example conversation with the bot",
-      exampleNote: "For now the bot speaks Spanish.",
+      chat: {
+        first: "spent 25k on lunch",
+        second: "and 12k for a taxi",
+        registered: "Expense noted",
+        lunch: { description: "Lunch", category: "Food" },
+        taxi: { description: "Taxi", category: "Transportation" },
+        balance: "This month's balance",
+      },
       featuresTitle: `What ${BRAND_NAME} does`,
       features: [
         {
@@ -49,8 +66,7 @@ const TEXTS = texts(
         title: "On WhatsApp",
         body: (
           <>
-            Write the way you talk: <span lang="es">“gasté 25 mil en almuerzo”</span>. If it gets something wrong, send{" "}
-            <strong lang="es">deshacer</strong> (undo).
+            Write the way you talk: “spent 25k on lunch”. If it gets something wrong, send <strong>undo</strong>.
           </>
         ),
       },
@@ -77,6 +93,7 @@ const ICONS: Record<string, React.ReactNode> = {
 
 export default async function Home() {
   const t = await getTexts(TEXTS);
+  const locale = await getLocale();
   return (
     <div className="flex flex-1 flex-col">
       {/* El logo, la Ayuda, el selector de idioma e "Iniciar sesión": en una pantalla muy angosta (320 px), los tres
@@ -113,7 +130,7 @@ export default async function Home() {
               {t.register}
             </Link>
           </div>
-          <ChatExample label={t.example} note={t.exampleNote} />
+          <ChatExample label={t.example} chat={t.chat} locale={locale} />
         </div>
 
         <section aria-labelledby="que-hace">
@@ -146,12 +163,9 @@ export default async function Home() {
   );
 }
 
-/**
- * Una conversación con el bot, como se ve en WhatsApp: tu mensaje a la derecha y la respuesta a la
- * izquierda. Es un ejemplo fijo y en español (lang="es"), resumido de lo que responde el bot
- * (src/modules/bot/replies.ts).
- */
-function ChatExample({ label, note }: { label: string; note: string | null }) {
+/** Una conversación con el bot, como se ve en WhatsApp: tu mensaje a la derecha y la respuesta a la izquierda. */
+function ChatExample({ label, chat, locale }: { label: string; chat: (typeof TEXTS)[Locale]["chat"]; locale: Locale }) {
+  const money = (amount: number) => formatMoney(amount, "COP", locale);
   const sent = "ml-auto w-fit max-w-[85%] rounded-2xl rounded-br-md bg-brand/10 px-4 py-2.5";
   const received = "mr-auto w-fit max-w-[85%] rounded-2xl rounded-bl-md bg-background px-4 py-2.5";
   return (
@@ -163,20 +177,19 @@ function ChatExample({ label, note }: { label: string; note: string | null }) {
           <span className="block text-xs text-muted">{label}</span>
         </span>
       </figcaption>
-      <ol lang="es" className="mt-4 space-y-3 text-sm">
-        <li className={sent}>gasté 25 mil en almuerzo</li>
+      <ol className="mt-4 space-y-3 text-sm">
+        <li className={sent}>{chat.first}</li>
         <li className={received}>
-          ✅ Egreso {BRAND_NAME}: <strong>Almuerzo</strong> — $25.000,00 (Alimentación)
+          ✅ {chat.registered}: <strong>{chat.lunch.description}</strong> — {money(25000)} ({chat.lunch.category})
         </li>
-        <li className={sent}>y 12 mil de taxi</li>
+        <li className={sent}>{chat.second}</li>
         <li className={received}>
-          ✅ Egreso {BRAND_NAME}: <strong>Taxi</strong> — $12.000,00 (Transporte)
+          ✅ {chat.registered}: <strong>{chat.taxi.description}</strong> — {money(12000)} ({chat.taxi.category})
           <span className="mt-1 block text-muted">
-            Balance del mes: <strong className="text-foreground">$1.284.500,00</strong>
+            {chat.balance}: <strong className="text-foreground">{money(1284500)}</strong>
           </span>
         </li>
       </ol>
-      {note && <p className="mt-4 text-xs text-muted">{note}</p>}
     </figure>
   );
 }

@@ -9,8 +9,7 @@ import { envVar } from "@/lib/env";
 
 const TEXTS = texts(
   { connected: "Conectado", linked: "Registra movimientos escribiendo desde", tryIt: "Prueba:", example: "“gasté 20 mil en almuerzo”" },
-  // El ejemplo, en español: el bot todavía responde en español.
-  { en: { connected: "Connected", linked: "Add transactions by writing from", tryIt: "Try:", example: "“gasté 20 mil en almuerzo”" } },
+  { en: { connected: "Connected", linked: "Add transactions by writing from", tryIt: "Try:", example: "“spent 20k on lunch”" } },
 );
 
 /**
@@ -41,7 +40,7 @@ export async function WhatsAppCard() {
             {/* El número no se corta con espacios que no se parten, no con white-space: nowrap: Safari mide de menos
                 ese texto y, entre 428 y 442 px (los iPhone Pro Max), lo dejaba salirse de la tarjeta. */}
             {t.linked} <span className="font-medium text-foreground">{maskPhone(link.phone).replaceAll(" ", " ")}</span>. {t.tryIt}{" "}
-            <em lang="es">{t.example}</em>.
+            <em>{t.example}</em>.
           </p>
           <UnlinkWhatsApp />
         </div>

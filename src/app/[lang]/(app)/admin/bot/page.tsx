@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { BotCommandsText } from "@/components/bot-commands-text";
 import type { Locale } from "@/i18n/locales";
 import { getLocale } from "@/i18n/server";
 import { texts } from "@/i18n/texts";
@@ -49,7 +48,6 @@ export async function generateMetadata(): Promise<Metadata> {
   return adminMetadata("bot");
 }
 
-// Los comandos (balance, reporte, deshacer, ayuda) van como se escriben en el bot, que responde en español.
 const TEXTS = texts(
   {
     title: "Bot de WhatsApp",
@@ -124,7 +122,7 @@ const TEXTS = texts(
       filtering: " · filtering",
       claudeTitle: "Claude usage",
       claudeIntro: (date) =>
-        `Each free-text message uses one call; the commands (balance, reporte, deshacer, ayuda) don't. The cost is an estimate in US dollars with Anthropic's public prices as of ${date}; you see the actual charge in the Anthropic console.`,
+        `Each free-text message uses one call; the commands (balance, report, undo, help) don't. The cost is an estimate in US dollars with Anthropic's public prices as of ${date}; you see the actual charge in the Anthropic console.`,
       inputTokens: "Input tokens",
       outputTokens: "Output tokens",
       cost: "Estimated cost",
@@ -277,7 +275,7 @@ async function Bot({ params }: { params: Record<string, string | string[] | unde
                   >
                     <span className="flex justify-between gap-2 text-sm">
                       <span className={problem ? "font-medium text-danger" : selected ? "font-medium" : ""}>
-                        <BotCommandsText text={OUTCOME_TEXTS[locale][o]} locale={locale} />
+                        {OUTCOME_TEXTS[locale][o]}
                         {selected && <span className="font-normal text-muted">{t.filtering}</span>}
                       </span>
                       <span className="shrink-0 tabular-nums text-muted">
@@ -306,7 +304,7 @@ async function Bot({ params }: { params: Record<string, string | string[] | unde
             {t.claudeTitle}
           </h2>
           <p className="text-sm text-muted">
-            <BotCommandsText text={t.claudeIntro(formatPriceDate(PRICES_CHECKED_ON, locale))} locale={locale} />
+            {t.claudeIntro(formatPriceDate(PRICES_CHECKED_ON, locale))}
           </p>
         </div>
         {/* Las llamadas ya están arriba. Dos columnas desde 352 px: un total de cientos de millones de

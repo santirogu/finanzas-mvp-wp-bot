@@ -332,7 +332,7 @@ describe("BotSettings en inglés", () => {
       english: true,
     });
     const rows = settings().getAllByRole("listitem");
-    expect(rows[0]).toHaveTextContent("Paused by the monthly limit until November 1: the bot only answers balance, reporte, deshacer and ayuda.");
+    expect(rows[0]).toHaveTextContent("Paused by the monthly limit until November 1: the bot only answers balance, report, undo and help.");
     expect(rows[2]).toHaveTextContent("Reached: 31,000 of 30,000. Claude comes back on November 1.");
     expect(settings().getByText("Last change: Ana Admin · Oct 16")).toBeInTheDocument();
   });

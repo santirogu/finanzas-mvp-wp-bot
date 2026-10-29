@@ -1,25 +1,48 @@
 // Lo que el bot de WhatsApp sabe hacer, en un solo lugar: lo usan su respuesta a "ayuda"
-// (src/modules/bot/replies.ts) y la página Ayuda de la web (src/app/[lang]/(app)/ayuda/page.tsx). Si cambia un
-// comando, cambia en los dos. Los comandos y los ejemplos van en español también con la app en inglés (el bot
-// responde en español); su explicación, en el idioma de la página.
+// (src/modules/bot/replies.ts) y la página Ayuda de la web (src/app/[lang]/(app)/ayuda/help-content.tsx). Si cambia
+// un comando, cambia en los dos. Cada idioma muestra sus comandos y sus ejemplos, aunque el bot entiende los
+// comandos de los dos (src/modules/bot/commands.ts).
+import { texts } from "@/i18n/texts";
 
-/** Ejemplos de mensajes que el bot entiende (texto libre, con Claude). */
-export const BOT_EXAMPLES = ["me compré unos zapatos de $500.000", "almuerzo 25 mil y taxi 12 mil", "me pagaron la quincena 2.100.000"] as const;
+/** Ejemplos de mensajes que el bot entiende (texto libre, con Claude). Los montos, como en Colombia: van en pesos. */
+export const BOT_EXAMPLES = texts<readonly string[]>(
+  ["me compré unos zapatos de $500.000", "almuerzo 25 mil y taxi 12 mil", "me pagaron la quincena 2.100.000"],
+  { en: ["I bought some shoes for $500.000", "lunch 25k and taxi 12k", "I got paid 2.100.000"] },
+);
 
-/** Los comandos fijos (sin Claude): lo que se escribe y lo que hace. */
-export const BOT_COMMANDS = [
-  { command: "balance", description: { es: "cómo vas este mes", en: "how you're doing this month" } },
-  { command: "balance septiembre", alternative: "balance mes pasado", description: { es: "otro mes", en: "another month" } },
+/** Un comando fijo (sin Claude): lo que se escribe y lo que hace. */
+export type BotCommandHelp = {
+  command: string;
+  description: string;
+  /** Otra forma de pedirlo ("balance mes pasado"). */
+  alternative?: string;
+  /** Una variante, con lo que hace ("reporte 2025", un año). */
+  also?: { command: string; description: string };
+};
+
+/** Los comandos fijos. */
+export const BOT_COMMANDS = texts<readonly BotCommandHelp[]>(
+  [
+    { command: "balance", description: "cómo vas este mes" },
+    { command: "balance septiembre", alternative: "balance mes pasado", description: "otro mes" },
+    { command: "reporte", description: "tus últimos 12 meses", also: { command: "reporte 2025", description: "un año" } },
+    { command: "deshacer", description: "borra lo último que registré" },
+  ],
   {
-    command: "reporte",
-    description: { es: "tus últimos 12 meses", en: "your last 12 months" },
-    also: { command: "reporte 2025", description: { es: "un año", en: "a year" } },
+    en: [
+      { command: "balance", description: "how you're doing this month" },
+      { command: "balance september", alternative: "balance last month", description: "another month" },
+      { command: "report", description: "your last 12 months", also: { command: "report 2025", description: "a year" } },
+      { command: "undo", description: "deletes the last thing I added" },
+    ],
   },
-  { command: "deshacer", description: { es: "borra lo último que registré", en: "deletes the last thing I added" } },
-] as const;
+);
 
 /** "ayuda" va aparte: su respuesta es la lista de arriba. */
-export const HELP_COMMAND = { command: "ayuda", description: { es: "te recuerda todo esto", en: "reminds you of all this" } } as const;
+export const HELP_COMMAND = texts<BotCommandHelp>(
+  { command: "ayuda", description: "te recuerda todo esto" },
+  { en: { command: "help", description: "reminds you of all this" } },
+);
 
-/** Los nombres de los comandos, para los textos que los citan ("balance, reporte, deshacer y ayuda"). */
-export const BOT_COMMAND_NAMES = ["balance", "reporte", "deshacer", "ayuda"] as const;
+/** La palabra con la que se vincula el número ("VINCULAR 123456"): el bot entiende las dos. */
+export const LINK_WORD = texts("VINCULAR", { en: "LINK" });

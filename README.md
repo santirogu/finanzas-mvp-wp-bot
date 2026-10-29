@@ -330,7 +330,7 @@ logo es un globo de chat con un ✓, con el verde azulado de la app (`--brand`).
 
 ### Idiomas
 
-La app está en español (el de siempre) y en inglés, toda la web (el bot de WhatsApp sigue en español).
+La app está en español (el de siempre) y en inglés: la web y el bot de WhatsApp.
 
 - **Cuál ve cada quien:**
   1. el que eligió en **Configuración → Idioma** (`saveLanguageAction`): se guarda en su cuenta
@@ -340,8 +340,8 @@ La app está en español (el de siempre) y en inglés, toda la web (el bot de Wh
   3. sin sesión, el que eligió en el selector **ES · EN** de la portada, el login, el registro o la Ayuda
      (`src/components/language-switch.tsx`, `chooseLanguageAction`): solo la cookie, por un año, y vuelve a la
      misma página (nunca a otra dirección: `LANGUAGE_SWITCH_PAGES`);
-  4. si no, español, aunque el navegador pida otro idioma (decisión del dueño: el público es colombiano y el
-     bot y las páginas legales están en español).
+  4. si no, español, aunque el navegador pida otro idioma (decisión del dueño: el público es colombiano y las
+     páginas legales están en español).
 
   `user.locale` es `null` hasta que la persona elige (la base solo acepta `es` o `en`), y nadie más lo
   cambia: Better Auth lo tiene con `input: false`. La política de privacidad lo explica.
@@ -372,7 +372,8 @@ La app está en español (el de siempre) y en inglés, toda la web (el bot de Wh
   auditoría de diseño tiene su modo en inglés (`AUDITORIA_IDIOMA=en`).
 - **Montos y fechas:** `formatMoney`, `parseAmountInput`, `formatAmountTyping`, `formatMonthName`,
   `formatShortDate`… reciben el idioma (por defecto, español). En inglés, con el formato de EE. UU.:
-  "$1,000,000.00" (en el campo de monto, la coma separa los miles) y "Oct 13". El bot sigue en español.
+  "$1,000,000.00" (en el campo de monto, la coma separa los miles) y "Oct 13". El bot responde con el formato
+  del idioma de la cuenta, pero lee los montos siempre como en Colombia (abajo).
   Los topes del bot en `/admin/bot` también se escriben con los miles del idioma ("1.000" o "1,000"):
   los campos y el servidor (`parseAiLimits`, `parseMonthlyTokenLimit`) aceptan ese separador y no el otro.
 - **Las categorías** se ven en inglés con el nombre que les puso el admin (`category.name_en`, opcional,
@@ -380,8 +381,20 @@ La app está en español (el de siempre) y en inglés, toda la web (el bot de Wh
   `categoryLabel`, `src/modules/transactions/category-name.ts`), que reciben el idioma: las que no lo
   reciben, como las del bot, dan el nombre en español. Lo que se guarda y lo que conoce el bot es siempre
   `name`.
-- **En la administración** quedan en español los comandos del bot (balance, reporte, deshacer, ayuda),
-  que se escriben así. Los avisos de la prueba de conexiones son datos (`ServiceWarning`,
+- **El bot de WhatsApp** (decisiones del dueño):
+  - **responde en el idioma de la cuenta** (`user.locale`, el de Configuración; sin elegir, español): sus
+    textos fijos (`src/modules/bot/replies.ts`), los montos, las fechas, los avisos de los presupuestos y el
+    nombre de las categorías en inglés (lo que guarda sigue siendo `name`);
+  - **entiende los comandos en los dos idiomas**, sea cual sea el de la cuenta: `report`, `undo`, `help`,
+    `balance september`, `balance last month`, `how much did I spend…?` (`src/modules/bot/commands.ts`);
+  - **se vincula con `VINCULAR 123456` o `LINK 123456`**: Mi cuenta muestra la palabra del idioma de la
+    página. Con un código que no sirve todavía no se sabe de qué cuenta es: responde en el idioma de la
+    palabra que se usó. A un número sin vincular le responde en español y, debajo, en inglés;
+  - **lee los montos siempre como pesos colombianos**, con el punto de los miles y la coma de los centavos,
+    también en inglés ("200.000" son doscientos mil);
+  - **las respuestas que escribe Claude** (cuando no entiende un mensaje o falta un dato) salen de su prompt,
+    que todavía las pide en español: se cambia aparte, con `pnpm bot:eval`.
+- **En la administración,** los avisos de la prueba de conexiones son datos (`ServiceWarning`,
   `src/lib/service-check.ts`): la frase la arma `connectionView` en el idioma de la página.
 - **Las descargas de Reportes** salen en el idioma de la página (la cookie). El CSV en inglés va como lo
   abre el Excel en inglés: separado por "," y con el punto de los centavos (en español, ";" y la coma), y
@@ -389,8 +402,6 @@ La app está en español (el de siempre) y en inglés, toda la web (el bot de Wh
   (`view.labels`, `src/modules/reports/pdf/view.ts`), así se prueban sin dibujarlo.
 - **Solo en español:** la política de privacidad y "Eliminar tus datos" (decisión del dueño). Sus páginas
   van con `lang="es"` y, con la app en inglés, una nota arriba lo dice (`privacidad/spanish-only.tsx`).
-  También el bot: el mensaje para vincular WhatsApp sigue siendo `VINCULAR <código>` y la Ayuda en
-  inglés lo aclara.
 - **Eliminar la cuenta** pide la palabra del idioma de la página: `ELIMINAR` o, en inglés, `DELETE`
   (`src/modules/account/confirmation.ts`).
 - **En un componente de cliente**, la ruta actual se lee con `useAppPathname()` (`src/i18n/navigation.ts`),
@@ -714,14 +725,16 @@ La app está en español (el de siempre) y en inglés, toda la web (el bot de Wh
 ## Bot de WhatsApp
 
 1. En **Mi cuenta**, la tarjeta **WhatsApp → Conectar WhatsApp** genera un código de 6 dígitos
-   (vence en 10 minutos). El usuario lo envía al bot como `VINCULAR 123456` y su número queda
-   asociado a su cuenta. Mientras no lo tenga vinculado, el Resumen muestra un aviso corto que lleva
-   ahí (`/cuenta#whatsapp`, `src/app/[lang]/(app)/dashboard/whatsapp-hint.tsx`); ya vinculado, el Resumen no
-   muestra nada de WhatsApp. A un número sin vincular, el bot le responde con ese mismo enlace.
+   (vence en 10 minutos). El usuario lo envía al bot como `VINCULAR 123456` (en inglés, `LINK 123456`) y su
+   número queda asociado a su cuenta. Mientras no lo tenga vinculado, el Resumen muestra un aviso corto que
+   lleva ahí (`/cuenta#whatsapp`, `src/app/[lang]/(app)/dashboard/whatsapp-hint.tsx`); ya vinculado, el Resumen
+   no muestra nada de WhatsApp. A un número sin vincular, el bot le responde con ese mismo enlace, en español y
+   en inglés (también si envía un audio).
 2. Cada mensaje llega a `POST /api/whatsapp/webhook`. Se verifica la firma `X-Hub-Signature-256`,
    se responde 200 de inmediato y el mensaje se procesa después (`after()`).
 3. Se deduplica por el ID del mensaje, se resuelven los comandos fijos (`balance`, `reporte`,
-   `deshacer`, `ayuda`) y el texto libre se interpreta con Claude. El bot responde por WhatsApp.
+   `deshacer`, `ayuda`, también en inglés: README → Idiomas) y el texto libre se interpreta con Claude. El bot
+   responde por WhatsApp, en el idioma de la cuenta.
 
 **Fotos de facturas** (`src/modules/bot/photo.ts`, `interpretPhoto` en `interpret.ts`): una foto se registra como
 un solo egreso con el total.
@@ -764,7 +777,9 @@ tokens y funciona con Claude en pausa).
   - `balance mes pasado`;
   - en pregunta, para un mes, el mes pasado o este: `¿cuánto gasté en septiembre?`, `¿cuántos fueron
     mis ingresos en septiembre?`, `¿cuánto gané el mes pasado?`, `mis gastos de agosto`, `¿cómo me fue
-    en marzo?` (`ASK_*`). Los totales solos ("mis gastos") no cuentan: podrían ser otra cosa.
+    en marzo?` (`ASK_*`). Los totales solos ("mis gastos") no cuentan: podrían ser otra cosa;
+  - en inglés, lo mismo: `balance september`, `september balance`, `balance last month`, `last month's
+    balance`, `how much did I spend in august?`, `how am I doing?`, `my expenses this month`.
 - **Lo que se escapa de esas reglas** lo responde Claude. Si es una pregunta por saldos o totales
   (por ejemplo "¿cuánto he gastado en comida?"), su prompt le pide no calcular cifras y decir que
   escriba *balance* o *balance septiembre*. Lo prueban 3 casos de `pnpm bot:eval`.
@@ -781,6 +796,7 @@ Claude (no gasta tokens y funciona con Claude en pausa), con las mismas consulta
   - `reporte` o `informe` (también `mi reporte`, `reporte de los últimos 12 meses`): los últimos 12 meses;
   - con año, `reporte 2025`, `informe del 2025` o `reporte del año 2025`;
   - el año en curso: `reporte del año`, `reporte de este año` o `informe anual`;
+  - en inglés: `report`, `report 2025`, `2025 report`, `report this year` o `annual report`;
   - un año que todavía no llega, o de antes del 2000, lo dice sin consultar nada.
 
   "Resumen" sigue siendo el balance del mes. Lo demás ("reporte de gastos", "reporte del mes") va a Claude.

@@ -61,14 +61,14 @@ describe("handleIncomingMessage · vinculación", () => {
 
     await handleIncomingMessage(incoming(`VINCULAR ${code}`), d);
 
-    expect(sender.sent[0].body).toBe(replies.linkedReply("Ana Pérez"));
+    expect(sender.sent[0].body).toBe(replies.linkedReply("Ana Pérez", "es"));
     const [link] = await db.select().from(whatsappLink).where(eq(whatsappLink.userId, user.id));
     expect(link.phone).toBe(PHONE);
     expect(await db.select().from(whatsappLinkCode)).toEqual([]);
 
     // Un segundo número no puede usar el mismo código.
     await handleIncomingMessage(incoming(`VINCULAR ${code}`, "573008888888"), d);
-    expect(sender.sent[1].body).toBe(replies.linkInvalidReply);
+    expect(sender.sent[1].body).toBe(replies.linkInvalidReply("es"));
   });
 
   it("rechaza códigos vencidos", async () => {
@@ -80,7 +80,7 @@ describe("handleIncomingMessage · vinculación", () => {
     const msg = incoming(`VINCULAR ${code}`);
     await handleIncomingMessage(msg, d);
 
-    expect(sender.sent[0].body).toBe(replies.linkInvalidReply);
+    expect(sender.sent[0].body).toBe(replies.linkInvalidReply("es"));
     expect((await loggedMessage(msg.id)).status).toBe("link_failed");
     expect(await db.select().from(whatsappLink)).toEqual([]);
   });
@@ -93,7 +93,7 @@ describe("handleIncomingMessage · vinculación", () => {
 
     await handleIncomingMessage(incoming(`VINCULAR ${code}`), d);
 
-    expect(sender.sent.at(-1)?.body).toBe(replies.linkRateLimitedReply);
+    expect(sender.sent.at(-1)?.body).toBe(replies.linkRateLimitedReply("es"));
     expect(await db.select().from(whatsappLink)).toEqual([]);
   });
 
@@ -117,7 +117,7 @@ describe("handleIncomingMessage · vinculación", () => {
 
     await handleIncomingMessage(incoming(`VINCULAR ${oldCode}`), d);
 
-    expect(sender.sent[0].body).toBe(replies.linkInvalidReply);
+    expect(sender.sent[0].body).toBe(replies.linkInvalidReply("es"));
   });
 });
 
@@ -129,20 +129,20 @@ describe("handleIncomingMessage · límites (auditoría de seguridad 2026-10-15)
     for (let i = 0; i < 8; i++) await handleIncomingMessage(incoming("VINCULAR 000000"), d);
 
     // Solo 5 se evaluaron: el resto quedó bloqueado aunque ninguna respuesta llegó.
-    expect(failing.sent.filter((m) => m.body === replies.linkInvalidReply)).toHaveLength(5);
-    expect(failing.sent.filter((m) => m.body === replies.linkRateLimitedReply)).toHaveLength(3);
+    expect(failing.sent.filter((m) => m.body === replies.linkInvalidReply("es"))).toHaveLength(5);
+    expect(failing.sent.filter((m) => m.body === replies.linkRateLimitedReply("es"))).toHaveLength(3);
     const { code } = await createLinkCode(victim.id);
     const { deps: ok, sender } = deps();
     await handleIncomingMessage(incoming(`VINCULAR ${code}`), ok);
-    expect(sender.sent[0].body).toBe(replies.linkRateLimitedReply);
+    expect(sender.sent[0].body).toBe(replies.linkRateLimitedReply("es"));
     expect(await db.select().from(whatsappLink)).toEqual([]);
   });
 
   it("varios intentos de vinculación simultáneos no se saltan el límite", async () => {
     const { deps: d, sender } = deps();
     await Promise.all(Array.from({ length: 20 }, () => handleIncomingMessage(incoming("VINCULAR 000000"), d)));
-    expect(sender.sent.filter((m) => m.body === replies.linkInvalidReply)).toHaveLength(5);
-    expect(sender.sent.filter((m) => m.body === replies.linkRateLimitedReply)).toHaveLength(15);
+    expect(sender.sent.filter((m) => m.body === replies.linkInvalidReply("es"))).toHaveLength(5);
+    expect(sender.sent.filter((m) => m.body === replies.linkRateLimitedReply("es"))).toHaveLength(15);
   });
 
   it("con el cupo de mensajes agotado no llama a la IA, avisa y los comandos siguen funcionando", async () => {
@@ -157,7 +157,7 @@ describe("handleIncomingMessage · límites (auditoría de seguridad 2026-10-15)
     const msg = incoming("almuerzo 20 mil");
     await handleIncomingMessage(msg, d);
     expect(extractor.calls).toBe(0);
-    expect(sender.sent[0].body).toBe(replies.aiRateLimitedReply);
+    expect(sender.sent[0].body).toBe(replies.aiRateLimitedReply("es"));
     expect(await activeTransactions(user.id)).toEqual([]);
     expect(await loggedMessage(msg.id)).toMatchObject({ status: "processed", userId: user.id, aiRequestedAt: null });
 
@@ -208,7 +208,7 @@ describe("handleIncomingMessage · configuración del admin (/admin/bot)", () =>
     const free = incoming("almuerzo 20 mil");
     await handleIncomingMessage(free, d);
     expect(extractor.calls).toBe(0);
-    expect(sender.sent[0].body).toBe(replies.aiPausedReply(APP_URL));
+    expect(sender.sent[0].body).toBe(replies.aiPausedReply(APP_URL, "es"));
     expect(sender.sent[0].body).toContain("https://app.test/egresos");
     expect(await activeTransactions(user.id)).toEqual([]);
     expect(await loggedMessage(free.id)).toMatchObject({
@@ -245,7 +245,7 @@ describe("handleIncomingMessage · configuración del admin (/admin/bot)", () =>
     const free = incoming("almuerzo 20 mil");
     await handleIncomingMessage(free, d);
     expect(extractor.calls).toBe(0);
-    expect(sender.sent[0].body).toBe(replies.aiMonthlyLimitReply(APP_URL));
+    expect(sender.sent[0].body).toBe(replies.aiMonthlyLimitReply(APP_URL, "es"));
     expect(await loggedMessage(free.id)).toMatchObject({
       status: "processed",
       aiRequestedAt: null,
@@ -278,7 +278,7 @@ describe("handleIncomingMessage · configuración del admin (/admin/bot)", () =>
     await handleIncomingMessage(incoming("almuerzo 20 mil"), d);
     await handleIncomingMessage(incoming("almuerzo 20 mil"), d);
     expect(extractor.calls).toBe(1);
-    expect(sender.sent[1].body).toBe(replies.aiRateLimitedReply);
+    expect(sender.sent[1].body).toBe(replies.aiRateLimitedReply("es"));
   });
 });
 
@@ -531,13 +531,13 @@ describe("handleIncomingMessage · balance de otro mes", () => {
   it("un mes que todavía no llega lo dice, sin consultar nada", async () => {
     await linkedUser();
     const next = shiftMonth(current, 2);
-    expect(await replyTo(`balance ${formatMonthName(next)} ${next.year}`)).toBe(replies.futureMonthReply(next));
+    expect(await replyTo(`balance ${formatMonthName(next)} ${next.year}`)).toBe(replies.futureMonthReply(next, "es"));
   });
 
   it("un mes de antes del 2000 (o un año como 0000) responde sin consultar la base ni fallar", async () => {
     await linkedUser();
-    expect(await replyTo("balance enero 0000")).toBe(replies.tooOldMonthReply);
-    expect(await replyTo("balance diciembre 1999")).toBe(replies.tooOldMonthReply);
+    expect(await replyTo("balance enero 0000")).toBe(replies.tooOldMonthReply("es"));
+    expect(await replyTo("balance diciembre 1999")).toBe(replies.tooOldMonthReply("es"));
   });
 
   it("un número sin vincular no ve el balance de otro mes de nadie", async () => {
@@ -599,8 +599,8 @@ describe("handleIncomingMessage · reporte", () => {
 
   it("un año que todavía no llega, o de antes del 2000, responde sin consultar nada; sin movimientos, lo dice", async () => {
     await linkedUser();
-    expect((await send(`reporte ${current.year + 1}`)).reply).toBe(replies.futureYearReply(current.year + 1));
-    expect((await send("reporte 1999")).reply).toBe(replies.tooOldYearReply);
+    expect((await send(`reporte ${current.year + 1}`)).reply).toBe(replies.futureYearReply(current.year + 1, "es"));
+    expect((await send("reporte 1999")).reply).toBe(replies.tooOldYearReply("es"));
     expect((await send("reporte")).reply).toMatch(/^No tienes movimientos de /);
   });
 
@@ -662,7 +662,7 @@ describe("handleIncomingMessage · comandos", () => {
     expect(await activeTransactions(user.id)).toEqual([]);
 
     await handleIncomingMessage(incoming("deshacer"), d);
-    expect(sender.sent[2].body).toBe(replies.undoReply([], "COP"));
+    expect(sender.sent[2].body).toBe(replies.undoReply([], "COP", "es"));
   });
 
   it("deshacer no toca los movimientos de otro usuario, aunque sean más recientes", async () => {
@@ -700,7 +700,7 @@ describe("handleIncomingMessage · comandos", () => {
     await linkedUser(PHONE, "Ana Pérez");
     const { deps: d, sender } = deps();
     await handleIncomingMessage(incoming("ayuda"), d);
-    expect(sender.sent[0].body).toBe(replies.helpReply("Ana Pérez"));
+    expect(sender.sent[0].body).toBe(replies.helpReply("es", "Ana Pérez"));
   });
 });
 
@@ -741,11 +741,11 @@ describe("handleIncomingMessage · cuenta suspendida", () => {
     for (const msg of messages) await handleIncomingMessage(msg, d);
 
     expect(extractor.calls).toBe(0);
-    expect(sender.sent).toEqual(messages.map(() => ({ to: PHONE, body: replies.suspendedReply })));
+    expect(sender.sent).toEqual(messages.map(() => ({ to: PHONE, body: replies.suspendedReply("es") })));
     // Lo que había registrado sigue ahí (deshacer no lo borró).
     expect(await activeTransactions(ana.id)).toHaveLength(1);
     // El mensaje queda a nombre de la cuenta, sin intención.
-    expect(await loggedMessage(messages[0].id)).toMatchObject({ status: "processed", userId: ana.id, intent: null, reply: replies.suspendedReply });
+    expect(await loggedMessage(messages[0].id)).toMatchObject({ status: "processed", userId: ana.id, intent: null, reply: replies.suspendedReply("es") });
   });
 
   it("solo esa cuenta: otro número vinculado sigue funcionando", async () => {
@@ -777,7 +777,7 @@ describe("handleIncomingMessage · errores", () => {
 
     await handleIncomingMessage(msg, d);
 
-    expect(sender.sent[0].body).toBe(replies.aiUnavailableReply);
+    expect(sender.sent[0].body).toBe(replies.aiUnavailableReply("es"));
     expect(await loggedMessage(msg.id)).toMatchObject({
       status: "failed",
       error: "not_configured",
@@ -796,7 +796,7 @@ describe("handleIncomingMessage · errores", () => {
 
     await handleIncomingMessage(msg, d);
 
-    expect(sender.sent[0].body).toBe(replies.errorReply);
+    expect(sender.sent[0].body).toBe(replies.errorReply("es"));
     expect((await loggedMessage(msg.id)).error).toContain("529 overloaded");
   });
 
@@ -816,7 +816,7 @@ describe("handleIncomingMessage · errores", () => {
     const result = await handleIncomingMessage(msg, d);
 
     expect(result).toMatchObject({ status: "failed" });
-    expect(sender.sent[0].body).toBe(replies.errorReply);
+    expect(sender.sent[0].body).toBe(replies.errorReply("es"));
     expect((await loggedMessage(msg.id)).error).toBe("DrizzleQueryError (57P01)");
     expect(consoleError).toHaveBeenCalledWith("[bot] error procesando mensaje", msg.id, "DrizzleQueryError (57P01)");
     expect(JSON.stringify(consoleError.mock.calls)).not.toMatch(/farmacia|params/);
@@ -835,15 +835,17 @@ describe("handleIncomingMessage · errores", () => {
     expect(logged.error).toContain("131030");
   });
 
-  it("a audios, stickers o videos responde que entiende textos y fotos", async () => {
+  it("a audios, stickers o videos responde que entiende textos y fotos; a un número sin vincular, cómo vincularlo", async () => {
+    const ana = await linkedUser();
     const { deps: d, sender } = deps();
     const msg = incoming(null);
 
     await handleIncomingMessage(msg, d);
+    await handleIncomingMessage(incoming(null, "573009999999"), d);
 
-    expect(sender.sent[0].body).toBe(replies.unsupportedTypeReply);
+    expect(sender.sent.map((m) => m.body)).toEqual([replies.unsupportedTypeReply("es"), replies.notLinkedReply(APP_URL)]);
     const [row] = await db.select().from(whatsappMessage).where(eq(whatsappMessage.id, msg.id));
-    expect(row.body).toBe("[audio]");
+    expect(row).toMatchObject({ body: "[audio]", userId: ana.id });
   });
 });
 
@@ -912,7 +914,7 @@ describe("handleIncomingMessage · fotos de facturas", () => {
 
     expect(download.ids).toEqual([]);
     expect(extractor.calls).toBe(0);
-    expect(sender.sent.map((m) => m.body)).toEqual([replies.notLinkedReply(APP_URL), replies.suspendedReply]);
+    expect(sender.sent.map((m) => m.body)).toEqual([replies.notLinkedReply(APP_URL), replies.suspendedReply("es")]);
     expect(await activeTransactions(ana.id)).toEqual([]);
   });
 
@@ -925,7 +927,7 @@ describe("handleIncomingMessage · fotos de facturas", () => {
     await handleIncomingMessage(msg, d);
 
     expect(extractor.calls).toBe(0);
-    expect(sender.sent[0].body).toBe(replies.photoDownloadFailedReply);
+    expect(sender.sent[0].body).toBe(replies.photoDownloadFailedReply("es"));
     expect(await activeTransactions(user.id)).toEqual([]);
     expect(await loggedMessage(msg.id)).toMatchObject({
       status: "failed",
@@ -945,7 +947,7 @@ describe("handleIncomingMessage · fotos de facturas", () => {
     await handleIncomingMessage(msg, d);
 
     expect(extractor.calls).toBe(0);
-    expect(sender.sent[0].body).toBe(replies.photoFormatReply);
+    expect(sender.sent[0].body).toBe(replies.photoFormatReply("es"));
     expect(await loggedMessage(msg.id)).toMatchObject({ status: "processed", aiRequestedAt: null, intent: null });
   });
 
@@ -956,7 +958,7 @@ describe("handleIncomingMessage · fotos de facturas", () => {
     const { deps: d, sender } = deps(extractor);
     await handleIncomingMessage(incomingPhoto(), d);
     expect(extractor.calls).toBe(0);
-    expect(sender.sent[0].body).toBe(replies.aiPausedReply(APP_URL));
+    expect(sender.sent[0].body).toBe(replies.aiPausedReply(APP_URL, "es"));
   });
 
   it("un comando escrito con la foto no se ejecuta: deshacer no borra lo anterior", async () => {
@@ -1063,5 +1065,147 @@ describe("handleIncomingMessage · la descripción del historial", () => {
     expect(fromBot.sort()).toEqual(["Claro Postpago Cata Amor", "Taxi aeropuerto"]);
     expect(sender.sent[0].body).toContain("*Claro Postpago Cata Amor*");
     expect(sender.sent[0].body).toContain("*Taxi aeropuerto*");
+  });
+});
+
+// Una cuenta en inglés (`user.locale`): el bot le responde en inglés, entiende los comandos de los dos idiomas y
+// guarda todo igual (la categoría, por su nombre en español).
+describe("handleIncomingMessage · cuenta en inglés", () => {
+  async function englishUser(phone = PHONE) {
+    const user = await linkedUser(phone);
+    await db.update(userTable).set({ locale: "en" }).where(eq(userTable.id, user.id));
+    return user;
+  }
+  const setNameEn = (type: "expense" | "income", name: string, nameEn: string) =>
+    db.update(category).set({ nameEn }).where(and(eq(category.type, type), eq(category.name, name), isNull(category.userId)));
+
+  it("registra con la categoría de siempre y responde con su nombre en inglés (de cada tipo), con los montos de EE. UU.", async () => {
+    const user = await englishUser();
+    await setNameEn("expense", "Ropa", "Clothes");
+    await setNameEn("expense", "Otros", "Other expenses");
+    await setNameEn("income", "Otros", "Other income");
+    const extractor = fakeExtractor([
+      { type: "expense", amount: 500000, description: "Shoes", category: "Ropa" },
+      { type: "expense", amount: 20000, description: "Gift", category: "Otros" },
+      { type: "income", amount: 2000000, description: "Sale", category: "Otros" },
+      { type: "income", amount: 1000, description: "Tip", category: "Salario" },
+    ]);
+    const { deps: d, sender } = deps(extractor);
+
+    await handleIncomingMessage(incoming("shoes 500k, a gift 20k, a sale 2M and a tip 1000"), d);
+
+    const [ropa] = await db.select().from(category).where(and(eq(category.name, "Ropa"), isNull(category.userId)));
+    expect((await activeTransactions(user.id)).find((t) => t.description === "Shoes")?.categoryId).toBe(ropa.id);
+    const lines = sender.sent[0].body.split("\n");
+    expect(lines.slice(0, 4)).toEqual([
+      "✅ Expense noted: *Shoes* — $500,000.00 (Clothes)",
+      "✅ Expense noted: *Gift* — $20,000.00 (Other expenses)",
+      "✅ Income noted: *Sale* — $2,000,000.00 (Other income)",
+      // Sin nombre en inglés, el de siempre.
+      "✅ Income noted: *Tip* — $1,000.00 (Salario)",
+    ]);
+    expect(lines.slice(-2)).toEqual([
+      `${formatMonthName(monthOf(todayInTimezone("America/Bogota")), { locale: "en" })} balance: *$1,481,000.00*`,
+      "_Send *undo* if I got it wrong._",
+    ]);
+  });
+
+  it("el aviso del presupuesto, en inglés", async () => {
+    const user = await englishUser();
+    await setNameEn("expense", "Mercado", "Groceries");
+    const [mercado] = await db.select().from(category).where(and(eq(category.name, "Mercado"), isNull(category.userId)));
+    await db.insert(categoryBudget).values({ userId: user.id, categoryId: mercado.id, amount: 100000 });
+    const { deps: d, sender } = deps(fakeExtractor([{ type: "expense", amount: 85000, description: "Groceries", category: "Mercado" }]));
+
+    await handleIncomingMessage(incoming("groceries 85k"), d);
+
+    expect(sender.sent[0].body.split("\n")[2]).toBe("⚠️ Groceries: $85,000.00 of $100,000.00 so far (85%)");
+  });
+
+  it("los comandos, en los dos idiomas, responden en inglés sin llamar a la IA", async () => {
+    await englishUser();
+    const extractor = fakeExtractor([]);
+    const { deps: d, sender } = deps(extractor);
+    const current = monthOf(todayInTimezone("America/Bogota"));
+
+    for (const text of ["balance", "reporte", "report 2025", "help", "deshacer", "balance diciembre 1999", `report ${current.year + 1}`]) {
+      await handleIncomingMessage(incoming(text), d);
+    }
+
+    const bodies = sender.sent.map((m) => m.body);
+    expect(bodies[0]).toBe(`You don't have any transactions in ${formatMonthLabel(current, "en")} yet. Send me something like “spent 20k on lunch”.`);
+    expect(bodies[1]).toMatch(/^You don't have any transactions from [A-Z][a-z]+( \d{4})? to [A-Z][a-z]+ \d{4}\. /);
+    expect(bodies[2]).toBe(
+      "You don't have any transactions from January to December 2025. Send me something like “spent 20k on lunch” and you'll see how you're doing here.",
+    );
+    expect(bodies[3]).toBe(replies.helpReply("en", "Ana Pérez"));
+    expect(bodies[4]).toBe(replies.undoReply([], "COP", "en"));
+    expect(bodies[5]).toBe(replies.tooOldMonthReply("en"));
+    expect(bodies[6]).toBe(replies.futureYearReply(current.year + 1, "en"));
+    expect(extractor.calls).toBe(0);
+  });
+
+  it("vincular: la respuesta va en el idioma de la cuenta; con un código que no sirve, en el de la palabra que usó", async () => {
+    const user = await createUser({ name: "Ana Pérez", locale: "en" });
+    const { code } = await createLinkCode(user.id);
+    const { deps: d, sender } = deps();
+
+    await handleIncomingMessage(incoming(`VINCULAR ${code}`), d);
+    await handleIncomingMessage(incoming("LINK 000000", "573008888888"), d);
+    await handleIncomingMessage(incoming("VINCULAR 000000", "573008888888"), d);
+
+    expect(sender.sent.map((m) => m.body)).toEqual([
+      replies.linkedReply("Ana Pérez", "en"),
+      replies.linkInvalidReply("en"),
+      replies.linkInvalidReply("es"),
+    ]);
+    const [link] = await db.select().from(whatsappLink).where(eq(whatsappLink.userId, user.id));
+    expect(link.phone).toBe(PHONE);
+
+    for (let i = 0; i < 3; i++) await handleIncomingMessage(incoming("LINK 000000", "573008888888"), d);
+    await handleIncomingMessage(incoming("link 000000", "573008888888"), d);
+    expect(sender.sent.at(-1)?.body).toBe(replies.linkRateLimitedReply("en"));
+  });
+
+  it("con LINK se vincula igual que con VINCULAR", async () => {
+    const user = await createUser({ name: "Ana Pérez" });
+    const { code } = await createLinkCode(user.id);
+    const { deps: d, sender } = deps();
+
+    const msg = incoming(`LINK ${code}`);
+    await handleIncomingMessage(msg, d);
+
+    // La cuenta está en español: le responde en español.
+    expect(sender.sent[0].body).toBe(replies.linkedReply("Ana Pérez", "es"));
+    expect(await loggedMessage(msg.id)).toMatchObject({ status: "processed", userId: user.id });
+  });
+
+  it("cuenta suspendida, un audio, Claude en pausa y un error, en inglés", async () => {
+    const ana = await englishUser();
+    await englishUser("573007777777");
+    await db.insert(botSetting).values({ id: 1, claudePaused: true, aiPerHour: 20, aiPerDay: 100 });
+    const { deps: d, sender } = deps();
+    await handleIncomingMessage(incoming(null), d);
+    await handleIncomingMessage(incoming("spent 20k on lunch"), d);
+    await db.update(userTable).set({ suspendedAt: new Date() }).where(eq(userTable.id, ana.id));
+    await handleIncomingMessage(incoming("balance"), d);
+
+    // Si algo lanza una excepción después de saber de qué cuenta es, el aviso del error también va en inglés.
+    await db.delete(botSetting);
+    const failing = deps(
+      fakeExtractor(() => {
+        throw new Error("falla");
+      }),
+    );
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    await handleIncomingMessage(incoming("spent 20k on lunch", "573007777777"), failing.deps);
+    consoleError.mockRestore();
+
+    expect(sender.sent.map((m) => m.body)).toEqual([
+      replies.unsupportedTypeReply("en"),
+      replies.aiPausedReply(APP_URL, "en"),
+      replies.suspendedReply("en"),
+    ]);
+    expect(failing.sender.sent[0].body).toBe(replies.errorReply("en"));
   });
 });

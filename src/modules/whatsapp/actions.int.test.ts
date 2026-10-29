@@ -72,7 +72,7 @@ describe("generateLinkCodeAction", () => {
     if (!generated.ok) throw new Error(generated.error);
     const result = await consumeLinkCode("573001112233", generated.code);
 
-    expect(result).toEqual({ ok: true, userId: ana.id, name: "Ana" });
+    expect(result).toEqual({ ok: true, userId: ana.id, name: "Ana", locale: null });
     expect(await getLinkForUser(ana.id)).toMatchObject({ phone: "573001112233" });
     expect(await getLinkForUser(beto.id)).toBeNull();
   });

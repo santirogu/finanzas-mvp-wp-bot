@@ -170,8 +170,9 @@ describe("WelcomeTutorial", () => {
     expect(screen.getByText("Step 1 of 5")).toBeInTheDocument();
     await next(user, 2, "Next");
     expect(within(dialog()).getByRole("link", { name: "Connect WhatsApp" })).toBeVisible();
-    // El ejemplo va en español, como se le escribe al bot.
-    expect(within(dialog()).getByText("“almuerzo 25 mil”")).toHaveAttribute("lang", "es");
+    // El ejemplo va en inglés: el bot le responde a la cuenta en su idioma.
+    expect(dialog()).toHaveTextContent("Write to the bot the way you'd tell someone (“lunch 25k”) or send it a photo of a receipt, and it's added.");
+    expect(dialog()).not.toHaveTextContent("Spanish");
     await next(user, 2, "Next");
     expect(dialog()).toHaveTextContent("we let you know when you reach 80%.");
     expect(button("Get started")).toHaveFocus();
