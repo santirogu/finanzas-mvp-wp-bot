@@ -109,7 +109,9 @@ pnpm dev                        # http://localhost:3000 (antes, copia la base lo
   que instala WebKit), y el check
   obligatorio **E2E y accesibilidad** pasa solo si pasan todas. Las partes están en la matriz del job
   `e2e-parte` de `.github/workflows/ci.yml`: si agregas un proyecto de Playwright, súmalo ahí
-  (`test/e2e-en-ci.test.ts` falla si falta). La regla de `main` no cambia. Las pruebas que cambian la
+  (`test/e2e-en-ci.test.ts` falla si falta). Cada parte guarda su reporte de Playwright (capturas y trazas) si
+  algo falló o si una prueba pasó al reintentarla (una intermitente): queda en los artefactos de la corrida 14
+  días. La regla de `main` no cambia. Las pruebas que cambian la
   configuración de toda la app (pausar Claude, los topes del bot, cerrar los registros:
   `e2e/configuracion-*.spec.ts`) van en el proyecto `configuracion`: en local corren después de las demás
   y en el CI, en su propia parte (`--no-deps`), porque a la vez que las otras les cambiarían lo que

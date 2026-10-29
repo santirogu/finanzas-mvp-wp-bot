@@ -281,9 +281,11 @@ jobs:
         # Sin comillas a propósito: $PRUEBAS son varios argumentos.
         run: pnpm test:e2e $PRUEBAS
 
-      # Con capturas y trazas de las pruebas que fallaron: pnpm exec playwright show-trace <zip>.
+      # Con capturas y trazas de las pruebas que fallaron: pnpm exec playwright show-trace <zip>. También si todo
+      # pasó pero una prueba necesitó el reintento (una intermitente): la traza del intento que falló queda en
+      # test-results/ (trace: "retain-on-failure") y el reporte la marca "flaky". Sin esto, no quedaba rastro.
       - name: Guardar reporte de Playwright
-        if: failure()
+        if: failure() || hashFiles('test-results/**/trace.zip') != ''
         continue-on-error: true
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
