@@ -14,6 +14,7 @@ const IGNORED = new Set(["a", "al", "con", "de", "del", "el", "en", "la", "las",
 /** Las palabras que cuentan de un texto, sin tildes ni mayúsculas ("Pago de Clarö" → ["pago", "claro"]). */
 export function meaningfulWords(text: string): string[] {
   return searchKey(text)
+    // Stryker disable next-line Regex: sin el "+" quedan palabras vacías entre dos signos, que el filtro de abajo quita
     .split(/[^\p{L}\p{N}]+/u)
     .filter((word) => word !== "" && !IGNORED.has(word));
 }

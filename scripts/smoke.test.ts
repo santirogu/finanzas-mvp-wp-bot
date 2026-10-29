@@ -122,6 +122,8 @@ describe("CHECKS", () => {
   it("el sitemap y robots.txt llevan la URL https de producción (no http://localhost:3000)", () => {
     expect(CHECKS.find((c) => c.path === "/sitemap.xml")?.contains).toBe("<loc>https://");
     expect(CHECKS.find((c) => c.path === "/robots.txt")?.contains).toBe("Sitemap: https://");
+    // La imagen para compartir de la portada, con la URL de producción (no la de localhost: #159).
+    expect(CHECKS.find((c) => c.path === "/")?.contains).toBe('property="og:image" content="https://');
   });
 });
 

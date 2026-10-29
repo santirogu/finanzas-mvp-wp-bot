@@ -11,6 +11,7 @@ import {
   adminNavItems,
   adminTitle,
   isCurrentAdminItem,
+  onlyActive,
 } from "./modules";
 
 const ADMIN_APP = resolve(__dirname, "../../app/[lang]/(app)/admin");
@@ -58,6 +59,11 @@ describe("registro de módulos de administración", () => {
     expect(activeAdminModules().map((m) => m.id)).toEqual([...ADMIN_MODULE_IDS]);
     expect(ADMIN_MODULES.filter((m) => m.status === "pronto")).toEqual([]);
   });
+
+  it("de los que vienen, ninguno entra a la subnavegación (aunque hoy no haya)", () => {
+    const modules = [{ id: "a", status: "activo" as const }, { id: "b", status: "pronto" as const }, { id: "c", status: "activo" as const }];
+    expect(onlyActive(modules).map((m) => m.id)).toEqual(["a", "c"]);
+  });
 });
 
 describe("subnavegación", () => {
@@ -98,7 +104,15 @@ describe("en inglés", () => {
       ADMIN_MODULES.map(({ id, href, status }) => ({ id, href, status })),
     );
     expect(en.map((m) => m.label)).toEqual(["History", "Users", "WhatsApp bot", "Categories", "System health", "Settings", "Security"]);
-    expect(en.find((m) => m.id === "usuarios")?.description).toBe("Accounts, sessions and status");
+    expect(en.map((m) => m.description)).toEqual([
+      "Sign-ups and WhatsApp linking of each account",
+      "Accounts, sessions and status",
+      "Messages, errors and Claude usage",
+      "The income and expense categories",
+      "Database, deployments and services",
+      "Sign-ups, the notice for everyone and the values",
+      "Your two-step verification",
+    ]);
     expect(adminModules("es")).toBe(ADMIN_MODULES);
   });
 

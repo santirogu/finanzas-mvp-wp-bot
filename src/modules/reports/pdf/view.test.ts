@@ -49,6 +49,8 @@ describe("chartScale y axisLabel (el eje del gráfico)", () => {
     [1_500, "$1,5 mil"],
     [2_000_000, "$2 M"],
     [2_500_000, "$2,5 M"],
+    // Con un solo decimal, redondeado.
+    [1_234_567, "$1,2 M"],
   ])("%d → %s", (value, label) => {
     expect(axisLabel(value)).toBe(label);
   });

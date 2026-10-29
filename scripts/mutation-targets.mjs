@@ -4,7 +4,8 @@
 // stryker.config.mjs son ~5000 mutantes, unas 8 horas en un runner de GitHub, más de lo que dura un job.
 //   · En un PR, solo los archivos de esa lista que el PR cambió: unos minutos. Si el PR cambia la lista,
 //     también los que entran a ella (si no, nada los mutaría hasta el lunes).
-//   · Los lunes y a mano, la lista completa, en partes de unos 45 minutos que corren a la vez.
+//   · Los lunes y a mano, la lista completa, en hasta MAX_SHARDS partes que corren a la vez (con el código de
+//     octubre de 2026, 70–92 minutos cada una; el job da 150).
 //
 // Uso:
 //   git diff --name-only <base> <pr> | node scripts/mutation-targets.mjs cambios
@@ -20,7 +21,8 @@ import config from "../stryker.config.mjs";
 
 /**
  * Cuánto código entra en una parte, en bytes: en este repo, cada mutante sale de unos 49 bytes y GitHub
- * prueba unos 10 por minuto, así que son ~490 mutantes, unos 45 minutos.
+ * prueba unos 10 por minuto, así que son ~490 mutantes, unos 45 minutos. Con la lista completa manda el tope
+ * (MAX_SHARDS): en octubre de 2026 eran 407 KB, ~34 KB por parte (70–92 minutos, con unos 8 por minuto).
  */
 export const SHARD_BYTES = 24_000;
 /** Como mucho, tantas partes a la vez: GitHub da 20 jobs simultáneos a un repo público (quedan para el resto del CI). */
