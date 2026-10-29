@@ -73,6 +73,7 @@ textos.
 | presupuesto, Presupuestos | budget, Budgets | límite; tope (en títulos) | El monto por mes de una categoría de egresos. En las explicaciones se acepta "tope" ("un tope por mes"). Se "pone", se "cambia" y se "quita" (no "eliminar": borra una configuración, no datos). |
 | Resumen | Overview | dashboard, tablero | |
 | Reportes | Reports | informes | |
+| los períodos de Reportes: Últimos 12 meses, Últimos 6 meses, Últimos 3 meses, Último mes | Last 12 months, Last 6 months, Last 3 months, This month | Mes actual; Last month, Past month | Todos cuentan el mes en curso: "Último mes" es el actual (lo pidió el dueño así), y en inglés "This month", porque "Last month" es el anterior. |
 | Mi cuenta | My account | perfil | |
 | Ayuda | Help | | |
 | categoría | category | | "Otros" es la de respaldo; en inglés, su nombre lo pone el admin. |

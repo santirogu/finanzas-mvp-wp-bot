@@ -14,6 +14,23 @@ describe("reportPeriod", () => {
     ]);
   });
 
+  it("los últimos 6 y 3 meses también cuentan el actual", () => {
+    expect(reportPeriod("6-meses", october)).toMatchObject({ id: "6-meses", label: "Últimos 6 meses", range: "De mayo a octubre de 2026" });
+    expect(keys(reportPeriod("6-meses", october).months)).toEqual(["2026-5", "2026-6", "2026-7", "2026-8", "2026-9", "2026-10"]);
+    expect(reportPeriod("3-meses", october)).toMatchObject({ id: "3-meses", label: "Últimos 3 meses", range: "De agosto a octubre de 2026" });
+    expect(keys(reportPeriod("3-meses", october).months)).toEqual(["2026-8", "2026-9", "2026-10"]);
+  });
+
+  it("el último mes es el actual", () => {
+    const period = reportPeriod("1-mes", october);
+    expect(period).toMatchObject({ id: "1-mes", label: "Último mes", range: "Octubre de 2026" });
+    expect(keys(period.months)).toEqual(["2026-10"]);
+  });
+
+  it("los últimos 3 meses pasan de un año a otro", () => {
+    expect(reportPeriod("3-meses", { year: 2026, month: 2 }).range).toBe("De diciembre de 2025 a febrero de 2026");
+  });
+
   it("en diciembre, los 12 meses son los del año", () => {
     const period = reportPeriod("12-meses", { year: 2026, month: 12 });
     expect(period.range).toBe("De enero a diciembre de 2026");
@@ -43,7 +60,10 @@ describe("reportPeriod", () => {
     expect(reportPeriod("1999", october).id).toBe(LAST_12_MONTHS);
   });
 
-  it.each([["2027"], ["2026-09"], ["abc"], [" 2025"], ["2025 "], ["2025.0"], ["20255"], [""], [["2025"]], [2025]])(
+  it.each([
+    ["2027"], ["2026-09"], ["abc"], [" 2025"], ["2025 "], ["2025.0"], ["20255"], [""], [["2025"]], [2025],
+    ["2-meses"], ["1-meses"], ["3-MESES"], ["3 meses"], [["3-meses"]], ["toString"], ["__proto__"], ["constructor"],
+  ])(
     "con %j (futuro o mal escrito), los últimos 12 meses",
     (param) => {
       expect(reportPeriod(param, october).id).toBe(LAST_12_MONTHS);
@@ -66,42 +86,67 @@ describe("periodHref", () => {
     expect(periodHref("2025")).toBe("/reportes?periodo=2025");
     expect(periodHref(LAST_12_MONTHS, "/reportes/exportar")).toBe("/reportes/exportar");
     expect(periodHref("2025", "/reportes/exportar")).toBe("/reportes/exportar?periodo=2025");
+    expect(periodHref("3-meses")).toBe("/reportes?periodo=3-meses");
+    expect(periodHref("1-mes", "/reportes/pdf")).toBe("/reportes/pdf?periodo=1-mes");
   });
 });
 
 describe("periodOptions", () => {
   const active = ["2026-10", "2026-01", "2025-12", "2025-03", "2023-07"];
 
-  it("los últimos 12 meses y cada año con movimientos, del más reciente al más antiguo", () => {
+  it("los últimos 12, 6 y 3 meses, el último mes y cada año con movimientos, del más reciente al más antiguo", () => {
     const options = periodOptions(reportPeriod(undefined, october), active);
     expect(options).toEqual([
       { id: LAST_12_MONTHS, label: "Últimos 12 meses", href: "/reportes", selected: true },
+      { id: "6-meses", label: "Últimos 6 meses", href: "/reportes?periodo=6-meses", selected: false },
+      { id: "3-meses", label: "Últimos 3 meses", href: "/reportes?periodo=3-meses", selected: false },
+      { id: "1-mes", label: "Último mes", href: "/reportes?periodo=1-mes", selected: false },
       { id: "2026", label: "2026", href: "/reportes?periodo=2026", selected: false },
       { id: "2025", label: "2025", href: "/reportes?periodo=2025", selected: false },
       { id: "2023", label: "2023", href: "/reportes?periodo=2023", selected: false },
     ]);
   });
 
-  it("marca el año elegido", () => {
-    const options = periodOptions(reportPeriod("2025", october), active);
-    expect(options.filter((o) => o.selected).map((o) => o.id)).toEqual(["2025"]);
+  it("marca el período elegido", () => {
+    const selected = (param: string) => periodOptions(reportPeriod(param, october), active).filter((o) => o.selected).map((o) => o.id);
+    expect(selected("2025")).toEqual(["2025"]);
+    expect(selected("3-meses")).toEqual(["3-meses"]);
+    expect(selected("1-mes")).toEqual(["1-mes"]);
+  });
+
+  it("con los últimos meses elegidos, no agrega su id como si fuera un año", () => {
+    expect(periodOptions(reportPeriod("6-meses", october), active).map((o) => o.id)).toEqual([
+      LAST_12_MONTHS,
+      "6-meses",
+      "3-meses",
+      "1-mes",
+      "2026",
+      "2025",
+      "2023",
+    ]);
   });
 
   it("un año elegido sin movimientos también aparece (en su lugar), para que se vea cuál es", () => {
     const options = periodOptions(reportPeriod("2024", october), active);
-    expect(options.map((o) => o.id)).toEqual([LAST_12_MONTHS, "2026", "2025", "2024", "2023"]);
+    expect(options.map((o) => o.id)).toEqual([LAST_12_MONTHS, "6-meses", "3-meses", "1-mes", "2026", "2025", "2024", "2023"]);
     expect(options.find((o) => o.id === "2024")?.selected).toBe(true);
   });
 
-  it("sin movimientos, solo los últimos 12 meses", () => {
-    expect(periodOptions(reportPeriod(undefined, october), []).map((o) => o.id)).toEqual([LAST_12_MONTHS]);
+  it("sin movimientos, solo los últimos meses", () => {
+    expect(periodOptions(reportPeriod(undefined, october), []).map((o) => o.id)).toEqual([LAST_12_MONTHS, "6-meses", "3-meses", "1-mes"]);
   });
 });
 
 describe("periodFileName", () => {
-  it("un año, con su número; los últimos 12 meses, del primero al último", () => {
+  it("un año, con su número; los últimos meses, del primero al último; el último mes, con el mes", () => {
     expect(periodFileName("reporte", reportPeriod("2025", october), "pdf")).toBe("reporte-2025.pdf");
     expect(periodFileName("reporte", reportPeriod(undefined, october), "pdf")).toBe("reporte-2025-11-a-2026-10.pdf");
+    expect(periodFileName("reporte", reportPeriod("3-meses", october), "pdf")).toBe("reporte-2026-08-a-2026-10.pdf");
+    expect(periodFileName("reporte", reportPeriod("1-mes", october), "pdf")).toBe("reporte-2026-10.pdf");
+  });
+
+  it("el año en curso en enero (un solo mes) sigue con su número", () => {
+    expect(periodFileName("reporte", reportPeriod("2026", { year: 2026, month: 1 }), "pdf")).toBe("reporte-2026.pdf");
   });
 });
 
@@ -114,8 +159,22 @@ describe("el período en inglés", () => {
     expect(rangePhrase([october], "en")).toBe("October 2026");
   });
 
+  it("los últimos 6 y 3 meses y el actual (\"This month\": \"Last month\" sería el anterior)", () => {
+    expect(reportPeriod("6-meses", october, "en")).toMatchObject({ label: "Last 6 months", range: "May to October 2026" });
+    expect(reportPeriod("3-meses", october, "en")).toMatchObject({ label: "Last 3 months", range: "August to October 2026" });
+    expect(reportPeriod("1-mes", october, "en")).toMatchObject({ label: "This month", range: "October 2026" });
+  });
+
   it("los chips y el nombre del archivo", () => {
-    expect(periodOptions(reportPeriod(undefined, october, "en"), ["2026-10"], "en").map((o) => o.label)).toEqual(["Last 12 months", "2026"]);
+    expect(periodOptions(reportPeriod(undefined, october, "en"), ["2026-10"], "en").map((o) => o.label)).toEqual([
+      "Last 12 months",
+      "Last 6 months",
+      "Last 3 months",
+      "This month",
+      "2026",
+    ]);
+    expect(periodFileName("report", reportPeriod("6-meses", october), "pdf", "en")).toBe("report-2026-05-to-2026-10.pdf");
+    expect(periodFileName("report", reportPeriod("1-mes", october), "pdf", "en")).toBe("report-2026-10.pdf");
     expect(periodFileName("transactions", reportPeriod(undefined, october), "csv", "en")).toBe("transactions-2025-11-to-2026-10.csv");
     expect(periodFileName("transactions", reportPeriod("2025", october), "csv", "en")).toBe("transactions-2025.csv");
   });

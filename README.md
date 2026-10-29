@@ -279,7 +279,7 @@ src/
     (app)/cuenta                    Mi cuenta: tus datos, seguridad (cambiar la contraseña), WhatsApp y eliminar la cuenta
     (app)/configuracion             Configuración: presupuestos, avisos de próximos pagos, apariencia e idioma
     (app)/ingresos, (app)/egresos   Formulario + listado del mes (vista compartida)
-    (app)/reportes                  Reportes: 12 meses (o un año), barras por mes, categorías frente a su promedio, gastos fijos, los más grandes y qué días gastas más
+    (app)/reportes                  Reportes: 12, 6, 3 meses, el último mes o un año; barras por mes, categorías frente a su promedio, gastos fijos, los más grandes y qué días gastas más
     (app)/presupuestos              Presupuestos: un monto por mes por categoría de egresos y cómo va cada uno (se llega desde el Resumen)
     (app)/month-nav.tsx             Navegador de meses (flechas y tarjeta del año) del Resumen, Ingresos y Egresos
     (app)/account-menu.tsx          Menú de la cuenta del encabezado (iniciales, escudo de admin, Mi cuenta, Configuración, Ayuda y Salir)
@@ -642,14 +642,16 @@ La app está en español (el de siempre) y en inglés: la web y el bot de WhatsA
     desde una región `aria-live`); en el primer paso no hay Atrás y el foco pasa a Siguiente.
   - **En las E2E,** `register()` lo omite; sus pruebas van en `e2e/tutorial.spec.ts` (`keepTutorial`).
 - **Reportes** (`/reportes`, la quinta pestaña; `src/modules/reports/`).
-  - **El período, en la URL:** sin parámetro, los últimos 12 meses contando el actual; con
-    `?periodo=2025`, ese año (el año en curso llega hasta el mes actual). Hay un chip por cada año con
-    movimientos. Un período mal escrito o futuro muestra los 12 meses. La pestaña no lleva el `?mes=`
-    de las otras.
+  - **El período, en la URL:** sin parámetro, los últimos 12 meses contando el actual. Con `?periodo=`:
+    `6-meses`, `3-meses` y `1-mes` ("Último mes", el actual; en inglés, "This month"), que también
+    terminan en el mes actual, o un año (`2025`; el año en curso llega hasta el mes actual). Hay un chip
+    por cada uno de esos cuatro y por cada año con movimientos. Un período mal escrito o futuro muestra
+    los 12 meses. La pestaña no lleva el `?mes=` de las otras.
   - **Las cifras del período:** ingresos, egresos, el balance con qué parte de los ingresos se ahorró,
     el gasto promedio por mes y el mes de más gasto. El promedio usa solo los meses completos (el
     actual va en curso y lo bajaría) desde el primero en que la persona registró algo (antes no usaba
-    la app).
+    la app). Con un período de un solo mes (el último mes, o el año en curso en enero), el promedio y el
+    mes de más gasto no salen, ni en la página ni en el PDF: repetirían los egresos.
   - **Ingresos y egresos por mes:** dos barras por mes, en el verde y el naranja de toda la app (no la
     paleta de la dona: aquí el color dice ingreso o egreso). Cada mes es un enlace a su Resumen, que el
     lector de pantalla lee con sus tres montos; con el mouse o con Tab, el detalle aparece debajo. "Ver

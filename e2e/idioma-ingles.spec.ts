@@ -136,7 +136,10 @@ test("en inglés: Reportes, con la descarga del CSV para el Excel en inglés @pr
   await page.goto("/reportes");
   await expect(page).toHaveTitle("Reports · Anotado");
   await expect(visible(page.getByRole("heading", { level: 1, name: "Reports" }))).toBeVisible();
-  await expect(visible(page.getByRole("navigation", { name: "Period" }).getByRole("link", { name: "Last 12 months" }))).toHaveAttribute("aria-current", "page");
+  const periods = visible(page.getByRole("navigation", { name: "Period" }));
+  await expect(periods.getByRole("link", { name: "Last 12 months" })).toHaveAttribute("aria-current", "page");
+  // "This month", no "Last month" (sería el anterior): el último de estos períodos es el actual.
+  await expect(periods.getByRole("link")).toHaveText(["Last 12 months", "Last 6 months", "Last 3 months", "This month", /^\d{4}$/]);
   await expect(visible(page.getByRole("region", { name: "Period summary" }))).toContainText("$1,250.50");
   await expect(visible(page.getByRole("heading", { name: "Expenses by category" }))).toBeVisible();
   await expect(visible(page.getByRole("heading", { name: "Which days do you spend the most?" }))).toBeVisible();
