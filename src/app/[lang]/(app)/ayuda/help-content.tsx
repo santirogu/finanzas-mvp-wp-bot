@@ -217,7 +217,7 @@ function SpanishTopics({ values, A }: { values: AppValues; A: PageLink }) {
 
       <Topic title="Reportes y descargas">
         <p>
-          En <A href="/reportes">Reportes</A> ves cómo te va en los últimos 12 meses o en un año:
+          En <A href="/reportes">Reportes</A> ves cómo te va en los últimos 12, 6 o 3 meses, en el último mes o en un año:
         </p>
         <ul className="list-disc space-y-1 pl-5">
           <li>tus cifras y los ingresos y egresos de cada mes;</li>
@@ -335,7 +335,7 @@ function EnglishTopics({ values, A }: { values: AppValues; A: PageLink }) {
 
       <Topic title="Reports and downloads">
         <p>
-          In <A href="/reportes">Reports</A> you see how you&apos;re doing over the last 12 months or a year:
+          In <A href="/reportes">Reports</A> you see how you&apos;re doing over the last 12, 6, or 3 months, this month, or a year:
         </p>
         <ul className="list-disc space-y-1 pl-5">
           <li>your figures and the income and expenses of each month;</li>

@@ -89,6 +89,29 @@ describe("GET /reportes/exportar", () => {
     expect(invalid.headers.get("content-disposition")).toContain(`a-${monthParam(current)}.csv`);
   });
 
+  it("con ?periodo=3-meses o 1-mes, los de esos meses contando el actual", async () => {
+    const ana = await register("ana@test.local");
+    const anaId = await userIdOf(ana);
+    await add(anaId, { description: "Hace tres meses", occurredOn: `${monthParam(shiftMonth(current, -3))}-28` });
+    await add(anaId, { description: "Hace dos meses", occurredOn: `${monthParam(shiftMonth(current, -2))}-01` });
+    await add(anaId, { description: "Del mes pasado", occurredOn: `${monthParam(previous)}-15` });
+    await add(anaId, { description: "De este mes", occurredOn: `${monthParam(current)}-01` });
+    as(ana);
+
+    const three = await download("?periodo=3-meses");
+    const from = monthParam(shiftMonth(current, -2));
+    expect(three.headers.get("content-disposition")).toBe(`attachment; filename="movimientos-${from}-a-${monthParam(current)}.csv"`);
+    const threeText = await three.text();
+    expect(threeText).not.toContain("Hace tres meses");
+    for (const description of ["Hace dos meses", "Del mes pasado", "De este mes"]) expect(threeText).toContain(description);
+
+    const one = await download("?periodo=1-mes");
+    expect(one.headers.get("content-disposition")).toBe(`attachment; filename="movimientos-${monthParam(current)}.csv"`);
+    const oneText = await one.text();
+    expect(oneText).toContain("De este mes");
+    expect(oneText).not.toContain("Del mes pasado");
+  });
+
   it("una cuenta suspendida no descarga nada (su sesión ya no vale)", async () => {
     const ana = await register("ana@test.local");
     await db.update(userTable).set({ suspendedAt: new Date() }).where(eq(userTable.id, await userIdOf(ana)));

@@ -193,17 +193,14 @@ export function reportPdfView({
   const topWeekday = Math.max(...averages);
   const half = halves(days);
 
-  return {
-    labels: t.labels,
-    range: period.range,
-    name,
-    generated: t.generated(Number(today.slice(8, 10)), formatMonthName(monthOf(today), { locale }), Number(today.slice(0, 4))),
-    currency: t.currency(t.currencies[currency] ?? currency),
-    empty: report.activeMonths.length === 0 ? t.empty : null,
-    stats: [
-      { label: t.labels.income, value: money(summary.income), note: null, tone: "income" },
-      { label: t.labels.expenses, value: money(summary.expense), note: null, tone: "expense" },
-      { label: t.balance, value: money(summary.balance), note: savedNote(summary.saved, locale) ?? null, tone: summary.balance < 0 ? "expense" : "default" },
+  const stats: ReportPdfView["stats"] = [
+    { label: t.labels.income, value: money(summary.income), note: null, tone: "income" },
+    { label: t.labels.expenses, value: money(summary.expense), note: null, tone: "expense" },
+    { label: t.balance, value: money(summary.balance), note: savedNote(summary.saved, locale) ?? null, tone: summary.balance < 0 ? "expense" : "default" },
+  ];
+  // Con un solo mes, como en la página, sin el promedio ni el mes de más gasto (repetirían los egresos).
+  if (period.months.length > 1) {
+    stats.push(
       {
         label: t.average,
         value: summary.averageExpense ? money(summary.averageExpense.amount) : "—",
@@ -216,7 +213,17 @@ export function reportPdfView({
         note: summary.topMonth ? money(summary.topMonth.expense) : t.noExpensesNote,
         tone: "default",
       },
-    ],
+    );
+  }
+
+  return {
+    labels: t.labels,
+    range: period.range,
+    name,
+    generated: t.generated(Number(today.slice(8, 10)), formatMonthName(monthOf(today), { locale }), Number(today.slice(0, 4))),
+    currency: t.currency(t.currencies[currency] ?? currency),
+    empty: report.activeMonths.length === 0 ? t.empty : null,
+    stats,
     chart: {
       bars: report.series.map((point, i) => ({
         short: formatShortMonth(point.month, locale),

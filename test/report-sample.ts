@@ -74,8 +74,10 @@ export function sampleReport(
   movements: SampleMovement[],
   current: Month,
   locale: Locale = DEFAULT_LOCALE,
+  /** El `?periodo=` (sin él, los últimos 12 meses). */
+  periodParam?: string,
 ): { report: Report; period: ReportPeriod; byDay: DayDescriptionTotal[] } {
-  const period = reportPeriod(undefined, current, locale);
+  const period = reportPeriod(periodParam, current, locale);
   const expenses = movements.filter((m) => m.type === "expense");
   const activeMonths = [...new Set(movements.map(monthKey))].sort().reverse();
   const series = monthSeries(

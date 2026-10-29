@@ -158,6 +158,32 @@ test("Reportes: las cifras del período, el gráfico, las categorías y los gast
     const range = current.month === 1 ? formatMonthLabel(current) : `De enero a ${formatMonthName(current, { withYear: true })}`;
     await expect(visible(page.getByText(range, { exact: true }))).toBeVisible();
   });
+
+  await test.step("los últimos 3 meses, contando el actual", async () => {
+    const chip = visible(page.getByRole("navigation", { name: "Período" }).getByRole("link", { name: "Últimos 3 meses" }));
+    await chip.click();
+    await expect(page).toHaveURL(/\/reportes\?periodo=3-meses$/);
+    await expect(chip).toHaveAttribute("aria-current", "page");
+    const range = `De ${formatMonthName(m2, { withYear: m2.year !== current.year })} a ${formatMonthName(current, { withYear: true })}`;
+    await expect(visible(page.getByText(range, { exact: true }))).toBeVisible();
+    await expect(stat(page, "Ingresos")).toContainText("$8.000.000,00");
+    await expect(stat(page, "Egresos")).toContainText("$5.500.000,00");
+    // Los dos meses completos del período: (1.800.000 + 1.900.000) / 2.
+    await expect(stat(page, "Gasto promedio por mes")).toContainText("$1.850.000,00");
+    await expect(stat(page, "Gasto promedio por mes")).toContainText(`En 2 meses, sin ${name(current)} (va en curso)`);
+  });
+
+  await test.step("el último mes: el actual, sin el promedio ni el mes de más gasto", async () => {
+    const chip = visible(page.getByRole("navigation", { name: "Período" }).getByRole("link", { name: "Último mes" }));
+    await chip.click();
+    await expect(page).toHaveURL(/\/reportes\?periodo=1-mes$/);
+    await expect(chip).toHaveAttribute("aria-current", "page");
+    await expect(visible(page.getByText(formatMonthLabel(current), { exact: true }))).toBeVisible();
+    await expect(stat(page, "Ingresos")).toContainText("$4.000.000,00");
+    await expect(stat(page, "Egresos")).toContainText("$1.800.000,00");
+    await expect(stat(page, "Gasto promedio por mes")).toHaveCount(0);
+    await expect(stat(page, "El mes de más gasto")).toHaveCount(0);
+  });
 });
 
 test("¿Qué días gastas más?: el calendario de un mes (sin los fijos), el detalle de un día y los promedios", async ({ page }) => {
@@ -244,7 +270,8 @@ test("Reportes sin movimientos lo explica", async ({ page }) => {
   await expect(visible(page.getByText("Aún no tienes movimientos."))).toBeVisible();
   // Sin movimientos no hay nada que descargar.
   await expect(visible(page.getByRole("button", { name: "Descargar" }))).toHaveCount(0);
-  await expect(visible(page.getByRole("navigation", { name: "Período" }).getByRole("link"))).toHaveCount(1);
+  // Los últimos 12, 6 y 3 meses y el último mes; ningún año.
+  await expect(visible(page.getByRole("navigation", { name: "Período" }).getByRole("link"))).toHaveCount(4);
   await expect(visible(page.getByRole("region", { name: "Gastos fijos" }))).toHaveCount(0);
 });
 

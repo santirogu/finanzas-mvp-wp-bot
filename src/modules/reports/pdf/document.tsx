@@ -106,7 +106,8 @@ function Header({ view }: { view: ReportPdfView }) {
 }
 
 function Stats({ view }: { view: ReportPdfView }) {
-  // Tres arriba y dos abajo (el mes de más gasto, a lo ancho de dos), como en un computador.
+  // Tres arriba y dos abajo (el mes de más gasto, a lo ancho de dos), como en un computador. Con un solo
+  // mes, solo las tres de arriba.
   const third = (CONTENT_WIDTH - 2 * GAP) / 3;
   const widths = [third, third, third, third, 2 * third + GAP];
   return (
