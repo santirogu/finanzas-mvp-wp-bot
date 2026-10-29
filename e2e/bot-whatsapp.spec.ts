@@ -204,7 +204,7 @@ test("en inglés: vincular con LINK desde Mi cuenta, y el bot responde en inglé
 
   await test.step("LINK y el código vinculan la cuenta, con la respuesta en inglés", async () => {
     await sendWhatsApp(request, phone, `LINK ${code}`);
-    expect(await nthReply(request, phone, 1)).toBe("✅ All set, Ana! Your WhatsApp is linked.\n\nTry writing me: _spent 20k on lunch_");
+    expect(await nthReply(request, phone, 1)).toBe("✅ All set, Ana! Your WhatsApp is linked.\n\nTry sending me: _spent 20k on lunch_");
     await expect(visible(page.getByText("Connected"))).toBeVisible({ timeout: 15_000 });
     await expect(visible(page.getByText("“spent 20k on lunch”"))).toBeVisible();
   });
@@ -232,7 +232,7 @@ test("en inglés: vincular con LINK desde Mi cuenta, y el bot responde en inglé
     expect(reply).toMatch(/^Hola 👋\nEste número aún no está vinculado/);
     expect(reply).toContain("\n\nHi 👋\nThis number isn't linked to an account yet.");
     await sendWhatsApp(request, other, "LINK 000000");
-    expect(await nthReply(request, other, 2)).toBe("That code isn't valid or it expired. Get another one in *My account*: tap *Connect WhatsApp*.");
+    expect(await nthReply(request, other, 2)).toBe("That code isn't valid or has expired. Get another one in *My account*: tap *Connect WhatsApp*.");
   });
 });
 

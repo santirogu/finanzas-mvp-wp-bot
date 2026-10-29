@@ -591,7 +591,7 @@ describe("interpretMessage e interpretPhoto · en inglés", () => {
       usage,
     });
     expect(await interpretMessage("shoes", en, fakeExtractor({ ok: true, transactions: [shoes], reply: null, usage }))).toMatchObject({
-      text: "I didn't understand the amount. Write me the whole transaction with its amount, for example “lunch 25k”.",
+      text: "I didn't understand the amount. Send me the whole transaction with its amount, for example “lunch 25k”.",
     });
     expect(await interpretMessage("hmm", en, none)).toMatchObject({
       text: "I couldn't find any income or expense in your message. Try something like “spent 20k on lunch”.",

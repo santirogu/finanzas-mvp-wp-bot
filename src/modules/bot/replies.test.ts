@@ -466,7 +466,7 @@ describe("en inglés", () => {
       "_↗ $2,800,000.00 more than at this point in September_",
     ]);
     expect(balanceReply({ income: 0, expense: 0, balance: 0, count: 0 }, { currency: "COP", range, locale: "en" })).toBe(
-      "You don't have any transactions in October 2026 yet. Write me something like “spent 20k on lunch”.",
+      "You don't have any transactions in October 2026 yet. Send me something like “spent 20k on lunch”.",
     );
   });
 
@@ -497,7 +497,7 @@ describe("en inglés", () => {
       "Where your money went: 🏠 Housing 64%",
       "Bills: $1,800,000.00 a month",
       "",
-      "More detail in *Reports*: https://finanzas.app/reportes",
+      "More details in *Reports*: https://finanzas.app/reportes",
     ]);
     const overspent = { ...summary, saved: "overspent" as const };
     const january = reportReply({ summary: overspent, categories, recurring }, reportPeriod("2026", { year: 2026, month: 1 }, "en"), ctx);
@@ -506,7 +506,7 @@ describe("en inglés", () => {
     const empty = { ...summary, income: 0, expense: 0, saved: null, averageExpense: null, topMonth: null };
     const none = { summary: empty, categories: { ...categories, rows: [], total: 0 }, recurring: { items: [], total: 0 } };
     expect(reportReply(none, reportPeriod(undefined, october, "en"), ctx)).toBe(
-      "You don't have any transactions from November 2025 to October 2026. Write me something like “spent 20k on lunch” and you'll see how you're doing here.",
+      "You don't have any transactions from November 2025 to October 2026. Send me something like “spent 20k on lunch” and you'll see how you're doing here.",
     );
     expect(reportReply(none, reportPeriod("2026", { year: 2026, month: 1 }, "en"), ctx)).toMatch(/^You don't have any transactions in January 2026\./);
   });
@@ -515,7 +515,7 @@ describe("en inglés", () => {
     expect(helpReply("en", "Ana Pérez")).toBe(
       [
         "Hi, Ana 👋",
-        "Write me your income and expenses the way you'd tell someone:",
+        "Send me your income and expenses the way you'd tell someone:",
         "",
         "• _I bought some shoes for $500.000_",
         "• _lunch 25k and taxi 12k_",
@@ -534,9 +534,9 @@ describe("en inglés", () => {
   });
 
   it("vincular, deshacer y los meses que no se pueden pedir", () => {
-    expect(linkedReply("Ana Pérez", "en")).toBe("✅ All set, Ana! Your WhatsApp is linked.\n\nTry writing me: _spent 20k on lunch_");
+    expect(linkedReply("Ana Pérez", "en")).toBe("✅ All set, Ana! Your WhatsApp is linked.\n\nTry sending me: _spent 20k on lunch_");
     expect(linkedReply("", "en")).toMatch(/^✅ All set! /);
-    expect(linkInvalidReply("en")).toBe("That code isn't valid or it expired. Get another one in *My account*: tap *Connect WhatsApp*.");
+    expect(linkInvalidReply("en")).toBe("That code isn't valid or has expired. Get another one in *My account*: tap *Connect WhatsApp*.");
     expect(linkRateLimitedReply("en")).toBe("I got too many wrong codes from this number. Wait an hour and try again.");
     expect(undoReply([{ description: "Coffee", amount: 6500.5, type: "expense" }], "COP", "en")).toBe("Done, I deleted:\n🗑️ Coffee — $6,500.50");
     expect(undoReply([], "COP", "en")).toBe("I didn't find any transactions added on WhatsApp to undo.");
@@ -552,7 +552,7 @@ describe("en inglés", () => {
     );
     expect(unsupportedTypeReply("en")).toBe("For now I only understand text messages ✍️ and photos of receipts 🧾");
     for (const reply of [photoFallbackReply, photoUnreadableReply, photoManyReply, photoFormatReply, photoDownloadFailedReply]) {
-      expect(reply("en")).toMatch(/ or write me the expense, for example “lunch 25k”\.$/);
+      expect(reply("en")).toMatch(/ or type the expense, for example “lunch 25k”\.$/);
     }
     expect(errorReply("en")).toBe("I had a problem with your message 😕. Check on the web whether it was added and, if not, send it to me again in a moment.");
     expect(aiPausedReply("https://finanzas.app", "en")).toBe(
@@ -564,6 +564,6 @@ describe("en inglés", () => {
     expect(tooLongReply("es")).toBe("Tu mensaje es muy largo. Envíamelo en partes más cortas.");
     expect(tooLongReply("en")).toBe("Your message is too long. Send it to me in shorter parts.");
     expect(notUnderstoodReply("en")).toBe("I couldn't find any income or expense in your message. Try something like “spent 20k on lunch”.");
-    expect(amountUnclearReply("en")).toBe("I didn't understand the amount. Write me the whole transaction with its amount, for example “lunch 25k”.");
+    expect(amountUnclearReply("en")).toBe("I didn't understand the amount. Send me the whole transaction with its amount, for example “lunch 25k”.");
   });
 });

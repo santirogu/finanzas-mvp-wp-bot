@@ -1133,10 +1133,10 @@ describe("handleIncomingMessage · cuenta en inglés", () => {
     }
 
     const bodies = sender.sent.map((m) => m.body);
-    expect(bodies[0]).toBe(`You don't have any transactions in ${formatMonthLabel(current, "en")} yet. Write me something like “spent 20k on lunch”.`);
+    expect(bodies[0]).toBe(`You don't have any transactions in ${formatMonthLabel(current, "en")} yet. Send me something like “spent 20k on lunch”.`);
     expect(bodies[1]).toMatch(/^You don't have any transactions from [A-Z][a-z]+( \d{4})? to [A-Z][a-z]+ \d{4}\. /);
     expect(bodies[2]).toBe(
-      "You don't have any transactions from January to December 2025. Write me something like “spent 20k on lunch” and you'll see how you're doing here.",
+      "You don't have any transactions from January to December 2025. Send me something like “spent 20k on lunch” and you'll see how you're doing here.",
     );
     expect(bodies[3]).toBe(replies.helpReply("en", "Ana Pérez"));
     expect(bodies[4]).toBe(replies.undoReply([], "COP", "en"));
