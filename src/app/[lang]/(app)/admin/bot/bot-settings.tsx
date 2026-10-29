@@ -87,7 +87,7 @@ const TEXTS = texts(
     resuming: "Reanudando…",
     resumeBody: "El bot vuelve a entender los mensajes escritos libremente. Cada uno usa una llamada a Claude, dentro de los topes de cada cuenta.",
     limitsBody: (perHour: string, perDay: string) =>
-      `Cuántos mensajes escritos libremente puede interpretar Claude para cada cuenta. Al llegar al tope, el bot le pide esperar; los comandos siguen. Hasta ${perHour} por hora y ${perDay} por día.`,
+      `Cuántos mensajes escritos libremente o fotos de facturas puede interpretar Claude para cada cuenta. Al llegar al tope, el bot le pide esperar; los comandos siguen. Hasta ${perHour} por hora y ${perDay} por día.`,
     perHour: "Por hora",
     perDay: "Por día",
     saveLimits: "Guardar topes",
@@ -146,7 +146,7 @@ const TEXTS = texts(
       resuming: "Resuming…",
       resumeBody: "The bot understands freely written messages again. Each one uses a Claude call, within each account's limits.",
       limitsBody: (perHour, perDay) =>
-        `How many freely written messages Claude can interpret for each account. When an account hits the limit, the bot asks it to wait; the commands keep working. Up to ${perHour} per hour and ${perDay} per day.`,
+        `How many freely written messages or photos of receipts Claude can interpret for each account. When an account hits the limit, the bot asks it to wait; the commands keep working. Up to ${perHour} per hour and ${perDay} per day.`,
       perHour: "Per hour",
       perDay: "Per day",
       saveLimits: "Save limits",

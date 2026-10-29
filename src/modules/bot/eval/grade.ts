@@ -8,6 +8,9 @@ import { EVAL_TODAY, type EvalCase } from "./cases";
 // El bot tutea, como toda la app (glosario de textos): estas formas son de usted.
 const USTED = /\b(usted|ustedes|escriba|envíe|envíeme|intente|indíqueme|dígame|cuénteme|disculpe|tenga)\b/i;
 
+/** Cómo se muestra un caso (en la consola y en el resumen): con una foto, su nombre y el texto que va con ella. */
+export const caseLabel = (c: EvalCase) => (c.photo ? `[foto ${c.photo}]${c.text ? ` ${c.text}` : ""}` : c.text);
+
 /** Lo que salió mal en un caso (vacío: acertó). */
 export function grade(c: EvalCase, intent: BotIntent): string[] {
   const problems: string[] = [];
@@ -94,7 +97,7 @@ export function summaryMarkdown(
   ];
   if (failed.length > 0) {
     lines.push("", "| Caso | Trampa | Qué pasó |", "|---|---|---|");
-    for (const r of failed) lines.push(`| ${cell(r.c.text)} | ${r.c.trap ? "sí" : ""} | ${cell(r.problems.join(" · "))} |`);
+    for (const r of failed) lines.push(`| ${cell(caseLabel(r.c))} | ${r.c.trap ? "sí" : ""} | ${cell(r.problems.join(" · "))} |`);
   }
   return `${lines.join("\n")}\n`;
 }

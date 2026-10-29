@@ -7,7 +7,7 @@ import { accountEvent, user, whatsappLink, whatsappMessage } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { handleIncomingMessage } from "@/modules/bot/handle-message";
 import { consumeLinkCode, createLinkCode, unlinkUser } from "@/modules/whatsapp/link";
-import { capturingSender, createUser, fakeExtractor, incoming } from "../../../test/integration/factories";
+import { capturingSender, createUser, fakeDownloader, fakeExtractor, incoming } from "../../../test/integration/factories";
 import { deleteAccountData } from "./delete-account";
 import { recordEvents } from "./events";
 
@@ -154,7 +154,7 @@ describe("vinculación de WhatsApp", () => {
 
   it("de punta a punta por el bot: VINCULAR con un código bueno y con uno malo", async () => {
     const ana = await createUser({ name: "Ana" });
-    const d = { extractor: fakeExtractor([]), send: capturingSender().send, appUrl: "https://app.test" };
+    const d = { extractor: fakeExtractor([]), send: capturingSender().send, appUrl: "https://app.test", download: fakeDownloader() };
     const { code } = await createLinkCode(ana.id);
 
     await handleIncomingMessage(incoming("VINCULAR 000000", "573004443322"), d);

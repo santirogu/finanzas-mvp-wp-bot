@@ -17,9 +17,12 @@ import {
   activeTransactions,
   capturingSender,
   createUser,
+  fakeDownloader,
   fakeExtractor,
   incoming,
+  incomingPhoto,
   loggedMessage,
+  TINY_PNG,
 } from "../../../test/integration/factories";
 import type { ExtractionInput } from "./claude-extractor";
 import { handleIncomingMessage } from "./handle-message";
@@ -34,8 +37,8 @@ async function linkedUser(phone = PHONE, name = "Ana Pérez") {
   return user;
 }
 
-function deps(extractor = fakeExtractor([]), sender = capturingSender()) {
-  return { deps: { extractor, send: sender.send, appUrl: APP_URL }, sender, extractor };
+function deps(extractor = fakeExtractor([]), sender = capturingSender(), download = fakeDownloader()) {
+  return { deps: { extractor, send: sender.send, appUrl: APP_URL, download }, sender, extractor, download };
 }
 
 describe("handleIncomingMessage · vinculación", () => {
@@ -122,7 +125,7 @@ describe("handleIncomingMessage · límites (auditoría de seguridad 2026-10-15)
   it("si Meta rechaza la respuesta, el intento fallido de vinculación igual cuenta", async () => {
     const victim = await createUser();
     const failing = capturingSender({ fail: "131056" });
-    const d = { extractor: fakeExtractor([]), send: failing.send, appUrl: APP_URL };
+    const d = { extractor: fakeExtractor([]), send: failing.send, appUrl: APP_URL, download: fakeDownloader() };
     for (let i = 0; i < 8; i++) await handleIncomingMessage(incoming("VINCULAR 000000"), d);
 
     // Solo 5 se evaluaron: el resto quedó bloqueado aunque ninguna respuesta llegó.
@@ -832,7 +835,7 @@ describe("handleIncomingMessage · errores", () => {
     expect(logged.error).toContain("131030");
   });
 
-  it("a audios e imágenes responde que solo entiende texto", async () => {
+  it("a audios, stickers o videos responde que entiende textos y fotos", async () => {
     const { deps: d, sender } = deps();
     const msg = incoming(null);
 
@@ -841,6 +844,141 @@ describe("handleIncomingMessage · errores", () => {
     expect(sender.sent[0].body).toBe(replies.unsupportedTypeReply);
     const [row] = await db.select().from(whatsappMessage).where(eq(whatsappMessage.id, msg.id));
     expect(row.body).toBe("[audio]");
+  });
+});
+
+describe("handleIncomingMessage · fotos de facturas", () => {
+  /** Claude falso que lee la factura del Éxito con la fecha `date`; guarda en `inputs` lo que recibió. */
+  const receipt = (date: string, inputs: ExtractionInput[] = []) =>
+    fakeExtractor((input) => {
+      inputs.push(input);
+      return {
+        ok: true,
+        reply: null,
+        usage: { model: "fake", inputTokens: 2000, outputTokens: 60 },
+        transactions: [{ type: "expense", amount: 85400, description: "Éxito", category: "Mercado", date }],
+      };
+    });
+  const today = () => todayInTimezone("America/Bogota");
+  const daysBefore = (days: number) => new Date(Date.parse(`${today()}T00:00:00Z`) - days * 86_400_000).toISOString().slice(0, 10);
+  const ALMUERZO = [{ type: "expense" as const, amount: 20000, description: "Almuerzo", category: "Alimentación" }];
+
+  it("registra un egreso con el total y la fecha impresa: baja la foto, se la manda a Claude y gasta cupo", async () => {
+    const user = await linkedUser();
+    const printed = daysBefore(3);
+    const inputs: ExtractionInput[] = [];
+    const { deps: d, sender, download } = deps(receipt(printed, inputs));
+    const msg = incomingPhoto("mercado del mes", PHONE, "1029384756");
+
+    await handleIncomingMessage(msg, d);
+
+    expect(download.ids).toEqual(["1029384756"]);
+    expect(inputs).toHaveLength(1);
+    expect(inputs[0]).toMatchObject({ text: "mercado del mes", image: { data: TINY_PNG.toString("base64"), mediaType: "image/png" } });
+    const [tx] = await activeTransactions(user.id);
+    expect(tx).toMatchObject({ type: "expense", amount: 85400, description: "Éxito", source: "whatsapp", externalId: `${msg.id}:0`, occurredOn: printed });
+    expect(sender.sent[0].body).toContain("Egreso Anotado: *Éxito*");
+    expect(await loggedMessage(msg.id)).toMatchObject({
+      status: "processed",
+      userId: user.id,
+      body: "[image] mercado del mes",
+      aiRequestedAt: expect.any(Date),
+      intent: { kind: "transactions" },
+    });
+  });
+
+  it("una factura de hace más de un mes queda con la fecha de hoy", async () => {
+    const user = await linkedUser();
+    const { deps: d } = deps(receipt(daysBefore(45)));
+    await handleIncomingMessage(incomingPhoto(), d);
+    expect((await activeTransactions(user.id))[0].occurredOn).toBe(today());
+  });
+
+  it("sin texto, el registro guarda solo el tipo", async () => {
+    await linkedUser();
+    const { deps: d } = deps(receipt(today()));
+    const msg = incomingPhoto(null);
+    await handleIncomingMessage(msg, d);
+    expect((await loggedMessage(msg.id)).body).toBe("[image]");
+  });
+
+  it("a un número sin vincular o a una cuenta suspendida no les baja la foto ni llama a Claude", async () => {
+    const extractor = receipt(today());
+    const { deps: d, sender, download } = deps(extractor);
+    await handleIncomingMessage(incomingPhoto(null, "573009999999"), d);
+    const ana = await linkedUser();
+    await db.update(userTable).set({ suspendedAt: new Date() }).where(eq(userTable.id, ana.id));
+    await handleIncomingMessage(incomingPhoto(), d);
+
+    expect(download.ids).toEqual([]);
+    expect(extractor.calls).toBe(0);
+    expect(sender.sent.map((m) => m.body)).toEqual([replies.notLinkedReply(APP_URL), replies.suspendedReply]);
+    expect(await activeTransactions(ana.id)).toEqual([]);
+  });
+
+  it("si Meta no entrega la foto, no llama a Claude ni gasta cupo: pide enviarla de nuevo y queda el error", async () => {
+    const user = await linkedUser();
+    const extractor = receipt(today());
+    const { deps: d, sender } = deps(extractor, capturingSender(), fakeDownloader({ fail: "archivo: 500 {}" }));
+    const msg = incomingPhoto();
+
+    await handleIncomingMessage(msg, d);
+
+    expect(extractor.calls).toBe(0);
+    expect(sender.sent[0].body).toBe(replies.photoDownloadFailedReply);
+    expect(await activeTransactions(user.id)).toEqual([]);
+    expect(await loggedMessage(msg.id)).toMatchObject({
+      status: "failed",
+      userId: user.id,
+      aiRequestedAt: null,
+      error: "foto: archivo: 500 {}",
+      intent: { kind: "error", reason: "foto: archivo: 500 {}" },
+    });
+  });
+
+  it("si lo que llegó no es una imagen que Claude entienda, no lo llama: pide la foto o el gasto escrito", async () => {
+    await linkedUser();
+    const extractor = receipt(today());
+    const { deps: d, sender } = deps(extractor, capturingSender(), fakeDownloader({ file: Buffer.from("%PDF-1.7") }));
+    const msg = incomingPhoto();
+
+    await handleIncomingMessage(msg, d);
+
+    expect(extractor.calls).toBe(0);
+    expect(sender.sent[0].body).toBe(replies.photoFormatReply);
+    expect(await loggedMessage(msg.id)).toMatchObject({ status: "processed", aiRequestedAt: null, intent: null });
+  });
+
+  it("con Claude en pausa no lo llama: pide registrarlo en la web", async () => {
+    await linkedUser();
+    await db.insert(botSetting).values({ id: 1, claudePaused: true, aiPerHour: 20, aiPerDay: 100 });
+    const extractor = receipt(today());
+    const { deps: d, sender } = deps(extractor);
+    await handleIncomingMessage(incomingPhoto(), d);
+    expect(extractor.calls).toBe(0);
+    expect(sender.sent[0].body).toBe(replies.aiPausedReply(APP_URL));
+  });
+
+  it("un comando escrito con la foto no se ejecuta: deshacer no borra lo anterior", async () => {
+    const user = await linkedUser();
+    await handleIncomingMessage(incoming("almuerzo 20 mil"), deps(fakeExtractor(ALMUERZO)).deps);
+    const extractor = receipt(today());
+    const { deps: d } = deps(extractor);
+
+    await handleIncomingMessage(incomingPhoto("deshacer"), d);
+
+    expect(extractor.calls).toBe(1);
+    expect(await activeTransactions(user.id)).toHaveLength(2);
+  });
+
+  it("si Meta entrega la misma foto dos veces, la baja y la registra una sola vez", async () => {
+    const user = await linkedUser();
+    const { deps: d, download } = deps(receipt(today()));
+    const msg = incomingPhoto();
+    await handleIncomingMessage(msg, d);
+    expect(await handleIncomingMessage(msg, d)).toEqual({ duplicate: true });
+    expect(download.ids).toHaveLength(1);
+    expect(await activeTransactions(user.id)).toHaveLength(1);
   });
 });
 

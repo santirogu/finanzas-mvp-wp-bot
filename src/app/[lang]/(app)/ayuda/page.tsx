@@ -12,6 +12,7 @@ import { BOT_COMMANDS, BOT_EXAMPLES, HELP_COMMAND } from "@/modules/bot/help";
 import { BIGGEST_SHOWN } from "@/modules/reports/biggest";
 import { CONTACT_EMAIL } from "@/lib/contact";
 import { MAX_TRANSACTIONS_PER_MESSAGE } from "@/modules/bot/limits";
+import { PHOTO_MAX_DAYS_BACK } from "@/modules/bot/photo";
 import { formatMoney, formatPercent } from "@/lib/money";
 import { FACT_MIN_AMOUNT, FACT_MIN_SHARE } from "@/modules/reports/month-fact";
 import { REMINDER_DAYS, REMINDER_DAYS_MAX, REMINDER_DAYS_MIN } from "@/modules/reminders/register-reminder";
@@ -165,6 +166,7 @@ function SpanishTopics({ values }: { values: AppValues }) {
         </p>
         <p>Después, escríbele tus ingresos y gastos como se los contarías a alguien:</p>
         <BotExamples />
+        <p>O envíale la foto de una factura o un recibo: registra un egreso por el total.</p>
         <p>También entiende estos comandos:</p>
         <BotCommands locale="es" />
       </Topic>
@@ -282,6 +284,7 @@ function EnglishTopics({ values }: { values: AppValues }) {
         </p>
         <p>For now the bot answers in Spanish. Write your income and expenses the way you&apos;d tell someone, for example:</p>
         <BotExamples />
+        <p>Or send it a photo of a receipt: it adds an expense for the total.</p>
         <p>It also understands these commands:</p>
         <BotCommands locale="en" />
       </Topic>
@@ -411,8 +414,12 @@ function SpanishFaq({ values }: { values: AppValues }) {
       </Topic>
       <Topic title="¿El bot entiende notas de voz o fotos?">
         <p>
-          Por ahora solo entiende mensajes de texto: si le envías un audio o una foto, te lo recuerda. Escríbele el movimiento
-          como se lo contarías a alguien.
+          Entiende fotos de facturas y recibos: envíale la foto y registra un egreso por el total, con el nombre del comercio y la
+          fecha de la factura (si es de los últimos {PHOTO_MAX_DAYS_BACK} días; si no, la de hoy). Puedes escribir algo con la foto,
+          como “almuerzo con Juan”, para ayudarle. Una factura por foto.
+        </p>
+        <p>
+          La foto no se guarda: solo lo que se registró. Notas de voz, todavía no: si le envías un audio, te lo recuerda.
         </p>
       </Topic>
       <Topic title="¿Por qué no veo un gasto fijo?">
@@ -502,8 +509,12 @@ function EnglishFaq({ values }: { values: AppValues }) {
       </Topic>
       <Topic title="Does the bot understand voice notes or photos?">
         <p>
-          For now it only understands text messages: if you send it audio or a photo, it reminds you. Write the transaction the
-          way you&apos;d tell someone.
+          It understands photos of receipts: send it the photo and it adds an expense for the total, with the store&apos;s
+          name and the date on the receipt (if it&apos;s from the last {PHOTO_MAX_DAYS_BACK} days; otherwise, today&apos;s). You can
+          write something with the photo, like <span lang="es">“almuerzo con Juan”</span>, to help it. One receipt per photo.
+        </p>
+        <p>
+          The photo isn&apos;t saved: only what was added. Voice notes, not yet: if you send it audio, it reminds you.
         </p>
       </Topic>
       <Topic title="Why don't I see a bill?">

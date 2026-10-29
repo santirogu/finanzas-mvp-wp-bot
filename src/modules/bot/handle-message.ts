@@ -14,21 +14,23 @@ import {
 import { reportPeriod } from "@/modules/reports/period";
 import { getReport } from "@/modules/reports/queries";
 import { getMonthlySummary, listCategories } from "@/modules/transactions/queries";
-import type { Sender } from "@/modules/whatsapp/client";
+import type { MediaDownloader, Sender } from "@/modules/whatsapp/client";
 import { consumeLinkCode, getUserByPhone } from "@/modules/whatsapp/link";
-import type { IncomingMessage } from "@/modules/whatsapp/payload";
+import type { IncomingImage, IncomingMessage } from "@/modules/whatsapp/payload";
 import { reserveAiCall } from "./ai-quota";
 import type { Extractor } from "./claude-extractor";
 import { balanceMonth, parseCommand, reportYear } from "./commands";
 import { withHistoryDescriptions } from "./history";
-import { interpretMessage, type BotIntent } from "./interpret";
+import { interpretMessage, interpretPhoto, type BotIntent } from "./interpret";
 import { monthlyBudgetReached } from "./limits";
+import { photoMediaType, type PhotoImage } from "./photo";
 import * as replies from "./replies";
 import { resolveBotModel } from "./models";
 import { getBotSettings } from "./settings";
 import { tokensUsedThisMonth } from "./token-budget";
 
-type Deps = { extractor: Extractor; send: Sender; appUrl: string };
+/** `download`: baja la foto de un mensaje desde Meta (src/modules/whatsapp/client.ts). */
+type Deps = { extractor: Extractor; send: Sender; appUrl: string; download: MediaDownloader };
 
 export type HandleResult =
   | { duplicate: true }
@@ -46,7 +48,7 @@ export async function handleIncomingMessage(
 ): Promise<HandleResult> {
   const [fresh] = await db
     .insert(whatsappMessage)
-    .values({ id: msg.id, phone: msg.from, body: msg.text ?? `[${msg.type}]` })
+    .values({ id: msg.id, phone: msg.from, body: loggedBody(msg) })
     .onConflictDoNothing()
     .returning({ id: whatsappMessage.id });
   if (!fresh) return { duplicate: true };
@@ -90,16 +92,24 @@ export async function handleIncomingMessage(
   return { duplicate: false, reply, intent, status };
 }
 
-async function respond(
-  msg: IncomingMessage,
-  deps: Deps,
-): Promise<{ reply: string; intent: BotIntent | null; userId: string | null; status: Status }> {
-  if (msg.text === null) {
+/** Lo que queda en el registro de mensajes: el texto o, si no, el tipo ("[image]", con lo que escribió con la foto). */
+function loggedBody(msg: IncomingMessage): string {
+  if (msg.text !== null) return msg.text;
+  return msg.image?.caption ? `[${msg.type}] ${msg.image.caption}` : `[${msg.type}]`;
+}
+
+type Response = { reply: string; intent: BotIntent | null; userId: string | null; status: Status };
+
+async function respond(msg: IncomingMessage, deps: Deps): Promise<Response> {
+  // Lo que se interpreta: un texto o una foto. Audios, stickers, videos o documentos, todavía no.
+  const content =
+    msg.text !== null ? ({ kind: "text", text: msg.text } as const) : msg.image ? ({ kind: "photo", photo: msg.image } as const) : null;
+  if (!content) {
     return { reply: replies.unsupportedTypeReply, intent: null, userId: null, status: "processed" };
   }
 
   // La vinculación funciona aunque el número aún no esté asociado a ninguna cuenta.
-  const command = parseCommand(msg.text);
+  const command = content.kind === "text" ? parseCommand(content.text) : null;
   if (command?.kind === "link") {
     const result = await consumeLinkCode(msg.from, command.code);
     if (!result.ok) {
@@ -156,17 +166,21 @@ async function respond(
     // El modelo que eligió el admin (o el de BOT_MODEL, o el de siempre): aplica desde el siguiente mensaje.
     return deps.extractor({ ...input, model: resolveBotModel(settings.model, envVar("BOT_MODEL")) });
   };
-  const intent = await interpretMessage(
-    msg.text,
-    {
-      today,
-      categories: {
-        expense: expenseCategories.map((c) => c.name),
-        income: incomeCategories.map((c) => c.name),
-      },
+  const ctx = {
+    today,
+    categories: {
+      expense: expenseCategories.map((c) => c.name),
+      income: incomeCategories.map((c) => c.name),
     },
-    extractor,
-  );
+  };
+  let intent: BotIntent;
+  if (content.kind === "text") {
+    intent = await interpretMessage(content.text, ctx, extractor);
+  } else {
+    const photo = await readPhoto(content.photo, deps.download);
+    if (!photo.ok) return { ...photo.response, userId: user.id };
+    intent = await interpretPhoto({ image: photo.image, caption: content.photo.caption }, ctx, extractor);
+  }
   const base = { intent, userId: user.id, status: "processed" as Status };
 
   switch (intent.kind) {
@@ -247,4 +261,24 @@ async function respond(
       // Ya se manejó arriba; se deja por exhaustividad.
       return { ...base, reply: replies.helpReply(user.name) };
   }
+}
+
+/**
+ * Baja la foto de Meta y la deja lista para Claude. Antes de llamarlo (y de reservar su cupo): si Meta no la
+ * entrega o no es una imagen que Claude entienda, no se gasta nada y se le dice a la persona cómo seguir.
+ */
+async function readPhoto(
+  photo: IncomingImage,
+  download: MediaDownloader,
+): Promise<{ ok: true; image: PhotoImage } | { ok: false; response: Omit<Response, "userId"> }> {
+  const media = await download(photo.id);
+  if (!media.ok) {
+    return {
+      ok: false,
+      response: { reply: replies.photoDownloadFailedReply, intent: { kind: "error", reason: `foto: ${media.error}` }, status: "failed" },
+    };
+  }
+  const mediaType = photoMediaType(media.data);
+  if (!mediaType) return { ok: false, response: { reply: replies.photoFormatReply, intent: null, status: "processed" } };
+  return { ok: true, image: { data: media.data.toString("base64"), mediaType } };
 }

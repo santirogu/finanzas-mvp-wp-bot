@@ -124,6 +124,30 @@ describe("claudeExtractor", () => {
     expect(params.messages[0].content).toContain(`<mensaje>\n${input.text}\n</mensaje>`);
   });
 
+  it("con una foto, manda la imagen y después el texto, con las reglas de las fotos", async () => {
+    sdk.parse.mockResolvedValue(response());
+    const image = { data: "aGVsbG8=", mediaType: "image/png" as const };
+    await claudeExtractor({ ...input, text: "mercado", image });
+
+    const params = sdk.parse.mock.calls[0][0];
+    expect(params.system).toContain("Fotos:");
+    expect(params.messages).toEqual([
+      {
+        role: "user",
+        content: [
+          { type: "image", source: { type: "base64", media_type: "image/png", data: "aGVsbG8=" } },
+          { type: "text", text: expect.stringContaining("El usuario envió esta foto con este texto:\n<mensaje>\nmercado\n</mensaje>") },
+        ],
+      },
+    ]);
+  });
+
+  it("sin foto, el system prompt no trae las reglas de las fotos", async () => {
+    sdk.parse.mockResolvedValue(response());
+    await claudeExtractor(input);
+    expect(sdk.parse.mock.calls[0][0].system).not.toContain("Fotos:");
+  });
+
   it("con BOT_MODEL de Opus activa el fallback del servidor ante rechazos", async () => {
     vi.stubEnv("BOT_MODEL", "claude-opus-5-5");
     vi.stubEnv("BOT_EFFORT", "medium");

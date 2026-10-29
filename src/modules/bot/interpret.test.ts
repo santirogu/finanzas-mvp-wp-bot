@@ -2,9 +2,9 @@ import { describe, expect, it, vi } from "vitest";
 import { DEFAULT_CATEGORIES } from "@/modules/transactions/default-categories";
 import type { ExtractionResult, Extractor } from "./claude-extractor";
 import { parseCommand } from "./commands";
-import { interpretMessage } from "./interpret";
+import { interpretMessage, interpretPhoto } from "./interpret";
 import { matchCategory, normalizeReply, normalizeTransactions, type CategoryNames } from "./normalize";
-import { tooManyTransactionsReply } from "./replies";
+import { photoFallbackReply, photoManyReply, photoUnreadableReply, tooManyTransactionsReply } from "./replies";
 
 const categories: CategoryNames = {
   expense: DEFAULT_CATEGORIES.expense.map((c) => c.name),
@@ -92,6 +92,13 @@ describe("normalizeTransactions", () => {
     expect(future.occurredOn).toBe("2026-10-13");
     expect(invalid.occurredOn).toBe("2026-10-13");
     expect(old.occurredOn).toBe("2026-10-13");
+  });
+
+  it("con un límite propio (el de las fotos), la fecha vale solo hasta esos días atrás", () => {
+    const month = { ...ctx, maxDaysBack: 31 };
+    expect(normalizeTransactions([{ ...base, date: "2026-09-12" }], month)[0].occurredOn).toBe("2026-09-12");
+    expect(normalizeTransactions([{ ...base, date: "2026-09-11" }], month)[0].occurredOn).toBe("2026-10-13");
+    expect(normalizeTransactions([{ ...base, date: "2026-10-14" }], month)[0].occurredOn).toBe("2026-10-13");
   });
 
   it("respeta fechas pasadas razonables", () => {
@@ -457,6 +464,13 @@ describe("normalizeTransactions · límites", () => {
     expect(old.occurredOn).toBe("2026-10-13");
   });
 
+  it("con un límite propio (el de las fotos), la fecha vale solo hasta esos días atrás", () => {
+    const month = { ...ctx, maxDaysBack: 31 };
+    expect(normalizeTransactions([{ ...base, date: "2026-09-12" }], month)[0].occurredOn).toBe("2026-09-12");
+    expect(normalizeTransactions([{ ...base, date: "2026-09-11" }], month)[0].occurredOn).toBe("2026-10-13");
+    expect(normalizeTransactions([{ ...base, date: "2026-10-14" }], month)[0].occurredOn).toBe("2026-10-13");
+  });
+
   it("acepta el monto máximo y rechaza lo que lo supera", () => {
     expect(normalizeTransactions([{ ...base, amount: 100_000_000_000 }], ctx)).toHaveLength(1);
     expect(normalizeTransactions([{ ...base, amount: 100_000_000_000.004 }], ctx)).toHaveLength(1);
@@ -466,5 +480,91 @@ describe("normalizeTransactions · límites", () => {
 
   it("reconoce la categoría aunque venga con espacios", () => {
     expect(matchCategory("  ropa  ", categories.expense)).toBe("Ropa");
+  });
+});
+
+describe("interpretPhoto", () => {
+  const image = { data: "aGVsbG8=", mediaType: "image/jpeg" as const };
+  const receipt = { type: "expense" as const, amount: 85400, description: "éxito", category: "Mercado", date: "2026-10-11" };
+  const ok = (transactions: (typeof receipt)[], reply: string | null = null): ExtractionResult => ({ ok: true, transactions, reply, usage });
+
+  it("manda la foto, lo que escribió con ella, la fecha de hoy y las categorías", async () => {
+    const extractor = fakeExtractor(ok([receipt]));
+    await interpretPhoto({ image, caption: "  mercado del mes " }, ctx, extractor);
+    expect(extractor).toHaveBeenCalledWith({
+      text: "mercado del mes",
+      image,
+      today: { iso: "2026-10-13", long: "martes 13 de octubre de 2026" },
+      categories,
+    });
+  });
+
+  it("sin texto manda la foto sola", async () => {
+    const extractor = fakeExtractor(ok([receipt]));
+    await interpretPhoto({ image, caption: null }, ctx, extractor);
+    expect(extractor.mock.calls[0][0]).toMatchObject({ text: "", image });
+  });
+
+  it("registra un egreso con el total y la fecha impresa, si es del último mes", async () => {
+    const intent = await interpretPhoto({ image, caption: null }, ctx, fakeExtractor(ok([receipt])));
+    expect(intent).toEqual({
+      kind: "transactions",
+      items: [{ type: "expense", amount: 85400, description: "Éxito", category: "Mercado", occurredOn: "2026-10-11" }],
+      usage,
+    });
+  });
+
+  it("una factura de hace más de un mes (o con fecha futura) queda con la fecha de hoy", async () => {
+    for (const date of ["2026-09-11", "2025-10-13", "2026-11-02"]) {
+      const intent = await interpretPhoto({ image, caption: null }, ctx, fakeExtractor(ok([{ ...receipt, date }])));
+      expect(intent.kind === "transactions" && intent.items[0].occurredOn, date).toBe("2026-10-13");
+    }
+  });
+
+  it("los comandos en el texto de una foto no se ejecutan: van como pista a la IA", async () => {
+    const extractor = fakeExtractor(ok([receipt]));
+    const intent = await interpretPhoto({ image, caption: "deshacer" }, ctx, extractor);
+    expect(intent.kind).toBe("transactions");
+    expect(extractor).toHaveBeenCalledOnce();
+  });
+
+  it("si la IA propone varios movimientos, no registra ninguno y pide una factura por foto", async () => {
+    const intent = await interpretPhoto({ image, caption: null }, ctx, fakeExtractor(ok([receipt, { ...receipt, amount: 1200 }])));
+    expect(intent).toEqual({ kind: "reply", text: photoManyReply, usage });
+  });
+
+  it("si el total no pasa la validación, pide una foto más clara", async () => {
+    const intent = await interpretPhoto({ image, caption: null }, ctx, fakeExtractor(ok([{ ...receipt, amount: 0 }])));
+    expect(intent).toEqual({ kind: "reply", text: photoUnreadableReply, usage });
+  });
+
+  it("si no es una factura, responde lo que dijo la IA (normalizado) o una respuesta fija", async () => {
+    const said = await interpretPhoto({ image, caption: null }, ctx, fakeExtractor(ok([], 'Es una foto de un perro. Escríbeme el gasto, por ejemplo "almuerzo 25 mil".')));
+    expect(said).toEqual({ kind: "reply", text: "Es una foto de un perro. Escríbeme el gasto, por ejemplo “almuerzo 25 mil”.", usage });
+    const withLink = await interpretPhoto({ image, caption: null }, ctx, fakeExtractor(ok([], "Revisa www.estafa.co")));
+    expect(withLink).toEqual({ kind: "reply", text: photoFallbackReply, usage });
+    const empty = await interpretPhoto({ image, caption: null }, ctx, fakeExtractor(ok([], null)));
+    expect(empty).toEqual({ kind: "reply", text: photoFallbackReply, usage });
+  });
+
+  it("con un texto de más de 1.000 caracteres no llama a la IA", async () => {
+    const extractor = fakeExtractor(ok([receipt]));
+    expect(await interpretPhoto({ image, caption: "x".repeat(1001) }, ctx, extractor)).toEqual({
+      kind: "reply",
+      text: "Tu mensaje es muy largo. Envíamelo en partes más cortas.",
+    });
+    expect(extractor).not.toHaveBeenCalled();
+    await interpretPhoto({ image, caption: "x".repeat(1000) }, ctx, extractor);
+    expect(extractor).toHaveBeenCalledOnce();
+  });
+
+  it("devuelve los errores de la IA como en los textos", async () => {
+    const intent = await interpretPhoto({ image, caption: null }, ctx, fakeExtractor({ ok: false, reason: "api_error", detail: "529 overloaded" }));
+    expect(intent).toEqual({ kind: "error", reason: "api_error: 529 overloaded", usage: undefined });
+    expect(await interpretPhoto({ image, caption: null }, ctx, fakeExtractor({ ok: false, reason: "rate_limited" }))).toEqual({
+      kind: "error",
+      reason: "rate_limited",
+      usage: undefined,
+    });
   });
 });

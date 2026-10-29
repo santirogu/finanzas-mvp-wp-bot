@@ -1,9 +1,9 @@
 name: Evaluación del bot
 
-# Cada lunes (y a mano), las frases de src/modules/bot/eval/cases.ts contra la API real de Claude
+# Cada lunes (y a mano), las frases y las fotos de src/modules/bot/eval/cases.ts contra la API real de Claude
 # (pnpm bot:eval): qué acierta el intérprete del bot y si resiste los mensajes trampa. Falla si cae
 # una trampa o si el resto acierta menos del 95 % (GitHub le avisa al dueño por correo); el detalle
-# queda en el resumen de la corrida. Cuesta créditos (unos US$0,01 por corrida con Haiku), con una
+# queda en el resumen de la corrida. Cuesta créditos (unos US$0,03 por corrida con Haiku), con una
 # API key solo para esto: el secreto ANTHROPIC_API_KEY_EVAL, de un workspace de Anthropic con tope de
 # gasto (README → Evaluación del bot). Sin el secreto no hace nada. Nunca corre en PRs: el repositorio
 # es público y la corrida usa un secreto.

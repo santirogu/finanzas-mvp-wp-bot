@@ -3,7 +3,7 @@ import { getAppUrl } from "@/lib/app-url";
 import { describeError } from "@/lib/safe-log";
 import { claudeExtractor } from "@/modules/bot/claude-extractor";
 import { handleIncomingMessage } from "@/modules/bot/handle-message";
-import { sendWhatsAppText } from "@/modules/whatsapp/client";
+import { downloadWhatsAppMedia, sendWhatsAppText } from "@/modules/whatsapp/client";
 import { extractMessages } from "@/modules/whatsapp/payload";
 import { isValidSignature } from "@/modules/whatsapp/signature";
 import { envVar } from "@/lib/env";
@@ -57,6 +57,7 @@ export async function POST(request: NextRequest) {
           await handleIncomingMessage(message, {
             extractor: claudeExtractor,
             send: sendWhatsAppText,
+            download: downloadWhatsAppMedia,
             appUrl: getAppUrl(),
           });
         } catch (error) {

@@ -77,7 +77,9 @@ export default function PrivacyPage() {
             </li>
             <li>
               <strong>Datos de WhatsApp, si conectas tu número:</strong> tu número de teléfono y el
-              contenido de los mensajes que envías al bot, junto con las respuestas del bot.
+              contenido de los mensajes que envías al bot, junto con las respuestas del bot. De las fotos de
+              facturas guardamos solo el texto que escribiste con ellas y lo que se registró: la foto no se
+              guarda.
             </li>
             <li>
               <strong>Si te invitamos a crear una cuenta:</strong> guardamos el correo invitado, quién lo invitó y
@@ -231,8 +233,10 @@ export default function PrivacyPage() {
               del bot.
             </li>
             <li>
-              <strong>Anthropic (Claude):</strong> recibe el texto de tus mensajes de WhatsApp para
-              interpretarlos (monto, tipo, categoría y fecha).
+              <strong>Anthropic (Claude):</strong> recibe el texto de tus mensajes de WhatsApp y las fotos de
+              facturas que le envías al bot, para interpretarlos (monto, tipo, categoría y fecha). Una factura
+              puede traer otros datos, como tu nombre, tu cédula o tu NIT: si no quieres compartirlos, tápalos
+              antes de tomar la foto o escribe el gasto.
             </li>
             <li>
               <strong>Vercel</strong> (alojamiento de la aplicación, estadísticas de uso y medición
