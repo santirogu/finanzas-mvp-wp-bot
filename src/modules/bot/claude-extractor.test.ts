@@ -273,9 +273,9 @@ describe("claudeExtractor · contrato con Claude", () => {
     const { parse } = await format();
     const valid = { transactions: [zapatos], reply: null };
     expect(parse(JSON.stringify(valid))).toEqual(valid);
-    expect(
-      parse(JSON.stringify({ ...valid, transactions: [{ ...zapatos, type: "income" }] })),
-    ).toBeTruthy();
+    // El otro tipo válido pasa tal cual (no basta con que no falle: tiene que devolverlo igual).
+    const income = { ...valid, transactions: [{ ...zapatos, type: "income" }] };
+    expect(parse(JSON.stringify(income))).toEqual(income);
     expect(() =>
       parse(JSON.stringify({ ...valid, transactions: [{ ...zapatos, type: "transfer" }] })),
     ).toThrow();
