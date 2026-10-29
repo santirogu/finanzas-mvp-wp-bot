@@ -20,6 +20,7 @@ import { PROJECTION_FROM_DAY } from "@/modules/reports/remaining";
 import { daysAheadPhrase, MAX_DAYS_AHEAD, MONTHS_BACK, PAYMENTS_FOR_DAY } from "@/modules/reports/upcoming";
 import { SEARCH_FROM } from "@/modules/transactions/search";
 import { PageSkeleton } from "../page-skeleton";
+import { TutorialButton } from "./tutorial-button";
 
 const TEXTS = texts(
   { title: "Ayuda", intro: `Cómo sacarle provecho a ${BRAND_NAME}. Toca un tema para abrirlo.`, topics: "Temas de ayuda", faq: "Preguntas frecuentes" },
@@ -77,9 +78,12 @@ async function Help() {
   const values = await getAppValues();
   return (
     <div className="mx-auto max-w-2xl space-y-4">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">{t.title}</h1>
-        <p className="mt-1 text-sm text-muted">{t.intro}</p>
+      <div className="space-y-3">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">{t.title}</h1>
+          <p className="mt-1 text-sm text-muted">{t.intro}</p>
+        </div>
+        <TutorialButton values={{ upcomingEnabled: values.upcomingEnabled, budgetNearShare: values.budgetNearShare }} />
       </div>
       <section aria-label={t.topics} className="card">
         {locale === "es" ? <SpanishTopics values={values} /> : <EnglishTopics values={values} />}

@@ -38,6 +38,10 @@ export const user = pgTable(
     // La apariencia que eligió en Configuración ("system", "light" o "dark"); null si no eligió: cada navegador
     // tiene la suya. Al iniciar sesión, se le pone a ese navegador (la cookie `tema`, src/lib/theme.ts).
     theme: text("theme"),
+    // Cuándo terminó u omitió el tutorial de bienvenida (src/modules/tutorial/); null mientras no: lo ve al entrar
+    // al Resumen. Las cuentas que ya existían al agregarlo quedaron con la fecha de la migración (no lo ven). No es
+    // un campo de Better Auth: el registro y "actualizar perfil" no lo pueden poner.
+    tutorialDoneAt: timestamp("tutorial_done_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
