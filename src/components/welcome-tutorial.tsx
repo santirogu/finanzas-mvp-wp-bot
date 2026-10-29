@@ -113,8 +113,8 @@ const TEXTS = texts(
           title: "Add it on WhatsApp",
           body: (
             <>
-              Write to the bot the way you&apos;d tell someone (<span lang="es">“almuerzo 25 mil”</span>) or send it a photo of a
-              receipt, and it&apos;s added. For now it answers in Spanish. Connect it in <strong>My account</strong>.
+              Write to the bot the way you&apos;d tell someone (“lunch 25k”) or send it a photo of a receipt, and it&apos;s added.
+              Connect it in <strong>My account</strong>.
             </>
           ),
           whatsapp: true,

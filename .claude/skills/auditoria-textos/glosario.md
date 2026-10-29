@@ -12,7 +12,8 @@ textos.
 - No usar "Finanzas MVP", "Finanzas" ni "Finanzas Bot", los nombres de antes. Hay una excepción: donde
   se explica el cambio, como en Google Authenticator: "Anotado (antes, Finanzas MVP)".
 - **Al registrar, el bot responde "✅ Egreso Anotado: …" o "✅ Ingreso Anotado: …"**, con la A
-  mayúscula de la marca. Es una decisión del dueño: no es un error de mayúsculas.
+  mayúscula de la marca. Es una decisión del dueño: no es un error de mayúsculas. En inglés, "✅ Expense
+  noted: …" y "✅ Income noted: …", como el eslogan ("It's noted.").
 - **Eslogan:** "Escribe tu gasto por WhatsApp. Queda anotado." (en inglés, "Text your expense on WhatsApp.
   It's noted.").
 
@@ -93,7 +94,7 @@ textos.
 | eliminar | delete | suprimir; erase | En botones y títulos, "Eliminar". En las explicaciones se acepta "borrar" ("se borran tus datos"). En inglés, "remove" es quitar algo de una lista sin borrarlo (un filtro, un gasto fijo). |
 | archivar, restaurar | archive, restore | | |
 | suspender, reactivar | suspend, reactivate | | |
-| deshacer | undo | | |
+| deshacer | undo | | También los comandos del bot: "reporte" → "report", "ayuda" → "help", "VINCULAR" → "LINK" ("balance" es igual). El bot entiende los dos idiomas. |
 | toca, elige | tap, choose | pulsa, presiona, selecciona; press, pick, select | La app se usa sobre todo en el celular. "Elige" para escoger una opción. "Haz clic" / "click" se aceptan solo en lo que se ve con mouse (por ejemplo, la ayuda de un gráfico que se abre al pasar el puntero). |
 | registrar (un movimiento) | add | record, track | "Registrar ingreso" → "Add income"; "el bot registra" → "the bot adds". |
 | celular | phone | móvil, teléfono | "Número de teléfono" se acepta en las páginas legales. |
@@ -105,8 +106,9 @@ textos.
 
 ## Lo que queda en español a propósito
 
-- El bot de WhatsApp (por ahora): sus mensajes y los ejemplos de lo que se le escribe ("gasté 20 mil
-  en almuerzo"), también en la web en inglés.
+- Lo que responde Claude en el bot (por ahora): cuando no entiende un mensaje o le falta un dato, contesta en
+  español aunque la cuenta esté en inglés. Los textos fijos del bot, sus comandos y los ejemplos van en el
+  idioma de la cuenta (o de la página).
 - La política de privacidad y "Eliminar tus datos", con `lang="es"` y una nota en inglés.
 - Los nombres de las categorías por defecto (el inglés lo pone el admin) y el simulador (solo en
   desarrollo).

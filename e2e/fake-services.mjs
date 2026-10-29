@@ -59,6 +59,11 @@ const INTERPRETATIONS = [
     match: /zapatos/i,
     transactions: [{ type: "expense", amount: 500000, description: "Zapatos", category: "Ropa" }],
   },
+  // Una cuenta en inglés: las categorías siguen en español (es lo que el bot le manda a Claude).
+  {
+    match: /shoes/i,
+    transactions: [{ type: "expense", amount: 500000, description: "Shoes", category: "Ropa" }],
+  },
   {
     match: /almuerzo/i,
     transactions: [{ type: "expense", amount: 25900.5, description: "Almuerzo", category: "Alimentación" }],

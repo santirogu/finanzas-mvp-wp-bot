@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page } from "@playwright/test";
 import { monthOf, monthParam, shiftMonth, todayInTimezone } from "../src/lib/dates";
+import { BOT_COMMANDS, BOT_EXAMPLES } from "../src/modules/bot/help";
 import { totp } from "../test/totp";
 import { newAdmin, setUpTwoFactor, wrongCode } from "./admin";
 import { PASSWORD, addTransaction, logIn, newPerson, register, test, toast, uniqueEmail, visible } from "./helpers";
@@ -22,6 +23,14 @@ test("sin sesión: la portada, el login y el registro en inglés, con sus mensaj
   await page.goto("/");
   await expect(page.locator("html")).toHaveAttribute("lang", "en");
   await expect(visible(page.getByRole("heading", { level: 1, name: "Text your expense on WhatsApp. It's noted." }))).toBeVisible();
+  // La conversación de ejemplo, como le responde el bot a una cuenta en inglés.
+  const example = visible(page.getByRole("figure", { name: /An example conversation with the bot/ }));
+  await expect(example.getByRole("listitem")).toHaveText([
+    "spent 25k on lunch",
+    /✅ Expense noted: Lunch — \$25,000\.00 \(Food\)/,
+    "and 12k for a taxi",
+    /✅ Expense noted: Taxi — \$12,000\.00 \(Transportation\)\s*This month's balance: \$1,284,500\.00/,
+  ]);
 
   await visible(page.getByRole("link", { name: "Sign in" })).click();
   await expect(page).toHaveURL(/\/login$/);
@@ -171,7 +180,13 @@ test("en inglés: Mi cuenta, Configuración, la Ayuda y las páginas legales (so
   await expect(page).toHaveTitle("Help · Anotado");
   const topics = visible(page.getByRole("region", { name: "Help topics" }));
   await topics.locator("summary", { hasText: "The WhatsApp bot" }).click();
-  await expect(topics).toContainText("For now the bot answers in Spanish.");
+  // Los comandos y los ejemplos del bot, en inglés, como su respuesta a "help".
+  const bot = topics.locator("details").filter({ has: page.locator("summary", { hasText: "The WhatsApp bot" }) });
+  await expect(bot.locator("strong", { hasText: /^LINK$/ })).toBeVisible();
+  for (const example of BOT_EXAMPLES.en) await expect(bot).toContainText(example);
+  for (const { command, description } of BOT_COMMANDS.en) {
+    await expect(bot.locator("li", { hasText: description }).locator("strong").first()).toHaveText(command);
+  }
   const faq = visible(page.getByRole("region", { name: "Frequently asked questions" }));
   await faq.locator("summary", { hasText: "How do I change my WhatsApp number?" }).click();
   await expect(faq).toContainText("tap Unlink number");

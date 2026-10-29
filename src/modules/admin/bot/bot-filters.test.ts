@@ -261,7 +261,7 @@ describe("en inglés", () => {
     expect(Object.keys(OUTCOME_TEXTS.en)).toEqual(Object.keys(OUTCOME_TEXTS.es));
     expect(OUTCOMES.map((o) => OUTCOME_TEXTS.en[o])).toEqual([
       "Added transactions",
-      "Commands (balance, reporte, deshacer, ayuda)",
+      "Commands (balance, report, undo, help)",
       "Reply without adding anything",
       "Linked their number",
       "Hit the Claude limit",

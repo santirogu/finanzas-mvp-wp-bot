@@ -173,10 +173,67 @@ test("si Meta entrega el mismo mensaje dos veces, se procesa una sola vez", asyn
   expect(await sentTo(request, phone)).toHaveLength(2);
 });
 
-test("a un audio responde que por ahora solo entiende textos y fotos", async ({ request }) => {
+// A una cuenta vinculada le responde que solo entiende textos y fotos (en la prueba en inglés, abajo).
+test("a un audio de un número sin vincular le explica cómo vincularlo", async ({ request }) => {
   const phone = newPhone();
   await sendWhatsApp(request, phone, null);
-  expect(await nthReply(request, phone, 1)).toBe("Por ahora solo entiendo mensajes de texto ✍️ y fotos de facturas 🧾");
+  expect(await nthReply(request, phone, 1)).toContain("Este número aún no está vinculado a una cuenta.");
+});
+
+test("en inglés: vincular con LINK desde Mi cuenta, y el bot responde en inglés también a los comandos en español @principal", async ({
+  page,
+  request,
+}) => {
+  const phone = newPhone();
+  await register(page, "Ana Pérez");
+
+  await test.step("la cuenta en inglés (Configuración → Idioma)", async () => {
+    await page.goto("/configuracion");
+    await visible(page.getByRole("group", { name: "Idioma" })).locator("label", { hasText: "English" }).click();
+    await expect(page.locator("html")).toHaveAttribute("lang", "en");
+  });
+
+  const code = await test.step("Mi cuenta muestra el mensaje con LINK", async () => {
+    await page.goto("/cuenta");
+    await visible(page.getByRole("button", { name: "Connect WhatsApp" })).click();
+    const message = visible(page.getByText(/^LINK \d{6}$/));
+    await expect(message).toBeVisible();
+    await expect(page.getByRole("link", { name: "Open WhatsApp" })).toHaveAttribute("href", /^https:\/\/wa\.me\/573000000000\?text=LINK%20\d{6}$/);
+    return (await message.textContent())!.replace("LINK ", "");
+  });
+
+  await test.step("LINK y el código vinculan la cuenta, con la respuesta en inglés", async () => {
+    await sendWhatsApp(request, phone, `LINK ${code}`);
+    expect(await nthReply(request, phone, 1)).toBe("✅ All set, Ana! Your WhatsApp is linked.\n\nTry writing me: _spent 20k on lunch_");
+    await expect(visible(page.getByText("Connected"))).toBeVisible({ timeout: 15_000 });
+    await expect(visible(page.getByText("“spent 20k on lunch”"))).toBeVisible();
+  });
+
+  await test.step("un gasto: la confirmación en inglés, con los montos de EE. UU.", async () => {
+    await sendWhatsApp(request, phone, "I bought some shoes for $500.000");
+    const reply = await nthReply(request, phone, 2);
+    expect(reply).toMatch(/^✅ Expense noted: \*Shoes\* — \$500,000\.00 \(/);
+    expect(reply).toMatch(/\n[A-Z][a-z]+ balance: \*−\$500,000\.00\*\n_Send \*undo\* if I got it wrong\._$/);
+  });
+
+  await test.step("los comandos en inglés y en español responden en inglés; un audio, que solo entiende textos y fotos", async () => {
+    await sendWhatsApp(request, phone, "report");
+    expect(await nthReply(request, phone, 3)).toMatch(/^📊 \*Report from [A-Z][a-z]+ \d{4} to [A-Z][a-z]+ \d{4}\*\nIncome: \$0\.00\nExpenses: \$500,000\.00\n/);
+    await sendWhatsApp(request, phone, "deshacer");
+    expect(await nthReply(request, phone, 4)).toBe("Done, I deleted:\n🗑️ Shoes — $500,000.00");
+    await sendWhatsApp(request, phone, null);
+    expect(await nthReply(request, phone, 5)).toBe("For now I only understand text messages ✍️ and photos of receipts 🧾");
+  });
+
+  await test.step("a otro número, sin vincular: en español y debajo en inglés; un código que no sirve, en el idioma de la palabra", async () => {
+    const other = newPhone();
+    await sendWhatsApp(request, other, "hi");
+    const reply = await nthReply(request, other, 1);
+    expect(reply).toMatch(/^Hola 👋\nEste número aún no está vinculado/);
+    expect(reply).toContain("\n\nHi 👋\nThis number isn't linked to an account yet.");
+    await sendWhatsApp(request, other, "LINK 000000");
+    expect(await nthReply(request, other, 2)).toBe("That code isn't valid or it expired. Get another one in *My account*: tap *Connect WhatsApp*.");
+  });
 });
 
 test("el bot guarda la descripción que ya está en el historial, con su categoría @principal", async ({ page, request }) => {

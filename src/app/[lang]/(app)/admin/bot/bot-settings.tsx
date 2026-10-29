@@ -1,7 +1,6 @@
 "use client";
 
 import { useActionState, useId, useState, type ReactNode } from "react";
-import { BotCommandsText } from "@/components/bot-commands-text";
 import { describedBy, FieldError } from "@/components/field-error";
 import { useFieldErrors } from "@/components/use-field-errors";
 import { useLocale } from "@/i18n/client";
@@ -55,7 +54,6 @@ const share = (used: number, limit: number) => {
   return used > 0 && pct === 0 ? "<1" : String(pct);
 };
 
-// Los comandos (balance, reporte, deshacer, ayuda) van como se escriben en el bot, que responde en español.
 const TEXTS = texts(
   {
     title: "Configuración",
@@ -119,8 +117,8 @@ const TEXTS = texts(
     en: {
       title: "Settings",
       intro: "It applies from the next message. Each change asks for the Google Authenticator code.",
-      paused: "Paused: the bot only answers balance, reporte, deshacer and ayuda.",
-      monthlyPaused: (date) => `Paused by the monthly limit until ${date}: the bot only answers balance, reporte, deshacer and ayuda.`,
+      paused: "Paused: the bot only answers balance, report, undo and help.",
+      monthlyPaused: (date) => `Paused by the monthly limit until ${date}: the bot only answers balance, report, undo and help.`,
       active: "On: it understands freely written messages.",
       resume: "Resume Claude",
       pause: "Pause Claude",
@@ -140,7 +138,7 @@ const TEXTS = texts(
       pauseSubmit: "Pause",
       pausing: "Pausing…",
       pauseBody:
-        "The bot stops calling Claude: when someone writes freely, it asks them to add it on the web, and balance, reporte, deshacer and ayuda keep working. While paused, it doesn't spend Anthropic credits.",
+        "The bot stops calling Claude: when someone writes freely, it asks them to add it on the web, and balance, report, undo and help keep working. While paused, it doesn't spend Anthropic credits.",
       resumeQuestion: "Resume Claude?",
       resumeSubmit: "Resume",
       resuming: "Resuming…",
@@ -222,11 +220,11 @@ export function BotSettings({
           description={
             claudePaused ? (
               <span className="font-medium text-danger">
-                <BotCommandsText text={t.paused} locale={locale} />
+                {t.paused}
               </span>
             ) : month.reached ? (
               <span className="font-medium text-danger">
-                <BotCommandsText text={t.monthlyPaused(month.resetsOn)} locale={locale} />
+                {t.monthlyPaused(month.resetsOn)}
               </span>
             ) : (
               t.active
@@ -278,7 +276,7 @@ export function BotSettings({
           onClose={close}
           onDone={finish("removal")}
         >
-          <BotCommandsText text={t.pauseBody} locale={locale} />
+          {t.pauseBody}
         </ConfirmDialog>
       )}
       {open === "resume" && (

@@ -6,7 +6,7 @@ import { BRAND_NAME } from "@/lib/brand";
 import { CONTACT_EMAIL } from "@/lib/contact";
 import { formatMoney, formatPercent } from "@/lib/money";
 import type { AppValues } from "@/modules/app-values/values";
-import { BOT_COMMANDS, BOT_EXAMPLES, HELP_COMMAND } from "@/modules/bot/help";
+import { BOT_COMMANDS, BOT_EXAMPLES, HELP_COMMAND, LINK_WORD } from "@/modules/bot/help";
 import { MAX_TRANSACTIONS_PER_MESSAGE } from "@/modules/bot/limits";
 import { PHOTO_MAX_DAYS_BACK } from "@/modules/bot/photo";
 import { BIGGEST_SHOWN } from "@/modules/reports/biggest";
@@ -89,28 +89,25 @@ function Topic({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-/**
- * Los comandos del bot, de la misma lista que su respuesta a "ayuda": se escriben en español (el bot responde en
- * español), con `lang="es"`; su explicación va en el idioma de la página.
- */
+/** Los comandos del bot en el idioma de la página, de la misma lista que su respuesta a "ayuda". */
 function BotCommands({ locale }: { locale: Locale }) {
   const or = locale === "es" ? "o" : "or";
   return (
     <ul className="list-disc space-y-1 pl-5">
-      {[...BOT_COMMANDS, HELP_COMMAND].map((c) => (
+      {[...BOT_COMMANDS[locale], HELP_COMMAND[locale]].map((c) => (
         <li key={c.command}>
-          <strong lang="es">{c.command}</strong>
-          {"alternative" in c && (
+          <strong>{c.command}</strong>
+          {c.alternative && (
             <>
               {" "}
-              {or} <strong lang="es">{c.alternative}</strong>
+              {or} <strong>{c.alternative}</strong>
             </>
           )}{" "}
-          — {c.description[locale]}
-          {"also" in c && (
+          — {c.description}
+          {c.also && (
             <>
               {" "}
-              ({or} <span lang="es">{c.also.command}</span>, {c.also.description[locale]})
+              ({or} {c.also.command}, {c.also.description})
             </>
           )}
         </li>
@@ -119,12 +116,12 @@ function BotCommands({ locale }: { locale: Locale }) {
   );
 }
 
-function BotExamples() {
+function BotExamples({ locale }: { locale: Locale }) {
   return (
     <ul className="list-disc space-y-1 pl-5">
-      {BOT_EXAMPLES.map((example) => (
+      {BOT_EXAMPLES[locale].map((example) => (
         <li key={example}>
-          <em lang="es">{example}</em>
+          <em>{example}</em>
         </li>
       ))}
     </ul>
@@ -157,10 +154,10 @@ function SpanishTopics({ values, A }: { values: AppValues; A: PageLink }) {
 
       <Topic title="El bot de WhatsApp">
         <p>
-          Conéctalo en <A href="/cuenta">Mi cuenta</A>: toca <strong>Conectar WhatsApp</strong> y envíale al bot el mensaje que te aparece (<strong>VINCULAR</strong> y el código).
+          Conéctalo en <A href="/cuenta">Mi cuenta</A>: toca <strong>Conectar WhatsApp</strong> y envíale al bot el mensaje que te aparece (<strong>{LINK_WORD.es}</strong> y el código).
         </p>
         <p>Después, escríbele tus ingresos y gastos como se los contarías a alguien:</p>
-        <BotExamples />
+        <BotExamples locale="es" />
         <p>O envíale la foto de una factura o un recibo: registra un egreso por el total.</p>
         <p>También entiende estos comandos:</p>
         <BotCommands locale="es" />
@@ -275,10 +272,10 @@ function EnglishTopics({ values, A }: { values: AppValues; A: PageLink }) {
 
       <Topic title="The WhatsApp bot">
         <p>
-          Connect it in <A href="/cuenta">My account</A>: tap <strong>Connect WhatsApp</strong> and send the bot the message you see (<strong lang="es">VINCULAR</strong> and the code).
+          Connect it in <A href="/cuenta">My account</A>: tap <strong>Connect WhatsApp</strong> and send the bot the message you see (<strong>{LINK_WORD.en}</strong> and the code).
         </p>
-        <p>For now the bot answers in Spanish. Write your income and expenses the way you&apos;d tell someone, for example:</p>
-        <BotExamples />
+        <p>Then send it your income and expenses the way you&apos;d tell someone:</p>
+        <BotExamples locale="en" />
         <p>Or send it a photo of a receipt: it adds an expense for the total.</p>
         <p>It also understands these commands:</p>
         <BotCommands locale="en" />
@@ -487,9 +484,8 @@ function EnglishFaq({ values, A }: { values: AppValues; A: PageLink }) {
       </Topic>
       <Topic title="Why didn't the bot understand my message?">
         <p>
-          Write the whole transaction, with what it was and the amount: <span lang="es">“almuerzo 25 mil”</span> or{" "}
-          <span lang="es">“me pagaron la quincena 2.100.000”</span>. For now the bot answers in Spanish, and amounts go as in Colombia: a
-          period for thousands and a comma for cents (25.900,50).
+          Write the whole transaction, with what it was and the amount: “lunch 25k” or “I got paid 2.100.000”. Amounts are in Colombian
+          pesos, written as in Colombia: a period for thousands and a comma for cents (25.900,50).
         </p>
         <p>
           You can send up to {MAX_TRANSACTIONS_PER_MESSAGE} transactions in one message. It doesn&apos;t remember the previous message: if
@@ -498,7 +494,7 @@ function EnglishFaq({ values, A }: { values: AppValues; A: PageLink }) {
       </Topic>
       <Topic title="The bot added something wrong. How do I fix it?">
         <p>
-          Send it <strong lang="es">deshacer</strong>: it deletes everything it added from your last message. To change just one detail,
+          Send it <strong>undo</strong>: it deletes everything it added from your last message. To change just one detail,
           in <A href="/ingresos">Income</A> or <A href="/egresos">Expenses</A> tap the transaction&apos;s pencil.
         </p>
       </Topic>
@@ -506,7 +502,7 @@ function EnglishFaq({ values, A }: { values: AppValues; A: PageLink }) {
         <p>
           It understands photos of receipts: send it the photo and it adds an expense for the total, with the store&apos;s
           name and the date on the receipt (if it&apos;s from the last {PHOTO_MAX_DAYS_BACK} days; otherwise, today&apos;s). You can
-          write something with the photo, like <span lang="es">“almuerzo con Juan”</span>, to help it. One receipt per photo.
+          write something with the photo, like “lunch with Juan”, to help it. One receipt per photo.
         </p>
         <p>
           The photo isn&apos;t saved: only what was added. Voice notes, not yet: if you send it audio, it reminds you.
@@ -538,7 +534,7 @@ function EnglishFaq({ values, A }: { values: AppValues; A: PageLink }) {
       <Topic title="Why does a transaction show up in another month?">
         <p>
           Each transaction goes in the month of its date, not the day you added it. The bot uses today&apos;s date unless you tell it another
-          one (<span lang="es">“ayer”</span>, <span lang="es">“el lunes”</span>, <span lang="es">“el 5”</span>). To change it, edit the
+          one (“yesterday”, “on Monday”, “on the 5th”). To change it, edit the
           transaction with the pencil.
         </p>
       </Topic>

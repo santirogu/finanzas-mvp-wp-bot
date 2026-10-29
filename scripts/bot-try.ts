@@ -21,6 +21,7 @@ async function main() {
         expense: DEFAULT_CATEGORIES.expense.map((c) => c.name),
         income: DEFAULT_CATEGORIES.income.map((c) => c.name),
       },
+      locale: "es",
     },
     claudeExtractor,
   );

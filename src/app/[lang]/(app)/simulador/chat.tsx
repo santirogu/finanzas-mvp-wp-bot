@@ -8,6 +8,7 @@ type Bubble =
   | { from: "user"; text: string }
   | { from: "bot"; text: string; status: string; intent: string | null };
 
+// El bot entiende los comandos en los dos idiomas ("help" también): responde en el idioma de la cuenta.
 const SUGGESTIONS = [
   "ayuda",
   "balance",
@@ -15,6 +16,7 @@ const SUGGESTIONS = [
   "me compré unos zapatos que me costaron $500.000",
   "almuerzo 25 mil y taxi 12 mil",
   "deshacer",
+  "help",
 ];
 
 // Formato básico de WhatsApp: *negrita* y _cursiva_.
@@ -89,7 +91,7 @@ export function Chat() {
         <div className="flex-1 space-y-2 overflow-y-auto bg-background px-4 py-4">
           {bubbles.length === 0 && (
             <p className="py-10 text-center text-sm text-muted">
-              Envía <strong>VINCULAR</strong> con el código de Mi cuenta, o prueba una sugerencia.
+              Envía <strong>VINCULAR</strong> (o <strong>LINK</strong>) con el código de Mi cuenta, o prueba una sugerencia.
             </p>
           )}
           {bubbles.map((b, i) => (
