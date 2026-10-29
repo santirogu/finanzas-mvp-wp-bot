@@ -148,6 +148,18 @@ export const VISTAS: Vista[] = [
       await expect(visible(page.locator("details[open]"))).toHaveCount(6 + 12);
     },
   },
+  {
+    // El mismo que ve una cuenta nueva en el Resumen; desde Ayuda, para no depender de una cuenta recién creada.
+    id: "tutorial",
+    titulo: "Tutorial de bienvenida (paso de WhatsApp, el más largo)",
+    persona: "datos",
+    ruta: fija("/ayuda"),
+    preparar: async (page) => {
+      await visible(page.getByRole("button", { name: "Ver el tutorial de bienvenida" })).click();
+      for (let i = 0; i < 2; i++) await dialogo(page).getByRole("button", { name: "Siguiente" }).click();
+      await expect(dialogo(page).getByRole("heading", { name: "Anota por WhatsApp" })).toBeVisible();
+    },
+  },
   // Con sesión: sin ella, el proxy lleva al login cualquier dirección que no conoce (a propósito).
   { id: "no-encontrada", titulo: "Página que no existe (404)", persona: "vacia", ruta: fija("/esta-pagina-no-existe") },
 

@@ -29,6 +29,7 @@ import { PageSkeleton } from "../page-skeleton";
 import { TAB_TEXTS } from "../tab-texts";
 import { BudgetsCard } from "./budgets-card";
 import { CategoryChart } from "./category-chart";
+import { FirstVisitTutorial } from "./first-visit-tutorial";
 import { MonthRemaining } from "./month-remaining";
 import { RegisterReminderCard } from "./register-reminder";
 import { UpcomingPayments } from "./upcoming-payments";
@@ -80,11 +81,17 @@ const TEXTS = texts(
 // El mes viene en la URL (?mes=2026-09): se lee en cada request, dentro de Suspense (Cache Components).
 export default function DashboardPage({ searchParams }: PageProps<"/[lang]/dashboard">) {
   return (
-    <Suspense fallback={<PageSkeleton />}>
-      {searchParams.then((params) => (
-        <Dashboard month={params.mes} />
-      ))}
-    </Suspense>
+    <>
+      <Suspense fallback={<PageSkeleton />}>
+        {searchParams.then((params) => (
+          <Dashboard month={params.mes} />
+        ))}
+      </Suspense>
+      {/* Aparte: no espera las consultas del mes. Una ventana modal, encima de lo que haya. */}
+      <Suspense fallback={null}>
+        <FirstVisitTutorial />
+      </Suspense>
+    </>
   );
 }
 

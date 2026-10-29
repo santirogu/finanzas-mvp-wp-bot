@@ -218,6 +218,13 @@
       "when": 1792790084428,
       "tag": "0030_recordatorio-de-registro",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1793238031877,
+      "tag": "0031_tutorial-de-bienvenida",
+      "breakpoints": true
     }
   ]
 }

@@ -609,7 +609,18 @@ La app está en español (el de siempre) y en inglés, toda la web (el bot de Wh
   que se abren (registrar movimientos, el bot de WhatsApp, gastos fijos y avisos, reportes y descargas,
   tu cuenta y tus datos). Los números salen de las constantes de la app y los comandos del bot, de la
   misma lista que su respuesta a "ayuda" (`src/modules/bot/help.ts`): si algo cambia, la ayuda también.
-  Con sesión y sin contacto, por ahora.
+  Con sesión y sin contacto, por ahora. Arriba, **Ver el tutorial de bienvenida** lo vuelve a abrir.
+- **Tutorial de bienvenida** (`src/components/welcome-tutorial.tsx`, `src/modules/tutorial/`): una ventana con
+  cinco pasos cortos (qué es la app, el Resumen y cómo registrar, el bot de WhatsApp con el enlace a Mi cuenta,
+  Fijos y sus avisos, Reportes y presupuestos), con Atrás, Siguiente y Omitir.
+  - **Quién lo ve** (decisión del dueño): solo las cuentas nuevas, al entrar al Resumen, hasta que lo terminan
+    o lo omiten (Empezar, Omitir, Esc o el enlace a Mi cuenta). Queda en la cuenta (`user.tutorial_done_at`),
+    no en el navegador; las cuentas que ya existían quedaron con la fecha de la migración. No es un campo de
+    Better Auth: el registro no lo puede poner.
+  - **Los textos** usan los valores de la app (los avisos de pagos prendidos o no y el % de los presupuestos).
+  - **Accesibilidad:** se abre con el foco en Siguiente, que no se mueve al cambiar de paso (el paso nuevo se lee
+    desde una región `aria-live`); en el primer paso no hay Atrás y el foco pasa a Siguiente.
+  - **En las E2E,** `register()` lo omite; sus pruebas van en `e2e/tutorial.spec.ts` (`keepTutorial`).
 - **Reportes** (`/reportes`, la quinta pestaña; `src/modules/reports/`).
   - **El período, en la URL:** sin parámetro, los últimos 12 meses contando el actual; con
     `?periodo=2025`, ese año (el año en curso llega hasta el mes actual). Hay un chip por cada año con
