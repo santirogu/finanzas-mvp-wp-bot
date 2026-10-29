@@ -5,17 +5,12 @@ import { InEnglish } from "../../test/locale";
 import { WelcomeTutorial } from "./welcome-tutorial";
 
 const finish = vi.hoisted(() => vi.fn<() => Promise<void>>());
+const push = vi.hoisted(() => vi.fn());
 vi.mock("@/modules/tutorial/actions", () => ({ finishTutorialAction: finish }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
 vi.mock("next/link", () => ({
-  default: ({ href, onClick, children, ...props }: { href: string; onClick?: () => void; children: React.ReactNode }) => (
-    <a
-      href={href}
-      onClick={(event) => {
-        event.preventDefault();
-        onClick?.();
-      }}
-      {...props}
-    >
+  default: ({ href, children, ...props }: React.ComponentProps<"a">) => (
+    <a href={href} {...props}>
       {children}
     </a>
   ),
@@ -33,6 +28,7 @@ async function next(user: ReturnType<typeof userEvent.setup>, steps: number, lab
 
 beforeEach(() => {
   finish.mockReset().mockResolvedValue(undefined);
+  push.mockReset();
 });
 
 describe("WelcomeTutorial", () => {
@@ -110,8 +106,10 @@ describe("WelcomeTutorial", () => {
     expect(finish).not.toHaveBeenCalled();
   });
 
-  it("en el paso de WhatsApp lleva a Mi cuenta y cierra la ventana antes de ir", async () => {
+  it("en el paso de WhatsApp lleva a Mi cuenta: cierra la ventana y va cuando quedó guardado (una sola vez)", async () => {
     const user = userEvent.setup();
+    let saved!: () => void;
+    finish.mockReturnValue(new Promise((resolve) => (saved = resolve)));
     render(<WelcomeTutorial values={values} remember />);
     await next(user, 2);
     const link = within(dialog()).getByRole("link", { name: "Conectar WhatsApp" });
@@ -119,7 +117,29 @@ describe("WelcomeTutorial", () => {
     expect(dialog()).toHaveTextContent("(“almuerzo 25 mil”) o envíale la foto de una factura");
     await user.click(link);
     expect(screen.queryByRole("dialog")).toBeNull();
+    // La otra página no conoce la Server Action: hasta que responda, no se va.
+    expect(push).not.toHaveBeenCalled();
+    saved();
+    await vi.waitFor(() => expect(push).toHaveBeenCalledWith("/cuenta#whatsapp"));
     expect(finish).toHaveBeenCalledOnce();
+  });
+
+  it("si no se pudo guardar, igual va a Mi cuenta", async () => {
+    const user = userEvent.setup();
+    finish.mockRejectedValue(new Error("sin red"));
+    render(<WelcomeTutorial values={values} remember />);
+    await next(user, 2);
+    await user.click(within(dialog()).getByRole("link", { name: "Conectar WhatsApp" }));
+    await vi.waitFor(() => expect(push).toHaveBeenCalledWith("/cuenta#whatsapp"));
+  });
+
+  it("desde Ayuda, el enlace va a Mi cuenta sin guardar nada", async () => {
+    const user = userEvent.setup();
+    render(<WelcomeTutorial values={values} />);
+    await next(user, 2);
+    await user.click(within(dialog()).getByRole("link", { name: "Conectar WhatsApp" }));
+    await vi.waitFor(() => expect(push).toHaveBeenCalledWith("/cuenta#whatsapp"));
+    expect(finish).not.toHaveBeenCalled();
   });
 
   it("solo el paso de WhatsApp trae el enlace", async () => {

@@ -6,6 +6,7 @@ import { TutorialButton } from "./tutorial-button";
 
 const finish = vi.hoisted(() => vi.fn());
 vi.mock("@/modules/tutorial/actions", () => ({ finishTutorialAction: finish }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 
 const values = { upcomingEnabled: true, budgetNearShare: 80 };
 

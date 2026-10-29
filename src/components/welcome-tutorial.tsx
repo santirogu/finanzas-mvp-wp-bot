@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useId, useRef, useState, type ReactNode } from "react";
 import { flushSync } from "react-dom";
 import { useLocale, useTexts } from "@/i18n/client";
@@ -162,7 +163,12 @@ export function WelcomeTutorial({ values, remember = false, onClose }: { values:
   const ids = { title: useId(), body: useId() };
   const step = steps[index];
   const last = index === steps.length - 1;
+  const router = useRouter();
   const close = () => dialog.current?.close();
+  // Se guarda una sola vez, cierre como cierre. La Server Action se manda a la página actual: hay que esperarla antes
+  // de ir a otra, que no la conoce ("Failed to find Server Action") y el tutorial volvería a salir.
+  const saving = useRef<Promise<void> | null>(null);
+  const save = () => (saving.current ??= remember ? finishTutorialAction() : Promise.resolve());
   // Se abre una sola vez, al montarse (por eso la función es estable), con el foco en Siguiente: el autoFocus de
   // React corre antes de abrirla y el navegador enfocaría Omitir, el primer botón.
   const openDialog = useCallback((element: HTMLDialogElement | null) => {
@@ -177,7 +183,7 @@ export function WelcomeTutorial({ values, remember = false, onClose }: { values:
     <dialog
       ref={openDialog}
       onClose={() => {
-        if (remember) void finishTutorialAction();
+        void save();
         onClose?.();
       }}
       aria-labelledby={ids.title}
@@ -209,8 +215,18 @@ export function WelcomeTutorial({ values, remember = false, onClose }: { values:
           </p>
         </div>
         {step.whatsapp && (
-          // Va a Mi cuenta: la ventana se cierra antes (si no, la página siguiente quedaría inerte detrás de ella).
-          <Link href={WHATSAPP_HREF} onClick={close} className="self-start text-sm font-medium text-brand underline-offset-4 hover:underline">
+          // Va a Mi cuenta: la ventana se cierra antes (si no, la página siguiente quedaría inerte detrás de ella) y se
+          // espera a que quede guardado.
+          <Link
+            href={WHATSAPP_HREF}
+            onClick={async (event) => {
+              event.preventDefault();
+              close();
+              await save().catch(() => {});
+              router.push(WHATSAPP_HREF);
+            }}
+            className="self-start text-sm font-medium text-brand underline-offset-4 hover:underline"
+          >
             {t.connect} <span aria-hidden>→</span>
           </Link>
         )}
