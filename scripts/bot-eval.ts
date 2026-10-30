@@ -47,8 +47,8 @@ const categories = {
 
 /** Un caso como le llega al bot: el texto o la foto (de src/modules/bot/eval/fotos/) con su texto. */
 function interpretCase(c: EvalCase): Promise<BotIntent> {
-  // Los casos son en español, como la cuenta: el idioma solo cambia las respuestas fijas.
-  const ctx = { today: EVAL_TODAY, categories, locale: "es" as const };
+  // El idioma de la cuenta del caso (sin decir, español): el de la descripción y la respuesta.
+  const ctx = { today: EVAL_TODAY, categories, locale: c.locale ?? "es" };
   if (!c.photo) return interpretMessage(c.text, ctx, claudeExtractor);
   const file = readFileSync(join(process.cwd(), "src/modules/bot/eval/fotos", c.photo));
   const mediaType = photoMediaType(file);
