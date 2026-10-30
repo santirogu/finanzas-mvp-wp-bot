@@ -23,6 +23,7 @@ const input = {
   text: "me compré unos zapatos de $500.000",
   today: { iso: "2026-10-13", long: "martes 13 de octubre de 2026" },
   categories: { expense: ["Ropa", "Otros"], income: ["Salario", "Otros"] },
+  locale: "es" as const,
 };
 
 const zapatos = {
@@ -140,6 +141,18 @@ describe("claudeExtractor", () => {
         ],
       },
     ]);
+  });
+
+  it("con una cuenta en inglés, el system prompt pide la descripción y la respuesta en inglés (también con una foto)", async () => {
+    sdk.parse.mockResolvedValue(response());
+    await claudeExtractor({ ...input, text: "spent 20k on lunch", locale: "en" });
+    await claudeExtractor({ ...input, text: "", image: { data: "aGVsbG8=", mediaType: "image/png" }, locale: "en" });
+
+    for (const [params] of sdk.parse.mock.calls) {
+      expect(params.system).toContain("en 1 a 5 palabras y en inglés");
+      expect(params.system).toContain("Cómo escribir reply: en inglés");
+    }
+    expect(sdk.parse.mock.calls[1][0].system).toContain('con un ejemplo como "lunch 25k"');
   });
 
   it("sin foto, el system prompt no trae las reglas de las fotos", async () => {

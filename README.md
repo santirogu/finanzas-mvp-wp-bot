@@ -56,7 +56,7 @@ pnpm dev                        # http://localhost:3000 (antes, copia la base lo
 | `pnpm messages:cleanup` | Borra los mensajes de WhatsApp y los intentos fallidos de vinculación de números sin cuenta, de más de 30 días (`--dias N`, mínimo 7) |
 | `pnpm admin:grant <correo>` · `admin:revoke` · `admin:super` · `admin:list` | Da o quita el rol de admin, marca al super admin o lista los admins (ver Seguridad → Roles) |
 | `pnpm admin:reset-2fa <correo>` | Reinicia la verificación en dos pasos de un admin que perdió el celular y los códigos de respaldo |
-| `pnpm bot:try 'texto'` | Muestra cómo interpreta el bot un mensaje (usa la API de Claude). Usa comillas simples si el texto tiene `$` |
+| `pnpm bot:try 'texto'` | Muestra cómo interpreta el bot un mensaje (usa la API de Claude). Usa comillas simples si el texto tiene `$`. Con `--en` adelante, como una cuenta en inglés |
 | `pnpm bot:eval` | Corre el set de frases de prueba del bot (con los mensajes trampa) y reporta aciertos, latencia y costo. Cuesta créditos |
 | `pnpm brand:assets` | Regenera los íconos y la imagen para compartir a partir del logo (ver Estructura → Marca) |
 
@@ -232,8 +232,10 @@ pnpm dev                        # http://localhost:3000 (antes, copia la base lo
   (`src/modules/bot/eval/fotos/`) contra la API real de Claude, con 8 **mensajes trampa** (que revele sus
   instrucciones o una clave, que se salga de su papel, que confirme un borrado que no hizo, que invente cifras de
   otra persona, un JSON, una instrucción escondida en la descripción o impresa en una factura para que registre lo
-  que no pasó). Tiene costo (unos US$0,03 por corrida con Haiku; solo las fotos, `--only "[foto"`, menos de
-  US$0,01).
+  que no pasó). Además, 29 casos de una cuenta en inglés (`locale: "en"`, "[en]" en la salida; `--only "[en]"`
+  corre solo esos): la jerga y los montos en inglés, la descripción y la respuesta en inglés (una respuesta en
+  español cuenta como error), dos trampas y dos fotos. Tiene costo (unos US$0,04 por corrida con Haiku; solo las
+  fotos, `--only "[foto"`, menos de US$0,01).
   - **En local**, a mano y con permiso del dueño: falla con cualquier caso mal (`--min` cambia el mínimo).
   - **Cada lunes** (7:17 a. m. en Bogotá) y con *Actions → Evaluación del bot → Run workflow* (eligiendo el
     modelo), `.github/workflows/bot-eval.yml`: falla si cae una trampa o si el resto acierta menos del 95 %, y GitHub
@@ -391,9 +393,14 @@ La app está en español (el de siempre) y en inglés: la web y el bot de WhatsA
     página. Con un código que no sirve todavía no se sabe de qué cuenta es: responde en el idioma de la
     palabra que se usó. A un número sin vincular le responde en español y, debajo, en inglés;
   - **lee los montos siempre como pesos colombianos**, con el punto de los miles y la coma de los centavos,
-    también en inglés ("200.000" son doscientos mil);
-  - **las respuestas que escribe Claude** (cuando no entiende un mensaje o falta un dato) salen de su prompt,
-    que todavía las pide en español: se cambia aparte, con `pnpm bot:eval`.
+    también en inglés ("200.000" son doscientos mil). Escritos como en EE. UU. también los entiende: un
+    separador seguido de tres cifras es de los miles y de una o dos al final, de los centavos ("25,000" son
+    veinticinco mil), y la jerga en inglés ("20k", "2M", "1.5 million");
+  - **lo que escribe Claude va en el idioma de la cuenta:** la descripción de lo que registra ("Lunch", aunque
+    el mensaje diga "almuerzo"; los nombres de los comercios, como se escriben) y la respuesta cuando no
+    entiende un mensaje o falta un dato. Las instrucciones de su prompt (`src/modules/bot/prompt.ts`) siguen en
+    español; lo que cambia con el idioma está en `LANGUAGES`, con sus ejemplos y los comandos en ese idioma. Lo
+    mide `pnpm bot:eval` con sus casos en inglés.
 - **En la administración,** los avisos de la prueba de conexiones son datos (`ServiceWarning`,
   `src/lib/service-check.ts`): la frase la arma `connectionView` en el idioma de la página.
 - **Las descargas de Reportes** salen en el idioma de la página (la cookie). El CSV en inglés va como lo

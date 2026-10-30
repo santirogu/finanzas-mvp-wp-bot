@@ -1,5 +1,7 @@
 // Validación de lo que devuelve la IA antes de tocar la base de datos.
 // La IA propone; este código decide qué es aceptable.
+import { DEFAULT_LOCALE, type Locale } from "@/i18n/locales";
+import { texts } from "@/i18n/texts";
 import { MAX_AMOUNT, roundToCents } from "@/lib/money";
 import { withoutControlChars } from "@/lib/text";
 import { MAX_REPLY_LENGTH } from "./limits";
@@ -27,6 +29,9 @@ export type ParsedTransaction = {
 export type CategoryNames = Record<TransactionKind, readonly string[]>;
 
 const MAX_DESCRIPTION = 140;
+
+/** La descripción de un movimiento que llegó sin ella, en el idioma de la cuenta. */
+const NO_DESCRIPTION = texts<Record<TransactionKind, string>>({ income: "Ingreso", expense: "Gasto" }, { en: { income: "Income", expense: "Expense" } });
 const MAX_DAYS_BACK = 366;
 
 const fold = (s: string) => s.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -62,10 +67,13 @@ function normalizeDescription(text: string): string {
   return clean ? clean.charAt(0).toUpperCase() + clean.slice(1) : "";
 }
 
-/** `maxDaysBack`: hasta cuántos días atrás vale la fecha que propone la IA (por defecto, un año); más vieja, hoy. */
+/**
+ * `maxDaysBack`: hasta cuántos días atrás vale la fecha que propone la IA (por defecto, un año); más vieja, hoy.
+ * `locale`: el idioma de la cuenta, el de la descripción de un movimiento que llegó sin ella.
+ */
 export function normalizeTransactions(
   raw: readonly RawTransaction[],
-  ctx: { today: string; categories: CategoryNames; maxDaysBack?: number },
+  ctx: { today: string; categories: CategoryNames; locale?: Locale; maxDaysBack?: number },
 ): ParsedTransaction[] {
   const result: ParsedTransaction[] = [];
   for (const item of raw) {
@@ -77,7 +85,7 @@ export function normalizeTransactions(
     result.push({
       type: item.type,
       amount,
-      description: description || (item.type === "income" ? "Ingreso" : "Gasto"),
+      description: description || NO_DESCRIPTION[ctx.locale ?? DEFAULT_LOCALE][item.type],
       category: matchCategory(item.category, ctx.categories[item.type]),
       occurredOn: normalizeDate(item.date, ctx.today, ctx.maxDaysBack ?? MAX_DAYS_BACK),
     });

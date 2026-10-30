@@ -61,6 +61,11 @@ describe("matchHistory", () => {
     expect(matchHistory("pago claro", [entry("Claro Postpago Cata", 3), entry("Claro Postpago Hogar", 3), entry("Claro Postpago Mamá", 4)])?.description).toBe("Claro Postpago Mamá");
   });
 
+  it("las palabras vacías del inglés tampoco cuentan", () => {
+    expect(meaningfulWords("Lunch with the team at the office")).toEqual(["lunch", "team", "office"]);
+    expect(matchHistory("lunch with Ana", [entry("Lunch Ana")])?.description).toBe("Lunch Ana");
+  });
+
   it("sin historial, sin palabras que cuenten o sin coincidencias, ninguna", () => {
     expect(matchHistory("pago claro", [])).toBeNull();
     expect(matchHistory("de la", [entry("De la casa")])).toBeNull();

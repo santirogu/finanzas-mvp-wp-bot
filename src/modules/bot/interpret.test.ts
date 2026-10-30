@@ -146,6 +146,15 @@ describe("normalizeTransactions", () => {
     );
     expect(expense.description).toBe("Gasto");
     expect(income.description).toBe("Ingreso");
+    // En una cuenta en inglés, en inglés.
+    const english = normalizeTransactions(
+      [
+        { ...base, description: "" },
+        { ...base, type: "income", description: " " },
+      ],
+      { ...ctx, locale: "en" },
+    );
+    expect(english.map((t) => t.description)).toEqual(["Expense", "Income"]);
   });
 
   it("recorta descripciones largas a 140 caracteres y une espacios", () => {
@@ -277,13 +286,14 @@ describe("interpretMessage", () => {
     expect(extractor).not.toHaveBeenCalled();
   });
 
-  it("pasa la fecha de hoy y las categorías al extractor", async () => {
+  it("pasa la fecha de hoy, las categorías y el idioma de la cuenta al extractor", async () => {
     const extractor = fakeExtractor({ ok: true, transactions: [], reply: "¿Cuánto fue?", usage });
     await interpretMessage("me compré unos zapatos", ctx, extractor);
     expect(extractor).toHaveBeenCalledWith({
       text: "me compré unos zapatos",
       today: { iso: "2026-10-13", long: "martes 13 de octubre de 2026" },
       categories,
+      locale: "es",
     });
   });
 
@@ -488,7 +498,7 @@ describe("interpretPhoto", () => {
   const receipt = { type: "expense" as const, amount: 85400, description: "éxito", category: "Mercado", date: "2026-10-11" };
   const ok = (transactions: (typeof receipt)[], reply: string | null = null): ExtractionResult => ({ ok: true, transactions, reply, usage });
 
-  it("manda la foto, lo que escribió con ella, la fecha de hoy y las categorías", async () => {
+  it("manda la foto, lo que escribió con ella, la fecha de hoy, las categorías y el idioma", async () => {
     const extractor = fakeExtractor(ok([receipt]));
     await interpretPhoto({ image, caption: "  mercado del mes " }, ctx, extractor);
     expect(extractor).toHaveBeenCalledWith({
@@ -496,6 +506,7 @@ describe("interpretPhoto", () => {
       image,
       today: { iso: "2026-10-13", long: "martes 13 de octubre de 2026" },
       categories,
+      locale: "es",
     });
   });
 
@@ -596,6 +607,17 @@ describe("interpretMessage e interpretPhoto · en inglés", () => {
     expect(await interpretMessage("hmm", en, none)).toMatchObject({
       text: "I couldn't find any income or expense in your message. Try something like “spent 20k on lunch”.",
     });
+  });
+
+  it("le pasa el idioma de la cuenta a Claude, con un mensaje y con una foto (escribe la respuesta en inglés)", async () => {
+    const extractor = fakeExtractor({ ok: true, transactions: [], reply: "Send me the whole transaction, like “sneakers 180k”.", usage });
+    expect(await interpretMessage("I bought some sneakers", en, extractor)).toEqual({
+      kind: "reply",
+      text: "Send me the whole transaction, like “sneakers 180k”.",
+      usage,
+    });
+    await interpretPhoto({ image: { data: "", mediaType: "image/png" }, caption: "lunch" }, en, extractor);
+    expect(extractor.mock.calls.map(([input]) => input.locale)).toEqual(["en", "en"]);
   });
 
   it("las fotos que no se registraron", async () => {

@@ -23,7 +23,7 @@ export type BotIntent =
 
 const MAX_MESSAGE_LENGTH = 1000;
 
-/** Lo que necesita para interpretar: el día de hoy, las categorías (en español) y el idioma de las respuestas fijas. */
+/** Lo que necesita para interpretar: el día de hoy, las categorías (en español) y el idioma de la cuenta (el de las respuestas). */
 type Context = { today: string; categories: CategoryNames; locale: Locale };
 
 /**
@@ -47,6 +47,7 @@ export async function interpretMessage(text: string, ctx: Context, extractor: Ex
     text: trimmed,
     today: { iso: ctx.today, long: formatLongDate(ctx.today) },
     categories: ctx.categories,
+    locale: ctx.locale,
   });
 
   if (!result.ok) return errorIntent(result);
@@ -87,6 +88,7 @@ export async function interpretPhoto(
     image: photo.image,
     today: { iso: ctx.today, long: formatLongDate(ctx.today) },
     categories: ctx.categories,
+    locale: ctx.locale,
   });
   if (!result.ok) return errorIntent(result);
 

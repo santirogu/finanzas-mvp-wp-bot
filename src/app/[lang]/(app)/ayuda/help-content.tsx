@@ -485,7 +485,7 @@ function EnglishFaq({ values, A }: { values: AppValues; A: PageLink }) {
       <Topic title="Why didn't the bot understand my message?">
         <p>
           Write the whole transaction, with what it was and the amount: “lunch 25k” or “I got paid 2.100.000”. Amounts are in Colombian
-          pesos, written as in Colombia: a period for thousands and a comma for cents (25.900,50).
+          pesos: write them as in Colombia (25.900,50) or as in the US (25,900.50). It also understands k and M (“20k”, “2M”).
         </p>
         <p>
           You can send up to {MAX_TRANSACTIONS_PER_MESSAGE} transactions in one message. It doesn&apos;t remember the previous message: if
