@@ -82,18 +82,30 @@ export function usualDay(dates: string[]): number {
   return median > 31 ? median - 31 : median;
 }
 
-/** Los pagos de cada gasto, por clave: la fecha del primero de cada mes, del más antiguo al más reciente. */
-function paymentsByKey(rows: HistoryMonth[], keys: Set<string>): Map<string, string[]> {
-  const byKey = new Map<string, Map<string, string>>();
+/**
+ * Los pagos de cada gasto, por clave, del más antiguo al más reciente: `firsts`, la fecha del primero de cada mes (con
+ * ellos se calcula el día en que se suele pagar), y `all`, además la del último de cada mes si es otra: un pago
+ * adelantado (el 30 de octubre, lo que vence el 1 de noviembre) es el segundo de su mes.
+ */
+function paymentsByKey(rows: HistoryMonth[], keys: Set<string>): Map<string, { firsts: string[]; all: string[] }> {
+  const byKey = new Map<string, Map<string, { first: string; last: string }>>();
   for (const row of rows) {
     const key = searchKey(row.description);
     if (!keys.has(key)) continue;
-    const months = byKey.get(key) ?? new Map<string, string>();
+    const months = byKey.get(key) ?? new Map<string, { first: string; last: string }>();
     const seen = months.get(row.month);
-    months.set(row.month, seen && seen < row.first ? seen : row.first);
+    months.set(row.month, {
+      first: seen && seen.first < row.first ? seen.first : row.first,
+      last: seen && seen.last > row.last ? seen.last : row.last,
+    });
     byKey.set(key, months);
   }
-  return new Map([...byKey].map(([key, months]) => [key, [...months.values()].sort()]));
+  return new Map(
+    [...byKey].map(([key, months]) => {
+      const sorted = [...months.values()].sort((a, b) => a.first.localeCompare(b.first));
+      return [key, { firsts: sorted.map((m) => m.first), all: sorted.flatMap((m) => (m.last === m.first ? [m.first] : [m.first, m.last])) }];
+    }),
+  );
 }
 
 /** Lo que se espera de un gasto fijo: el día en que se suele pagar y cada pago esperado, con la fecha en que se pagó. */
@@ -116,8 +128,8 @@ export function paymentSchedules(items: readonly Pick<FixedOption, "key">[], his
   const current = monthOf(today);
   const schedules = new Map<string, PaymentSchedule>();
   for (const item of items) {
-    const dates = payments.get(item.key);
-    if (!dates) continue;
+    const { firsts: dates, all } = payments.get(item.key) ?? { firsts: [], all: [] };
+    if (dates.length === 0) continue;
     const recent = dates.slice(-PAYMENTS_FOR_DAY);
     const day = usualDay(recent);
     // Un pago por mes, desde el que corresponde al primer pago (si se pagó el 25 lo que se suele pagar el
@@ -129,8 +141,9 @@ export function paymentSchedules(items: readonly Pick<FixedOption, "key">[], his
       if (daysBetween(dates[0], date) >= -HALF_MONTH) due.push({ month: monthParam(month), date, paidOn: null });
     }
     // Cada pago cuenta para la fecha esperada más cercana (pagar el 2 de noviembre lo de octubre, si se
-    // suele pagar el 30, cuenta para octubre). Los pagos van del más viejo al más nuevo: queda el primero.
-    for (const paid of dates) {
+    // suele pagar el 30, cuenta para octubre; pagar el 30 de octubre lo del 1 de noviembre, para noviembre).
+    // Los pagos van del más viejo al más nuevo: queda el primero.
+    for (const paid of all) {
       const nearest = due.reduce((best, d) => (Math.abs(daysBetween(paid, d.date)) < Math.abs(daysBetween(paid, best.date)) ? d : best));
       if (Math.abs(daysBetween(paid, nearest.date)) <= HALF_MONTH) nearest.paidOn ??= paid;
     }

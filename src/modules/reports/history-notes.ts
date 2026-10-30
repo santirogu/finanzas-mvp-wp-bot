@@ -35,7 +35,7 @@ const monthOfTransaction = sql<string>`to_char(${transaction.occurredOn}, 'YYYY-
 
 /**
  * Los egresos de cada mes por descripción, en todo el tiempo (sin importar mayúsculas ni espacios en los
- * extremos; las tildes se juntan en fixedHistories), con el primer pago de cada mes.
+ * extremos; las tildes se juntan en fixedHistories), con el primer y el último pago de cada mes.
  */
 export async function getExpenseHistoryMonths(userId: string): Promise<HistoryMonth[]> {
   const latest = sql`${transaction.occurredOn} desc, ${transaction.createdAt} desc`;
@@ -45,6 +45,7 @@ export async function getExpenseHistoryMonths(userId: string): Promise<HistoryMo
       description: sql<string>`(array_agg(trim(${transaction.description}) order by ${latest}))[1]`,
       total: sql<string>`sum(${transaction.amount})`,
       first: sql<string>`min(${transaction.occurredOn})::text`,
+      last: sql<string>`max(${transaction.occurredOn})::text`,
     })
     .from(transaction)
     .where(and(eq(transaction.userId, userId), eq(transaction.type, "expense"), isNull(transaction.deletedAt)))
