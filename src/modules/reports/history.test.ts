@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { FIXED_NOTE_MAX_LENGTH } from "@/db/schema";
 import { changeDirection, fixedHistories, type HistoryMonth, lastChange, lastChangeSummary, NOTE_MAX_LENGTH, pctLabel } from "./history";
 
-const row = (month: string, description: string, total: number, first = `${month}-05`): HistoryMonth => ({ month, description, total, first });
+const row = (month: string, description: string, total: number, first = `${month}-05`): HistoryMonth => ({ month, description, total, first, last: first });
 
 describe("fixedHistories", () => {
   it("el primer pago y cada mes en que el valor cambió, del más reciente al más antiguo", () => {
@@ -120,8 +120,8 @@ describe("lastChangeSummary · en inglés", () => {
   it("con el mes en inglés (y el año si no es el actual)", () => {
     const entries = fixedHistories(
       [
-        { month: "2026-02", description: "Netflix", total: 100, first: "2026-02-03" },
-        { month: "2026-03", description: "Netflix", total: 111, first: "2026-03-03" },
+        { month: "2026-02", description: "Netflix", total: 100, first: "2026-02-03", last: "2026-02-03" },
+        { month: "2026-03", description: "Netflix", total: 111, first: "2026-03-03", last: "2026-03-03" },
       ],
       ["netflix"],
     ).get("netflix")!;

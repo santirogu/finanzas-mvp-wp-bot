@@ -14,7 +14,7 @@ const gym = { key: "gimnasio", description: "Gimnasio", emoji: "🏋️", amount
 
 /** Los egresos de una descripción por mes, como los da la base: lo que sumó y el primer pago. */
 const paid = (description: string, total: number, ...dates: string[]): HistoryMonth[] =>
-  dates.map((date) => ({ month: date.slice(0, 7), description, total, first: date }));
+  dates.map((date) => ({ month: date.slice(0, 7), description, total, first: date, last: date }));
 
 const NONE = new Set<string>();
 
