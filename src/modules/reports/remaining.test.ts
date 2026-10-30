@@ -8,9 +8,9 @@ const rent = { key: "arriendo", description: "Arriendo", emoji: "🏠", amount: 
 const internet = { key: "internet", description: "Internet", emoji: "📶", amount: 95000 };
 const phone = { key: "celular", description: "Celular", emoji: "📱", amount: 55000 };
 
-/** Los egresos de una descripción por mes, como los da la base: lo que sumó y el primer pago. */
+/** Los egresos de una descripción por mes, como los da la base: lo que sumó y el primer y el último pago. */
 const paid = (description: string, total: number, ...dates: string[]): HistoryMonth[] =>
-  dates.map((date) => ({ month: date.slice(0, 7), description, total, first: date }));
+  dates.map((date) => ({ month: date.slice(0, 7), description, total, first: date, last: date }));
 
 const NONE = new Set<string>();
 
