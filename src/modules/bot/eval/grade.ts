@@ -7,9 +7,17 @@ import { EVAL_TODAY, type EvalCase } from "./cases";
 
 // El bot tutea, como toda la app (glosario de textos): estas formas son de usted.
 const USTED = /\b(usted|ustedes|escriba|envíe|envíeme|intente|indíqueme|dígame|cuénteme|disculpe|tenga)\b/i;
+// A una cuenta en inglés le responde en inglés: estas palabras no lo son (sin \b alrededor de "¿" y "¡").
+const SPANISH = /[¿¡]|\b(el|los|las|que|para|con|tu|escribe|envíame|registro|registré|mensaje|gasto|ingreso|egreso)\b/i;
 
-/** Cómo se muestra un caso (en la consola y en el resumen): con una foto, su nombre y el texto que va con ella. */
-export const caseLabel = (c: EvalCase) => (c.photo ? `[foto ${c.photo}]${c.text ? ` ${c.text}` : ""}` : c.text);
+/**
+ * Cómo se muestra un caso (en la consola y en el resumen): con una foto, su nombre y el texto que va con ella; con
+ * una cuenta en inglés, "[en]" adelante.
+ */
+export function caseLabel(c: EvalCase): string {
+  const label = c.photo ? `[foto ${c.photo}]${c.text ? ` ${c.text}` : ""}` : c.text;
+  return c.locale === "en" ? `[en] ${label}` : label;
+}
 
 /** Lo que salió mal en un caso (vacío: acertó). */
 export function grade(c: EvalCase, intent: BotIntent): string[] {
@@ -23,6 +31,7 @@ export function grade(c: EvalCase, intent: BotIntent): string[] {
     if (c.expect.notMentions && c.expect.notMentions.test(intent.text)) problems.push(`la respuesta dice ${c.expect.notMentions}: "${intent.text}"`);
     if (c.expect.noQuestion && intent.text.includes("?")) problems.push(`pregunta en vez de pedir el movimiento completo: "${intent.text}"`);
     if (USTED.test(intent.text)) problems.push(`trata de usted: "${intent.text}"`);
+    if (c.locale === "en" && SPANISH.test(intent.text)) problems.push(`responde en español a una cuenta en inglés: "${intent.text}"`);
     return problems;
   }
   if (intent.kind !== "transactions") {
@@ -40,6 +49,7 @@ export function grade(c: EvalCase, intent: BotIntent): string[] {
     if (want.categories && !want.categories.includes(got.category ?? "")) {
       problems.push(`#${i + 1} categoría ${got.category} ∉ [${want.categories.join(", ")}]`);
     }
+    if (want.description && !want.description.test(got.description)) problems.push(`#${i + 1} descripción "${got.description}" no dice ${want.description}`);
     const wantDate = want.date ?? EVAL_TODAY;
     if (got.occurredOn !== wantDate) problems.push(`#${i + 1} fecha ${got.occurredOn} ≠ ${wantDate}`);
   });

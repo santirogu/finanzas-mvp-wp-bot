@@ -107,9 +107,6 @@ textos.
 
 ## Lo que queda en español a propósito
 
-- Lo que responde Claude en el bot (por ahora): cuando no entiende un mensaje o le falta un dato, contesta en
-  español aunque la cuenta esté en inglés. Los textos fijos del bot, sus comandos y los ejemplos van en el
-  idioma de la cuenta (o de la página).
 - La política de privacidad y "Eliminar tus datos", con `lang="es"` y una nota en inglés.
 - Los nombres de las categorías por defecto (el inglés lo pone el admin) y el simulador (solo en
   desarrollo).

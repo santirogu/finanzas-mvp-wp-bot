@@ -10,11 +10,19 @@ describe("buildSystemPrompt", () => {
     expect(prompt).toContain("Categorías de ingreso: Salario, Otros.");
   });
 
-  it("explica el formato colombiano de montos y la jerga", () => {
+  it("explica el formato colombiano de montos y la jerga, también la de inglés", () => {
     const prompt = buildSystemPrompt(categories);
     expect(prompt).toContain('"$500.000" = 500000');
     expect(prompt).toContain('"500 lucas" = 500000');
     expect(prompt).toContain('"1,5 palos" = 1500000');
+    expect(prompt).toContain('"1.5 million" = 1500000, "2M" = 2000000');
+    expect(prompt).toContain("antes de estas palabras, el punto o la coma marcan decimales");
+  });
+
+  it("los montos escritos como en Estados Unidos también se leen bien (tres cifras, miles; una o dos, centavos)", () => {
+    const prompt = buildSystemPrompt(categories);
+    expect(prompt).toContain("Montos en pesos colombianos (también si el mensaje está en inglés)");
+    expect(prompt).toContain('"25,000" = 25000, "1,200,000.50" = 1200000.5');
   });
 
   it("explica que la coma separa los centavos", () => {
@@ -47,6 +55,51 @@ describe("buildSystemPrompt", () => {
   it("no depende de la fecha, para que se pueda cachear entre mensajes", () => {
     expect(buildSystemPrompt(categories)).toBe(buildSystemPrompt(categories));
     expect(buildSystemPrompt(categories)).not.toMatch(/\d{4}-\d{2}-\d{2}/);
+    expect(buildSystemPrompt(categories, { locale: "en" })).toBe(buildSystemPrompt(categories, { locale: "en" }));
+  });
+});
+
+describe("buildSystemPrompt · el idioma de la cuenta", () => {
+  const es = buildSystemPrompt(categories, { locale: "es" });
+  const en = buildSystemPrompt(categories, { locale: "en" });
+
+  it("sin decir, en español", () => {
+    expect(buildSystemPrompt(categories)).toBe(es);
+  });
+
+  it("en español: la descripción y la respuesta en español, tuteando, con los ejemplos y los comandos en español", () => {
+    expect(es).toContain('en 1 a 5 palabras y en español (aunque el mensaje venga en otro idioma), sin el monto (por ejemplo "Zapatos"');
+    expect(es).toContain('("gasté 20.000" → description "Gasto", category "Otros")');
+    expect(es).toContain('con un ejemplo como "tenis 180 mil"');
+    expect(es).toContain('con un ejemplo como "gasté 20 mil en almuerzo"');
+    expect(es).toContain("(por ejemplo *balance septiembre*)");
+    expect(es).toContain("Cómo escribir reply: en español colombiano");
+    expect(es).toContain("Tutea siempre");
+  });
+
+  it("en inglés: la descripción y la respuesta en inglés, con los ejemplos y los comandos en inglés", () => {
+    expect(en).toContain('en 1 a 5 palabras y en inglés (aunque el mensaje venga en otro idioma), sin el monto (por ejemplo "Shoes"');
+    expect(en).toContain('("spent 20.000" → description "Expense", category "Otros")');
+    expect(en).toContain('con un ejemplo como "sneakers 180k"');
+    expect(en).toContain('con un ejemplo como "spent 20k on lunch"');
+    expect(en).toContain("(por ejemplo *balance september*)");
+    expect(en).toContain("Cómo escribir reply: en inglés (el usuario usa la app en inglés, aunque escriba en español)");
+    expect(en).not.toContain("Tutea");
+    expect(en).not.toContain("tenis 180 mil");
+  });
+
+  it("lo demás es igual en los dos: las reglas de los montos, las fechas en inglés y las categorías en español", () => {
+    for (const prompt of [es, en]) {
+      expect(prompt).toContain('"25,000" = 25000');
+      expect(prompt).toContain('(o "yesterday", "on Monday", "on the 5th")');
+      expect(prompt).toContain('"got paid", "received", "earned", "sold", paycheck');
+      expect(prompt).toContain("Categorías de egreso: Ropa, Mercado, Otros.");
+    }
+  });
+
+  it("con una foto, el ejemplo para escribir el gasto va en el idioma de la cuenta", () => {
+    expect(buildSystemPrompt(categories, { photo: true })).toContain('con un ejemplo como "almuerzo 25 mil"');
+    expect(buildSystemPrompt(categories, { photo: true, locale: "en" })).toContain('con un ejemplo como "lunch 25k"');
   });
 });
 

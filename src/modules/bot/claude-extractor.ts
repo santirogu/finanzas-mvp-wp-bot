@@ -6,6 +6,7 @@ import { resolveBotModel } from "./models";
 import type { PhotoImage } from "./photo";
 import { buildPhotoMessage, buildSystemPrompt, buildUserMessage } from "./prompt";
 import { envVar } from "@/lib/env";
+import type { Locale } from "@/i18n/locales";
 import { describeError } from "@/lib/safe-log";
 import { CHECK_TIMEOUT_MS, type ServiceCheck } from "@/lib/service-check";
 import { serviceUrl } from "@/lib/service-url";
@@ -39,6 +40,8 @@ export type ExtractionInput = {
   image?: PhotoImage;
   today: { iso: string; long: string };
   categories: CategoryNames;
+  /** El idioma de la cuenta: en el que Claude escribe la descripción y la respuesta. */
+  locale: Locale;
   /** El modelo que eligió el admin (src/modules/bot/settings.ts); sin él, botModel(). */
   model?: string;
 };
@@ -82,7 +85,7 @@ const photoContent = (image: PhotoImage, caption: string, today: ExtractionInput
 // Los modelos Haiku no tienen fallback del lado del servidor.
 const supportsServerFallback = (model: string) => !model.includes("haiku");
 
-export const claudeExtractor: Extractor = async ({ text, image, today, categories, model = botModel() }) => {
+export const claudeExtractor: Extractor = async ({ text, image, today, categories, locale, model = botModel() }) => {
   // Sin credenciales el SDK lanza un Error genérico; mejor detectarlo antes.
   if (!envVar("ANTHROPIC_API_KEY") && !envVar("ANTHROPIC_AUTH_TOKEN")) {
     return { ok: false, reason: "not_configured" };
@@ -92,7 +95,7 @@ export const claudeExtractor: Extractor = async ({ text, image, today, categorie
       model,
       // Alcanza para MAX_TRANSACTIONS_PER_MESSAGE movimientos; acota el costo de cada llamada.
       max_tokens: 2048,
-      system: buildSystemPrompt(categories, { photo: Boolean(image) }),
+      system: buildSystemPrompt(categories, { photo: Boolean(image), locale }),
       messages: [{ role: "user", content: image ? photoContent(image, text, today) : buildUserMessage(text, today) }],
       output_config: { effort: botEffort(), format: betaZodOutputFormat(extractionSchema) },
       // Si un clasificador de seguridad rechaza el mensaje, el servidor reintenta

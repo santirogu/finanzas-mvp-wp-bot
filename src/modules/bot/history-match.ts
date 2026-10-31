@@ -8,8 +8,14 @@ import { searchKey } from "@/lib/suggestions";
 /** Una descripción del historial, con la categoría de la última vez y cuántas veces se usó. */
 export type HistoryEntry = { description: string; categoryId: string | null; uses: number };
 
-/** Palabras que no cuentan al comparar: "pago de claro" busca lo mismo que "pago claro". */
-const IGNORED = new Set(["a", "al", "con", "de", "del", "el", "en", "la", "las", "lo", "los", "mi", "mis", "para", "por", "su", "sus", "un", "una", "y"]);
+/**
+ * Palabras que no cuentan al comparar: "pago de claro" busca lo mismo que "pago claro". También las del inglés (con
+ * una cuenta en inglés, Claude escribe la descripción en inglés): "lunch with Ana" es "lunch Ana".
+ */
+const IGNORED = new Set([
+  ...["a", "al", "con", "de", "del", "el", "en", "la", "las", "lo", "los", "mi", "mis", "para", "por", "su", "sus", "un", "una", "y"],
+  ...["an", "and", "at", "for", "in", "my", "of", "on", "the", "to", "with"],
+]);
 
 /** Las palabras que cuentan de un texto, sin tildes ni mayúsculas ("Pago de Clarö" → ["pago", "claro"]). */
 export function meaningfulWords(text: string): string[] {
