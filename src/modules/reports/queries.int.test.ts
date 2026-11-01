@@ -425,6 +425,40 @@ describe("getUpcomingPayments (los avisos del Resumen)", () => {
     expect((await getUpcomingPayments(ana.id, october, "2026-10-10")).payments).toEqual([]);
   });
 
+  it("al cambiar de mes sigue avisando de los atrasados del mes anterior, hasta que se pagan o ya no aplican", async () => {
+    const ana = await createUser();
+    // Pagados de julio a septiembre; en octubre, ni el arriendo (el 5) ni el internet (el 25), y el gimnasio sí.
+    for (const month of ["07", "08", "09"]) {
+      await addTx({ userId: ana.id, description: "Arriendo", amount: 1800000, occurredOn: `2026-${month}-05` });
+      await addTx({ userId: ana.id, description: "Internet", amount: 95000, occurredOn: `2026-${month}-25` });
+      await addTx({ userId: ana.id, description: "Gimnasio", amount: 120000, occurredOn: `2026-${month}-10` });
+    }
+    await addTx({ userId: ana.id, description: "Gimnasio", amount: 120000, occurredOn: "2026-10-10" });
+    const november = { year: 2026, month: 11 };
+    const due = async (today: string, current = november) => (await getUpcomingPayments(ana.id, current, today)).payments.map((p) => [p.description, p.month]);
+
+    // El 31 de octubre avisa de los dos atrasados; el 1 de noviembre (de agosto a noviembre solo hay dos meses con
+    // pago), también.
+    const october = [
+      ["Arriendo", "2026-10"],
+      ["Internet", "2026-10"],
+    ];
+    expect(await due("2026-10-31", m(10))).toEqual(october);
+    expect(await due("2026-11-01")).toEqual(october);
+    // El 3, también el del 5 de noviembre; los pagos de noviembre de "Lo que te queda" y el estado del mes en Fijos
+    // los siguen contando (sin el arreglo, solo el gimnasio).
+    expect(await due("2026-11-03")).toEqual([["Arriendo", "2026-10"], ["Internet", "2026-10"], ["Arriendo", "2026-11"]]);
+    expect((await getMonthFixed(ana.id, november, "2026-11-03")).pending.map((p) => p.description).sort()).toEqual(["Arriendo", "Gimnasio", "Internet"]);
+    expect([...(await getFixedMonth(ana.id, november, "2026-11-03")).statuses.keys()].sort()).toEqual(["arriendo", "gimnasio", "internet"]);
+    // Hasta tres meses atrás: en febrero, octubre ya no.
+    expect(await due("2027-02-01", { year: 2027, month: 2 })).not.toContainEqual(["Arriendo", "2026-10"]);
+
+    // El internet, pagado unos días tarde; el arriendo de octubre, marcado "ya no aplica".
+    await addTx({ userId: ana.id, description: "Internet", amount: 95000, occurredOn: "2026-11-01" });
+    await db.insert(fixedPaymentSkip).values({ userId: ana.id, descriptionKey: "arriendo", month: "2026-10" });
+    expect(await due("2026-11-01")).toEqual([]);
+  });
+
   it("uno quitado de los gastos fijos no avisa; uno agregado a mano, sí", async () => {
     const ana = await createUser();
     for (const month of ["08", "09"]) await addTx({ userId: ana.id, description: "Netflix", amount: 44900, occurredOn: `2026-${month}-14` });

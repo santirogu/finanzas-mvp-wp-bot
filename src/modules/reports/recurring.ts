@@ -65,9 +65,12 @@ export type RecurringReport = {
   candidates: FixedOption[];
 };
 
-/** El primer mes que hay que consultar para el período: el suyo o, si es más corto, el de la ventana. */
-export function recurringFrom(period: Month[], window = RECURRING_WINDOW): Month {
-  const windowStart = shiftMonth(period[period.length - 1], -(window - 1));
+/**
+ * El primer mes que hay que consultar para el período: el suyo o, si es más corto, el de la ventana (con
+ * `keepFor`, la de hace `keepFor` meses: ver recurringExpenses).
+ */
+export function recurringFrom(period: Month[], window = RECURRING_WINDOW, keepFor = 0): Month {
+  const windowStart = shiftMonth(period[period.length - 1], -(window - 1 + keepFor));
   // Stryker disable next-line EqualityOperator: si son el mismo mes, cualquiera de los dos da lo mismo
   return compareMonths(windowStart, period[0]) < 0 ? windowStart : period[0];
 }
@@ -86,14 +89,23 @@ const byDescription = (a: FixedOption, b: FixedOption) => a.description.localeCo
  * Con `choices`, lo que marcó la persona: uno detectado que quitó pasa a `removed`; uno que agregó
  * aparece aunque no se detecte (si tiene egresos en el período). Los demás egresos del período quedan
  * en `candidates`, para agregarlos.
+ *
+ * Con `keepFor`, uno que se detectó al final de alguno de los `keepFor` meses anteriores sigue siendo fijo
+ * aunque ya no se detecte: el mes que no se pagó cuenta como un mes sin él, y al empezar el siguiente (también
+ * sin pago todavía) dejaría de ser fijo justo cuando está atrasado. Lo usan Fijos y los avisos de los pagos.
  */
 export function recurringExpenses(
   rows: DescriptionMonthTotal[],
   period: Month[],
   choices: FixedChoices = NO_CHOICES,
   rule: RecurringRule = DEFAULT_RECURRING_RULE,
+  { keepFor = 0 }: { keepFor?: number } = {},
 ): RecurringReport {
-  const window = new Set(Array.from({ length: rule.window }, (_, i) => monthParam(shiftMonth(period[period.length - 1], i - rule.window + 1))));
+  // La ventana que termina en el último mes del período y, con keepFor, las que terminan en los anteriores.
+  const windows = Array.from(
+    { length: keepFor + 1 },
+    (_, back) => new Set(Array.from({ length: rule.window }, (_, i) => monthParam(shiftMonth(period[period.length - 1], i - rule.window + 1 - back)))),
+  );
   const inPeriod = new Set(period.map(monthParam));
 
   // Por descripción y, dentro de cada una, por mes (juntando las que solo cambian en tildes o mayúsculas).
@@ -118,10 +130,12 @@ export function recurringExpenses(
   const removed: FixedOption[] = [];
   const candidates: FixedOption[] = [];
   for (const [key, months] of descriptions) {
-    const inWindow = [...months.values()].filter((row) => window.has(row.month));
     const ofPeriod = [...months.values()].filter((row) => inPeriod.has(row.month));
-    const detected = inWindow.length >= rule.minMonths && inWindow.every((row) => row.count <= RECURRING_MAX_PER_MONTH);
-    if (detected) {
+    // Sus meses en la primera ventana (de la más reciente a la más vieja) en que se detecta.
+    const inWindow = windows
+      .map((window) => [...months.values()].filter((row) => window.has(row.month)))
+      .find((rows) => rows.length >= rule.minMonths && rows.every((row) => row.count <= RECURRING_MAX_PER_MONTH));
+    if (inWindow) {
       const last = latestOf(inWindow);
       const option = { key, description: last.description, emoji: last.emoji };
       if (choices.exclude.has(key)) removed.push(option);
