@@ -33,6 +33,49 @@ describe("recurringFrom", () => {
     expect(recurringFrom(months(1, 2), 6)).toEqual(m(9, 2025));
     expect(recurringFrom(months(7, 10), 3)).toEqual(m(7));
   });
+
+  it("con keepFor, también los de las ventanas de los meses anteriores", () => {
+    expect(recurringFrom(months(7, 10), 4, 3)).toEqual(m(4));
+    // Con 12 meses alcanza el período: la ventana más vieja (de 6 meses, 3 atrás) empieza en enero.
+    expect(recurringFrom(twelve, 6, 3)).toEqual(m(11, 2025));
+  });
+});
+
+describe("recurringExpenses · keepFor (Fijos y los avisos de los pagos)", () => {
+  const november = months(12, 12, 2025).concat(months(1, 11));
+  // Pagado de julio a septiembre; octubre, sin pagar. En noviembre, de agosto a noviembre solo hay dos meses.
+  const rent = every("Arriendo", 1800000, 7, 8, 9);
+  const keys = (report: ReturnType<typeof recurringExpenses>) => report.items.map((item) => item.key);
+
+  it("sin keepFor, al empezar noviembre deja de ser fijo (el error que se arregla con keepFor)", () => {
+    expect(keys(recurringExpenses(rent, november))).toEqual([]);
+  });
+
+  it("con keepFor, sigue siendo fijo mientras se haya detectado en la ventana de alguno de esos meses", () => {
+    expect(keys(recurringExpenses(rent, november, undefined, undefined, { keepFor: 3 }))).toEqual(["arriendo"]);
+    // Con su monto, su descripción y los meses del período, como si se hubiera detectado en octubre.
+    expect(recurringExpenses(rent, november, undefined, undefined, { keepFor: 3 }).items[0]).toMatchObject({
+      description: "Arriendo",
+      amount: 1800000,
+      months: 3,
+      origin: "auto",
+    });
+    // En enero, la de octubre (julio a octubre) todavía cuenta; en febrero, ya no.
+    expect(keys(recurringExpenses(rent, months(1, 1, 2027), undefined, undefined, { keepFor: 3 }))).toEqual(["arriendo"]);
+    expect(keys(recurringExpenses(rent, months(2, 2, 2027), undefined, undefined, { keepFor: 3 }))).toEqual([]);
+  });
+
+  it("uno que quitó la persona sigue quitado", () => {
+    const report = recurringExpenses(rent, november, { include: new Set(), exclude: new Set(["arriendo"]) }, undefined, { keepFor: 3 });
+    expect(keys(report)).toEqual([]);
+    expect(report.removed.map((option) => option.key)).toEqual(["arriendo"]);
+  });
+
+  it("el monto es el del último mes de la ventana más reciente en que se detecta", () => {
+    const raised = [...every("Netflix", 44900, 7, 8, 9), ...every("Netflix", 49900, 11)];
+    // De agosto a noviembre ya hay tres meses: la ventana de noviembre, con el monto de noviembre.
+    expect(recurringExpenses(raised, november, undefined, undefined, { keepFor: 3 }).items[0].amount).toBe(49900);
+  });
 });
 
 describe("recurringExpenses · con otra regla (Valores de la app)", () => {
