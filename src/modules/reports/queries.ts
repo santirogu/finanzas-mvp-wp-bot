@@ -27,7 +27,7 @@ import { type FixedMonth, fixedMonth } from "./fixed-month";
 import { type MonthFixed, monthFixed } from "./remaining";
 import { type DescriptionMonthTotal, recurringExpenses, recurringFrom } from "./recurring";
 import { monthSeries, type MonthTotals, periodSummary } from "./summary";
-import { type UpcomingPayment, upcomingPayments } from "./upcoming";
+import { MONTHS_BACK, type UpcomingPayment, upcomingPayments } from "./upcoming";
 import { getUpcomingSettings } from "./upcoming-settings";
 
 // Las consultas de Reportes. Reciben el userId ya validado por el Data Access Layer
@@ -226,12 +226,13 @@ export async function getFixedExpenses(userId: string, period: ReportPeriod, cur
   const [activeMonths, monthly, descriptions, choices, historyMonths, notes] = await Promise.all([
     listActiveMonths(userId),
     getMonthlyTotals(userId, first, last),
-    getExpenseDescriptionsByMonth(userId, recurringFrom(period.months, rule.window), last),
+    getExpenseDescriptionsByMonth(userId, recurringFrom(period.months, rule.window, MONTHS_BACK), last),
     getFixedChoices(userId),
     getExpenseHistoryMonths(userId),
     getFixedNotes(userId),
   ]);
-  const recurring = recurringExpenses(descriptions, period.months, choices, rule);
+  // Como los avisos (getFixedPaymentsData): uno atrasado sigue en Fijos al empezar el mes siguiente.
+  const recurring = recurringExpenses(descriptions, period.months, choices, rule, { keepFor: MONTHS_BACK });
   const byKey = fixedHistories(historyMonths, recurring.items.map((item) => item.key));
   // Con fromEntries: la clave de un gasto como "__proto__" queda como una más (asignada, cambiaría el prototipo).
   const histories: Record<string, FixedHistoryEntry[]> = Object.fromEntries(
@@ -281,12 +282,14 @@ const getFixedPaymentsData = cache(async (userId: string, month: string) => {
   const period = reportPeriod(undefined, monthOf(`${month}-01`));
   const rule = recurringRuleOf(await getAppValues());
   const [descriptions, choices, history, skipped] = await Promise.all([
-    getExpenseDescriptionsByMonth(userId, recurringFrom(period.months, rule.window), period.months[period.months.length - 1]),
+    getExpenseDescriptionsByMonth(userId, recurringFrom(period.months, rule.window, MONTHS_BACK), period.months[period.months.length - 1]),
     getFixedChoices(userId),
     getExpenseHistoryMonths(userId),
     getPaymentSkips(userId),
   ]);
-  return { items: recurringExpenses(descriptions, period.months, choices, rule).items, history, skipped };
+  // Uno que no se pagó sigue siendo fijo (y avisando de lo atrasado) hasta MONTHS_BACK meses después: si no, al
+  // empezar el mes siguiente, sin el pago del anterior ni el del nuevo, dejaría de detectarse.
+  return { items: recurringExpenses(descriptions, period.months, choices, rule, { keepFor: MONTHS_BACK }).items, history, skipped };
 });
 
 /**
