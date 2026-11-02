@@ -521,7 +521,10 @@ La app está en español (el de siempre) y en inglés: la web y el bot de WhatsA
   - **Qué cuenta como fijo** (`src/modules/reports/recurring.ts`): los egresos con la misma
     descripción (sin importar mayúsculas, tildes ni espacios) en al menos 3 de los últimos 4 meses (el admin lo
     cambia en Configuración → Valores de la app), y no más de 2 veces en ninguno de ellos:
-    "Almuerzo" o "Taxi" se repiten todos los meses, pero muchas veces, y no son fijos. Cada uno con lo
+    "Almuerzo" o "Taxi" se repiten todos los meses, pero muchas veces, y no son fijos. Uno que se detectó
+    sigue siendo fijo hasta 3 meses después (`MONTHS_BACK`, en Fijos y en los avisos) aunque ya no cumpla la
+    regla: si no, el mes que no se pagó y el que empieza (todavía sin pago) lo sacaban, y su aviso de
+    atrasado desaparecía justo al cambiar de mes. Cada uno con lo
     que sumó el último de esos meses en que apareció, el total al mes y qué parte del gasto promedio
     es. Se detectan solos, y también se marcan a mano (`fixed-choices.ts`, tabla `fixed_expense_choice`):
     ✕ quita uno detectado (queda en "Quitados", de donde vuelve con "Volver a poner") o saca uno
@@ -621,7 +624,9 @@ La app está en español (el de siempre) y en inglés: la web y el bot de WhatsA
     normal: el 5, el 5 y el 20 dan el 5); con menos pagos, con los que haya y "aprox.". Un 31 en un mes
     más corto es su último día, y los pagos alrededor del cambio de mes (el 30, el 31, el 1) van juntos.
   - **Pagado o no:** cada pago cuenta para la fecha esperada más cercana (a menos de medio mes), así que
-    el arriendo de octubre pagado el 2 de noviembre cuenta para octubre. El monto es el del último mes.
+    el arriendo de octubre pagado el 2 de noviembre cuenta para octubre, y el del 1 de noviembre pagado el
+    30 de octubre, para noviembre (se miran el primer y el último pago de cada mes). Uno pagado más de medio
+    mes tarde cuenta para el mes siguiente. El monto es el del último mes.
   - **Atrasados:** los que no tienen pago, hasta 3 meses atrás (`MONTHS_BACK`), en rojo. "Este pago ya no
     aplica" oculta solo el de ese mes (tabla `fixed_payment_skip`); para no avisar más de un gasto, se
     quita en Fijos.
