@@ -73,6 +73,8 @@ test("Fijos: los detectados solos, quitar, volver a poner, agregar y sacar (Repo
     await fixedList(page).getByText("Quitados (1)").click();
     await fixedList(page).getByRole("button", { name: "Volver a poner arriendo en los gastos fijos" }).click();
     await expect(toast(page, "Volvió “arriendo” a los gastos fijos")).toHaveAttribute("data-tone", "success");
+    // Hasta que la lista se actualiza: el aviso llega antes, y la fila de Quitados también es un listitem.
+    await expect(fixedList(page).getByText(/^Quitados/)).toHaveCount(0);
     await expect(fixedList(page).getByRole("listitem")).toHaveCount(1);
     await closeToasts(page);
   });

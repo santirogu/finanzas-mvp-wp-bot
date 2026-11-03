@@ -93,9 +93,12 @@ describe("UpcomingPayments", () => {
     action.mockReturnValue(new Promise((resolve) => (finish = resolve)));
     const user = userEvent.setup();
     render(<UpcomingPayments items={SEVEN.slice(0, 1)} span="de los próximos 3 días" today={TODAY} />);
-    await user.click(card().getByRole("button", { name: /^Este pago ya no aplica:/ }));
-    await waitFor(() => expect(card().getByRole("button", { name: /^Este pago ya no aplica:/ })).toHaveTextContent("Ocultando…"));
-    expect(card().getByRole("button", { name: /^Este pago ya no aplica:/ })).toBeDisabled();
+    const skip = card().getByRole("button", { name: "Este pago ya no aplica: Arriendo, octubre" });
+    await user.click(skip);
+    await waitFor(() => expect(skip).toHaveTextContent("Ocultando…"));
+    // El nombre empieza con lo que se ve, también mientras espera (WCAG 2.5.3).
+    expect(skip).toHaveAccessibleName("Ocultando…: Arriendo, octubre");
+    expect(skip).toBeDisabled();
     finish({ error: "No se pudo ocultar el aviso." });
     expect(await card().findByRole("alert")).toHaveTextContent("No se pudo ocultar el aviso.");
     expect(screen.queryByRole("status")).toBeNull();

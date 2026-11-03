@@ -18,14 +18,15 @@ const TEXTS = texts(
     unread: (n: number) => `Notificaciones: ${n} sin leer`,
     markAll: "Marcar todas como leídas",
     markOne: "Marcar como leída",
-    markOneName: (month: string, description: string) => `Marcar como leída: ${description}, ${month}`,
+    // Los nombres de "Marcar como leída" empiezan con lo que dice el botón (o "Marcando…"): WCAG 2.5.3.
+    markOneName: (label: string, month: string, description: string) => `${label}: ${description}, ${month}`,
     marking: "Marcando…",
     none: "No tienes notificaciones nuevas.",
     upcoming: "Próximos pagos de tus gastos fijos.",
     seeAll: "Ver los próximos pagos en el Resumen",
     register: "Registrar un egreso",
-    markReminder: "Marcar como leída: el recordatorio de registro",
-    markAlert: (title: string) => `Marcar como leída: ${title}`,
+    markReminder: (label: string) => `${label}: el recordatorio de registro`,
+    markAlert: (label: string, title: string) => `${label}: ${title}`,
     botAlerts: "Alertas del bot",
     botNotices: "Avisos del bot",
     seeBot: "Ver Bot de WhatsApp",
@@ -36,14 +37,14 @@ const TEXTS = texts(
       unread: (n) => `Notifications: ${n} unread`,
       markAll: "Mark all as read",
       markOne: "Mark as read",
-      markOneName: (month, description) => `Mark as read: ${description}, ${month}`,
+      markOneName: (label, month, description) => `${label}: ${description}, ${month}`,
       marking: "Marking…",
       none: "You don't have new notifications.",
       upcoming: "Upcoming payments of your bills.",
       seeAll: "See upcoming payments in the Overview",
       register: "Add an expense",
-      markReminder: "Mark as read: the reminder to add transactions",
-      markAlert: (title) => `Mark as read: ${title}`,
+      markReminder: (label) => `${label}: the reminder to add transactions`,
+      markAlert: (label, title) => `${label}: ${title}`,
       botAlerts: "Bot alerts",
       botNotices: "Bot notices",
       seeBot: "See WhatsApp bot",
@@ -165,7 +166,7 @@ export function NotificationBell({
                       <BotAlertItem
                         alert={alert}
                         onNavigate={() => setOpen(false)}
-                        extra={<MarkRead ids={[id]} label={t.markOne} busyLabel={t.marking} name={t.markAlert(alert.title)} />}
+                        extra={<MarkRead ids={[id]} label={t.markOne} busyLabel={t.marking} name={(label) => t.markAlert(label, alert.title)} />}
                       />
                     </li>
                   ))}
@@ -191,7 +192,7 @@ export function NotificationBell({
                       key={id}
                       item={item}
                       today={today}
-                      extra={<MarkRead ids={[id]} label={t.markOne} busyLabel={t.marking} name={t.markOneName(item.monthName, item.description)} />}
+                      extra={<MarkRead ids={[id]} label={t.markOne} busyLabel={t.marking} name={(label) => t.markOneName(label, item.monthName, item.description)} />}
                     />
                   ))}
                 </ul>
@@ -248,14 +249,28 @@ function ReminderItem({ reminder, onNavigate, extra }: { reminder: RegisterRemin
   );
 }
 
-/** "Marcar como leído" de una o de todas: las saca de la campana y avisa abajo (verde), con el foco: ya no están. */
-function MarkRead({ ids, label, busyLabel, name }: { ids: string[]; label: string; busyLabel: string; name?: string }) {
+/**
+ * "Marcar como leído" de una o de todas: las saca de la campana y avisa abajo (verde), con el foco: ya no están.
+ * `name` arma el nombre para el lector de pantalla a partir de lo que dice el botón.
+ */
+function MarkRead({
+  ids,
+  label,
+  busyLabel,
+  name,
+}: {
+  ids: string[];
+  label: string;
+  busyLabel: string;
+  name?: (label: string) => string;
+}) {
   const toast = useToast();
   const [state, formAction, busy] = useActionState<MarkReadState, FormData>(async (prev, formData) => {
     const result = await markNotificationsReadAction(prev, formData);
     if (result.message && result.tone) toast({ tone: result.tone, message: result.message, focus: true });
     return result;
   }, {});
+  const shown = busy ? busyLabel : label;
   return (
     <form action={formAction}>
       {ids.map((id) => (
@@ -264,10 +279,10 @@ function MarkRead({ ids, label, busyLabel, name }: { ids: string[]; label: strin
       <button
         type="submit"
         disabled={busy}
-        aria-label={name}
+        aria-label={name?.(shown)}
         className="inline-flex min-h-11 items-center text-xs font-medium text-brand disabled:opacity-60 pointer-fine:min-h-6"
       >
-        {busy ? busyLabel : label}
+        {shown}
       </button>
       {state.error && (
         <span role="alert" className="block text-xs text-danger">

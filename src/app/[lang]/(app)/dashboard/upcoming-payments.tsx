@@ -29,7 +29,8 @@ const TEXTS = texts(
     showLess: "Mostrar menos",
     showMore: (n: number) => `Mostrar ${n} más`,
     skip: "Este pago ya no aplica",
-    skipName: (month: string, description: string) => `Este pago ya no aplica: ${description}, ${month}`,
+    // Empieza con lo que dice el botón ("Este pago ya no aplica" u "Ocultando…"): WCAG 2.5.3.
+    skipName: (label: string, month: string, description: string) => `${label}: ${description}, ${month}`,
     skipping: "Ocultando…",
     register: "Registrar pago",
     registerName: (description: string) => `Registrar pago de ${description}`,
@@ -51,7 +52,7 @@ const TEXTS = texts(
       showLess: "Show less",
       showMore: (n) => `Show ${n} more`,
       skip: "This payment doesn't apply",
-      skipName: (month, description) => `This payment doesn't apply: ${description}, ${month}`,
+      skipName: (label, month, description) => `${label}: ${description}, ${month}`,
       skipping: "Hiding…",
       register: "Add payment",
       registerName: (description) => `Add payment for ${description}`,
@@ -129,6 +130,7 @@ export function UpcomingPaymentItem({ item, today, extra }: { item: UpcomingItem
     if (result.message && result.tone) toast({ tone: result.tone, message: result.message, focus: true });
     return result;
   }, {});
+  const skipLabel = busy ? t.skipping : t.skip;
   return (
     <li className="flex items-start justify-between gap-3 py-2 text-sm">
       <div className="min-w-0">
@@ -145,10 +147,10 @@ export function UpcomingPaymentItem({ item, today, extra }: { item: UpcomingItem
             <button
               type="submit"
               disabled={busy}
-              aria-label={t.skipName(item.monthName, item.description)}
+              aria-label={t.skipName(skipLabel, item.monthName, item.description)}
               className="inline-flex min-h-11 items-center text-xs font-medium text-brand disabled:opacity-60 pointer-fine:min-h-6"
             >
-              {busy ? t.skipping : t.skip}
+              {skipLabel}
             </button>
           </form>
           {extra}

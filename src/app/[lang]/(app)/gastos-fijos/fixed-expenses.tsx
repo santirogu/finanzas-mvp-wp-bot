@@ -26,7 +26,8 @@ const TEXTS = texts(
     total: "Total al mes",
     share: (pct: string) => `Son el ${formatPercent(pct, "es")} de tu gasto promedio por mes.`,
     removed: (n: number) => `Quitados (${n})`,
-    restoreName: (description: string) => `Volver a poner ${description} en los gastos fijos`,
+    // Empieza con lo que dice el botón ("Volver a poner" o "Volviendo…"): WCAG 2.5.3.
+    restoreName: (label: string, description: string) => `${label} ${description} en los gastos fijos`,
     restore: "Volver a poner",
     restoring: "Volviendo…",
     historyOf: "Historial de",
@@ -59,7 +60,7 @@ const TEXTS = texts(
       total: "Total per month",
       share: (pct) => `They're ${pct}% of your average monthly spending.`,
       removed: (n) => `Removed (${n})`,
-      restoreName: (description) => `Put ${description} back in your bills`,
+      restoreName: (label, description) => `${label} ${description} in your bills`,
       restore: "Put back",
       restoring: "Putting back…",
       historyOf: "History of",
@@ -172,16 +173,19 @@ export function FixedExpenses({
                   {option.description}
                 </p>
                 <ChoiceForm description={option.description} action="restore">
-                  {(busy) => (
-                    <button
-                      type="submit"
-                      disabled={busy}
-                      aria-label={t.restoreName(option.description)}
-                      className="inline-flex min-h-11 shrink-0 items-center rounded-lg border border-border px-3 text-sm font-medium transition hover:bg-background disabled:opacity-60 pointer-fine:min-h-8"
-                    >
-                      {busy ? t.restoring : t.restore}
-                    </button>
-                  )}
+                  {(busy) => {
+                    const label = busy ? t.restoring : t.restore;
+                    return (
+                      <button
+                        type="submit"
+                        disabled={busy}
+                        aria-label={t.restoreName(label, option.description)}
+                        className="inline-flex min-h-11 shrink-0 items-center rounded-lg border border-border px-3 text-sm font-medium transition hover:bg-background disabled:opacity-60 pointer-fine:min-h-8"
+                      >
+                        {label}
+                      </button>
+                    );
+                  }}
                 </ChoiceForm>
               </li>
             ))}
