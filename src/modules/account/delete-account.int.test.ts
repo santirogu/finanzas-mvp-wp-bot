@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { db } from "@/db";
 import {
@@ -10,6 +10,7 @@ import {
   categoryBudget,
   fixedExpenseChoice,
   fixedExpenseNote,
+  fixedPaymentLink,
   fixedPaymentSkip,
   notificationRead,
   notificationSetting,
@@ -61,6 +62,9 @@ async function fullAccount(email: string, phone: string) {
   // Y una nota de su historial.
   await db.insert(fixedExpenseNote).values({ userId: id, descriptionKey: "web", month: "2026-10", note: "Subió" });
   await db.insert(fixedPaymentSkip).values({ userId: id, descriptionKey: "web", month: "2026-10" });
+  // Un pago registrado desde un aviso, unido a su mes.
+  const [web] = await db.select({ id: transaction.id }).from(transaction).where(and(eq(transaction.userId, id), eq(transaction.description, "Web")));
+  await db.insert(fixedPaymentLink).values({ userId: id, transactionId: web.id, descriptionKey: "web", month: "2026-10" });
   // Un presupuesto de su categoría.
   await db.insert(categoryBudget).values({ userId: id, categoryId: personal.id, amount: 50000 });
   await db.insert(notificationSetting).values({ userId: id, upcomingDays: 5 });
@@ -88,6 +92,7 @@ async function countsFor(userId: string, email: string, phone: string) {
     fixedExpenseChoice: await count(db.select().from(fixedExpenseChoice).where(eq(fixedExpenseChoice.userId, userId))),
     fixedExpenseNote: await count(db.select().from(fixedExpenseNote).where(eq(fixedExpenseNote.userId, userId))),
     fixedPaymentSkip: await count(db.select().from(fixedPaymentSkip).where(eq(fixedPaymentSkip.userId, userId))),
+    fixedPaymentLink: await count(db.select().from(fixedPaymentLink).where(eq(fixedPaymentLink.userId, userId))),
     categoryBudget: await count(db.select().from(categoryBudget).where(eq(categoryBudget.userId, userId))),
     notificationSetting: await count(db.select().from(notificationSetting).where(eq(notificationSetting.userId, userId))),
     notificationRead: await count(db.select().from(notificationRead).where(eq(notificationRead.userId, userId))),
@@ -114,6 +119,7 @@ describe("deleteAccountData", () => {
       fixedExpenseChoice: 1,
       fixedExpenseNote: 1,
       fixedPaymentSkip: 1,
+      fixedPaymentLink: 1,
       categoryBudget: 1,
       notificationSetting: 1,
       notificationRead: 1,
@@ -137,6 +143,7 @@ describe("deleteAccountData", () => {
       fixedExpenseChoice: 0,
       fixedExpenseNote: 0,
       fixedPaymentSkip: 0,
+      fixedPaymentLink: 0,
       categoryBudget: 0,
       notificationSetting: 0,
       notificationRead: 0,

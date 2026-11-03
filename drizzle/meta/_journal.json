@@ -225,6 +225,13 @@
       "when": 1793238031877,
       "tag": "0031_tutorial-de-bienvenida",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1793673984678,
+      "tag": "0032_pago-desde-un-aviso",
+      "breakpoints": true
     }
   ]
 }

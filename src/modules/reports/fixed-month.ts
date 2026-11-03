@@ -4,7 +4,7 @@ import { formatShortDate } from "@/lib/dates";
 import { formatMoney, sumAmounts } from "@/lib/money";
 import type { HistoryMonth } from "./history";
 import type { FixedOption } from "./recurring";
-import { daysBetween, ordinal, paymentSchedules } from "./upcoming";
+import { daysBetween, ordinal, type PaymentLink, paymentSchedules } from "./upcoming";
 
 // El estado del mes de los gastos fijos (la pestaña Fijos): cuáles ya se pagaron este mes, cuáles faltan (y si
 // están atrasados) y cuáles se marcaron "Este pago ya no aplica". Usa el mismo calendario de pagos que los avisos de
@@ -26,17 +26,18 @@ export type FixedMonth = {
 };
 
 /**
- * El mes de `today` (YYYY-MM-DD, en la zona de la persona) de cada gasto fijo (`items`). `history` y `skipped`, como
- * en `upcomingPayments`. Un pago que ya se hizo cuenta aunque después se haya marcado "ya no aplica".
+ * El mes de `today` (YYYY-MM-DD, en la zona de la persona) de cada gasto fijo (`items`). `history`, `skipped` y
+ * `links`, como en `upcomingPayments`. Un pago que ya se hizo cuenta aunque después se haya marcado "ya no aplica".
  */
 export function fixedMonth(
   items: (FixedOption & { amount: number })[],
   history: HistoryMonth[],
   skipped: ReadonlySet<string>,
   today: string,
+  links: readonly PaymentLink[] = [],
 ): FixedMonth {
   const month = today.slice(0, 7);
-  const schedules = paymentSchedules(items, history, today);
+  const schedules = paymentSchedules(items, history, today, links);
   const statuses = new Map<string, FixedMonthStatus>();
   const pending: number[] = [];
   let paid = 0;

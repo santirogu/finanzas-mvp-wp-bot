@@ -72,6 +72,16 @@ describe("fixedMonth", () => {
     }
   });
 
+  it("un pago registrado desde el aviso del mes cuenta para el mes aunque sea más de medio mes tarde", () => {
+    // El arriendo se suele pagar el 4; el de octubre se pagó el 25 desde su aviso (más cerca del 4 de noviembre).
+    const late = [...paid("Arriendo", 1500000, "2026-08-04", "2026-09-04"), ...paid("Arriendo", 1500000, "2026-10-25")];
+    expect(fixedMonth([rent], late, NONE, "2026-10-28").statuses.get("arriendo")).toMatchObject({ kind: "pending", overdue: true });
+    expect(fixedMonth([rent], late, NONE, "2026-10-28", [{ key: "arriendo", month: "2026-10", paidOn: "2026-10-25" }]).statuses.get("arriendo")).toEqual({
+      kind: "paid",
+      paidOn: "2026-10-25",
+    });
+  });
+
   it("'ya no aplica' no cuenta entre los esperados; uno ya pagado sigue pagado aunque se marque", () => {
     const month = fixedMonth([rent, phone], history, new Set(["celular 2026-10", "arriendo 2026-10"]), "2026-10-21");
     expect(Object.fromEntries(month.statuses)).toEqual({ arriendo: { kind: "paid", paidOn: "2026-10-04" }, celular: { kind: "skipped" } });

@@ -8,6 +8,7 @@ import {
   daysBetween,
   MAX_DAYS_AHEAD,
   ordinal,
+  paymentSchedules,
   upcomingItems,
   upcomingPayments,
   usualDay,
@@ -136,6 +137,34 @@ describe("upcomingPayments", () => {
     expect(upcoming(early.slice(0, 3), "2026-10-30", [netflix])).toEqual([
       { description: "Netflix", month: "2026-11", date: "2026-11-01", days: 2, usualDay: 1, approximate: false },
     ]);
+  });
+
+  it("un pago registrado desde el aviso de un mes cuenta para ese mes aunque sea más de medio mes tarde", () => {
+    // Se suele pagar el 5; el de octubre se pagó el 1 de noviembre desde su aviso.
+    const late = paid("Arriendo", "2026-08-05", "2026-09-05", "2026-11-01");
+    const linked = [{ key: "arriendo", month: "2026-10", paidOn: "2026-11-01" }];
+    // Sin unirlo, cuenta para el 5 de noviembre (la fecha más cercana) y octubre sigue atrasado.
+    expect(upcoming(late, "2026-11-02").map((p) => p.month)).toEqual(["2026-10"]);
+    // Unido al aviso de octubre, octubre queda pagado y noviembre, pendiente.
+    const withLink = upcomingPayments([rent], late, NONE, "2026-11-02", 3, linked);
+    expect(withLink.map((p) => [p.month, p.days])).toEqual([["2026-11", 3]]);
+  });
+
+  it("un pago unido a su mes no cuenta también para otro, y uno unido a un mes sin pago esperado no cambia nada", () => {
+    const history = paid("Arriendo", "2026-08-05", "2026-09-05", "2026-10-28");
+    // El del 28 de octubre, unido a octubre: noviembre no queda pagado por él.
+    const schedule = paymentSchedules([rent], history, "2026-11-10", [{ key: "arriendo", month: "2026-10", paidOn: "2026-10-28" }]).get("arriendo")!;
+    expect(schedule.due.filter((d) => d.month >= "2026-10")).toEqual([
+      { month: "2026-10", date: "2026-10-05", paidOn: "2026-10-28" },
+      { month: "2026-11", date: "2026-11-05", paidOn: null },
+      { month: "2026-12", date: "2026-12-05", paidOn: null },
+    ]);
+    // Unido a un mes que no está en el calendario (antes del primer pago) o de otro gasto: se ignora la unión.
+    const other = [
+      { key: "arriendo", month: "2025-01", paidOn: "2026-10-28" },
+      { key: "gimnasio", month: "2026-10", paidOn: "2026-10-28" },
+    ];
+    expect(paymentSchedules([rent], history, "2026-11-10", other).get("arriendo")!.due.find((d) => d.month === "2026-10")?.paidOn).toBeNull();
   });
 
   it("el segundo pago de un mes no cambia el día en que se suele pagar ni cuenta dos veces para el mismo mes", () => {

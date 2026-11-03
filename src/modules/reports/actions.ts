@@ -80,14 +80,14 @@ export type RegisterPaymentState = { message?: string; tone?: ToastTone; error?:
 
 /**
  * "Registrar pago" en un aviso de próximos pagos: registra el pago de ese gasto fijo con el monto y la
- * fecha que confirmó la persona, y la descripción y la categoría de su último pago (ver
+ * fecha que confirmó la persona, para el mes del aviso, y la descripción y la categoría de su último pago (ver
  * src/modules/reports/fixed-payments.ts). Con éxito, vuelve a dibujar el Resumen y avisa.
  */
 export async function registerFixedPaymentAction(_prev: RegisterPaymentState, formData: FormData): Promise<RegisterPaymentState> {
   const user = await requireUser();
   const result = await registerFixedPayment(
     user,
-    { description: formData.get("description"), amount: formData.get("amount"), occurredOn: formData.get("occurredOn") },
+    { description: formData.get("description"), amount: formData.get("amount"), occurredOn: formData.get("occurredOn"), month: formData.get("month") },
     todayInTimezone(user.timezone),
     await getRequestLocale(),
   );

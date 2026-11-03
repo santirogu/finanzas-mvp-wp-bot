@@ -171,6 +171,30 @@ export const fixedPaymentSkip = pgTable(
   ],
 );
 
+// Los pagos registrados desde un aviso de próximos pagos ("Registrar pago"): el egreso que se registró y el mes del
+// aviso ("YYYY-MM"), para que cuente para ese mes aunque se pague más de medio mes tarde (sin esto, un pago cuenta
+// para la fecha esperada más cercana: src/modules/reports/upcoming.ts). Se borra con el egreso y con la cuenta.
+export const fixedPaymentLink = pgTable(
+  "fixed_payment_link",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    transactionId: uuid("transaction_id")
+      .notNull()
+      .references(() => transaction.id, { onDelete: "cascade" }),
+    descriptionKey: text("description_key").notNull(),
+    month: text("month").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("fixed_payment_link_transaction_uq").on(t.transactionId),
+    index("fixed_payment_link_user_key_idx").on(t.userId, t.descriptionKey),
+    check("fixed_payment_link_month", sql`${t.month} ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'`),
+  ],
+);
+
 // La configuración de los avisos de próximos pagos (Mi cuenta → Notificaciones): si están prendidos y con cuántos
 // días de anticipación (de 0, el mismo día, a 10). Sin fila, los valores por defecto (prendidos, 3 días:
 // src/modules/reports/upcoming-settings.ts). Se borra con la cuenta.

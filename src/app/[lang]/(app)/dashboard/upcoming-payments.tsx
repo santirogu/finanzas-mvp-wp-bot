@@ -216,6 +216,8 @@ function PaymentDialog({ item, today, onClose }: { item: UpcomingItem; today: st
             {t.category(item.category)}
           </p>
           <input type="hidden" name="description" value={item.description} />
+          {/* El mes del aviso: el pago cuenta para ese mes aunque se pague tarde. */}
+          <input type="hidden" name="month" value={item.month} />
           <div className="space-y-1.5">
             <label htmlFor={ids.amount} className="block font-medium">
               {t.amount}

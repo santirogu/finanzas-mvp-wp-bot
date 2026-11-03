@@ -2,7 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { refresh } from "next/cache";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "@/db";
-import { category, transaction } from "@/db/schema";
+import { category, fixedPaymentLink, transaction } from "@/db/schema";
 import type { CurrentUser } from "@/lib/session";
 import { listCategories } from "@/modules/transactions/queries";
 import { createUser } from "../../../test/integration/factories";
@@ -18,7 +18,7 @@ vi.mock("@/lib/session", () => ({
 }));
 vi.mock("next/cache", () => ({ refresh: vi.fn() }));
 
-const { getLastPayments, registerFixedPayment } = await import("./fixed-payments");
+const { getLastPayments, getPaymentLinks, paymentMonth, registerFixedPayment } = await import("./fixed-payments");
 const { registerFixedPaymentAction } = await import("./actions");
 
 const TODAY = "2026-10-20";
@@ -127,6 +127,63 @@ describe("registerFixedPayment", () => {
   });
 });
 
+describe("registerFixedPayment · el mes del aviso", () => {
+  const linksOf = (userId: string) =>
+    db.select({ key: fixedPaymentLink.descriptionKey, month: fixedPaymentLink.month }).from(fixedPaymentLink).where(eq(fixedPaymentLink.userId, userId));
+
+  it("une el pago al mes del aviso: cuenta para ese mes con la fecha del egreso", async () => {
+    const user = await createUser();
+    await addExpense(user.id, {});
+    // El de septiembre, pagado el 20 de octubre (más de medio mes tarde).
+    await registerFixedPayment(user, { description: "gimnasio", amount: "120000", occurredOn: TODAY, month: "2026-09" }, TODAY);
+    expect(await linksOf(user.id)).toEqual([{ key: "gimnasio", month: "2026-09" }]);
+    expect(await getPaymentLinks(user.id)).toEqual([{ key: "gimnasio", month: "2026-09", paidOn: TODAY }]);
+  });
+
+  it.each([[undefined], [""], ["2026-13"], ["septiembre"], ["2026-06"], ["2026-12"], [["2026-09"]]])(
+    "con el mes %j (ninguno, mal escrito, de más de tres meses atrás o de después del siguiente), lo registra sin unirlo",
+    async (month) => {
+      const user = await createUser();
+      await addExpense(user.id, {});
+      expect(await registerFixedPayment(user, { description: "Gimnasio", amount: "1000", occurredOn: TODAY, month }, TODAY)).toMatchObject({ ok: true });
+      expect(await expensesOf(user.id, "Gimnasio")).toHaveLength(2);
+      expect(await linksOf(user.id)).toEqual([]);
+    },
+  );
+
+  it("con un error no registra el egreso ni lo une", async () => {
+    const user = await createUser();
+    await addExpense(user.id, {});
+    await registerFixedPayment(user, { description: "Gimnasio", amount: "", occurredOn: TODAY, month: "2026-10" }, TODAY);
+    expect(await linksOf(user.id)).toEqual([]);
+  });
+
+  it("cada cuenta ve solo los suyos, y un egreso borrado deja de contar (vuelve si se restaura)", async () => {
+    const ana = await createUser();
+    const beto = await createUser();
+    await addExpense(ana.id, {});
+    await addExpense(beto.id, {});
+    await registerFixedPayment(ana, { description: "Gimnasio", amount: "1000", occurredOn: TODAY, month: "2026-10" }, TODAY);
+    await registerFixedPayment(beto, { description: "Gimnasio", amount: "1000", occurredOn: "2026-10-02", month: "2026-09" }, TODAY);
+    expect(await getPaymentLinks(ana.id)).toEqual([{ key: "gimnasio", month: "2026-10", paidOn: TODAY }]);
+    await db.update(transaction).set({ deletedAt: new Date() }).where(and(eq(transaction.userId, ana.id), eq(transaction.occurredOn, TODAY)));
+    expect(await getPaymentLinks(ana.id)).toEqual([]);
+    // Borrarlo del todo (la limpieza diaria) también borra la unión.
+    await db.delete(transaction).where(and(eq(transaction.userId, ana.id), eq(transaction.occurredOn, TODAY)));
+    expect(await linksOf(ana.id)).toEqual([]);
+    expect(await getPaymentLinks(beto.id)).toEqual([{ key: "gimnasio", month: "2026-09", paidOn: "2026-10-02" }]);
+  });
+
+  it("paymentMonth: de tres meses atrás al siguiente", () => {
+    expect(paymentMonth("2026-07", TODAY)).toBe("2026-07");
+    expect(paymentMonth("2026-11", TODAY)).toBe("2026-11");
+    expect(paymentMonth("2026-06", TODAY)).toBeNull();
+    expect(paymentMonth("2026-12", TODAY)).toBeNull();
+    // En enero, los de octubre a diciembre del año anterior.
+    expect(paymentMonth("2025-10", "2026-01-10")).toBe("2025-10");
+  });
+});
+
 describe("registerFixedPaymentAction", () => {
   it("sin sesión lleva al login", async () => {
     await expect(registerFixedPaymentAction({}, form({ description: "Gimnasio", amount: "1000", occurredOn: TODAY }))).rejects.toThrow(
@@ -138,12 +195,14 @@ describe("registerFixedPaymentAction", () => {
     const user = await signIn();
     await addExpense(user.id, {});
     const today = new Intl.DateTimeFormat("en-CA", { timeZone: user.timezone }).format(new Date());
-    expect(await registerFixedPaymentAction({}, form({ description: "Gimnasio", amount: "120.000,00", occurredOn: today }))).toEqual({
+    expect(await registerFixedPaymentAction({}, form({ description: "Gimnasio", amount: "120.000,00", occurredOn: today, month: today.slice(0, 7) }))).toEqual({
       message: "Se registró el pago de “Gimnasio”: −$120.000,00",
       tone: "success",
     });
     expect(refresh).toHaveBeenCalledOnce();
     expect((await expensesOf(user.id, "Gimnasio")).map((e) => e.occurredOn)).toEqual(["2026-09-15", today].sort());
+    // Con el mes del aviso que mandó la ventana.
+    expect(await getPaymentLinks(user.id)).toEqual([{ key: "gimnasio", month: today.slice(0, 7), paidOn: today }]);
   });
 
   it("con un error lo devuelve con su campo, no registra nada y no refresca", async () => {
