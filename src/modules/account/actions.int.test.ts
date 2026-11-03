@@ -1,9 +1,10 @@
 import { APIError } from "better-auth/api";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "@/db";
-import { loginFailure, transaction, user } from "@/db/schema";
+import { accountEvent, loginFailure, transaction, user } from "@/db/schema";
 import { ACCOUNT_LOCKED } from "@/lib/auth-errors";
+import { PRIVACY_VERSION } from "@/lib/privacy";
 import type { CurrentUser } from "@/lib/session";
 import { LOCKOUT } from "@/modules/auth/lockout";
 import { createUser } from "../../../test/integration/factories";
@@ -16,12 +17,12 @@ const mocks = vi.hoisted(() => ({
   verifyPassword: vi.fn(),
   signOut: vi.fn(),
 }));
-vi.mock("@/lib/session", () => ({
-  requireUser: vi.fn(async () => {
-    if (!mocks.session) throw new Error("NEXT_REDIRECT /login");
-    return mocks.session;
-  }),
-}));
+// requireSignedIn: la sesión sin exigir la autorización de los datos (eliminar la cuenta y darla).
+const sessionOrLogin = async () => {
+  if (!mocks.session) throw new Error("NEXT_REDIRECT /login");
+  return mocks.session;
+};
+vi.mock("@/lib/session", () => ({ requireUser: vi.fn(sessionOrLogin), requireSignedIn: vi.fn(sessionOrLogin) }));
 vi.mock("next/headers", () => ({ headers: async () => new Headers({ cookie: "sesion=1" }) }));
 vi.mock("next/navigation", () => ({
   redirect: vi.fn((url: string) => {
@@ -32,11 +33,11 @@ vi.mock("@/lib/auth", () => ({
   auth: { api: { verifyPassword: mocks.verifyPassword, signOut: mocks.signOut } },
 }));
 
-const { deleteAccountAction } = await import("./actions");
+const { acceptPrivacyAction, deleteAccountAction } = await import("./actions");
 
-async function signIn(email = "ana@test.local") {
-  const row = await createUser({ email });
-  mocks.session = { id: row.id, name: row.name, email: row.email, timezone: row.timezone, role: row.role, superAdmin: row.superAdmin, twoFactorEnabled: row.twoFactorEnabled };
+async function signIn(email = "ana@test.local", privacyVersion: string | null = PRIVACY_VERSION) {
+  const row = await createUser({ email, privacyVersion, privacyAcceptedAt: privacyVersion ? new Date() : null });
+  mocks.session = { id: row.id, name: row.name, email: row.email, timezone: row.timezone, role: row.role, superAdmin: row.superAdmin, twoFactorEnabled: row.twoFactorEnabled, privacyVersion: row.privacyVersion };
   await db.insert(transaction).values({
     userId: row.id,
     type: "expense",
@@ -171,6 +172,74 @@ describe("deleteAccountAction", () => {
 
     expect(await userExists(ana.id)).toBe(false);
     expect(await userExists(beto.id)).toBe(true);
+  });
+});
+
+describe("deleteAccountAction · sin la autorización de los datos", () => {
+  it("también se puede eliminar la cuenta: quien no la da puede irse con todo borrado", async () => {
+    const ana = await signIn("ana@test.local", null);
+    await expect(deleteAccountAction({}, form({ password: "clave", confirmation: "ELIMINAR" }))).rejects.toThrow("NEXT_REDIRECT /cuenta-eliminada");
+    expect(await userExists(ana.id)).toBe(false);
+  });
+});
+
+describe("acceptPrivacyAction (la autorización de una cuenta que no la tenía)", () => {
+  const consentOf = async (id: string) => {
+    const [row] = await db.select({ version: user.privacyVersion, at: user.privacyAcceptedAt }).from(user).where(eq(user.id, id));
+    return row;
+  };
+  const consentEvents = (id: string) =>
+    db
+      .select({ details: accountEvent.details })
+      .from(accountEvent)
+      .where(and(eq(accountEvent.userId, id), eq(accountEvent.type, "privacy_accepted")));
+
+  it("exige sesión", async () => {
+    await expect(acceptPrivacyAction({}, form({ privacy: "on" }))).rejects.toThrow("NEXT_REDIRECT /login");
+  });
+
+  it("sin la casilla marcada no guarda nada (es expresa)", async () => {
+    const ana = await signIn("ana@test.local", null);
+    for (const value of [{}, { privacy: "" }, { privacy: "off" }, { privacy: "true" }] as Record<string, string>[]) {
+      expect(await acceptPrivacyAction({}, form(value))).toEqual({ error: "Para seguir, marca la casilla de la autorización." });
+    }
+    expect(await consentOf(ana.id)).toEqual({ version: null, at: null });
+    expect(await consentEvents(ana.id)).toEqual([]);
+    requestLocale.value = "en";
+    expect(await acceptPrivacyAction({}, form({}))).toEqual({ error: "To continue, check the authorization box." });
+  });
+
+  it("con la casilla guarda la versión vigente, cuándo y el evento (la prueba), y lleva al Resumen", async () => {
+    const ana = await signIn("ana@test.local", null);
+    const before = Date.now();
+    await expect(acceptPrivacyAction({}, form({ privacy: "on" }))).rejects.toThrow("NEXT_REDIRECT /dashboard");
+    const saved = await consentOf(ana.id);
+    expect(saved.version).toBe(PRIVACY_VERSION);
+    expect(saved.at!.getTime()).toBeGreaterThanOrEqual(before - 1000);
+    expect(await consentEvents(ana.id)).toEqual([{ details: { privacyVersion: PRIVACY_VERSION } }]);
+  });
+
+  it("una cuenta con una versión anterior autoriza la vigente", async () => {
+    const ana = await signIn("ana@test.local", "2020-01-01");
+    await expect(acceptPrivacyAction({}, form({ privacy: "on" }))).rejects.toThrow("NEXT_REDIRECT /dashboard");
+    expect((await consentOf(ana.id)).version).toBe(PRIVACY_VERSION);
+  });
+
+  it("dos envíos seguidos dejan un solo evento y la primera fecha", async () => {
+    const ana = await signIn("ana@test.local", null);
+    await expect(acceptPrivacyAction({}, form({ privacy: "on" }))).rejects.toThrow("NEXT_REDIRECT /dashboard");
+    const first = await consentOf(ana.id);
+    await expect(acceptPrivacyAction({}, form({ privacy: "on" }))).rejects.toThrow("NEXT_REDIRECT /dashboard");
+    expect(await consentOf(ana.id)).toEqual(first);
+    expect(await consentEvents(ana.id)).toHaveLength(1);
+  });
+
+  it("solo la cuenta de quien tiene la sesión", async () => {
+    const beto = await createUser({ email: "beto@test.local", privacyVersion: null, privacyAcceptedAt: null });
+    await signIn("ana@test.local", null);
+    await expect(acceptPrivacyAction({}, form({ privacy: "on", userId: beto.id }))).rejects.toThrow("NEXT_REDIRECT /dashboard");
+    expect(await consentOf(beto.id)).toEqual({ version: null, at: null });
+    expect(await consentEvents(beto.id)).toEqual([]);
   });
 });
 

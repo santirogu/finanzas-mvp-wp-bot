@@ -479,6 +479,8 @@ describe("formatos", () => {
       { notice: { message: "Aviso", tone: "urgente" as never, endsAt: "2026-10-26T01:00:00.000Z" } },
       "“Aviso” · hasta el 25 de oct. de 2026, 8:00 p. m.",
     ],
+    // La versión de la política de privacidad que autorizó la persona.
+    [{ privacyVersion: "2026-11-03" }, "versión 2026-11-03 de la política de privacidad"],
     [{ resent: 3, failed: 0 }, "3 reenviadas"],
     [{ resent: 1, failed: 1 }, "1 reenviada · 1 no salió otra vez"],
     [{ resent: 0, failed: 2 }, "0 reenviadas · 2 no salieron otra vez"],

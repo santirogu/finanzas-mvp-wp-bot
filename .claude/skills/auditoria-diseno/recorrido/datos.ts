@@ -1,7 +1,7 @@
 import { randomInt } from "node:crypto";
 import { expect, type Browser, type BrowserContext, type Page } from "@playwright/test";
 import { newAdmin, setUpTwoFactor } from "../../../../e2e/admin";
-import { addBudget, addTransaction, adminCommand, fakeIp, register, toast, uniqueEmail, visible } from "../../../../e2e/helpers";
+import { addBudget, addTransaction, adminCommand, fakeIp, register, toast, uniqueEmail, visible, withoutPrivacyConsent } from "../../../../e2e/helpers";
 import { newPhone, nthReply, sendWhatsApp } from "../../../../e2e/whatsapp";
 import { monthOf, monthParam, shiftMonth, todayInTimezone } from "../../../../src/lib/dates";
 
@@ -9,7 +9,7 @@ import { monthOf, monthParam, shiftMonth, todayInTimezone } from "../../../../sr
 // de las E2E): una vacía, una con datos normales y WhatsApp vinculado, y un admin con los textos y
 // montos más largos que acepta la app.
 
-export type Persona = "vacia" | "datos" | "admin";
+export type Persona = "vacia" | "datos" | "admin" | "sinAutorizar";
 export type Sesion = Awaited<ReturnType<BrowserContext["storageState"]>>;
 
 export type Datos = {
@@ -126,6 +126,16 @@ async function vacia(browser: Browser, baseURL: string, datos: Datos) {
   await page.context().close();
 }
 
+// Una cuenta de antes de pedir la autorización de los datos (src/lib/privacy.ts): la app la manda a /autorizacion.
+async function sinAutorizar(browser: Browser, baseURL: string, datos: Datos) {
+  const page = await nuevaPagina(browser, baseURL);
+  const { email } = await register(page, "Jorge Andrés Ramírez Castañeda");
+  await withoutPrivacyConsent(email);
+  datos.correos.sinAutorizar = email;
+  datos.sesiones.sinAutorizar = await page.context().storageState();
+  await page.context().close();
+}
+
 async function conDatos(browser: Browser, baseURL: string, datos: Datos) {
   const page = await nuevaPagina(browser, baseURL);
   // Un nombre largo, como muchos en Colombia: pone a prueba el encabezado y los listados.
@@ -227,6 +237,7 @@ async function admin(browser: Browser, baseURL: string, datos: Datos) {
 export async function prepararDatos(browser: Browser, baseURL: string, personas: Set<Persona>): Promise<Datos> {
   const datos: Datos = { sesiones: {}, correos: {}, editar: {} };
   if (personas.has("vacia")) await vacia(browser, baseURL, datos);
+  if (personas.has("sinAutorizar")) await sinAutorizar(browser, baseURL, datos);
   if (personas.has("datos")) await conDatos(browser, baseURL, datos);
   if (personas.has("admin")) await admin(browser, baseURL, datos);
   return datos;

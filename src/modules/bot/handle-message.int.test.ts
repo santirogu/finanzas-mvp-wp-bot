@@ -768,6 +768,36 @@ describe("handleIncomingMessage · cuenta suspendida", () => {
   });
 });
 
+describe("handleIncomingMessage · sin la autorización de los datos (src/lib/privacy.ts)", () => {
+  it("no interpreta ni registra nada, ni deja ver el balance: manda a autorizarla en la app, en su idioma", async () => {
+    const ana = await linkedUser();
+    await db.update(userTable).set({ privacyVersion: null, privacyAcceptedAt: null }).where(eq(userTable.id, ana.id));
+    const extractor = fakeExtractor([{ type: "expense", amount: 1, description: "Otro", category: "Comida" }]);
+    const { deps: d, sender } = deps(extractor);
+    const messages = [incoming("gasté 20 mil"), incoming("balance"), incoming("deshacer"), incomingPhoto("almuerzo")];
+    for (const msg of messages) await handleIncomingMessage(msg, d);
+
+    expect(extractor.calls).toBe(0);
+    expect(sender.sent).toEqual(messages.map(() => ({ to: PHONE, body: replies.privacyConsentReply(APP_URL, "es") })));
+    expect(replies.privacyConsentReply(APP_URL, "es")).toContain(`${APP_URL}/autorizacion`);
+    expect(await activeTransactions(ana.id)).toEqual([]);
+    expect(await loggedMessage(messages[0].id)).toMatchObject({ status: "processed", userId: ana.id, intent: null });
+
+    await db.update(userTable).set({ locale: "en", privacyVersion: "2020-01-01" }).where(eq(userTable.id, ana.id));
+    const english = deps(extractor);
+    await handleIncomingMessage(incoming("spent 20k"), english.deps);
+    expect(english.sender.sent).toEqual([{ to: PHONE, body: replies.privacyConsentReply(APP_URL, "en") }]);
+  });
+
+  it("con la autorización vigente, el bot registra como siempre", async () => {
+    const ana = await linkedUser();
+    const add = fakeExtractor([{ type: "expense", amount: 30000, description: "Almuerzo", category: "Comida" }]);
+    await handleIncomingMessage(incoming("almuerzo 30 mil"), deps(add).deps);
+    expect(add.calls).toBe(1);
+    expect(await activeTransactions(ana.id)).toHaveLength(1);
+  });
+});
+
 describe("handleIncomingMessage · errores", () => {
   it("sin API key avisa qué comandos funcionan", async () => {
     await linkedUser();

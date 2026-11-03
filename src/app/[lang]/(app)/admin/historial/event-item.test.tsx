@@ -38,6 +38,11 @@ describe("EventItem", () => {
   it.each([
     [{ type: "registered" }, "Ana Pérez se registró", "ana@correo.com · 9:41 p. m."],
     [{ type: "password_changed" }, "Ana Pérez cambió su contraseña", "ana@correo.com · 9:41 p. m."],
+    [
+      { type: "privacy_accepted", details: { privacyVersion: "2026-11-03" } },
+      "Ana Pérez autorizó el tratamiento de sus datos",
+      "ana@correo.com · versión 2026-11-03 de la política de privacidad · 9:41 p. m.",
+    ],
     [{ type: "whatsapp_code_created" }, "Ana Pérez pidió un código para vincular su WhatsApp", "ana@correo.com · 9:41 p. m."],
     [{ type: "whatsapp_linked", phone: "573001112233" }, "Ana Pérez vinculó su WhatsApp +57 300 111 2233", "ana@correo.com · 9:41 p. m."],
     [
@@ -186,6 +191,11 @@ describe("EventItem en inglés", () => {
   it.each([
     [{ type: "registered" }, "Ana Pérez signed up", "ana@correo.com · 9:41 PM"],
     [{ type: "password_changed" }, "Ana Pérez changed their password", "ana@correo.com · 9:41 PM"],
+    [
+      { type: "privacy_accepted", details: { privacyVersion: "2026-11-03" } },
+      "Ana Pérez authorized the processing of their data",
+      "ana@correo.com · privacy policy version 2026-11-03 · 9:41 PM",
+    ],
     [{ type: "whatsapp_code_created" }, "Ana Pérez requested a code to link their WhatsApp", "ana@correo.com · 9:41 PM"],
     [{ type: "whatsapp_linked", phone: "573001112233" }, "Ana Pérez linked their WhatsApp +57 300 111 2233", "ana@correo.com · 9:41 PM"],
     [

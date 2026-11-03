@@ -26,6 +26,7 @@ for (const colorScheme of ["light", "dark"] as const) {
       await describedAs(name, "Escribe tu nombre.");
       await describedAs(email, "Escribe tu correo.");
       await describedAs(password, "Escribe tu contraseña.");
+      await describedAs(page.getByRole("checkbox"), "Para crear tu cuenta, autoriza el tratamiento de tus datos.");
       await expect(name).toBeFocused();
       await expect(name).toHaveAttribute("aria-invalid", "true");
       expect(await seriousViolations(page)).toEqual([]);

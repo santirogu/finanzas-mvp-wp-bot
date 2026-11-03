@@ -37,9 +37,14 @@ const appRoutes = routesIn(path.join(APP, "[lang]", "(app)"));
 // Las páginas de la app con versión sin sesión (la Ayuda) son públicas: la versión sin sesión se ve en la dirección
 // de la de la app (la suya, por dentro, no es una dirección).
 const publicVersions = [...PUBLIC_VERSIONS.values()];
-const privateRoutes = appRoutes.filter((route) => !PUBLIC_VERSIONS.has(route));
+// Páginas con sesión fuera de (app): donde se da la autorización de los datos (src/lib/privacy.ts). El marco de la
+// app la exige (requireUser), así que adentro llevaría de vuelta a ella sin fin.
+const PRIVATE_OUTSIDE_APP = ["/autorizacion"];
+const privateRoutes = [...appRoutes.filter((route) => !PUBLIC_VERSIONS.has(route)), ...PRIVATE_OUTSIDE_APP];
 const publicRoutes = [
-  ...routesIn(APP).filter((route) => !appRoutes.includes(route) && !route.startsWith("/api") && !publicVersions.includes(route)),
+  ...routesIn(APP).filter(
+    (route) => !appRoutes.includes(route) && !route.startsWith("/api") && !publicVersions.includes(route) && !PRIVATE_OUTSIDE_APP.includes(route),
+  ),
   ...PUBLIC_VERSIONS.keys(),
 ];
 
@@ -50,7 +55,7 @@ describe("robots.txt", () => {
       rules: {
         userAgent: "*",
         allow: ["/", "/cuenta-eliminada"],
-        disallow: ["/dashboard", "/ingresos", "/egresos", "/gastos-fijos", "/reportes", "/configuracion", "/movimientos/", "/cuenta", "/admin", "/simulador", "/api/"],
+        disallow: ["/dashboard", "/ingresos", "/egresos", "/gastos-fijos", "/reportes", "/configuracion", "/movimientos/", "/cuenta", "/autorizacion", "/admin", "/simulador", "/api/"],
       },
       sitemap: "https://finanzas.co/sitemap.xml",
     });

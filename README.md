@@ -449,6 +449,18 @@ La app está en español (el de siempre) y en inglés: la web y el bot de WhatsA
   - **Cómo se aplica:** un script en línea del `<head>` la aplica antes de pintar, sin parpadeo, también en las páginas sin sesión, que se sirven prearmadas.
   - **Los colores** del modo oscuro están dos veces en `globals.css`, uno por cada forma de llegar a él: con el sistema en oscuro y sin `data-theme="light"`, o con `data-theme="dark"`. `src/color-contrast.test.ts` exige que los dos bloques sean iguales.
   - **Sin `dark:`:** la variante de Tailwind solo mira el sistema, así que no se usa.
+- **La autorización para tratar los datos** (Ley 1581 de 2012 y Decreto 1377 de 2013; `src/lib/privacy.ts`).
+  - **Al registrarse:** una casilla sin marcar en el formulario. Better Auth exige que el pedido traiga la versión
+    vigente de la política (`privacyConsent`) y la guarda en la cuenta (`user.privacy_version` y
+    `privacy_accepted_at`) con el evento `privacy_accepted` en el historial: es la prueba.
+  - **Las cuentas sin ella** (las de antes de pedirla): `requireUser` las manda a `/autorizacion`, donde la dan,
+    cierran sesión o eliminan su cuenta (eso último con `requireSignedIn`, que no la exige). El bot no les interpreta
+    ni registra nada: les manda el enlace.
+  - **`PRIVACY_VERSION`:** cámbiala solo si cambia lo que se hace con los datos (qué se guarda, para qué, con
+    quién o por cuánto tiempo): entonces todas las cuentas la vuelven a autorizar. Un arreglo de forma en
+    `/privacidad` no la cambia.
+  - **El responsable del tratamiento** (`DATA_CONTROLLER`, `src/lib/contact.ts`) sale en `/privacidad` y en
+    `/autorizacion`, con el procedimiento de consultas y reclamos y los plazos de ley.
 - **Solo pesos colombianos** (decisión del dueño, 2026-11-03): ni la cuenta ni los movimientos tienen otra
   moneda. Llevar dólares o euros obligaría a convertir con la TRM de cada día para sumar los totales. El único
   monto en otra moneda es el costo de Claude que ve el admin, en dólares (`formatMoney(…, "USD")`).

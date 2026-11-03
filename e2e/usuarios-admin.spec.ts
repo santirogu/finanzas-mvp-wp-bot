@@ -100,10 +100,11 @@ test("el admin encuentra una cuenta y ve su detalle: WhatsApp, sesión con naveg
     await expect(sessions(page).first()).toContainText("Safari · iOS");
     await expect(sessions(page).first()).toContainText(`IP 2001:db8:${a}:${b}::/64`);
 
-    await expect(events(page)).toHaveCount(3);
+    await expect(events(page)).toHaveCount(4);
     await expect(events(page).nth(0)).toContainText(`Beto Usuarios vinculó su WhatsApp ${formatted(betoPhone)}`);
     await expect(events(page).nth(1)).toContainText("Beto Usuarios pidió un código para vincular su WhatsApp");
-    await expect(events(page).nth(2)).toContainText("Beto Usuarios se registró");
+    await expect(events(page).nth(2)).toContainText("Beto Usuarios autorizó el tratamiento de sus datos");
+    await expect(events(page).nth(3)).toContainText("Beto Usuarios se registró");
     // Nada de montos, movimientos ni mensajes.
     await expect(visible(page.getByText(/\$\s?\d/))).toHaveCount(0);
     expect(await seriousViolations(page)).toEqual([]);
@@ -112,7 +113,7 @@ test("el admin encuentra una cuenta y ve su detalle: WhatsApp, sesión con naveg
   await test.step("desde el detalle se llega a su historial completo y de vuelta a la lista", async () => {
     await visible(page.getByRole("link", { name: "Ver todo su historial" })).click();
     await expect(page).toHaveURL(/\/admin\/historial\?q=/);
-    await expect(summary(page, "3 eventos")).toBeVisible();
+    await expect(summary(page, "4 eventos")).toBeVisible();
     await page.goBack();
     await visible(page.getByRole("link", { name: "Todas las cuentas" })).click();
     await expect(page).toHaveURL(/\/admin\/usuarios$/);

@@ -5,6 +5,7 @@ import { user as userTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import type { CurrentUser } from "@/lib/session";
 import { createUser } from "../../../test/integration/factories";
+import { CONSENT } from "../../../test/integration/auth-http";
 
 // El tutorial de bienvenida: la capa de datos y su Server Action, contra la base de pruebas, con dos usuarios.
 // La sesión se simula.
@@ -62,7 +63,7 @@ describe("isTutorialPending y finishTutorial", () => {
   it("al crear la cuenta no se puede saltar: Better Auth no conoce el campo", async () => {
     const email = `tutorial-${crypto.randomUUID()}@test.local`;
     await auth.api.signUpEmail({
-      body: { name: "Ana", email, password: "clave-segura-123", tutorialDoneAt: new Date("2026-01-01") } as never,
+      body: { name: "Ana", email, password: "clave-segura-123", tutorialDoneAt: new Date("2026-01-01"), ...CONSENT } as never,
     });
     const [row] = await db.select({ id: userTable.id }).from(userTable).where(eq(userTable.email, email));
     expect(await isTutorialPending(row.id)).toBe(true);

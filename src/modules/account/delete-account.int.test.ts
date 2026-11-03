@@ -27,17 +27,18 @@ import {
 } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { accountPhones, deleteAccountData } from "./delete-account";
+import { CONSENT } from "../../../test/integration/auth-http";
 
 /** Una cuenta real (Better Auth: usuario, credenciales y sesión) con datos en todas las tablas. */
 /** Una cuenta recién registrada (sin número ni datos) y su id. */
 async function signUp(email: string) {
-  await auth.api.signUpEmail({ body: { name: "Persona", email, password: "clave-segura-123" } });
+  await auth.api.signUpEmail({ body: { name: "Persona", email, password: "clave-segura-123", ...CONSENT } });
   const [row] = await db.select({ id: user.id }).from(user).where(eq(user.email, email));
   return row.id;
 }
 
 async function fullAccount(email: string, phone: string) {
-  await auth.api.signUpEmail({ body: { name: "Persona", email, password: "clave-segura-123" } });
+  await auth.api.signUpEmail({ body: { name: "Persona", email, password: "clave-segura-123", ...CONSENT } });
   const [row] = await db.select().from(user).where(eq(user.email, email));
   const id = row.id;
 
@@ -265,7 +266,7 @@ describe("deleteAccountData", () => {
   });
 
   it("borra los intentos fallidos aunque el correo tenga mayúsculas", async () => {
-    await auth.api.signUpEmail({ body: { name: "Dani", email: "Dani@Test.local", password: "clave-segura-123" } });
+    await auth.api.signUpEmail({ body: { name: "Dani", email: "Dani@Test.local", password: "clave-segura-123", ...CONSENT } });
     const [row] = await db.select().from(user).where(eq(user.email, "dani@test.local"));
     await db.insert(loginFailure).values({ email: "dani@test.local", failures: 1, firstFailureAt: new Date() });
 
@@ -284,7 +285,7 @@ describe("deleteAccountData", () => {
       { type: "signup_mode_changed", adminId: admin, details: { signupMode: "invite", previousSignupMode: "open" } },
     ]);
     // Con mayúsculas al registrarse: Better Auth lo guarda en minúsculas, como las invitaciones.
-    await auth.api.signUpEmail({ body: { name: "Eva", email: "Eva@Test.local", password: "clave-segura-123" } });
+    await auth.api.signUpEmail({ body: { name: "Eva", email: "Eva@Test.local", password: "clave-segura-123", ...CONSENT } });
     const [eva] = await db.select({ id: user.id }).from(user).where(eq(user.email, "eva@test.local"));
 
     await deleteAccountData(eva.id);

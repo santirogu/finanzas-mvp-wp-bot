@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { BRAND_NAME } from "@/lib/brand";
+import { DATA_CONTROLLER } from "@/lib/contact";
 import { CONTACT_EMAIL, DataDeletionSteps, LEGAL_UPDATED_AT, legalProseClass } from "./legal";
 import { SpanishOnlyNote } from "./spanish-only";
 
@@ -26,6 +27,18 @@ export default function PrivacyPage() {
             la web o escribiendo a un bot de WhatsApp. Esta política explica qué datos recopilamos, para qué los
             usamos y cómo puedes ejercer tus derechos. Sigue la Ley 1581 de 2012 de Colombia, sobre protección de
             datos personales.
+          </p>
+        </section>
+
+        <section>
+          <h2>Responsable del tratamiento</h2>
+          <p>
+            El responsable de tus datos es <strong>{DATA_CONTROLLER.name}</strong>, persona natural, con domicilio en{" "}
+            {DATA_CONTROLLER.city} ({DATA_CONTROLLER.address}). Teléfono: {DATA_CONTROLLER.phone}. Correo:{" "}
+            <a href={`mailto:${DATA_CONTROLLER.email}`} className="text-brand underline">
+              {DATA_CONTROLLER.email}
+            </a>
+            . A ese correo puedes enviar tus consultas y reclamos sobre tus datos.
           </p>
         </section>
 
@@ -130,6 +143,10 @@ export default function PrivacyPage() {
               <strong>Los avisos generales:</strong> si ocultas con la ✕ un aviso de la app (por ejemplo, de un
               mantenimiento), una cookie de tu navegador (<code>aviso-cerrado</code>) lo recuerda. Dura 32 días y no
               se asocia a tu cuenta.
+            </li>
+            <li>
+              <strong>Tu autorización:</strong> qué versión de esta política autorizaste y cuándo, como prueba. Se
+              guarda hasta que elimines tu cuenta.
             </li>
             <li>
               <strong>Estadísticas de uso anónimas:</strong> con Vercel Web Analytics contamos:
@@ -256,7 +273,7 @@ export default function PrivacyPage() {
               el historial de tu cuenta y los mensajes que enviaste al bot desde cualquiera de tus números.
             </li>
             <li>
-              <strong>Si pides eliminarla por correo:</strong> en un plazo máximo de 30 días.
+              <strong>Si pides eliminarla por correo:</strong> en un plazo máximo de 15 días hábiles.
             </li>
             <li>
               <strong>Los movimientos que eliminas:</strong> dejan de verse en ese momento y se borran del todo a
@@ -267,6 +284,19 @@ export default function PrivacyPage() {
               están vinculados a ninguna cuenta se borran a los 30 días.
             </li>
           </ul>
+        </section>
+
+        <section>
+          <h2>Tu autorización</h2>
+          <p>
+            Para tratar tus datos necesitamos tu autorización previa, expresa e informada. La das al crear tu cuenta,
+            con la casilla del registro; si tu cuenta es de antes, la primera vez que entras después de que empezamos a
+            pedirla. Guardamos qué versión de esta política autorizaste y cuándo.
+          </p>
+          <p>
+            Puedes revocarla cuando quieras eliminando tu cuenta o escribiéndonos; sin ella no puedes seguir usando la
+            app.
+          </p>
         </section>
 
         <section>
@@ -282,6 +312,42 @@ export default function PrivacyPage() {
             </a>
             .
           </p>
+        </section>
+
+        <section>
+          <h2>Consultas y reclamos</h2>
+          <ul>
+            <li>
+              <strong>Cómo hacerlos:</strong> escríbenos a{" "}
+              <a href={`mailto:${CONTACT_EMAIL}`} className="text-brand underline">
+                {CONTACT_EMAIL}
+              </a>{" "}
+              desde el correo de tu cuenta y dinos qué necesitas: conocer tus datos, corregirlos, actualizarlos,
+              eliminarlos o revocar tu autorización.
+            </li>
+            <li>
+              <strong>Consultas</strong> (conocer tus datos o cómo los usamos): te respondemos en máximo 10 días
+              hábiles. Si no alcanzamos, te avisamos antes de que se cumplan y te respondemos en máximo 5 días hábiles
+              más.
+            </li>
+            <li>
+              <strong>Reclamos</strong> (corregir, actualizar o eliminar tus datos, revocar la autorización o avisarnos
+              que no cumplimos esta política): te respondemos en máximo 15 días hábiles, contados desde el día
+              siguiente a recibirlo. Si no alcanzamos, te avisamos y te respondemos en máximo 8 días hábiles más.
+            </li>
+            <li>
+              <strong>Si a tu reclamo le falta información:</strong> te la pedimos en los 5 días siguientes. Si pasan 2
+              meses sin que nos la envíes, entendemos que desististe.
+            </li>
+            <li>
+              <strong>Superintendencia de Industria y Comercio:</strong> si después de reclamarnos no quedas
+              conforme, puedes presentar una queja ante la SIC (
+              <a href="https://www.sic.gov.co" className="text-brand underline">
+                sic.gov.co
+              </a>
+              ), la autoridad de protección de datos personales en Colombia.
+            </li>
+          </ul>
         </section>
 
         <section id="eliminar-datos">
@@ -301,8 +367,8 @@ export default function PrivacyPage() {
         <section>
           <h2>Cambios a esta política</h2>
           <p>
-            Si cambiamos esta política, actualizaremos la fecha de esta página. Si los cambios son
-            importantes, te avisaremos por correo o en la aplicación.
+            Si cambiamos esta política, actualizaremos la fecha de esta página. Si cambia lo que hacemos con tus
+            datos, te pediremos de nuevo tu autorización la próxima vez que entres a la app o le escribas al bot.
           </p>
         </section>
       </div>

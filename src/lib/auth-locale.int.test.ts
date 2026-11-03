@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { db } from "@/db";
 import { user } from "@/db/schema";
-import { PASSWORD, adminWithTwoFactor, json, post, register, signIn, updateUserFromServer } from "../../test/integration/auth-http";
+import { CONSENT, PASSWORD, adminWithTwoFactor, json, post, register, signIn, updateUserFromServer } from "../../test/integration/auth-http";
 import { totp } from "../../test/totp";
 
 // El idioma que eligió en Mi cuenta (user.locale) viaja con la cuenta: el navegador donde inicia sesión
@@ -53,7 +53,7 @@ describe("el idioma de la cuenta al iniciar sesión", () => {
 
 describe("solo Mi cuenta cambia el idioma de la cuenta", () => {
   it("el registro y 'actualizar perfil' rechazan el que mande el cliente (input: false)", async () => {
-    const withLocale = await post("/sign-up/email", { name: "Dani", email: "dani@test.local", password: PASSWORD, locale: "en" });
+    const withLocale = await post("/sign-up/email", { name: "Dani", email: "dani@test.local", password: PASSWORD, locale: "en", ...CONSENT });
     expect(withLocale.status).toBe(400);
     expect(await json(withLocale)).toMatchObject({ code: "FIELD_NOT_ALLOWED" });
     expect(await db.select().from(user).where(eq(user.email, "dani@test.local"))).toEqual([]);

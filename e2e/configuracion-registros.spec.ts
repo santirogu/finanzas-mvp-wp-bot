@@ -3,7 +3,7 @@ import postgres from "postgres";
 import { totp } from "../test/totp";
 import { heading, newAdmin, seriousViolations, setUpTwoFactor } from "./admin";
 import { e2eDatabaseUrl } from "./database-url";
-import { formAlert, newPerson, PASSWORD, register, test, toast, uniqueEmail, visible } from "./helpers";
+import { formAlert, newPerson, PASSWORD, privacyBox, register, test, toast, uniqueEmail, visible } from "./helpers";
 
 // Quién puede crear una cuenta (/admin/configuracion), de punta a punta: cerrar los registros, dejarlos solo con
 // invitación y lo que ve quien intenta registrarse. Cambia la configuración de toda la app, así que corre en el
@@ -50,6 +50,7 @@ async function trySignUp(page: Page, email: string) {
   await page.getByLabel("Nombre").fill("Beto Nuevo");
   await page.getByLabel("Correo").fill(email);
   await page.getByLabel("Contraseña").fill(PASSWORD);
+  await privacyBox(page).check();
   await page.getByRole("button", { name: "Crear cuenta" }).click();
 }
 

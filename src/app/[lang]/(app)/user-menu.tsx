@@ -1,16 +1,8 @@
-import { headers } from "next/headers";
-import { redirect } from "next/navigation";
 import { AdminBadge, AdminShield } from "@/components/admin-badge";
-import { auth } from "@/lib/auth";
 import { hasRole, isSuperAdmin } from "@/lib/roles";
 import { requireUser } from "@/lib/session";
+import { signOutAction } from "@/modules/account/sign-out";
 import { AccountMenu } from "./account-menu";
-
-async function signOutAction() {
-  "use server";
-  await auth.api.signOut({ headers: await headers() });
-  redirect("/login");
-}
 
 /**
  * El menú de la cuenta del encabezado (src/app/[lang]/(app)/account-menu.tsx). Lo de admin (la etiqueta y el

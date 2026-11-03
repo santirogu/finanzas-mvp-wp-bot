@@ -1,5 +1,6 @@
 import { expect } from "@playwright/test";
 import { adminTab } from "./admin";
+import { PRIVACY_VERSION } from "../src/lib/privacy";
 import { PASSWORD, fakeIp, register, test, uniqueEmail } from "./helpers";
 
 // Contra el build de producción: alguien con sesión (o al registrarse) intenta darse el rol de admin
@@ -34,7 +35,7 @@ test("sin el Origin de la app, Better Auth rechaza el pedido antes de mirarlo (p
 test("registrarse mandando role: admin deja la cuenta como usuario", async ({ playwright, baseURL }) => {
   const request = await playwright.request.newContext({ baseURL, extraHTTPHeaders: { "x-forwarded-for": fakeIp() } });
   const response = await request.post("/api/auth/sign-up/email", {
-    data: { name: "Intruso", email: uniqueEmail(), password: PASSWORD, role: "admin" },
+    data: { name: "Intruso", email: uniqueEmail(), password: PASSWORD, role: "admin", privacyConsent: PRIVACY_VERSION },
   });
   expect(response.ok()).toBe(true);
   expect((await response.json()).user.role).toBe("user");

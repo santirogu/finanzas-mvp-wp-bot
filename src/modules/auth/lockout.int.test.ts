@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { loginFailure } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { LOCKOUT, clearFailures, lockedUntil, normalizeEmail, releaseAttempt, reserveAttempt } from "./lockout";
+import { CONSENT } from "../../../test/integration/auth-http";
 
 const T0 = new Date("2026-10-14T15:00:00Z");
 const after = (minutes: number) => new Date(T0.getTime() + minutes * 60_000);
@@ -109,7 +110,7 @@ function signIn(email: string, password: string) {
 }
 
 async function createAccount(email: string, password = "clave-correcta-123") {
-  await auth.api.signUpEmail({ body: { name: "Prueba", email, password } });
+  await auth.api.signUpEmail({ body: { name: "Prueba", email, password, ...CONSENT } });
 }
 
 describe("bloqueo por cuenta (Better Auth)", () => {

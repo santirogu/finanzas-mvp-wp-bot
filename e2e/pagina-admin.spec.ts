@@ -61,12 +61,14 @@ test("el admin ve el historial de otras cuentas como línea de tiempo y lo filtr
 
   await test.step("buscar por correo muestra su historial, agrupado en 'Hoy', del más nuevo al más viejo", async () => {
     await searchFor(page, betoEmail);
-    await expect(summary(page, "3 eventos")).toBeVisible();
+    await expect(summary(page, "4 eventos")).toBeVisible();
     await expect(heading(page, "Hoy")).toBeVisible();
     await expect(events(page).nth(0)).toContainText(`Beto Historial vinculó su WhatsApp ${formatted(betoPhone)}`);
     await expect(events(page).nth(1)).toContainText("Beto Historial pidió un código para vincular su WhatsApp");
-    await expect(events(page).nth(2)).toContainText("Beto Historial se registró");
-    for (let i = 0; i < 3; i++) await expect(events(page).nth(i)).toContainText(betoEmail);
+    // Al registrarse autorizó el tratamiento de sus datos (la casilla): queda justo después del registro.
+    await expect(events(page).nth(2)).toContainText("Beto Historial autorizó el tratamiento de sus datos");
+    await expect(events(page).nth(3)).toContainText("Beto Historial se registró");
+    for (let i = 0; i < 4; i++) await expect(events(page).nth(i)).toContainText(betoEmail);
     // La búsqueda queda como filtro activo, con su ✕.
     await expect(visible(page.getByRole("link", { name: `Quitar filtro: “${betoEmail}”` }))).toBeVisible();
     await expect(filtersButton(page)).toHaveAccessibleName("Filtros: 1 activo");
@@ -118,7 +120,7 @@ test("el admin ve el historial de otras cuentas como línea de tiempo y lo filtr
   await test.step("tocar el nombre de una persona muestra solo sus eventos", async () => {
     await visible(page.getByRole("link", { name: "Beto Historial" })).first().click();
     await expect.poll(() => new URL(page.url()).searchParams.get("q")).toBe(betoEmail);
-    await expect(summary(page, "3 eventos")).toBeVisible();
+    await expect(summary(page, "4 eventos")).toBeVisible();
     await expect(search(page)).toHaveValue(betoEmail);
   });
 

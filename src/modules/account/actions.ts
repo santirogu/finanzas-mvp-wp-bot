@@ -10,7 +10,7 @@ import { texts } from "@/i18n/texts";
 import { auth } from "@/lib/auth";
 import { AUTH_ERROR_TEXTS } from "@/lib/auth-errors";
 import { hasRole } from "@/lib/roles";
-import { requireUser } from "@/lib/session";
+import { requireSignedIn, requireUser } from "@/lib/session";
 import { isTheme } from "@/lib/theme";
 import { TOAST_PARAM } from "@/lib/toasts";
 import { confirmAdminCode } from "@/modules/admin/shared/confirm-code";
@@ -20,6 +20,7 @@ import { deleteAccountData } from "./delete-account";
 import { recordEvent } from "./events";
 import { saveAccountLocale, saveAccountTheme } from "./language";
 import { checkPasswordChange, PASSWORD_TEXTS, type PasswordChangeField } from "./password-change";
+import { acceptPrivacy } from "./privacy-consent";
 
 // Los mensajes de eliminar la cuenta, en el idioma de quien usa la página (la cookie: src/i18n/request.ts).
 const DELETE_TEXTS = texts(
@@ -40,12 +41,13 @@ export type DeleteAccountState = {
  * Elimina la cuenta de quien tiene la sesión y todos sus datos. Pide la contraseña (aunque haya
  * sesión: alguien podría usar un celular desbloqueado ajeno) y escribir la palabra de
  * confirmación. Las contraseñas equivocadas cuentan para el bloqueo por intentos fallidos.
+ * También sin la autorización de los datos (requireSignedIn): quien no la da puede irse con todo borrado.
  */
 export async function deleteAccountAction(
   _prev: DeleteAccountState,
   formData: FormData,
 ): Promise<DeleteAccountState> {
-  const user = await requireUser();
+  const user = await requireSignedIn();
   const locale = await getRequestLocale();
   const t = DELETE_TEXTS[locale];
   const word = CONFIRMATION_WORDS[locale];
@@ -160,4 +162,22 @@ export async function saveThemeAction(theme: unknown): Promise<void> {
   const user = await requireUser();
   if (!isTheme(theme)) return;
   await saveAccountTheme(user.id, theme);
+}
+
+const PRIVACY_TEXTS = texts(
+  { required: "Para seguir, marca la casilla de la autorización." },
+  { en: { required: "To continue, check the authorization box." } },
+);
+
+export type PrivacyConsentState = { error?: string };
+
+/**
+ * La autorización de los datos de una cuenta que no la tiene (las de antes de pedirla, o si cambió la versión de la
+ * política): /autorizacion. Expresa: sin la casilla marcada no se guarda. Después, al Resumen.
+ */
+export async function acceptPrivacyAction(_prev: PrivacyConsentState, formData: FormData): Promise<PrivacyConsentState> {
+  const user = await requireSignedIn();
+  if (formData.get("privacy") !== "on") return { error: PRIVACY_TEXTS[await getRequestLocale()].required };
+  await acceptPrivacy(user.id);
+  redirect("/dashboard");
 }
