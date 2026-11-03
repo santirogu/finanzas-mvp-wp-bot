@@ -3,7 +3,7 @@ import { dirname, join, relative, resolve } from "node:path";
 import { NextRequest } from "next/server";
 import { getRedirectUrl } from "next/experimental/testing/server";
 import { describe, expect, it } from "vitest";
-import { proxy } from "./proxy";
+import { proxy, PUBLIC_VERSIONS } from "./proxy";
 
 // Matriz de autorización: inventario de TODAS las entradas de la app (páginas, rutas de API y
 // Server Actions) con la protección que debe tener cada una. Si agregas una entrada, esta prueba
@@ -18,17 +18,19 @@ const APP = join(ROOT, "src/app");
 const PAGES = {
   "/": "pública (con sesión redirige al dashboard)",
   "/login": "pública (con sesión redirige al dashboard)",
-  "/registro": "pública (con sesión redirige al dashboard)",
+  "/registro": "pública (con sesión redirige al dashboard); solo lee si los registros están abiertos, cerrados o con invitación (sin los correos invitados)",
   "/privacidad": "pública siempre (la exige Meta)",
   "/eliminar-datos": "pública siempre (la exige Meta)",
   "/cuenta-eliminada": "pública siempre (se llega justo después de eliminar la cuenta)",
   "/[...rest]": "la 404 de las direcciones que no existen: solo llama a notFound() (sin sesión, el proxy manda al login)",
   "/cuenta": "requiere sesión",
-  "/ayuda": "requiere sesión; solo textos de ayuda (no lee datos de la persona)",
+  "/ayuda": "pública: con sesión, la de la app (valida la sesión); sin sesión, el proxy arma /ayuda-publica. Solo textos de ayuda (no lee datos de la persona)",
+  "/ayuda-publica": "la Ayuda sin sesión: el proxy la arma en /ayuda y esta dirección lleva a /ayuda. Solo textos de ayuda",
   "/dashboard": "requiere sesión",
   "/ingresos": "requiere sesión",
   "/egresos": "requiere sesión",
   "/gastos-fijos": "requiere sesión; solo los gastos fijos propios (sus marcas y notas, también)",
+  "/configuracion": "requiere sesión; solo la configuración propia (presupuestos y lo gastado por categoría, avisos, apariencia, idioma)",
   "/reportes": "requiere sesión; solo los movimientos propios",
   "/simulador": "requiere sesión; solo en desarrollo",
   "/movimientos/[id]/editar": "requiere sesión; solo movimientos propios (los demás dan 404)",
@@ -40,6 +42,8 @@ const PAGES = {
   "/admin/bot": "requiere sesión de admin con la verificación en dos pasos activa (requireAdmin); sin el texto de los mensajes",
   "/admin/salud":
     "requiere sesión de admin con la verificación en dos pasos activa (requireAdmin); solo nombres de variables (nunca sus valores), tamaños y cantidades",
+  "/admin/configuracion":
+    "requiere sesión de admin con la verificación en dos pasos activa (requireAdmin); la configuración global de la app, los correos invitados, el aviso para todos y los valores de la app",
   "/admin/seguridad": "requiere sesión de admin; es donde se configura la verificación en dos pasos (requireAdminRole)",
 } as const;
 
@@ -52,6 +56,8 @@ const API_ROUTES = {
   "/api/whatsapp/webhook POST": "firma HMAC de Meta (X-Hub-Signature-256)",
   "/api/health GET": "pública: no devuelve datos ni detalles de configuración",
   "/api/cron/limpieza GET": "solo Vercel Cron, con el secreto CRON_SECRET (src/lib/cron-auth.ts); devuelve solo cantidades",
+  "/api/cron/vigilancia GET":
+    "solo la vigilancia de GitHub Actions, con el secreto CRON_SECRET (src/lib/cron-auth.ts); devuelve solo si hay problemas y de qué tipo, sin detalles",
   "/reportes/exportar GET": "requiere sesión (requireUser); solo los movimientos propios del período, sin los eliminados",
   "/reportes/pdf GET": "requiere sesión (requireUser); solo los datos propios del período, sin los movimientos eliminados",
 } as const;
@@ -67,6 +73,9 @@ const SERVER_ACTIONS = {
   signOutAction: "sin sesión no hay nada que cerrar",
   deleteAccountAction: "requireUser + contraseña + palabra de confirmación; solo la cuenta propia",
   saveLanguageAction: "requireUser; solo el idioma de la cuenta propia (y la cookie de este navegador)",
+  saveThemeAction: "requireUser; solo la apariencia de la cuenta propia (una de las tres de la app)",
+  chooseLanguageAction:
+    "sin sesión: solo guarda la cookie del idioma en este navegador (no toca ninguna cuenta) y vuelve a la portada, el login o el registro, nunca a otra dirección",
   changePasswordAction:
     "requireUser + contraseña actual (con el bloqueo por intentos) + código de Google Authenticator si es admin; solo la cuenta propia; cierra las otras sesiones",
   finishTwoFactorSetupAction: "requireAdmin (con la verificación ya activa); cierra las demás sesiones propias",
@@ -91,7 +100,16 @@ const SERVER_ACTIONS = {
   changeAiLimitsAction: "requireAdmin + código de Google Authenticator; topes dentro de AI_LIMIT_BOUNDS",
   testConnectionsAction: "requireAdmin; solo lee (consultas gratis a WhatsApp y Claude): nunca muestra el token ni la API key",
   changeMonthlyLimitAction: "requireAdmin + código de Google Authenticator; tope dentro de MONTHLY_TOKEN_BOUNDS o sin tope",
+  changeBotModelAction: "requireAdmin + código de Google Authenticator; solo un modelo de la lista (src/modules/bot/models.ts)",
   resendRepliesAction: "requireAdmin + código de Google Authenticator; solo las respuestas que no salieron en 24 h, sin mostrarlas",
+  changeSignupModeAction: "requireAdmin + código de Google Authenticator; solo uno de los modos (src/modules/auth/signup-modes.ts)",
+  addSignupInviteAction: "requireAdmin; un correo válido que no tenga cuenta; queda en el historial (sin código: README → Riesgos aceptados)",
+  removeSignupInviteAction: "requireAdmin; solo quita una invitación; queda en el historial (sin código: README → Riesgos aceptados)",
+  publishNoticeAction:
+    "requireAdmin + código de Google Authenticator; el aviso para todos: texto de hasta 200 caracteres, uno de los dos tipos y fin en los próximos 31 días",
+  removeNoticeAction: "requireAdmin + código de Google Authenticator; solo quita el aviso para todos",
+  changeAppValuesAction:
+    "requireAdmin + código de Google Authenticator; los avisos por defecto y los umbrales, dentro de sus rangos (src/modules/app-values/values.ts)",
   chooseFixedExpenseAction:
     "requireUser; solo los gastos fijos propios (el dueño sale de la sesión); agregar exige un egreso propio con esa descripción",
   saveFixedNoteAction:
@@ -100,12 +118,17 @@ const SERVER_ACTIONS = {
     "requireUser; solo marca 'ya no aplica' el pago de un mes de un gasto propio (un egreso propio con esa descripción)",
   saveUpcomingSettingsAction: "requireUser; solo la configuración propia de los avisos; días de 0 a 10",
   markNotificationsReadAction: "requireUser; solo marca como leídas notificaciones propias (ids con su formato, hasta 50)",
+  saveReminderSettingsAction: "requireUser; solo la configuración propia del recordatorio de registro; días de 1 a 14",
+  finishTutorialAction: "requireUser; solo da por visto el tutorial de bienvenida de la cuenta propia (sin datos del formulario)",
   registerFixedPaymentAction:
     "requireUser; registra un egreso propio con la descripción y la categoría del último pago propio de ese gasto (las busca el servidor); fecha hasta hoy",
+  saveBudgetAction:
+    "requireUser; solo presupuestos propios (el dueño sale de la sesión), de una categoría de egresos que la persona puede ver (una nueva, no archivada); monto hasta MAX_AMOUNT",
+  removeBudgetAction: "requireUser; solo quita un presupuesto propio",
 } as const;
 
 // Acciones que no necesitan validar la sesión, con el porqué.
-const ACTIONS_WITHOUT_SESSION = ["signOutAction"];
+const ACTIONS_WITHOUT_SESSION = ["signOutAction", "chooseLanguageAction"];
 
 // Páginas privadas que no validan la sesión ellas mismas, con el porqué.
 const PAGES_WITHOUT_SESSION_CHECK: Record<string, string> = {
@@ -243,8 +266,10 @@ describe("páginas", () => {
   const privatePages = Object.entries(PAGES)
     .filter(([, rule]) => rule.startsWith("requiere sesión"))
     .map(([path]) => path);
-  // La 404 ([...rest]) no es una dirección: la arma cualquier dirección que no sea una página.
-  const publicPages = Object.keys(PAGES).filter((p) => !privatePages.includes(p) && p !== "/[...rest]");
+  // La 404 ([...rest]) no es una dirección: la arma cualquier dirección que no sea una página. Tampoco la versión sin
+  // sesión de una página de la app (/ayuda-publica): se ve en la dirección de esa página.
+  const publicVersions = [...PUBLIC_VERSIONS.values()];
+  const publicPages = Object.keys(PAGES).filter((p) => !privatePages.includes(p) && p !== "/[...rest]" && !publicVersions.includes(p));
 
   const visitWithoutSession = (path: string) =>
     getRedirectUrl(proxy(new NextRequest(`https://finanzas.test${path}`))) ?? "sigue";
@@ -274,6 +299,17 @@ describe("páginas", () => {
       expect(file, route).toBeDefined();
       expect(reachesRequireUser(file!), route).toBe(true);
       expect(visitWithoutSession(route), route).toBe("https://finanzas.test/login");
+    }
+  });
+
+  it("una página con versión sin sesión valida la sesión en la de la app (requireUser); la otra no tiene dirección propia", () => {
+    expect(PUBLIC_VERSIONS.size).toBeGreaterThan(0);
+    for (const [path, version] of PUBLIC_VERSIONS) {
+      const file = pageFiles.find((f) => routeOf(f) === path);
+      expect(file, path).toBeDefined();
+      expect(reachesRequireUser(file!), path).toBe(true);
+      expect(pageFiles.map(routeOf), version).toContain(version);
+      expect(visitWithoutSession(version), version).toBe(`https://finanzas.test${path}`);
     }
   });
 
@@ -377,6 +413,9 @@ describe("administración", () => {
         "src/modules/admin/health/connections.ts",
         "src/modules/admin/health/system.ts",
         "src/modules/admin/bot/resend.ts",
+        "src/modules/admin/configuracion/signup.ts",
+        "src/modules/admin/configuracion/notice.ts",
+        "src/modules/admin/configuracion/values.ts",
       ]),
     );
   });

@@ -17,6 +17,7 @@ describe("sitemap.xml", () => {
       { url: "https://finanzas.co" },
       { url: "https://finanzas.co/registro" },
       { url: "https://finanzas.co/login" },
+      { url: "https://finanzas.co/ayuda" },
       { url: "https://finanzas.co/privacidad" },
       { url: "https://finanzas.co/eliminar-datos" },
     ]);

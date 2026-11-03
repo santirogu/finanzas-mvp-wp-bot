@@ -20,9 +20,9 @@ import {
 const rent = { key: "arriendo", description: "Arriendo", emoji: "🏠", amount: 1800000 };
 const gym = { key: "gimnasio", description: "Gimnasio", emoji: "💪", amount: 120000 };
 
-/** Los pagos de un gasto como los da la base: el primero de cada mes. */
+/** Los pagos de un gasto como los da la base: uno por fecha (dos del mismo mes se juntan, con el primero y el último). */
 const paid = (description: string, ...dates: string[]): HistoryMonth[] =>
-  dates.map((date) => ({ month: date.slice(0, 7), description, total: 1, first: date }));
+  dates.map((date) => ({ month: date.slice(0, 7), description, total: 1, first: date, last: date }));
 
 const NONE = new Set<string>();
 const upcoming = (history: HistoryMonth[], today: string, items = [rent], skipped: ReadonlySet<string> = NONE) =>
@@ -124,6 +124,25 @@ describe("upcomingPayments", () => {
     expect(upcoming(first, "2026-11-29")).toEqual([]);
     expect(upcoming(first, "2026-12-30")).toEqual([
       { description: "Arriendo", month: "2027-01", date: "2027-01-01", days: 2, usualDay: 1, approximate: false },
+    ]);
+  });
+
+  it("un pago adelantado a fin de mes (el segundo de su mes) cuenta para el mes siguiente", () => {
+    // Se suele pagar el 1; el 30 de octubre se pagó lo del 1 de noviembre: ya no avisa.
+    const early = paid("Netflix", "2026-08-01", "2026-09-01", "2026-10-01", "2026-10-30");
+    const netflix = { key: "netflix", description: "Netflix", emoji: "🎬", amount: 44900 };
+    expect(upcoming(early, "2026-10-30", [netflix])).toEqual([]);
+    // Sin él, avisa del 1 de noviembre.
+    expect(upcoming(early.slice(0, 3), "2026-10-30", [netflix])).toEqual([
+      { description: "Netflix", month: "2026-11", date: "2026-11-01", days: 2, usualDay: 1, approximate: false },
+    ]);
+  });
+
+  it("el segundo pago de un mes no cambia el día en que se suele pagar ni cuenta dos veces para el mismo mes", () => {
+    // Pagado dos veces en octubre (el 5 y el 8): sigue el 5, y noviembre no queda pagado.
+    const twice = paid("Arriendo", "2026-08-05", "2026-09-05", "2026-10-05", "2026-10-08");
+    expect(upcoming(twice, "2026-11-03")).toEqual([
+      { description: "Arriendo", month: "2026-11", date: "2026-11-05", days: 2, usualDay: 5, approximate: false },
     ]);
   });
 

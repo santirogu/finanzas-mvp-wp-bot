@@ -68,8 +68,8 @@ describe("getExpenseHistoryMonths", () => {
 
     const rows = await getExpenseHistoryMonths(user.id);
     expect(rows.sort((a, b) => a.month.localeCompare(b.month))).toEqual([
-      { month: "2024-03", description: "netflix", total: 44900.5, first: "2024-03-02" },
-      { month: "2026-10", description: "NETFLIX", total: 44900, first: "2026-10-05" },
+      { month: "2024-03", description: "netflix", total: 44900.5, first: "2024-03-02", last: "2024-03-20" },
+      { month: "2026-10", description: "NETFLIX", total: 44900, first: "2026-10-05", last: "2026-10-05" },
     ]);
   });
 });

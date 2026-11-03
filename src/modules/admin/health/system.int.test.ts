@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "@/db";
-import { cronRun } from "@/db/schema";
+import { botSetting, cronRun, whatsappMessage } from "@/db/schema";
 import { ANTHROPIC_CREDENTIALS, MIGRATION_COUNT, REQUIRED_ENV } from "@/lib/health";
 
 // Salud del sistema con la base de pruebas de verdad: la configuración, las migraciones, la base y la
@@ -73,7 +73,29 @@ describe("systemHealth", () => {
 
   it("la tarjeta del Inicio tiene los mismos problemas", async () => {
     await run(hoursAgo(2), false);
-    expect(await healthSummary(NOW)).toEqual({ problems: [{ kind: "cleanup_failed", at: hoursAgo(2) }] });
+    expect(await healthSummary(NOW)).toEqual({ problems: [{ kind: "cleanup_failed", at: hoursAgo(2) }], botAlerts: [] });
+  });
+
+  it("las alertas del bot que son fallas cuentan como un problema; el tope mensual cerca, no", async () => {
+    await run(hoursAgo(2), true);
+    // Un mensaje que se quedó sin procesar (falla) y el 90 % del tope mensual usado (aviso).
+    await db.insert(botSetting).values({ id: 1, aiPerHour: 20, aiPerDay: 100, monthlyTokenLimit: 10_000 });
+    await db.insert(whatsappMessage).values([
+      { id: "wamid.sin-procesar", phone: "573001112233", body: "x", status: "received", receivedAt: hoursAgo(1) },
+      {
+        id: "wamid.con-tokens",
+        phone: "573001112233",
+        body: "x",
+        status: "processed",
+        reply: "ok",
+        receivedAt: hoursAgo(1),
+        aiRequestedAt: hoursAgo(1),
+        intent: { kind: "reply", text: "ok", usage: { model: "m", inputTokens: 8_500, outputTokens: 500 } },
+      },
+    ]);
+    const health = await systemHealth(NOW);
+    expect(health.botAlerts.map((alert) => alert.kind)).toEqual(["monthly_limit_near", "stuck_messages"]);
+    expect(health.problems).toEqual([{ kind: "bot_alerts", count: 1 }]);
   });
 });
 

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { ChangeLine } from "@/components/change-line";
+import { ScrollToHash } from "@/components/scroll-to-hash";
 import type { Locale } from "@/i18n/locales";
 import { getLocale, getTexts } from "@/i18n/server";
 import { texts } from "@/i18n/texts";
@@ -175,7 +176,7 @@ async function Reports({ period: param, calendar: calendarParam }: { period: Par
         </section>
       ) : (
         <>
-          <Summary summary={report.summary} current={current} money={money} locale={locale} />
+          <Summary summary={report.summary} oneMonth={period.months.length === 1} current={current} money={money} locale={locale} />
 
           <section className="card p-4" aria-label={t.byMonth}>
             <h2 className="font-semibold">{t.byMonth}</h2>
@@ -199,6 +200,8 @@ async function Reports({ period: param, calendar: calendarParam }: { period: Par
           />
         </>
       )}
+      {/* El dato del mes del Resumen enlaza a #categorias: la sección llega después (Suspense). */}
+      <ScrollToHash />
     </div>
   );
 }
@@ -284,9 +287,22 @@ function Stat({ label, value, note, tone = "", className = "" }: { label: string
 
 /**
  * Las cifras del período. En un iPad vertical y en el celular horizontal, de a dos (el balance a todo el
- * ancho); en un computador, tres arriba y dos abajo. Los montos no se parten.
+ * ancho); en un computador, tres arriba y dos abajo. Los montos no se parten. Con un solo mes (el último
+ * mes, o el año en curso en enero), sin el gasto promedio ni el mes de más gasto: repetirían los egresos.
  */
-function Summary({ summary, current, money, locale }: { summary: PeriodSummary; current: Month; money: Money; locale: Locale }) {
+function Summary({
+  summary,
+  oneMonth,
+  current,
+  money,
+  locale,
+}: {
+  summary: PeriodSummary;
+  oneMonth: boolean;
+  current: Month;
+  money: Money;
+  locale: Locale;
+}) {
   const t: Texts = TEXTS[locale];
   const { averageExpense: average, topMonth } = summary;
   return (
@@ -300,13 +316,17 @@ function Summary({ summary, current, money, locale }: { summary: PeriodSummary; 
         tone={summary.balance < 0 ? "text-expense" : ""}
         className="sm:col-span-2"
       />
-      <Stat label={t.average} value={average ? money(average.amount) : "—"} note={averageNote(average, current, locale)} className="lg:col-span-3" />
-      <Stat
-        label={t.topMonth}
-        value={topMonth ? formatMonthLabel(topMonth.month, locale) : "—"}
-        note={topMonth ? money(topMonth.expense) : t.noExpensesNote}
-        className="lg:col-span-3"
-      />
+      {!oneMonth && (
+        <>
+          <Stat label={t.average} value={average ? money(average.amount) : "—"} note={averageNote(average, current, locale)} className="lg:col-span-3" />
+          <Stat
+            label={t.topMonth}
+            value={topMonth ? formatMonthLabel(topMonth.month, locale) : "—"}
+            note={topMonth ? money(topMonth.expense) : t.noExpensesNote}
+            className="lg:col-span-3"
+          />
+        </>
+      )}
     </section>
   );
 }
@@ -392,7 +412,8 @@ function Categories({ categories, money, locale }: { categories: CategoryReport;
   const { rows, compared, averaged } = categories;
   const biggest = rows[0]?.share ?? 1;
   return (
-    <section className="card p-4" aria-label={t.categories}>
+    // id: el dato del mes del Resumen enlaza aquí (/reportes#categorias).
+    <section id="categorias" className="card scroll-mt-4 p-4" aria-label={t.categories}>
       <h2 className="font-semibold">{t.categories}</h2>
       <p className="mt-1 text-sm text-muted">
         {t.categoriesIntro}

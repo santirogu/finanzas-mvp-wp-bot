@@ -2,15 +2,15 @@ import { describe, expect, it, vi } from "vitest";
 import { DEFAULT_CATEGORIES } from "@/modules/transactions/default-categories";
 import type { ExtractionResult, Extractor } from "./claude-extractor";
 import { parseCommand } from "./commands";
-import { interpretMessage } from "./interpret";
+import { interpretMessage, interpretPhoto } from "./interpret";
 import { matchCategory, normalizeReply, normalizeTransactions, type CategoryNames } from "./normalize";
-import { tooManyTransactionsReply } from "./replies";
+import { photoFallbackReply, photoManyReply, photoUnreadableReply, tooManyTransactionsReply } from "./replies";
 
 const categories: CategoryNames = {
   expense: DEFAULT_CATEGORIES.expense.map((c) => c.name),
   income: DEFAULT_CATEGORIES.income.map((c) => c.name),
 };
-const ctx = { today: "2026-10-13", categories };
+const ctx = { today: "2026-10-13", categories, locale: "es" } as const;
 const usage = { model: "test", inputTokens: 0, outputTokens: 0 };
 
 const fakeExtractor = (result: ExtractionResult) => vi.fn<Extractor>().mockResolvedValue(result);
@@ -31,7 +31,7 @@ describe("parseCommand", () => {
   });
 
   it("reconoce el código de vinculación", () => {
-    expect(parseCommand("VINCULAR 482913")).toEqual({ kind: "link", code: "482913" });
+    expect(parseCommand("VINCULAR 482913")).toEqual({ kind: "link", code: "482913", locale: "es" });
     expect(parseCommand("vincular 1234")).toBeNull();
   });
 
@@ -94,6 +94,13 @@ describe("normalizeTransactions", () => {
     expect(old.occurredOn).toBe("2026-10-13");
   });
 
+  it("con un límite propio (el de las fotos), la fecha vale solo hasta esos días atrás", () => {
+    const month = { ...ctx, maxDaysBack: 31 };
+    expect(normalizeTransactions([{ ...base, date: "2026-09-12" }], month)[0].occurredOn).toBe("2026-09-12");
+    expect(normalizeTransactions([{ ...base, date: "2026-09-11" }], month)[0].occurredOn).toBe("2026-10-13");
+    expect(normalizeTransactions([{ ...base, date: "2026-10-14" }], month)[0].occurredOn).toBe("2026-10-13");
+  });
+
   it("respeta fechas pasadas razonables", () => {
     expect(normalizeTransactions([{ ...base, date: "2026-10-12" }], ctx)[0].occurredOn).toBe(
       "2026-10-12",
@@ -139,6 +146,15 @@ describe("normalizeTransactions", () => {
     );
     expect(expense.description).toBe("Gasto");
     expect(income.description).toBe("Ingreso");
+    // En una cuenta en inglés, en inglés.
+    const english = normalizeTransactions(
+      [
+        { ...base, description: "" },
+        { ...base, type: "income", description: " " },
+      ],
+      { ...ctx, locale: "en" },
+    );
+    expect(english.map((t) => t.description)).toEqual(["Expense", "Income"]);
   });
 
   it("recorta descripciones largas a 140 caracteres y une espacios", () => {
@@ -242,7 +258,7 @@ describe("interpretMessage", () => {
       date: "2026-10-13",
     }));
     const intent = await interpretMessage("muchos gastos", ctx, fakeExtractor({ ok: true, transactions: many, reply: null, usage }));
-    expect(intent).toEqual({ kind: "reply", text: tooManyTransactionsReply(20), usage });
+    expect(intent).toEqual({ kind: "reply", text: tooManyTransactionsReply(20, "es"), usage });
 
     const twenty = await interpretMessage(
       "veinte gastos",
@@ -270,13 +286,14 @@ describe("interpretMessage", () => {
     expect(extractor).not.toHaveBeenCalled();
   });
 
-  it("pasa la fecha de hoy y las categorías al extractor", async () => {
+  it("pasa la fecha de hoy, las categorías y el idioma de la cuenta al extractor", async () => {
     const extractor = fakeExtractor({ ok: true, transactions: [], reply: "¿Cuánto fue?", usage });
     await interpretMessage("me compré unos zapatos", ctx, extractor);
     expect(extractor).toHaveBeenCalledWith({
       text: "me compré unos zapatos",
       today: { iso: "2026-10-13", long: "martes 13 de octubre de 2026" },
       categories,
+      locale: "es",
     });
   });
 
@@ -396,7 +413,7 @@ describe("parseCommand · solo comandos exactos", () => {
   it("acepta variaciones de los comandos", () => {
     expect(parseCommand("deshacer último")).toEqual({ kind: "command", command: "undo" });
     expect(parseCommand("¡¡Balance!!")).toEqual({ kind: "command", command: "balance" });
-    expect(parseCommand("vincular   482913")).toEqual({ kind: "link", code: "482913" });
+    expect(parseCommand("vincular   482913")).toEqual({ kind: "link", code: "482913", locale: "es" });
   });
 });
 
@@ -457,6 +474,13 @@ describe("normalizeTransactions · límites", () => {
     expect(old.occurredOn).toBe("2026-10-13");
   });
 
+  it("con un límite propio (el de las fotos), la fecha vale solo hasta esos días atrás", () => {
+    const month = { ...ctx, maxDaysBack: 31 };
+    expect(normalizeTransactions([{ ...base, date: "2026-09-12" }], month)[0].occurredOn).toBe("2026-09-12");
+    expect(normalizeTransactions([{ ...base, date: "2026-09-11" }], month)[0].occurredOn).toBe("2026-10-13");
+    expect(normalizeTransactions([{ ...base, date: "2026-10-14" }], month)[0].occurredOn).toBe("2026-10-13");
+  });
+
   it("acepta el monto máximo y rechaza lo que lo supera", () => {
     expect(normalizeTransactions([{ ...base, amount: 100_000_000_000 }], ctx)).toHaveLength(1);
     expect(normalizeTransactions([{ ...base, amount: 100_000_000_000.004 }], ctx)).toHaveLength(1);
@@ -466,5 +490,141 @@ describe("normalizeTransactions · límites", () => {
 
   it("reconoce la categoría aunque venga con espacios", () => {
     expect(matchCategory("  ropa  ", categories.expense)).toBe("Ropa");
+  });
+});
+
+describe("interpretPhoto", () => {
+  const image = { data: "aGVsbG8=", mediaType: "image/jpeg" as const };
+  const receipt = { type: "expense" as const, amount: 85400, description: "éxito", category: "Mercado", date: "2026-10-11" };
+  const ok = (transactions: (typeof receipt)[], reply: string | null = null): ExtractionResult => ({ ok: true, transactions, reply, usage });
+
+  it("manda la foto, lo que escribió con ella, la fecha de hoy, las categorías y el idioma", async () => {
+    const extractor = fakeExtractor(ok([receipt]));
+    await interpretPhoto({ image, caption: "  mercado del mes " }, ctx, extractor);
+    expect(extractor).toHaveBeenCalledWith({
+      text: "mercado del mes",
+      image,
+      today: { iso: "2026-10-13", long: "martes 13 de octubre de 2026" },
+      categories,
+      locale: "es",
+    });
+  });
+
+  it("sin texto manda la foto sola", async () => {
+    const extractor = fakeExtractor(ok([receipt]));
+    await interpretPhoto({ image, caption: null }, ctx, extractor);
+    expect(extractor.mock.calls[0][0]).toMatchObject({ text: "", image });
+  });
+
+  it("registra un egreso con el total y la fecha impresa, si es del último mes", async () => {
+    const intent = await interpretPhoto({ image, caption: null }, ctx, fakeExtractor(ok([receipt])));
+    expect(intent).toEqual({
+      kind: "transactions",
+      items: [{ type: "expense", amount: 85400, description: "Éxito", category: "Mercado", occurredOn: "2026-10-11" }],
+      usage,
+    });
+  });
+
+  it("una factura de hace más de un mes (o con fecha futura) queda con la fecha de hoy", async () => {
+    for (const date of ["2026-09-11", "2025-10-13", "2026-11-02"]) {
+      const intent = await interpretPhoto({ image, caption: null }, ctx, fakeExtractor(ok([{ ...receipt, date }])));
+      expect(intent.kind === "transactions" && intent.items[0].occurredOn, date).toBe("2026-10-13");
+    }
+  });
+
+  it("los comandos en el texto de una foto no se ejecutan: van como pista a la IA", async () => {
+    const extractor = fakeExtractor(ok([receipt]));
+    const intent = await interpretPhoto({ image, caption: "deshacer" }, ctx, extractor);
+    expect(intent.kind).toBe("transactions");
+    expect(extractor).toHaveBeenCalledOnce();
+  });
+
+  it("si la IA propone varios movimientos, no registra ninguno y pide una factura por foto", async () => {
+    const intent = await interpretPhoto({ image, caption: null }, ctx, fakeExtractor(ok([receipt, { ...receipt, amount: 1200 }])));
+    expect(intent).toEqual({ kind: "reply", text: photoManyReply("es"), usage });
+  });
+
+  it("si el total no pasa la validación, pide una foto más clara", async () => {
+    const intent = await interpretPhoto({ image, caption: null }, ctx, fakeExtractor(ok([{ ...receipt, amount: 0 }])));
+    expect(intent).toEqual({ kind: "reply", text: photoUnreadableReply("es"), usage });
+  });
+
+  it("si no es una factura, responde lo que dijo la IA (normalizado) o una respuesta fija", async () => {
+    const said = await interpretPhoto({ image, caption: null }, ctx, fakeExtractor(ok([], 'Es una foto de un perro. Escríbeme el gasto, por ejemplo "almuerzo 25 mil".')));
+    expect(said).toEqual({ kind: "reply", text: "Es una foto de un perro. Escríbeme el gasto, por ejemplo “almuerzo 25 mil”.", usage });
+    const withLink = await interpretPhoto({ image, caption: null }, ctx, fakeExtractor(ok([], "Revisa www.estafa.co")));
+    expect(withLink).toEqual({ kind: "reply", text: photoFallbackReply("es"), usage });
+    const empty = await interpretPhoto({ image, caption: null }, ctx, fakeExtractor(ok([], null)));
+    expect(empty).toEqual({ kind: "reply", text: photoFallbackReply("es"), usage });
+  });
+
+  it("con un texto de más de 1.000 caracteres no llama a la IA", async () => {
+    const extractor = fakeExtractor(ok([receipt]));
+    expect(await interpretPhoto({ image, caption: "x".repeat(1001) }, ctx, extractor)).toEqual({
+      kind: "reply",
+      text: "Tu mensaje es muy largo. Envíamelo en partes más cortas.",
+    });
+    expect(extractor).not.toHaveBeenCalled();
+    await interpretPhoto({ image, caption: "x".repeat(1000) }, ctx, extractor);
+    expect(extractor).toHaveBeenCalledOnce();
+  });
+
+  it("devuelve los errores de la IA como en los textos", async () => {
+    const intent = await interpretPhoto({ image, caption: null }, ctx, fakeExtractor({ ok: false, reason: "api_error", detail: "529 overloaded" }));
+    expect(intent).toEqual({ kind: "error", reason: "api_error: 529 overloaded", usage: undefined });
+    expect(await interpretPhoto({ image, caption: null }, ctx, fakeExtractor({ ok: false, reason: "rate_limited" }))).toEqual({
+      kind: "error",
+      reason: "rate_limited",
+      usage: undefined,
+    });
+  });
+});
+
+// En una cuenta en inglés, las respuestas fijas del intérprete van en inglés; lo que escribe Claude, tal cual.
+describe("interpretMessage e interpretPhoto · en inglés", () => {
+  const en = { ...ctx, locale: "en" } as const;
+  const shoes = { type: "expense" as const, amount: 0, description: "Shoes", category: "Ropa", date: "2026-10-13" };
+
+  it("los comandos en inglés no llaman a la IA", async () => {
+    const extractor = fakeExtractor({ ok: true, transactions: [], reply: null, usage });
+    expect(await interpretMessage("report 2025", en, extractor)).toEqual({ kind: "command", command: "report", period: { year: 2025 } });
+    expect(await interpretMessage("deshacer", en, extractor)).toEqual({ kind: "command", command: "undo" });
+    expect(extractor).not.toHaveBeenCalled();
+  });
+
+  it("muy largo, demasiados movimientos, sin monto o sin entender nada", async () => {
+    const none = fakeExtractor({ ok: true, transactions: [], reply: null, usage });
+    expect(await interpretMessage("spent ".repeat(200), en, none)).toEqual({ kind: "reply", text: "Your message is too long. Send it to me in shorter parts." });
+    const many = Array.from({ length: 21 }, (_, i) => ({ ...shoes, amount: 1000 + i }));
+    expect(await interpretMessage("a lot", en, fakeExtractor({ ok: true, transactions: many, reply: null, usage }))).toEqual({
+      kind: "reply",
+      text: tooManyTransactionsReply(20, "en"),
+      usage,
+    });
+    expect(await interpretMessage("shoes", en, fakeExtractor({ ok: true, transactions: [shoes], reply: null, usage }))).toMatchObject({
+      text: "I didn't understand the amount. Send me the whole transaction with its amount, for example “lunch 25k”.",
+    });
+    expect(await interpretMessage("hmm", en, none)).toMatchObject({
+      text: "I couldn't find any income or expense in your message. Try something like “spent 20k on lunch”.",
+    });
+  });
+
+  it("le pasa el idioma de la cuenta a Claude, con un mensaje y con una foto (escribe la respuesta en inglés)", async () => {
+    const extractor = fakeExtractor({ ok: true, transactions: [], reply: "Send me the whole transaction, like “sneakers 180k”.", usage });
+    expect(await interpretMessage("I bought some sneakers", en, extractor)).toEqual({
+      kind: "reply",
+      text: "Send me the whole transaction, like “sneakers 180k”.",
+      usage,
+    });
+    await interpretPhoto({ image: { data: "", mediaType: "image/png" }, caption: "lunch" }, en, extractor);
+    expect(extractor.mock.calls.map(([input]) => input.locale)).toEqual(["en", "en"]);
+  });
+
+  it("las fotos que no se registraron", async () => {
+    const photo = { image: { data: "", mediaType: "image/png" as const }, caption: null };
+    const said = (transactions: (typeof shoes)[]) => fakeExtractor({ ok: true, transactions, reply: null, usage });
+    expect(await interpretPhoto(photo, en, said([shoes, shoes]))).toEqual({ kind: "reply", text: photoManyReply("en"), usage });
+    expect(await interpretPhoto(photo, en, said([shoes]))).toEqual({ kind: "reply", text: photoUnreadableReply("en"), usage });
+    expect(await interpretPhoto(photo, en, said([]))).toEqual({ kind: "reply", text: photoFallbackReply("en"), usage });
   });
 });

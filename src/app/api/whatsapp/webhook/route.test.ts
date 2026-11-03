@@ -13,7 +13,7 @@ vi.mock("next/server", async (importOriginal) => ({
 }));
 vi.mock("@/modules/bot/handle-message", () => ({ handleIncomingMessage: mocks.handle }));
 vi.mock("@/modules/bot/claude-extractor", () => ({ claudeExtractor: "extractor-simulado" }));
-vi.mock("@/modules/whatsapp/client", () => ({ sendWhatsAppText: "sender-simulado" }));
+vi.mock("@/modules/whatsapp/client", () => ({ sendWhatsAppText: "sender-simulado", downloadWhatsAppMedia: "descarga-simulada" }));
 
 const { NextRequest } = await import("next/server");
 const { GET, POST } = await import("./route");
@@ -122,7 +122,7 @@ describe("POST · mensajes entrantes", () => {
     expect(mocks.handle).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({ id: "wamid.A", text: "balance" }),
-      { extractor: "extractor-simulado", send: "sender-simulado", appUrl: "https://finanzas.test" },
+      { extractor: "extractor-simulado", send: "sender-simulado", appUrl: "https://finanzas.test", download: "descarga-simulada" },
     );
   });
 

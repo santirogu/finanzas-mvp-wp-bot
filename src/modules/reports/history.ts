@@ -18,6 +18,8 @@ export type HistoryMonth = {
   total: number;
   /** El primer pago de ese mes (YYYY-MM-DD). */
   first: string;
+  /** El último pago de ese mes (YYYY-MM-DD): el mismo, si hubo uno solo. */
+  last: string;
 };
 
 export type HistoryEntry = {

@@ -2,14 +2,14 @@
 
 import { refresh } from "next/cache";
 import { requireAdmin } from "@/lib/session";
-import { setAiLimits, setClaudePaused, setMonthlyTokenLimit, type BotSettingResult } from "@/modules/admin/bot/bot-settings";
+import { setAiLimits, setBotModel, setClaudePaused, setMonthlyTokenLimit, type BotSettingResult } from "@/modules/admin/bot/bot-settings";
 import { resendFailedReplies } from "@/modules/admin/bot/resend";
 
 // La configuración del bot desde /admin/bot. Cada acción valida el rol antes que nada; el código de
 // Google Authenticator, los datos y el registro en el historial se resuelven en
 // src/modules/admin/bot/bot-settings.ts.
 
-export type BotSettingState = { error?: string; field?: "code" | "perHour" | "perDay" | "monthlyLimit"; message?: string };
+export type BotSettingState = { error?: string; field?: "code" | "perHour" | "perDay" | "monthlyLimit" | "model"; message?: string };
 
 const code = (formData: FormData) => String(formData.get("code") ?? "");
 
@@ -44,6 +44,11 @@ export async function changeAiLimitsAction(_prev: BotSettingState, formData: For
 export async function changeMonthlyLimitAction(_prev: BotSettingState, formData: FormData): Promise<BotSettingState> {
   await requireAdmin();
   return settle(await setMonthlyTokenLimit({ limit: String(formData.get("monthlyLimit") ?? ""), code: code(formData) }));
+}
+
+export async function changeBotModelAction(_prev: BotSettingState, formData: FormData): Promise<BotSettingState> {
+  await requireAdmin();
+  return settle(await setBotModel({ model: String(formData.get("model") ?? ""), code: code(formData) }));
 }
 
 /** Reenvía las respuestas que no salieron en las últimas 24 horas (sin verlas). */

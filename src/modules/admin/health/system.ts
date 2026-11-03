@@ -7,6 +7,7 @@ import { buildInfo, type BuildInfo } from "@/lib/build-info";
 import { healthReport, type HealthReport } from "@/lib/health";
 import { describeError } from "@/lib/safe-log";
 import { requireAdmin } from "@/lib/session";
+import { collectBotAlerts, isWarning, type BotAlert } from "@/modules/bot/alerts";
 import { CLEANUP_JOB } from "@/modules/system/cron-runs";
 import { CLEANUP_RUNS_SHOWN, healthcheckOk, healthProblems, type CleanupRunSummary, type HealthProblem } from "./health-view";
 
@@ -22,6 +23,8 @@ export type SystemHealth = {
   latencyMs: number | null;
   lastCleanup: CleanupRunSummary | null;
   build: BuildInfo;
+  /** Las alertas del bot (src/modules/bot/alerts.ts): las fallas cuentan como un problema. */
+  botAlerts: BotAlert[];
   problems: HealthProblem[];
 };
 
@@ -30,6 +33,7 @@ async function collectHealth(now: Date): Promise<SystemHealth> {
   const report = await healthReport({ latestAppliedMigration });
   let latencyMs: number | null = null;
   let lastCleanup: CleanupRunSummary | null = null;
+  let botAlerts: BotAlert[] = [];
   if (report.databaseError === null) {
     try {
       const start = performance.now();
@@ -41,12 +45,14 @@ async function collectHealth(now: Date): Promise<SystemHealth> {
         .where(eq(cronRun.job, CLEANUP_JOB))
         .orderBy(desc(cronRun.startedAt))
         .limit(1);
+      botAlerts = await collectBotAlerts(now);
     } catch (error) {
       console.error("[salud] no se pudo consultar la base", describeError(error));
     }
   }
-  const problems = healthProblems({ report, lastCleanup, builtAt: build.builtAt, now });
-  return { report, healthcheckOk: healthcheckOk(report), latencyMs, lastCleanup, build, problems };
+  const failures = botAlerts.filter((alert) => !isWarning(alert)).length;
+  const problems = healthProblems({ report, lastCleanup, builtAt: build.builtAt, now, botAlerts: failures });
+  return { report, healthcheckOk: healthcheckOk(report), latencyMs, lastCleanup, build, botAlerts, problems };
 }
 
 /** Todo lo que muestra la sección Estado de /admin/salud. */
@@ -55,11 +61,11 @@ export async function systemHealth(now = new Date()): Promise<SystemHealth> {
   return collectHealth(now);
 }
 
-/** Para la tarjeta del Inicio: los problemas (vacío: todo en orden). */
-export async function healthSummary(now = new Date()): Promise<{ problems: HealthProblem[] }> {
+/** Para el Inicio: los problemas de la tarjeta (vacío: todo en orden) y las alertas del bot de arriba. */
+export async function healthSummary(now = new Date()): Promise<{ problems: HealthProblem[]; botAlerts: BotAlert[] }> {
   await requireAdmin();
-  const { problems } = await collectHealth(now);
-  return { problems };
+  const { problems, botAlerts } = await collectHealth(now);
+  return { problems, botAlerts };
 }
 
 export type DatabaseTable = { name: string; bytes: number; rows: number };

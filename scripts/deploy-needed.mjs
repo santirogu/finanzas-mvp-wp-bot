@@ -21,6 +21,7 @@ export const SKIP_PATTERNS = [
   /\.test\.tsx?$/, // pruebas unitarias, de integración y de componentes
   /^docker\//,
   /^scripts\/(?!seed\.ts$)/, // herramientas de desarrollo (seed.ts sí corre en el despliegue)
+  /^src\/modules\/bot\/eval\//, // el set y la calificación de `pnpm bot:eval` (la app no los usa)
   /^(eslint\.config\.mjs|vitest(\.mutation)?\.config\.mts|playwright\.config\.ts|stryker\.config\.mjs|docker-compose\.yml|\.env\.example|\.gitignore)$/,
   /^LICENSE$/,
 ];

@@ -12,7 +12,7 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("./auth", () => ({ auth: { api: { getSession: mocks.getSession } } }));
 
-const { TWO_FACTOR_SETUP_PATH, getCurrentUser, requireAdmin, requireAdminRole, requireSuperAdmin, requireUser } =
+const { TWO_FACTOR_SETUP_PATH, canAdminister, getCurrentUser, requireAdmin, requireAdminRole, requireSuperAdmin, requireUser } =
   await import("./session");
 
 const sessionUser = {
@@ -147,6 +147,17 @@ describe("requireAdmin", () => {
       superAdmin: false,
       twoFactorEnabled: true,
     });
+  });
+});
+
+describe("canAdminister (lo de admin fuera de /admin, sin redirigir)", () => {
+  const user = { id: "u1", name: "Ana", email: "ana@test.local", timezone: "America/Bogota", currency: "COP", superAdmin: false };
+
+  it("solo con el rol de admin y la verificación en dos pasos, como requireAdmin", () => {
+    expect(canAdminister({ ...user, role: "admin", twoFactorEnabled: true })).toBe(true);
+    expect(canAdminister({ ...user, role: "admin", superAdmin: true, twoFactorEnabled: true })).toBe(true);
+    expect(canAdminister({ ...user, role: "admin", twoFactorEnabled: false })).toBe(false);
+    expect(canAdminister({ ...user, role: "user", twoFactorEnabled: true })).toBe(false);
   });
 });
 

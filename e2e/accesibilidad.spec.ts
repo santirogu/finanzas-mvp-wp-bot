@@ -51,7 +51,7 @@ for (const [colorScheme, scheme] of Object.entries(SCHEMES) as [keyof typeof SCH
     test.use({ colorScheme });
 
     test.describe("páginas públicas", () => {
-      for (const path of ["/", "/login", "/registro", "/privacidad", "/eliminar-datos", "/cuenta-eliminada"]) {
+      for (const path of ["/", "/login", "/registro", "/ayuda", "/privacidad", "/eliminar-datos", "/cuenta-eliminada"]) {
         test(`${path} no tiene problemas graves de accesibilidad`, async ({ page }) => {
           await page.goto(path);
           expect(await seriousViolations(page)).toEqual([]);

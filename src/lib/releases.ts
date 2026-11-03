@@ -35,6 +35,7 @@ const RELEASE = z.object({
 
 /** Los cambios de las notas de una release (scripts/release.mjs): sus líneas "- …", sin negritas. */
 export function releaseChanges(body: string | null): string[] {
+  // Stryker disable next-line StringLiteral: sin notas, cualquier texto sin líneas "- " da lo mismo (ningún cambio)
   return (body ?? "")
     .split("\n")
     .filter((line) => line.startsWith("- "))

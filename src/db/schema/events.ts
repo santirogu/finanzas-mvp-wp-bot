@@ -28,6 +28,16 @@ export const accountEventType = pgEnum("account_event_type", [
   "bot_limits_changed",
   "bot_monthly_limit_changed",
   "bot_replies_resent",
+  "bot_model_changed",
+  // Configuración de la app (/admin/configuracion), con admin_id y sin cuenta: los registros y las invitaciones.
+  "signup_mode_changed",
+  "signup_invite_added",
+  "signup_invite_removed",
+  // El aviso para todos (también de Configuración): publicarlo (o cambiarlo) y quitarlo.
+  "notice_published",
+  "notice_removed",
+  // Los valores de la app (también de Configuración): los avisos por defecto y los umbrales.
+  "app_values_changed",
 ]);
 
 /** Detalle de un evento: el motivo de una desvinculación o de un intento fallido. */
@@ -45,9 +55,31 @@ export type AccountEventDetails = {
   /** El tope mensual de tokens que dejó el admin, y el de antes; null: sin tope (bot_monthly_limit_changed). */
   monthlyLimit?: number | null;
   previousMonthlyLimit?: number | null;
+  /** El modelo de Claude que dejó el admin, y el de antes (bot_model_changed). */
+  model?: string;
+  previousModel?: string;
   /** Cuántas respuestas reenvió el admin y cuántas no salieron otra vez (bot_replies_resent). */
   resent?: number;
   failed?: number;
+  /** Cómo quedaron los registros, y cómo estaban (signup_mode_changed). */
+  signupMode?: "open" | "closed" | "invite";
+  previousSignupMode?: "open" | "closed" | "invite";
+  /** El correo invitado o quitado (signup_invite_added, signup_invite_removed): solo lo ve el admin. */
+  email?: string;
+  /** El aviso que se publicó o se quitó (notice_published, notice_removed): el texto en español, el tipo y hasta cuándo. */
+  notice?: { message: string; tone: "info" | "important"; endsAt: string };
+  /** Cómo quedaron los valores de la app, y cómo estaban (app_values_changed). */
+  appValues?: AppValuesDetail;
+  previousAppValues?: AppValuesDetail;
+};
+
+/** Los valores de la app, como los guarda el historial (src/modules/app-values/values.ts). */
+export type AppValuesDetail = {
+  upcomingEnabled: boolean;
+  upcomingDays: number;
+  budgetNearShare: number;
+  recurringMinMonths: number;
+  recurringWindow: number;
 };
 
 export const accountEvent = pgTable(

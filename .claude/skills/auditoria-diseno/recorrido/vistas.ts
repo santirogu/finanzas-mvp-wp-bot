@@ -1,6 +1,6 @@
 import { randomInt } from "node:crypto";
 import { expect, type Page } from "@playwright/test";
-import { PASSWORD, adminCommand, uniqueEmail, visible } from "../../../../e2e/helpers";
+import { PASSWORD, adminCommand, closeToasts, toast, uniqueEmail, visible } from "../../../../e2e/helpers";
 import { MES_ANTERIOR, type Datos, type Persona } from "./datos";
 
 // Las páginas y los estados que recorre la auditoría. Para el modo "cambios", el skill elige las
@@ -87,6 +87,16 @@ export const VISTAS: Vista[] = [
   { id: "privacidad", titulo: "Política de privacidad", ruta: fija("/privacidad") },
   { id: "eliminar-datos", titulo: "Eliminar mis datos", ruta: fija("/eliminar-datos") },
   { id: "cuenta-eliminada", titulo: "Cuenta eliminada", ruta: fija("/cuenta-eliminada") },
+  {
+    // Sin sesión, /ayuda es la versión pública (src/proxy.ts): la barra de la portada y las páginas de la app en negrita.
+    id: "ayuda-sin-sesion",
+    titulo: "Ayuda sin sesión con todos los temas y las preguntas frecuentes abiertos",
+    ruta: fija("/ayuda"),
+    preparar: async (page) => {
+      for (const tema of await visible(page.locator("details summary")).all()) await tema.click();
+      await expect(visible(page.locator("details[open]"))).toHaveCount(6 + 12);
+    },
+  },
 
   // Una cuenta nueva, sin movimientos
   { id: "resumen-vacio", titulo: "Resumen sin movimientos", persona: "vacia", ruta: fija("/dashboard") },
@@ -126,14 +136,38 @@ export const VISTAS: Vista[] = [
     },
   },
   { id: "cuenta-whatsapp", titulo: "Mi cuenta con el WhatsApp vinculado", persona: "datos", ruta: fija("/cuenta") },
+  { id: "configuracion", titulo: "Configuración: presupuestos (uno bien, uno cerca y uno pasado), avisos, apariencia e idioma", persona: "datos", ruta: fija("/configuracion") },
+  { id: "configuracion-vacia", titulo: "Configuración sin presupuestos", persona: "vacia", ruta: fija("/configuracion") },
+  {
+    id: "presupuestos-agregar",
+    titulo: "Agregar un presupuesto (la ventana)",
+    persona: "datos",
+    ruta: fija("/configuracion"),
+    preparar: async (page) => {
+      await visible(page.getByRole("button", { name: "Agregar un presupuesto" })).click();
+      await expect(page.getByRole("dialog")).toBeVisible();
+    },
+  },
   {
     id: "ayuda",
-    titulo: "Ayuda con todos los temas abiertos",
+    titulo: "Ayuda con todos los temas y las preguntas frecuentes abiertos",
     persona: "datos",
     ruta: fija("/ayuda"),
     preparar: async (page) => {
       for (const tema of await visible(page.locator("details summary")).all()) await tema.click();
-      await expect(visible(page.locator("details[open]"))).toHaveCount(5);
+      await expect(visible(page.locator("details[open]"))).toHaveCount(6 + 12);
+    },
+  },
+  {
+    // El mismo que ve una cuenta nueva en el Resumen; desde Ayuda, para no depender de una cuenta recién creada.
+    id: "tutorial",
+    titulo: "Tutorial de bienvenida (paso de WhatsApp, el más largo)",
+    persona: "datos",
+    ruta: fija("/ayuda"),
+    preparar: async (page) => {
+      await visible(page.getByRole("button", { name: "Ver el tutorial de bienvenida" })).click();
+      for (let i = 0; i < 2; i++) await dialogo(page).getByRole("button", { name: "Siguiente" }).click();
+      await expect(dialogo(page).getByRole("heading", { name: "Anota por WhatsApp" })).toBeVisible();
     },
   },
   // Con sesión: sin ella, el proxy lleva al login cualquier dirección que no conoce (a propósito).
@@ -234,6 +268,7 @@ export const VISTAS: Vista[] = [
   { id: "egresos-mes-anterior", titulo: "Egresos del mes anterior", persona: "datos", ruta: fija(`/egresos?mes=${MES_ANTERIOR}`) },
   { id: "fijos", titulo: "Fijos con cuatro meses de datos (detectados, agregados y quitados)", persona: "datos", ruta: fija("/gastos-fijos") },
   { id: "reportes", titulo: "Reportes con cuatro meses de datos (promedios, sin los gastos fijos)", persona: "datos", ruta: fija("/reportes") },
+  { id: "reportes-ultimo-mes", titulo: "Reportes del último mes (tres cifras, sin el promedio ni el mes de más gasto)", persona: "datos", ruta: fija("/reportes?periodo=1-mes") },
   {
     id: "reportes-detalle",
     titulo: "Reportes: la tabla mes a mes abierta y el detalle de un mes del gráfico",
@@ -264,6 +299,7 @@ export const VISTAS: Vista[] = [
 
   // Lo más largo que acepta la app: textos, montos, categorías y una lista de 25 egresos
   { id: "resumen-extremo", titulo: "Resumen con textos y montos máximos", persona: "admin", ruta: fija("/dashboard") },
+  { id: "configuracion-extremo", titulo: "Configuración con presupuestos de la categoría más larga y los montos máximos", persona: "admin", ruta: fija("/configuracion") },
   { id: "ingresos-extremo", titulo: "Ingresos con textos y montos máximos", persona: "admin", ruta: fija("/ingresos") },
   { id: "egresos-extremo", titulo: "Egresos: 25 movimientos y textos máximos", persona: "admin", ruta: fija("/egresos") },
   { id: "fijos-extremo", titulo: "Fijos con textos y montos máximos", persona: "admin", ruta: fija("/gastos-fijos") },
@@ -426,6 +462,54 @@ export const VISTAS: Vista[] = [
     ruta: fija("/admin/bot"),
     preparar: async (page) => {
       await visible(page.getByRole("region", { name: "Configuración" })).getByRole("button", { name: "Cambiar los topes por cuenta" }).click();
+      await expect(dialogo(page)).toBeVisible();
+    },
+  },
+  // Los registros quedan abiertos: cerrarlos dejaría sin registrarse a los demás grupos del recorrido. Invitar un
+  // correo no cambia quién puede crear una cuenta mientras estén abiertos.
+  {
+    id: "admin-configuracion",
+    titulo: "Administración: configuración (registros e invitados)",
+    persona: "admin",
+    ruta: fija("/admin/configuracion"),
+    preparar: async (page) => {
+      const registros = visible(page.getByRole("region", { name: "Registros" }));
+      const email = uniqueEmail();
+      await registros.getByLabel("Correo", { exact: true }).fill(email);
+      await registros.getByRole("button", { name: "Invitar" }).click();
+      // Sin el aviso de "Se invitó a…" (se espera a que salga): tapaba el último "Quitar" al medir el foco.
+      await expect(toast(page, `Se invitó a ${email}`)).toBeVisible();
+      await closeToasts(page);
+    },
+  },
+  {
+    id: "admin-configuracion-registros",
+    titulo: "Administración: ventana para cambiar quién puede crear una cuenta",
+    persona: "admin",
+    ruta: fija("/admin/configuracion"),
+    preparar: async (page) => {
+      await visible(page.getByRole("button", { name: "Cambiar quién puede crear una cuenta" })).click();
+      await expect(dialogo(page)).toBeVisible();
+    },
+  },
+  // Solo se abre: publicarlo cambiaría lo que ven todos los grupos del recorrido.
+  {
+    id: "admin-configuracion-aviso",
+    titulo: "Administración: ventana para publicar el aviso para todos",
+    persona: "admin",
+    ruta: fija("/admin/configuracion"),
+    preparar: async (page) => {
+      await visible(page.getByRole("region", { name: "Aviso para todos" })).getByRole("button", { name: "Publicar un aviso" }).click();
+      await expect(dialogo(page)).toBeVisible();
+    },
+  },
+  {
+    id: "admin-configuracion-valores",
+    titulo: "Administración: ventana para cambiar los valores de la app",
+    persona: "admin",
+    ruta: fija("/admin/configuracion"),
+    preparar: async (page) => {
+      await visible(page.getByRole("region", { name: "Valores de la app" })).getByRole("button", { name: "Cambiar los valores" }).click();
       await expect(dialogo(page)).toBeVisible();
     },
   },

@@ -4,7 +4,7 @@ import { db } from "@/db";
 import { transaction, user, whatsappMessage } from "@/db/schema";
 import type { ExtractionResult, Extractor } from "@/modules/bot/claude-extractor";
 import type { RawTransaction } from "@/modules/bot/normalize";
-import type { SendResult } from "@/modules/whatsapp/client";
+import type { MediaDownloader, SendResult } from "@/modules/whatsapp/client";
 import type { IncomingMessage } from "@/modules/whatsapp/payload";
 
 export async function createUser(overrides: Partial<typeof user.$inferInsert> = {}) {
@@ -22,10 +22,32 @@ export function incoming(text: string | null, from = "573001112233", id?: string
     id: id ?? `wamid.test.${Date.now()}.${messageSeq++}`,
     from,
     text,
+    image: null,
     type: text === null ? "audio" : "text",
     timestamp: Math.floor(Date.now() / 1000),
     profileName: null,
   };
+}
+
+/** Una foto entrante (la de una factura), con lo que escribió junto a ella. */
+export function incomingPhoto(caption: string | null = null, from = "573001112233", mediaId = "1234567890"): IncomingMessage {
+  return { ...incoming(null, from), type: "image", image: { id: mediaId, caption } };
+}
+
+/** Un PNG de 1×1: lo mínimo para que el bot lo reconozca como imagen. */
+export const TINY_PNG = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=",
+  "base64",
+);
+
+/** Descarga falsa de las fotos de Meta: devuelve `file` (por defecto, TINY_PNG) o falla con `fail`. */
+export function fakeDownloader(options: { file?: Buffer; fail?: string } = {}): MediaDownloader & { ids: string[] } {
+  const fn = async (mediaId: string) => {
+    fn.ids.push(mediaId);
+    return options.fail ? { ok: false as const, error: options.fail } : { ok: true as const, data: options.file ?? TINY_PNG };
+  };
+  fn.ids = [] as string[];
+  return fn;
 }
 
 /** Extractor falso: devuelve lo indicado sin llamar a Claude. Usa la fecha "hoy" que recibe. */

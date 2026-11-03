@@ -149,10 +149,9 @@ export const OUTCOME_TEXTS: Readonly<Record<Locale, Record<Outcome, string>>> = 
     suspendida: "Cuenta suspendida",
     pendiente: "Sin procesar todavía",
   },
-  // Los comandos van como se escriben en el bot, que responde en español.
   en: {
     registrado: "Added transactions",
-    comando: "Commands (balance, reporte, deshacer, ayuda)",
+    comando: "Commands (balance, report, undo, help)",
     respuesta: "Reply without adding anything",
     vinculado: "Linked their number",
     tope_claude: "Hit the Claude limit",

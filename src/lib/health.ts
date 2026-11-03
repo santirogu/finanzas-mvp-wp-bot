@@ -24,6 +24,7 @@ export const MIGRATION_COUNT = journal.entries.length;
 
 /** Cuántas migraciones del código tiene una base cuya última aplicada es `applied`. */
 export const appliedMigrationCount = (applied: number | null) =>
+  // Stryker disable next-line ConditionalExpression: sin el null, "when <= null" compara con 0 y también da 0
   applied === null ? 0 : journal.entries.filter((entry) => entry.when <= applied).length;
 
 /** El nombre de la migración con ese `when` ("0022_nombre-en-ingles-de-las-categorias"), o null si el código no la tiene. */

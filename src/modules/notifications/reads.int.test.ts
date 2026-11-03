@@ -54,7 +54,14 @@ describe("getReadNotifications y markNotificationsRead", () => {
     expect((await rowsOf(user.id)).map((r) => r.id).sort()).toEqual(["pago|2026-10|arriendo", "pago|2026-10|gimnasio"]);
   });
 
-  it.each([[[]], [["otro|2026-10|x"]], [["pago|2026-10|x", "mal"]], [[null]], [Array.from({ length: 51 }, (_, i) => `pago|2026-10|g${i}`)]])(
+  it("también el recordatorio de registro y las alertas del bot (cada id con su tipo)", async () => {
+    const user = await createUser();
+    const ids = ["registro|2026-10-16", "bot|whatsapp_token|2026-10-23T14:05:00.000Z", "bot|monthly_limit|2026-11-01"];
+    expect(await markNotificationsRead(user.id, ids)).toEqual({ ok: true, message: "Se marcaron 3 como leídas", tone: "success" });
+    expect(await getReadNotifications(user.id)).toEqual(new Set(ids));
+  });
+
+  it.each([[[]], [["otro|2026-10|x"]], [["bot|otra|2026-10-23"]], [["pago|2026-10|x", "mal"]], [[null]], [Array.from({ length: 51 }, (_, i) => `pago|2026-10|g${i}`)]])(
     "con %j no marca nada",
     async (ids) => {
       const user = await createUser();

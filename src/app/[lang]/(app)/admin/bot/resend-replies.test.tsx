@@ -1,7 +1,7 @@
 import { screen, within } from "@testing-library/react";
 import { findToast, renderWithToaster as render } from "../../../../../../test/toaster";
 import userEvent from "@testing-library/user-event";
-import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // La Server Action se simula: aquí se prueba qué se muestra y qué se envía.
 const actions = vi.hoisted(() => ({
@@ -14,16 +14,6 @@ const actions = vi.hoisted(() => ({
 vi.mock("./actions", () => actions);
 
 const { ResendReplies } = await import("./resend-replies");
-
-beforeAll(() => {
-  HTMLDialogElement.prototype.showModal = function (this: HTMLDialogElement) {
-    this.setAttribute("open", "");
-  };
-  HTMLDialogElement.prototype.close = function (this: HTMLDialogElement) {
-    this.removeAttribute("open");
-    this.dispatchEvent(new Event("close"));
-  };
-});
 
 beforeEach(() => {
   actions.resendRepliesAction.mockReset();

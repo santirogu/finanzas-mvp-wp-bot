@@ -42,7 +42,7 @@ describe("AccountMenu", () => {
     expect(toggle()).toHaveTextContent("S");
   });
 
-  it("al tocarlo abre la tarjeta: nombre, correo, Mi cuenta, Ayuda y Salir", async () => {
+  it("al tocarlo abre la tarjeta: nombre, correo, Mi cuenta, Configuración, Ayuda y Salir", async () => {
     renderMenu();
     await userEvent.click(toggle());
     expect(toggle()).toHaveAttribute("aria-expanded", "true");
@@ -51,6 +51,7 @@ describe("AccountMenu", () => {
     expect(card()).toHaveTextContent("Santiago Rodriguez Gutierrez");
     expect(card()).toHaveTextContent("santi@test.local");
     expect(screen.getByRole("link", { name: "Mi cuenta" })).toHaveAttribute("href", "/cuenta");
+    expect(screen.getByRole("link", { name: "Configuración" })).toHaveAttribute("href", "/configuracion");
     expect(screen.getByRole("link", { name: "Ayuda" })).toHaveAttribute("href", "/ayuda");
     expect(screen.getByRole("button", { name: "Salir" })).toHaveClass("text-danger");
   });
@@ -64,6 +65,7 @@ describe("AccountMenu", () => {
 
   it.each([
     ["/cuenta", "Mi cuenta", "Ayuda"],
+    ["/configuracion", "Configuración", "Mi cuenta"],
     ["/ayuda", "Ayuda", "Mi cuenta"],
   ])("en %s, marca %s como la página actual (y no %s)", async (pathname, current, other) => {
     navigation.pathname = pathname;
@@ -114,6 +116,8 @@ describe("AccountMenu", () => {
     await userEvent.tab();
     expect(screen.getByRole("link", { name: "Mi cuenta" })).toHaveFocus();
     await userEvent.tab();
+    expect(screen.getByRole("link", { name: "Configuración" })).toHaveFocus();
+    await userEvent.tab();
     expect(screen.getByRole("link", { name: "Ayuda" })).toHaveFocus();
     await userEvent.tab();
     expect(screen.getByRole("button", { name: "Salir" })).toHaveFocus();
@@ -123,7 +127,7 @@ describe("AccountMenu", () => {
     expect(card()).not.toBeVisible();
   });
 
-  it.each(["Mi cuenta", "Ayuda"])("al elegir %s se cierra", async (name) => {
+  it.each(["Mi cuenta", "Configuración", "Ayuda"])("al elegir %s se cierra", async (name) => {
     renderMenu();
     await userEvent.click(toggle());
     // jsdom no navega (lo dice en la consola): aquí el enlace solo tiene que cerrar la tarjeta.

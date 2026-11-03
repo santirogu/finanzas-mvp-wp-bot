@@ -56,17 +56,36 @@ export default function PrivacyPage() {
               guardan hasta que elimines tu cuenta.
             </li>
             <li>
-              <strong>Tu configuración de las notificaciones:</strong> si en <strong>Mi cuenta</strong> prendes
+              <strong>Tu configuración de las notificaciones:</strong> si en <strong>Configuración</strong> prendes
               o apagas los avisos de próximos pagos, o cambias con cuántos días de anticipación llegan, guardamos
               esa elección. Se guarda hasta que elimines tu cuenta.
+            </li>
+            <li>
+              <strong>Tu configuración del recordatorio de registro:</strong> si en <strong>Configuración</strong>{" "}
+              prendes o apagas el recordatorio de registro, o cambias después de cuántos días sin registrar nada
+              llega, guardamos esa elección. Se guarda hasta que elimines tu cuenta. Para saber si toca, la app mira
+              cuándo registraste tu último movimiento: no guarda nada más.
             </li>
             <li>
               <strong>Las notificaciones que marcas como leídas:</strong> si en la campana marcas una
               notificación como leída, guardamos cuál fue y cuándo, hasta que elimines tu cuenta.
             </li>
             <li>
+              <strong>Tus presupuestos:</strong> si en <strong>Configuración → Presupuestos</strong> le pones un tope por mes a
+              una categoría de egresos, guardamos la categoría y el monto. Se guardan hasta que los quites o
+              elimines tu cuenta.
+            </li>
+            <li>
               <strong>Datos de WhatsApp, si conectas tu número:</strong> tu número de teléfono y el
-              contenido de los mensajes que envías al bot, junto con las respuestas del bot.
+              contenido de los mensajes que envías al bot, junto con las respuestas del bot. De las fotos de
+              facturas guardamos solo el texto que escribiste con ellas y lo que se registró: la foto no se
+              guarda.
+            </li>
+            <li>
+              <strong>Si te invitamos a crear una cuenta:</strong> guardamos el correo invitado, quién lo invitó y
+              cuándo, y la fecha en que creaste tu cuenta. El correo también queda en el registro de cambios de la
+              administración. Si eliminas tu cuenta, se borran ambos; si no la creaste, puedes pedirnos que los
+              borremos.
             </li>
             <li>
               <strong>Historial de tu cuenta:</strong> la fecha en que te registraste y la de cada cambio de tu
@@ -78,12 +97,20 @@ export default function PrivacyPage() {
               que identifica la red) y navegador, usados solo para mantener tu sesión segura.
             </li>
             <li>
-              <strong>Tu preferencia de apariencia:</strong> si en <strong>Mi cuenta</strong> eliges{" "}
-              <strong>Claro</strong> u <strong>Oscuro</strong>, se guarda solo en tu navegador, en este
-              dispositivo. No llega a nuestros servidores.
+              <strong>Tu preferencia de apariencia:</strong> si en <strong>Configuración</strong> eliges{" "}
+              <strong>Sistema</strong>, <strong>Claro</strong> u <strong>Oscuro</strong>, se guarda en dos lugares:
+              <ul>
+                <li>
+                  en tu cuenta, hasta que la elimines, para mostrarte la app así en cualquier dispositivo donde
+                  inicies sesión;
+                </li>
+                <li>
+                  en una cookie de tu navegador (<code>tema</code>), que dura un año.
+                </li>
+              </ul>
             </li>
             <li>
-              <strong>Tu idioma:</strong> si eliges el idioma en <strong>Mi cuenta</strong>, se guarda en dos
+              <strong>Tu idioma:</strong> si eliges el idioma en <strong>Configuración</strong>, se guarda en dos
               lugares:
               <ul>
                 <li>
@@ -94,7 +121,15 @@ export default function PrivacyPage() {
                   en una cookie de tu navegador (<code>idioma</code>), que dura un año.
                 </li>
               </ul>
-              <p>Si no lo eliges, usamos el idioma que pide tu navegador, sin guardarlo.</p>
+              <p>
+                Si no lo eliges, la app sale en español. Sin sesión, puedes cambiarlo arriba en la portada, al
+                iniciar sesión o al registrarte: se guarda solo en esa cookie de tu navegador.
+              </p>
+            </li>
+            <li>
+              <strong>Los avisos generales:</strong> si ocultas con la ✕ un aviso de la app (por ejemplo, de un
+              mantenimiento), una cookie de tu navegador (<code>aviso-cerrado</code>) lo recuerda. Dura 32 días y no
+              se asocia a tu cuenta.
             </li>
             <li>
               <strong>Estadísticas de uso anónimas:</strong> con Vercel Web Analytics contamos:
@@ -162,6 +197,10 @@ export default function PrivacyPage() {
               tenían pasan a “Otros”; si la archiva, la conservan.
             </li>
             <li>
+              Decidir quién crea una cuenta: el administrador abre o cierra los registros, o los deja solo con
+              invitación. Ve los correos invitados y si ya crearon su cuenta.
+            </li>
+            <li>
               Cuidar el funcionamiento del bot de WhatsApp. El administrador ve, por cuenta o por número:
               <ul>
                 <li>
@@ -194,8 +233,10 @@ export default function PrivacyPage() {
               del bot.
             </li>
             <li>
-              <strong>Anthropic (Claude):</strong> recibe el texto de tus mensajes de WhatsApp para
-              interpretarlos (monto, tipo, categoría y fecha).
+              <strong>Anthropic (Claude):</strong> recibe el texto de tus mensajes de WhatsApp y las fotos de
+              facturas que le envías al bot, para interpretarlos (monto, tipo, categoría y fecha). Una factura
+              puede traer otros datos, como tu nombre, tu cédula o tu NIT: si no quieres compartirlos, tápalos
+              antes de tomar la foto o escribe el gasto.
             </li>
             <li>
               <strong>Vercel</strong> (alojamiento de la aplicación, estadísticas de uso y medición

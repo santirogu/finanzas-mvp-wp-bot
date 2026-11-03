@@ -24,6 +24,9 @@ export const AUTH_ERROR_TEXTS = texts(
       TOTP_ALREADY_ENABLED: "La verificación en dos pasos ya está activa.",
       ADMIN_ONLY: "La verificación en dos pasos es solo para administradores.",
       TWO_FACTOR_ALREADY_VERIFIED: "La verificación en dos pasos ya está activa.",
+      // Los registros cerrados o solo con invitación (Configuración del admin, src/modules/auth/signup-policy.ts).
+      SIGNUP_CLOSED: `Por ahora los registros están cerrados. Si quieres una cuenta, escríbenos a ${CONTACT_EMAIL}.`,
+      SIGNUP_NOT_INVITED: `Por ahora solo se puede crear una cuenta con invitación, y ese correo no está invitado. Si quieres una, escríbenos a ${CONTACT_EMAIL}.`,
     } as Record<string, string>,
     // Better Auth limita los intentos de login y registro por IP y responde 429 sin código de error (su
     // mensaje viene en inglés).
@@ -56,6 +59,8 @@ export const AUTH_ERROR_TEXTS = texts(
         TOTP_ALREADY_ENABLED: "Two-step verification is already on.",
         ADMIN_ONLY: "Two-step verification is only for administrators.",
         TWO_FACTOR_ALREADY_VERIFIED: "Two-step verification is already on.",
+        SIGNUP_CLOSED: `Sign-ups are closed for now. If you'd like an account, write to us at ${CONTACT_EMAIL}.`,
+        SIGNUP_NOT_INVITED: `For now you can only create an account with an invitation, and that email isn't invited. If you'd like one, write to us at ${CONTACT_EMAIL}.`,
       },
       tooManyAttempts: "Too many attempts. Wait a few seconds and try again.",
       accountLocked: "For security, the account was locked after several failed attempts. Try again later.",

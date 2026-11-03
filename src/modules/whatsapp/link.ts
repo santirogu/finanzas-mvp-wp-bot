@@ -68,8 +68,9 @@ export async function createLinkCode(userId: string) {
   throw new Error("No se pudo generar el código");
 }
 
+/** `locale`: el idioma de la cuenta (`user.locale`; null si nunca lo eligió), para la respuesta del bot. */
 export type LinkResult =
-  { ok: true; userId: string; name: string } | { ok: false; reason: "invalid" | "rate_limited" };
+  { ok: true; userId: string; name: string; locale: string | null } | { ok: false; reason: "invalid" | "rate_limited" };
 
 /**
  * Vincula el número que envió "VINCULAR <código>" a la cuenta dueña del código. Máximo
@@ -128,10 +129,10 @@ export async function consumeLinkCode(phone: string, code: string): Promise<Link
     await recordEvents(events, tx);
 
     const [owner] = await tx
-      .select({ name: user.name })
+      .select({ name: user.name, locale: user.locale })
       .from(user)
       .where(eq(user.id, pending.userId));
-    return { ok: true, userId: pending.userId, name: owner?.name ?? "" } as const;
+    return { ok: true, userId: pending.userId, name: owner?.name ?? "", locale: owner?.locale ?? null } as const;
   });
 }
 
@@ -145,7 +146,7 @@ export async function getLinkForUser(userId: string) {
 
 export async function getUserByPhone(phone: string) {
   const [row] = await db
-    .select({ id: user.id, name: user.name, timezone: user.timezone, currency: user.currency, suspendedAt: user.suspendedAt })
+    .select({ id: user.id, name: user.name, timezone: user.timezone, currency: user.currency, locale: user.locale, suspendedAt: user.suspendedAt })
     .from(whatsappLink)
     .innerJoin(user, eq(user.id, whatsappLink.userId))
     .where(eq(whatsappLink.phone, phone));

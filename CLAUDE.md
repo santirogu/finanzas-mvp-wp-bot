@@ -189,12 +189,14 @@ de Vercel ni muevas las migraciones fuera del job `deploy`.
   (`src/i18n/navigation.ts`), nunca con `usePathname()` (`src/i18n/guard.test.ts` lo revisa). Un texto nuevo en una página que ya tiene
   inglés va con `texts()` en los dos idiomas, nunca escrito solo en español; los montos y las fechas, con el
   idioma de la página (`formatMoney(…, locale)`). Una Server Action lee el idioma con `getRequestLocale()`
-  (`src/i18n/request.ts`) y lo pasa a la función que arma el mensaje. `user.locale` solo lo cambia Mi
-  cuenta (`saveLanguageAction`); la cookie `idioma`, Mi cuenta y el inicio de sesión (`src/lib/auth.ts`).
-  Sin cookie, vale el idioma del navegador (`negotiateLocale`).
-- **E2E que cambian algo de toda la app** (pausar Claude, los topes del bot, la configuración): van en
-  `e2e/configuracion-*.spec.ts`, el proyecto "configuracion" de Playwright, que corre aparte (README →
-  Pruebas y CI). En paralelo con las demás les cambiaría lo que responde el bot.
+  (`src/i18n/request.ts`) y lo pasa a la función que arma el mensaje. `user.locale` solo lo cambia
+  Configuración (`saveLanguageAction`); la cookie `idioma`, Configuración y el inicio de sesión (`src/lib/auth.ts`).
+  Sin cookie, español (decisión del dueño: el idioma del navegador no cuenta); sin sesión se cambia con el
+  selector de la portada, el login, el registro y la Ayuda (`chooseLanguageAction`, que solo vuelve a esas páginas).
+- **E2E que cambian algo de toda la app** (pausar Claude, los topes del bot, los registros): van en
+  `e2e/configuracion-*.spec.ts`, el proyecto "configuracion" de Playwright, que corre aparte y de a un
+  archivo (README → Pruebas y CI). En paralelo con las demás les cambiaría lo que responde el bot o no
+  las dejaría crear cuentas; cada prueba empieza con la configuración de siempre (`beforeEach`).
 - **Auditoría de diseño:** usa el skill `/auditoria-diseno` (README → Pruebas y CI).
   - Antes de abrir un PR que cambie páginas, componentes, `globals.css` o el layout, corre
     `/auditoria-diseno cambios`.
@@ -223,7 +225,7 @@ de Vercel ni muevas las migraciones fuera del job `deploy`.
   `chart-7` y `chart-rest`), no los colores con significado. El borde de un campo es `border-control` (3:1
   contra la tarjeta y el fondo, WCAG 1.4.11), nunca `border-border`, que es para divisores y tarjetas.
   Si cambias un color, `src/color-contrast.test.ts` revisa ese contraste (axe solo el del texto).
-  El modo oscuro está en dos bloques iguales (el del sistema y el elegido en Mi cuenta, `src/lib/theme.ts`):
+  El modo oscuro está en dos bloques iguales (el del sistema y el elegido en Configuración, `src/lib/theme.ts`):
   cambia los dos (la prueba exige que coincidan) y nunca uses la variante `dark:` de Tailwind, que solo
   mira el sistema (`src/global-styles.test.ts` lo revisa).
 - **Marca** (README → Marca): el nombre de la app sale de `BRAND_NAME` (`src/lib/brand.ts`), nunca escrito a

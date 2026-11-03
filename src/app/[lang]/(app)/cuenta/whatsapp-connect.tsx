@@ -5,10 +5,12 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { useTexts } from "@/i18n/client";
 import { texts } from "@/i18n/texts";
+import { BOT_EXAMPLES, LINK_WORD } from "@/modules/bot/help";
 import { generateLinkCodeAction } from "@/modules/whatsapp/actions";
 import { formatPhone } from "@/modules/whatsapp/phone";
 
-// Los ejemplos y el mensaje para el bot ("VINCULAR …") van en español: el bot todavía responde en español.
+// El ejemplo y el mensaje para el bot ("VINCULAR 123456" o "LINK 123456") van en el idioma de la página: el bot
+// entiende las dos palabras y le responde a la cuenta en su idioma.
 const TEXTS = texts(
   {
     intro: "Conecta tu número y registra gastos escribiendo, por ejemplo,",
@@ -50,6 +52,8 @@ export function WhatsAppConnect({
   showSimulator: boolean;
 }) {
   const t = useTexts(TEXTS);
+  const [example] = useTexts(BOT_EXAMPLES);
+  const linkWord = useTexts(LINK_WORD);
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [link, setLink] = useState<{ code: string; expiresAt: string } | null>(null);
@@ -81,7 +85,7 @@ export function WhatsAppConnect({
     return (
       <div className="mt-3 space-y-3 text-sm">
         <p className="text-muted">
-          {t.intro} <em lang="es">“me compré unos zapatos de $500.000”</em>.
+          {t.intro} <em>“{example}”</em>.
         </p>
         {expired && <p className="text-danger">{t.expired}</p>}
         {error && (
@@ -96,7 +100,7 @@ export function WhatsAppConnect({
     );
   }
 
-  const message = `VINCULAR ${link.code}`;
+  const message = `${linkWord} ${link.code}`;
   const minutesLeft = Math.max(1, Math.ceil((new Date(link.expiresAt).getTime() - now) / 60000));
 
   return (
@@ -112,7 +116,7 @@ export function WhatsAppConnect({
         )}{" "}
         {t.fromYours}
       </p>
-      <p lang="es" className="rounded-lg bg-background py-3 text-center font-mono text-lg font-semibold tracking-widest">
+      <p className="rounded-lg bg-background py-3 text-center font-mono text-lg font-semibold tracking-widest">
         {message}
       </p>
       {botNumber && (

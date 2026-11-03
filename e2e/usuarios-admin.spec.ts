@@ -142,7 +142,7 @@ test("los filtros de rol, WhatsApp, bloqueo y fecha se combinan con la búsqueda
     await expect(summary(page, "No hay cuentas con estos filtros.")).toBeVisible();
     await toggleChip(page, "Rol", "Admin", "radio");
     await expect(summary(page, "1 cuenta")).toBeVisible();
-    await expect(filtersButton(page)).toHaveAccessibleName("Filtros (activos: 2)");
+    await expect(filtersButton(page)).toHaveAccessibleName("Filtros: 2 activos");
     await visible(page.getByRole("link", { name: "Quitar filtro: Rol: Admin" })).click();
     await expect(page).not.toHaveURL(/rol=/);
     await expect(summary(page, "1 cuenta")).toBeVisible();

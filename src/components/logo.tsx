@@ -1,23 +1,19 @@
 import { BRAND_MARK, BRAND_NAME } from "@/lib/brand";
 
-// El logo de la app: el ícono (un globo de chat con un ✓) y el nombre. Con los colores de la marca de
-// cada tema (--brand y --brand-foreground): en oscuro, el cuadro verde claro y el globo oscuro. El mismo
-// dibujo de los íconos de la pestaña y del celular (src/lib/brand-mark.json).
+// El logo de la app: el ícono (la "A" de Anotado escrita con un lápiz y cruzada por un ✓) y el nombre. Con los
+// colores de la marca de cada tema (--brand y --brand-foreground): en oscuro, el cuadro verde claro y la "A"
+// oscura. El mismo dibujo de los íconos de la pestaña y del celular (src/lib/brand-mark.json).
 
 /** Solo el ícono. Decorativo: quien lo usa pone el nombre al lado (o en el aria-label del enlace). */
 export function LogoMark({ className = "size-7" }: { className?: string }) {
   return (
     <svg viewBox={BRAND_MARK.viewBox} className={`shrink-0 ${className}`} aria-hidden focusable="false">
       <rect width="32" height="32" rx={BRAND_MARK.radius} className="fill-brand" />
-      <path d={BRAND_MARK.bubble} className="fill-brand-foreground" />
-      <path
-        d={BRAND_MARK.check}
-        fill="none"
-        strokeWidth={BRAND_MARK.checkWidth}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        className="stroke-brand"
-      />
+      <path d={BRAND_MARK.letter} className="fill-brand-foreground" />
+      <path d={BRAND_MARK.tip} strokeWidth={BRAND_MARK.tipRound} strokeLinejoin="round" className="fill-brand-foreground stroke-brand-foreground" />
+      {/* El ✓, con un borde del color del fondo que corta la "A" a su alrededor. */}
+      <path d={BRAND_MARK.check} fill="none" strokeWidth={BRAND_MARK.checkCutWidth} strokeLinecap="round" strokeLinejoin="round" className="stroke-brand" />
+      <path d={BRAND_MARK.check} fill="none" strokeWidth={BRAND_MARK.checkWidth} strokeLinecap="round" strokeLinejoin="round" className="stroke-brand-foreground" />
     </svg>
   );
 }

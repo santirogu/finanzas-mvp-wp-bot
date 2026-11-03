@@ -1,21 +1,26 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getSessionCookie } from "better-auth/cookies";
-import { LOCALE_COOKIE, requestLocaleOf } from "./i18n/locales";
+import { LOCALE_COOKIE, localeOf } from "./i18n/locales";
 import { EXPIRED_SESSION_PARAM, SESSION_COOKIE_NAMES } from "./lib/expired-session";
 
 const PUBLIC_ONLY = ["/", "/login", "/registro"];
 // Páginas visibles con o sin sesión (Meta exige que la política de privacidad sea pública; a
 // /cuenta-eliminada se llega justo después de borrar la cuenta).
-const ALWAYS_PUBLIC = ["/privacidad", "/eliminar-datos", "/cuenta-eliminada"];
+export const ALWAYS_PUBLIC = ["/privacidad", "/eliminar-datos", "/cuenta-eliminada"];
+// Páginas de la app con otra versión para quien no tiene sesión, en la misma dirección: con sesión, la de la app
+// (/ayuda, con sus pestañas); sin sesión, la pública (/ayuda-publica, enlazada desde la portada, el login y el
+// registro). La pública no tiene dirección propia: si alguien la pide, va a la de la app.
+export const PUBLIC_VERSIONS: ReadonlyMap<string, string> = new Map([["/ayuda", "/ayuda-publica"]]);
 
 /**
- * La página en el idioma de la cookie o, sin ella, en el del navegador: por dentro, /dashboard se arma como
- * /es/dashboard (src/app/[lang]/, src/i18n/locales.ts), y el navegador sigue viendo /dashboard.
+ * La página en el idioma de la cookie o, sin ella, en español: por dentro, /dashboard se arma como
+ * /es/dashboard (src/app/[lang]/, src/i18n/locales.ts), y el navegador sigue viendo /dashboard. Con `page`, se
+ * arma esa otra página en la misma dirección.
  */
-function localized(request: NextRequest) {
+function localized(request: NextRequest, page = request.nextUrl.pathname) {
   const url = request.nextUrl.clone();
-  const locale = requestLocaleOf(request.cookies.get(LOCALE_COOKIE)?.value, request.headers.get("accept-language"));
-  url.pathname = `/${locale}${url.pathname === "/" ? "" : url.pathname}`;
+  const locale = localeOf(request.cookies.get(LOCALE_COOKIE)?.value);
+  url.pathname = `/${locale}${page === "/" ? "" : page}`;
   return NextResponse.rewrite(url);
 }
 
@@ -26,10 +31,18 @@ export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (ALWAYS_PUBLIC.includes(pathname)) return localized(request);
+  const publicVersion = PUBLIC_VERSIONS.get(pathname);
+  if (publicVersion && !hasSession) return localized(request, publicVersion);
+  const appVersion = [...PUBLIC_VERSIONS].find(([, version]) => version === pathname)?.[0];
+  if (appVersion) return NextResponse.redirect(new URL(appVersion, request.url));
   // La sesión ya no sirve (la validó requireUser): se borra la cookie y se muestra el login, en vez
-  // de mandarlo al dashboard por la cookie vieja (ver src/lib/expired-session.ts).
+  // de mandarlo al dashboard por la cookie vieja (ver src/lib/expired-session.ts). Se borra en una redirección a
+  // la misma dirección, no en la respuesta que arma la página: el login se arma en cada pedido (el aviso para
+  // todos) y, en esa respuesta, Next repetía las cookies vacías y sin Max-Age=0 (no se borraban, y la sesión nueva
+  // no servía). Sin ninguna cookie de sesión, se muestra el login: no hay círculo.
   if (pathname === "/login" && request.nextUrl.searchParams.get(EXPIRED_SESSION_PARAM.name) === EXPIRED_SESSION_PARAM.value) {
-    const response = localized(request);
+    if (!SESSION_COOKIE_NAMES.some((name) => request.cookies.has(name))) return localized(request);
+    const response = NextResponse.redirect(request.nextUrl);
     for (const name of SESSION_COOKIE_NAMES) {
       response.cookies.set(name, "", {
         path: "/",

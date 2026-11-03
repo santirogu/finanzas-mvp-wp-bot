@@ -91,6 +91,16 @@ export function sameDayIn(month: Month, today: string): string {
   return `${monthParam(month)}-${String(Math.min(day, lastDay)).padStart(2, "0")}`;
 }
 
+/**
+ * El mes hasta el mismo día que `today`, inclusive (si el mes no lo tiene, entero): para comparar el mes en
+ * curso con el anterior "a esta altura".
+ */
+export function monthRangeUpTo(month: Month, today: string): MonthRange {
+  const last = new Date(`${sameDayIn(month, today)}T00:00:00Z`);
+  last.setUTCDate(last.getUTCDate() + 1);
+  return { ...monthRange(month.year, month.month), end: last.toISOString().slice(0, 10) };
+}
+
 /** El mes `delta` meses después (o antes, si es negativo). */
 export function shiftMonth({ year, month }: Month, delta: number): Month {
   const index = year * 12 + (month - 1) + delta;

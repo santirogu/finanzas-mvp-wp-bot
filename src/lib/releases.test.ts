@@ -66,7 +66,7 @@ describe("fetchReleases", () => {
     expect(await fetchReleases(fetchFn)).toEqual([expect.objectContaining({ tag: "v1.55.0" })]);
     const [url, init] = fetchFn.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toBe(`https://api.github.com/repos/${GITHUB_REPO}/releases?per_page=${RELEASES_SHOWN}`);
-    expect(init.headers).toMatchObject({ Accept: "application/vnd.github+json" });
+    expect(init.headers).toMatchObject({ Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28", "User-Agent": "finanzas-mvp" });
     expect(init.headers).not.toHaveProperty("Authorization");
     expect(init.signal).toBeInstanceOf(AbortSignal);
   });

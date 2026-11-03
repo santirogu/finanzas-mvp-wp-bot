@@ -1,13 +1,16 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page } from "@playwright/test";
+import postgres from "postgres";
 import { formatMonthName, formatShortDate, type Month, monthOf, monthParam, shiftMonth, todayInTimezone } from "../src/lib/dates";
+import { e2eDatabaseUrl } from "./database-url";
 import { addTransaction, closeToasts, openTab, register, test, toast, visible } from "./helpers";
 
 // Fijos (/gastos-fijos) de punta a punta: los gastos fijos que se detectan solos, los que se quitan o se
 // agregan a mano (y cómo eso cambia los gastos más grandes de Reportes, que los descuenta) y el historial
 // del valor de cada uno, con sus notas.
 
-const current = monthOf(todayInTimezone("America/Bogota"));
+const today = todayInTimezone("America/Bogota");
+const current = monthOf(today);
 const [m1, m2, m3] = [1, 2, 3].map((n) => shiftMonth(current, -n));
 const dayOf = (month: Month, day: number) => `${monthParam(month)}-${String(day).padStart(2, "0")}`;
 
@@ -183,3 +186,51 @@ for (const colorScheme of ["light", "dark"] as const) {
     expect(await seriousViolations(page)).toEqual([]);
   });
 }
+
+/** Egresos cargados en la base (por la app serían decenas de registros) y los "ya no aplica" de este mes. */
+async function seed(email: string, payments: { description: string; amount: number; dates: string[] }[], skipThisMonth: string[] = []) {
+  const sql = postgres(e2eDatabaseUrl(), { max: 1, onnotice: () => {} });
+  const [{ id }] = await sql<{ id: string }[]>`select id from "user" where email = ${email}`;
+  for (const { description, amount, dates } of payments) {
+    for (const date of dates) await sql`insert into transaction (user_id, type, amount, description, occurred_on) values (${id}, 'expense', ${amount}, ${description}, ${date})`;
+  }
+  for (const key of skipThisMonth) await sql`insert into fixed_payment_skip (user_id, description_key, month) values (${id}, ${key}, ${monthParam(current)})`;
+  await sql.end();
+}
+
+test("Fijos: el estado de este mes de cada gasto (pagado, atrasado, no aplica) y cuánto falta @principal", async ({ page }) => {
+  const { email } = await register(page);
+  const months = (day: number) => [m3, m2, m1].map((month) => dayOf(month, day));
+  await seed(
+    email,
+    [
+      { description: "Arriendo", amount: 1800000, dates: [...months(1), dayOf(current, 1)] },
+      { description: "Gimnasio", amount: 120000, dates: months(1) },
+      { description: "Netflix", amount: 44900, dates: months(15) },
+    ],
+    ["netflix"],
+  );
+  // El gimnasio se paga el 1: hoy falta (si hoy es 1) o está atrasado.
+  const gym = `${today.endsWith("-01") ? "Falta" : "Atrasado"} · lo sueles pagar el 1`;
+  const row = (description: string) => fixedList(page).getByRole("listitem").filter({ hasText: description });
+
+  await test.step("arriba, cuántos se pagaron y cuánto falta; en cada uno, su estado", async () => {
+    await openTab(page, "Fijos");
+    await expect(fixedList(page)).toContainText("1 de 2 pagados este mesFaltan $120.000,00");
+    await expect(row("Arriendo")).toContainText(`Pagado el ${formatShortDate(dayOf(current, 1))}`);
+    await expect(row("Gimnasio")).toContainText(gym);
+    await expect(row("Netflix")).toContainText("No aplica este mes");
+    expect(await seriousViolations(page)).toEqual([]);
+  });
+
+  await test.step("al registrar el gimnasio con la fecha en que se pagó, quedan todos pagados", async () => {
+    // Con su fecha: un pago cuenta para la fecha esperada más cercana (registrado hoy, en la segunda mitad del mes, sería el del
+    // mes siguiente, como en los próximos pagos del Resumen).
+    await openTab(page, "Egresos");
+    await addExpense(page, { amount: "120000", description: "Gimnasio", category: "Salud", date: dayOf(current, 1) });
+    await openTab(page, "Fijos");
+    await expect(fixedList(page)).toContainText("Todos pagados este mes");
+    await expect(fixedList(page)).not.toContainText("Faltan");
+    await expect(row("Gimnasio")).toContainText(`Pagado el ${formatShortDate(dayOf(current, 1))}`);
+  });
+});

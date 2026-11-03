@@ -32,7 +32,8 @@ export async function createTransactionsFromMessage(input: {
     .insert(transaction)
     .values(rows)
     .onConflictDoNothing()
-    .returning({ id: transaction.id });
+    // Con lo necesario para los avisos de presupuesto. Un mensaje que Meta reenvía no guarda nada: no avisa dos veces.
+    .returning({ id: transaction.id, type: transaction.type, categoryId: transaction.categoryId, amount: transaction.amount, occurredOn: transaction.occurredOn });
 }
 
 /** Elimina (borrado lógico) todos los movimientos del último mensaje de WhatsApp registrado. */

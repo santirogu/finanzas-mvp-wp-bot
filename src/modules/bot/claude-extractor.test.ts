@@ -23,6 +23,7 @@ const input = {
   text: "me compré unos zapatos de $500.000",
   today: { iso: "2026-10-13", long: "martes 13 de octubre de 2026" },
   categories: { expense: ["Ropa", "Otros"], income: ["Salario", "Otros"] },
+  locale: "es" as const,
 };
 
 const zapatos = {
@@ -122,6 +123,42 @@ describe("claudeExtractor", () => {
       },
     ]);
     expect(params.messages[0].content).toContain(`<mensaje>\n${input.text}\n</mensaje>`);
+  });
+
+  it("con una foto, manda la imagen y después el texto, con las reglas de las fotos", async () => {
+    sdk.parse.mockResolvedValue(response());
+    const image = { data: "aGVsbG8=", mediaType: "image/png" as const };
+    await claudeExtractor({ ...input, text: "mercado", image });
+
+    const params = sdk.parse.mock.calls[0][0];
+    expect(params.system).toContain("Fotos:");
+    expect(params.messages).toEqual([
+      {
+        role: "user",
+        content: [
+          { type: "image", source: { type: "base64", media_type: "image/png", data: "aGVsbG8=" } },
+          { type: "text", text: expect.stringContaining("El usuario envió esta foto con este texto:\n<mensaje>\nmercado\n</mensaje>") },
+        ],
+      },
+    ]);
+  });
+
+  it("con una cuenta en inglés, el system prompt pide la descripción y la respuesta en inglés (también con una foto)", async () => {
+    sdk.parse.mockResolvedValue(response());
+    await claudeExtractor({ ...input, text: "spent 20k on lunch", locale: "en" });
+    await claudeExtractor({ ...input, text: "", image: { data: "aGVsbG8=", mediaType: "image/png" }, locale: "en" });
+
+    for (const [params] of sdk.parse.mock.calls) {
+      expect(params.system).toContain("en 1 a 5 palabras y en inglés");
+      expect(params.system).toContain("Cómo escribir reply: en inglés");
+    }
+    expect(sdk.parse.mock.calls[1][0].system).toContain('con un ejemplo como "lunch 25k"');
+  });
+
+  it("sin foto, el system prompt no trae las reglas de las fotos", async () => {
+    sdk.parse.mockResolvedValue(response());
+    await claudeExtractor(input);
+    expect(sdk.parse.mock.calls[0][0].system).not.toContain("Fotos:");
   });
 
   it("con BOT_MODEL de Opus activa el fallback del servidor ante rechazos", async () => {
@@ -249,9 +286,9 @@ describe("claudeExtractor · contrato con Claude", () => {
     const { parse } = await format();
     const valid = { transactions: [zapatos], reply: null };
     expect(parse(JSON.stringify(valid))).toEqual(valid);
-    expect(
-      parse(JSON.stringify({ ...valid, transactions: [{ ...zapatos, type: "income" }] })),
-    ).toBeTruthy();
+    // El otro tipo válido pasa tal cual (no basta con que no falle: tiene que devolverlo igual).
+    const income = { ...valid, transactions: [{ ...zapatos, type: "income" }] };
+    expect(parse(JSON.stringify(income))).toEqual(income);
     expect(() =>
       parse(JSON.stringify({ ...valid, transactions: [{ ...zapatos, type: "transfer" }] })),
     ).toThrow();
@@ -308,6 +345,13 @@ describe("checkClaudeConnection", () => {
     sdk.retrieve.mockReset();
   });
 
+  it("el modelo que eligió el admin (en la llamada) va antes que BOT_MODEL", async () => {
+    vi.stubEnv("BOT_MODEL", "claude-opus-5-5");
+    sdk.parse.mockResolvedValue(response({ model: "claude-sonnet-5-5" }));
+    await claudeExtractor({ ...input, model: "claude-sonnet-5-5" });
+    expect(sdk.parse.mock.calls[0][0]).toMatchObject({ model: "claude-sonnet-5-5" });
+  });
+
   it("consulta el modelo del bot (gratis), sin reintentos y con un tiempo corto", async () => {
     sdk.retrieve.mockResolvedValue({ id: "claude-haiku-5-5", display_name: "Claude Haiku 5.5", deprecated_at: null });
     expect(await checkClaudeConnection()).toEqual({ status: "ok", detail: "Claude Haiku 5.5 (claude-haiku-5-5)" });
@@ -320,6 +364,12 @@ describe("checkClaudeConnection", () => {
     sdk.retrieve.mockResolvedValue({ id: "claude-sonnet-5-5", display_name: "claude-sonnet-5-5", deprecated_at: null });
     expect(await checkClaudeConnection()).toEqual({ status: "ok", detail: "claude-sonnet-5-5" });
     expect(sdk.retrieve.mock.calls[0][0]).toBe("claude-sonnet-5-5");
+  });
+
+  it("prueba el modelo que se le pide (el que eligió el admin)", async () => {
+    sdk.retrieve.mockResolvedValue({ id: "claude-opus-5-5", display_name: "Claude Opus 5.5", deprecated_at: null });
+    expect(await checkClaudeConnection("claude-opus-5-5")).toEqual({ status: "ok", detail: "Claude Opus 5.5 (claude-opus-5-5)" });
+    expect(sdk.retrieve.mock.calls[0][0]).toBe("claude-opus-5-5");
   });
 
   it("avisa si Anthropic marcó el modelo como obsoleto", async () => {

@@ -45,13 +45,14 @@ beforeEach(() => {
 });
 
 describe("AuthForm · login", () => {
-  it("pide correo y contraseña, y enlaza al registro", () => {
+  it("pide correo y contraseña, y enlaza al registro y a la Ayuda", () => {
     render(<AuthForm mode="login" />);
     expect(screen.getByRole("heading", { name: "Inicia sesión" })).toBeVisible();
     expect(screen.queryByLabelText("Nombre")).not.toBeInTheDocument();
     expect(email()).toHaveAttribute("type", "email");
     expect(password()).toHaveAttribute("autocomplete", "current-password");
     expect(screen.getByRole("link", { name: "Regístrate" })).toHaveAttribute("href", "/registro");
+    expect(screen.getByRole("link", { name: "¿Necesitas ayuda?" })).toHaveAttribute("href", "/ayuda");
   });
 
   it("se envía por POST si el JavaScript aún no cargó (la contraseña nunca va en la URL)", () => {
@@ -193,6 +194,7 @@ describe("AuthForm · registro", () => {
     expect(password()).toHaveAttribute("minlength", "8");
     expect(password()).toHaveAttribute("maxlength", "128");
     expect(screen.getByRole("link", { name: "Inicia sesión" })).toHaveAttribute("href", "/login");
+    expect(screen.getByRole("link", { name: "¿Necesitas ayuda?" })).toHaveAttribute("href", "/ayuda");
   });
 
   it("crea la cuenta con nombre, correo y contraseña", async () => {
@@ -287,11 +289,12 @@ describe("AuthForm · errores de los campos en español", () => {
 
 
 describe("AuthForm · en inglés", () => {
-  it("el login: títulos, campos, botón y el enlace al registro", async () => {
+  it("el login: títulos, campos, botón y los enlaces al registro y a la Ayuda", async () => {
     render(<AuthForm mode="login" />, { wrapper: InEnglish });
     expect(screen.getByRole("heading", { name: "Sign in" })).toBeVisible();
     expect(screen.getByText("Welcome back")).toBeVisible();
     expect(screen.getByRole("link", { name: "Sign up" })).toHaveAttribute("href", "/registro");
+    expect(screen.getByRole("link", { name: "Need help?" })).toHaveAttribute("href", "/ayuda");
     await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
     // Los campos vacíos, con sus mensajes en inglés.
     expect(await screen.findByText("Enter your email.")).toBeVisible();

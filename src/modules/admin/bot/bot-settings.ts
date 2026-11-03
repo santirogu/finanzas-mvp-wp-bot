@@ -3,17 +3,19 @@ import { eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { botSetting, user, whatsappMessage } from "@/db/schema";
 import { getRequestLocale } from "@/i18n/request";
+import { envVar } from "@/lib/env";
 import { texts } from "@/i18n/texts";
 import { requireAdmin } from "@/lib/session";
 import { recordEvent } from "@/modules/account/events";
 import { monthlyBudgetReached, parseAiLimits, parseMonthlyTokenLimit, type AiLimits } from "@/modules/bot/limits";
+import { botModelName, isBotModel, resolveBotModel } from "@/modules/bot/models";
 import { BOT_SETTING_ID, DEFAULT_BOT_SETTINGS, getBotSettings } from "@/modules/bot/settings";
 import { currentBudgetMonth, tokensUsedThisMonth } from "@/modules/bot/token-budget";
 import { confirmAdminCode } from "../shared/confirm-code";
 import { formatCount } from "./bot-filters";
 
-// La configuración del bot desde /admin/bot: pausar o reanudar Claude, cambiar los topes por cuenta y
-// el tope mensual de tokens.
+// La configuración del bot desde /admin/bot: pausar o reanudar Claude, cambiar los topes por cuenta, el
+// tope mensual de tokens y el modelo de Claude.
 // Como las acciones de Usuarios, cada cambio:
 //  1. valida el rol (requireAdmin);
 //  2. revisa que haya algo que cambiar y que los datos sirvan (si no, no gasta el código);
@@ -31,11 +33,15 @@ export type BotSettingsView = {
   month: { used: number; reached: boolean; resetsOn: string };
   /** Tokens por llamada a Claude, en promedio (para elegir el tope); null sin llamadas todavía. */
   averageTokensPerCall: number | null;
+  /** Los de entrada y los de salida por llamada, en promedio (para el costo de cada modelo); null sin llamadas. */
+  averageUsage: { input: number; output: number } | null;
+  /** El modelo que usa el bot y si lo eligió el admin (si no, sale de BOT_MODEL o es el de siempre). */
+  model: { id: string; chosen: boolean };
   /** El último cambio, o null si nadie la ha cambiado (valen los de siempre). */
   updated: { at: Date; by: string | null } | null;
 };
 
-type Field = "code" | "perHour" | "perDay" | "monthlyLimit";
+type Field = "code" | "perHour" | "perDay" | "monthlyLimit" | "model";
 export type BotSettingResult = { ok: true; message: string } | { ok: false; error: string; field?: Field };
 
 const fail = (error: string, field?: Field): BotSettingResult => ({ ok: false, error, ...(field && { field }) });
@@ -52,6 +58,9 @@ const TEXTS = texts(
     sameMonthly: "El tope mensual ya es ese: cambia el número.",
     monthlyRemoved: "Se quitó el tope mensual de tokens.",
     monthly: (tokens: string) => `El tope mensual quedó en ${tokens} tokens: al llegar, el bot deja de usar Claude hasta el mes siguiente.`,
+    unknownModel: "Elige uno de los modelos de la lista.",
+    sameModel: "El bot ya usa ese modelo: elige otro.",
+    model: (name: string) => `El bot ahora usa ${name}, desde el siguiente mensaje.`,
   },
   {
     en: {
@@ -65,6 +74,9 @@ const TEXTS = texts(
       sameMonthly: "That's already the monthly limit: change the number.",
       monthlyRemoved: "The monthly token limit was removed.",
       monthly: (tokens) => `The monthly limit is now ${tokens} tokens: once it's reached, the bot stops using Claude until next month.`,
+      unknownModel: "Choose one of the models on the list.",
+      sameModel: "The bot already uses that model: choose another one.",
+      model: (name) => `The bot now uses ${name}, starting with the next message.`,
     },
   },
 );
@@ -79,6 +91,7 @@ export async function botSettingsForAdmin(now = new Date()): Promise<BotSettings
         perHour: botSetting.aiPerHour,
         perDay: botSetting.aiPerDay,
         monthlyTokenLimit: botSetting.monthlyTokenLimit,
+        model: botSetting.model,
         at: botSetting.updatedAt,
         by: user.name,
       })
@@ -88,21 +101,33 @@ export async function botSettingsForAdmin(now = new Date()): Promise<BotSettings
     tokensUsedThisMonth(now),
     db
       .select({
-        tokens: sql<number | null>`round(avg(
-          coalesce((${whatsappMessage.intent}->'usage'->>'inputTokens')::int, 0) +
-          coalesce((${whatsappMessage.intent}->'usage'->>'outputTokens')::int, 0)
-        ))`.mapWith((value) => (value === null ? null : Number(value))),
+        input: sql<number | null>`round(avg(coalesce((${whatsappMessage.intent}->'usage'->>'inputTokens')::int, 0)))`.mapWith(
+          (value) => (value === null ? null : Number(value)),
+        ),
+        output: sql<number | null>`round(avg(coalesce((${whatsappMessage.intent}->'usage'->>'outputTokens')::int, 0)))`.mapWith(
+          (value) => (value === null ? null : Number(value)),
+        ),
       })
       .from(whatsappMessage)
       .where(sql`${whatsappMessage.intent}->'usage' is not null`),
   ]);
   const settings = row
-    ? { claudePaused: row.claudePaused, limits: { perHour: row.perHour, perDay: row.perDay }, monthlyTokenLimit: row.monthlyTokenLimit }
+    ? {
+        claudePaused: row.claudePaused,
+        limits: { perHour: row.perHour, perDay: row.perDay },
+        monthlyTokenLimit: row.monthlyTokenLimit,
+        model: row.model,
+      }
     : DEFAULT_BOT_SETTINGS;
+  const averageUsage = average.input === null || average.output === null ? null : { input: average.input, output: average.output };
   return {
-    ...settings,
+    claudePaused: settings.claudePaused,
+    limits: settings.limits,
+    monthlyTokenLimit: settings.monthlyTokenLimit,
     month: { used, reached: monthlyBudgetReached(settings.monthlyTokenLimit, used), resetsOn: currentBudgetMonth(now).end },
-    averageTokensPerCall: average.tokens,
+    averageTokensPerCall: averageUsage && averageUsage.input + averageUsage.output,
+    averageUsage,
+    model: { id: resolveBotModel(settings.model, envVar("BOT_MODEL")), chosen: settings.model !== null },
     updated: row ? { at: row.at, by: row.by } : null,
   };
 }
@@ -201,4 +226,34 @@ export async function setMonthlyTokenLimit({ limit, code }: { limit: string; cod
     ok: true,
     message: input.limit === null ? t.monthlyRemoved : t.monthly(formatCount(input.limit, locale)),
   };
+}
+
+/** Cambia el modelo de Claude del bot por uno de la lista (src/modules/bot/models.ts). */
+export async function setBotModel({ model, code }: { model: string; code: string }, now = new Date()): Promise<BotSettingResult> {
+  const admin = await requireAdmin();
+  const t = TEXTS[await getRequestLocale()];
+  if (!isBotModel(model)) return fail(t.unknownModel, "model");
+  const current = await getBotSettings();
+  const previous = resolveBotModel(current.model, envVar("BOT_MODEL"));
+  if (model === previous) return fail(t.sameModel, "model");
+  const check = await confirmAdminCode(code, now);
+  if (!check.ok) return fail(check.error, "code");
+
+  await db.transaction(async (tx) => {
+    await tx
+      .insert(botSetting)
+      .values({
+        id: BOT_SETTING_ID,
+        claudePaused: current.claudePaused,
+        aiPerHour: current.limits.perHour,
+        aiPerDay: current.limits.perDay,
+        monthlyTokenLimit: current.monthlyTokenLimit,
+        model,
+        updatedAt: now,
+        updatedBy: admin.id,
+      })
+      .onConflictDoUpdate({ target: botSetting.id, set: { model, updatedAt: now, updatedBy: admin.id } });
+    await recordEvent({ type: "bot_model_changed", userId: null, adminId: admin.id, details: { model, previousModel: previous } }, tx);
+  });
+  return { ok: true, message: t.model(botModelName(model)) };
 }

@@ -11,6 +11,7 @@ import {
   adminNavItems,
   adminTitle,
   isCurrentAdminItem,
+  onlyActive,
 } from "./modules";
 
 const ADMIN_APP = resolve(__dirname, "../../app/[lang]/(app)/admin");
@@ -54,24 +55,30 @@ describe("registro de módulos de administración", () => {
     expect(folders).toEqual(activeAdminModules().map((m) => m.id).sort());
   });
 
-  it("hoy están activos todos menos Configuración, que viene pronto", () => {
-    expect(activeAdminModules().map((m) => m.id)).toEqual(["historial", "usuarios", "bot", "categorias", "salud", "seguridad"]);
-    expect(Object.fromEntries(ADMIN_MODULES.map((m) => [m.id, m.status]))).toEqual({
-      historial: "activo",
-      usuarios: "activo",
-      bot: "activo",
-      categorias: "activo",
-      salud: "activo",
-      configuracion: "pronto",
-      seguridad: "activo",
-    });
+  it("hoy están activos todos", () => {
+    expect(activeAdminModules().map((m) => m.id)).toEqual([...ADMIN_MODULE_IDS]);
+    expect(ADMIN_MODULES.filter((m) => m.status === "pronto")).toEqual([]);
+  });
+
+  it("de los que vienen, ninguno entra a la subnavegación (aunque hoy no haya)", () => {
+    const modules = [{ id: "a", status: "activo" as const }, { id: "b", status: "pronto" as const }, { id: "c", status: "activo" as const }];
+    expect(onlyActive(modules).map((m) => m.id)).toEqual(["a", "c"]);
   });
 });
 
 describe("subnavegación", () => {
   it("Inicio primero y luego los módulos activos, en orden", () => {
     expect(ADMIN_HOME).toEqual({ label: "Inicio", href: "/admin" });
-    expect(adminNavItems().map((i) => i.label)).toEqual(["Inicio", "Historial", "Usuarios", "Bot de WhatsApp", "Categorías", "Salud del sistema", "Seguridad"]);
+    expect(adminNavItems().map((i) => i.label)).toEqual([
+      "Inicio",
+      "Historial",
+      "Usuarios",
+      "Bot de WhatsApp",
+      "Categorías",
+      "Salud del sistema",
+      "Configuración",
+      "Seguridad",
+    ]);
   });
 
   it.each([
@@ -97,12 +104,20 @@ describe("en inglés", () => {
       ADMIN_MODULES.map(({ id, href, status }) => ({ id, href, status })),
     );
     expect(en.map((m) => m.label)).toEqual(["History", "Users", "WhatsApp bot", "Categories", "System health", "Settings", "Security"]);
-    expect(en.find((m) => m.id === "usuarios")?.description).toBe("Accounts, sessions and status");
+    expect(en.map((m) => m.description)).toEqual([
+      "Sign-ups and WhatsApp linking of each account",
+      "Accounts, sessions and status",
+      "Messages, errors and Claude usage",
+      "The income and expense categories",
+      "Database, deployments and services",
+      "Sign-ups, the notice for everyone and the values",
+      "Your two-step verification",
+    ]);
     expect(adminModules("es")).toBe(ADMIN_MODULES);
   });
 
   it("la subnavegación empieza en Home", () => {
-    expect(adminNavItems("en").map((i) => i.label)).toEqual(["Home", "History", "Users", "WhatsApp bot", "Categories", "System health", "Security"]);
+    expect(adminNavItems("en").map((i) => i.label)).toEqual(["Home", "History", "Users", "WhatsApp bot", "Categories", "System health", "Settings", "Security"]);
     expect(adminNavItems("en")[0].href).toBe("/admin");
     expect(activeAdminModules("en").map((m) => m.id)).toEqual(activeAdminModules().map((m) => m.id));
   });

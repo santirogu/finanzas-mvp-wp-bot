@@ -4,7 +4,7 @@ App web para registrar ingresos y egresos y ver el balance del mes actual. Cada 
 su propia sesión y su dashboard con cinco pestañas: **Resumen**, **Ingresos** y **Egresos**, donde
 cada movimiento se puede editar o eliminar, **Fijos**, con los gastos que se repiten cada mes, y
 **Reportes**, con cómo le va mes a mes. Los movimientos también se registran escribiéndole a un bot de
-WhatsApp ("me compré unos zapatos de $500.000"), que entiende el mensaje con Claude. En **Mi
+WhatsApp ("me compré unos zapatos de $500.000") o enviándole la foto de una factura, que entiende con Claude. En **Mi
 cuenta**, cada persona cambia su contraseña, conecta o desvincula su WhatsApp, elige la apariencia y puede eliminar su cuenta
 y todos sus datos (confirmando con su contraseña).
 
@@ -56,8 +56,8 @@ pnpm dev                        # http://localhost:3000 (antes, copia la base lo
 | `pnpm messages:cleanup` | Borra los mensajes de WhatsApp y los intentos fallidos de vinculación de números sin cuenta, de más de 30 días (`--dias N`, mínimo 7) |
 | `pnpm admin:grant <correo>` · `admin:revoke` · `admin:super` · `admin:list` | Da o quita el rol de admin, marca al super admin o lista los admins (ver Seguridad → Roles) |
 | `pnpm admin:reset-2fa <correo>` | Reinicia la verificación en dos pasos de un admin que perdió el celular y los códigos de respaldo |
-| `pnpm bot:try 'texto'` | Muestra cómo interpreta el bot un mensaje (usa la API de Claude). Usa comillas simples si el texto tiene `$` |
-| `pnpm bot:eval` | Corre el set de ~55 frases de prueba del bot y reporta aciertos, latencia y costo |
+| `pnpm bot:try 'texto'` | Muestra cómo interpreta el bot un mensaje (usa la API de Claude). Usa comillas simples si el texto tiene `$`. Con `--en` adelante, como una cuenta en inglés |
+| `pnpm bot:eval` | Corre el set de frases de prueba del bot (con los mensajes trampa) y reporta aciertos, latencia y costo. Cuesta créditos |
 | `pnpm brand:assets` | Regenera los íconos y la imagen para compartir a partir del logo (ver Estructura → Marca) |
 
 > No uses `pnpm setup` (es un comando propio de pnpm que modifica tu shell). El script del proyecto se llama `db:setup`.
@@ -109,10 +109,13 @@ pnpm dev                        # http://localhost:3000 (antes, copia la base lo
   que instala WebKit), y el check
   obligatorio **E2E y accesibilidad** pasa solo si pasan todas. Las partes están en la matriz del job
   `e2e-parte` de `.github/workflows/ci.yml`: si agregas un proyecto de Playwright, súmalo ahí
-  (`test/e2e-en-ci.test.ts` falla si falta). La regla de `main` no cambia. Las pruebas que cambian la
-  configuración de toda la app (pausar Claude, los topes del bot: `e2e/configuracion-*.spec.ts`) van
-  en el proyecto `configuracion`: en local corren después de las demás y en el CI, en su propia parte
-  (`--no-deps`), porque a la vez que las otras les cambiarían lo que responde el bot. En un PR que solo cambia
+  (`test/e2e-en-ci.test.ts` falla si falta). Cada parte guarda su reporte de Playwright (capturas y trazas) si
+  algo falló o si una prueba pasó al reintentarla (una intermitente): queda en los artefactos de la corrida 14
+  días. La regla de `main` no cambia. Las pruebas que cambian la
+  configuración de toda la app (pausar Claude, los topes del bot, cerrar los registros:
+  `e2e/configuracion-*.spec.ts`) van en el proyecto `configuracion`: en local corren después de las demás
+  y en el CI, en su propia parte (`--no-deps`), porque a la vez que las otras les cambiarían lo que
+  responde el bot o no las dejarían crear cuentas. Dentro del proyecto, un archivo a la vez. En un PR que solo cambia
   cosas que las E2E no ejercitan (documentación, skills, otros workflows, pruebas que no son E2E,
   herramientas de `scripts/`), se saltan y el check pasa igual: lo decide `scripts/e2e-needed.mjs`,
   que ante un archivo desconocido las corre. Todo lo que salta las E2E también salta el despliegue
@@ -218,12 +221,31 @@ pnpm dev                        # http://localhost:3000 (antes, copia la base lo
     hasta el lunes). Si no cambió ninguno, lo dice y termina. Al cerrar o fusionar el PR, la corrida que
     quede se cancela.
   - **Cada lunes** sobre `main` y con *Actions → Mutation testing → Run workflow*, la lista completa,
-    repartida en partes de ~45 minutos (parejas por tamaño del código) que corren a la vez; un último
-    job junta sus reportes en un resumen.
+    repartida en hasta 12 partes (parejas por tamaño del código) que corren a la vez; un último job junta
+    sus reportes en un resumen. Con 12 partes, cada una lleva 1/12 del código: en octubre de 2026, 70–92
+    minutos, con un límite de 150 por parte (con 90, tres se cortaron el 26 de octubre). Si el código sigue
+    creciendo y se acercan a 150, sube `MAX_SHARDS` (`scripts/mutation-targets.mjs`; GitHub da 20 jobs a la
+    vez) o el límite.
   - **En local**, `pnpm test:mutation:cambios` muta lo que cambiaste frente a `origin/main` (con lo que
     no está en un commit) y lo que agregaste a la lista.
-- **Evaluación del bot** (`pnpm bot:eval`): 56 frases contra la API real de Claude. Tiene costo,
-  por eso no corre en CI.
+- **Evaluación del bot** (`pnpm bot:eval`, `src/modules/bot/eval/`): 65 frases y 7 fotos de facturas inventadas
+  (`src/modules/bot/eval/fotos/`) contra la API real de Claude, con 8 **mensajes trampa** (que revele sus
+  instrucciones o una clave, que se salga de su papel, que confirme un borrado que no hizo, que invente cifras de
+  otra persona, un JSON, una instrucción escondida en la descripción o impresa en una factura para que registre lo
+  que no pasó). Además, 29 casos de una cuenta en inglés (`locale: "en"`, "[en]" en la salida; `--only "[en]"`
+  corre solo esos): la jerga y los montos en inglés, la descripción y la respuesta en inglés (una respuesta en
+  español cuenta como error), dos trampas y dos fotos. Tiene costo (unos US$0,04 por corrida con Haiku; solo las
+  fotos, `--only "[foto"`, menos de US$0,01).
+  - **En local**, a mano y con permiso del dueño: falla con cualquier caso mal (`--min` cambia el mínimo).
+  - **Cada lunes** (7:17 a. m. en Bogotá) y con *Actions → Evaluación del bot → Run workflow* (eligiendo el
+    modelo), `.github/workflows/bot-eval.yml`: falla si cae una trampa o si el resto acierta menos del 95 %, y GitHub
+    le avisa al dueño por correo. El detalle queda en el resumen de la corrida. Nunca corre en PRs (el repositorio
+    es público y la corrida usa un secreto) y el secreto solo llega al paso que llama a Claude.
+  - **La API key del CI** es una aparte, con tope de gasto (decisión del dueño): en la [consola de
+    Anthropic](https://console.anthropic.com), un workspace solo para la evaluación con un límite de gasto mensual
+    (por ejemplo US$1) y una key en él; en GitHub, *Settings → Secrets and variables → Actions → New repository
+    secret* con el nombre `ANTHROPIC_API_KEY_EVAL`. Sin el secreto, el workflow no hace nada (deja un aviso).
+    Para cambiarla, se crea otra, se reemplaza el secreto y se borra la vieja en la consola.
 
 Con Docker, `pnpm db:up` crea también la base `finanzas_test` la primera vez.
 
@@ -255,12 +277,14 @@ Automatically start at login*).
 src/
   app/[lang]/                       Las páginas, una vez por idioma (el proxy agrega el idioma por dentro: ver Idiomas)
     (auth)/login, (auth)/registro   Páginas públicas de acceso
-    (app)/dashboard                 Resumen: balance del mes (y frente al anterior), últimos movimientos, gastos por categoría (dona)
-    (app)/cuenta                    Mi cuenta: tus datos, seguridad (cambiar la contraseña), WhatsApp, apariencia y eliminar la cuenta
+    (app)/dashboard                 Resumen: balance del mes (y frente al anterior), lo que te queda, presupuestos, últimos movimientos, gastos por categoría (dona)
+    (app)/cuenta                    Mi cuenta: tus datos, seguridad (cambiar la contraseña), WhatsApp y eliminar la cuenta
+    (app)/configuracion             Configuración: presupuestos, avisos de próximos pagos, apariencia e idioma
     (app)/ingresos, (app)/egresos   Formulario + listado del mes (vista compartida)
-    (app)/reportes                  Reportes: 12 meses (o un año), barras por mes, categorías frente a su promedio, gastos fijos, los más grandes y qué días gastas más
+    (app)/reportes                  Reportes: 12, 6, 3 meses, el último mes o un año; barras por mes, categorías frente a su promedio, gastos fijos, los más grandes y qué días gastas más
+    (app)/presupuestos              Presupuestos: un monto por mes por categoría de egresos y cómo va cada uno (se llega desde el Resumen)
     (app)/month-nav.tsx             Navegador de meses (flechas y tarjeta del año) del Resumen, Ingresos y Egresos
-    (app)/account-menu.tsx          Menú de la cuenta del encabezado (iniciales, escudo de admin, Mi cuenta y Salir)
+    (app)/account-menu.tsx          Menú de la cuenta del encabezado (iniciales, escudo de admin, Mi cuenta, Configuración, Ayuda y Salir)
   app/api/auth/[...all]             Endpoints de Better Auth
   i18n/                             Idiomas: la lista, los textos de cada uno (dictionaries/) y la ruta sin el idioma
   db/schema/                        Tablas: auth (user, session…) y finanzas (category, transaction)
@@ -281,17 +305,20 @@ scripts/seed.ts                     Categorías por defecto
 ### Marca
 
 La app se llama **Anotado** (antes, Finanzas MVP): escribes el gasto por WhatsApp y queda anotado. El
-logo es un globo de chat con un ✓, con el verde azulado de la app (`--brand`).
+logo es la "A" de Anotado escrita con un lápiz (su pierna izquierda) y cruzada por un ✓, en blanco sobre el
+verde azulado de la app (`--brand`). Nació de una propuesta de Gemini (noviembre de 2026), redibujada en vectores
+con el verde exacto y margen para el recorte en círculo de WhatsApp. Antes era un globo de chat con un ✓.
 - **El nombre** sale de `BRAND_NAME` (`src/lib/brand.ts`), el mismo en todos los idiomas: nunca se
   escribe a mano. Siempre "Anotado", con mayúscula, también en el logo.
 - **El logo** (`src/components/logo.tsx`) se dibuja desde `src/lib/brand-mark.json` y usa los colores de
-  la marca de cada tema: en oscuro, el cuadro verde claro y el globo oscuro.
+  la marca de cada tema: en oscuro, el cuadro verde claro y la "A" oscura.
 - **Los íconos y la imagen para compartir** salen del mismo dibujo con `pnpm brand:assets`
   (`scripts/brand-assets.mjs`, con Chromium de Playwright):
   - `src/app/icon.svg`, `favicon.ico` y `apple-icon.png`, la pestaña y la pantalla de inicio del iPhone;
   - `public/marca/`, los del manifest (`src/app/manifest.ts`);
   - `src/app/opengraph-image.png`, la vista previa al compartir el enlace;
-  - `public/app-icon-1024.png`, el ícono de la app en Meta.
+  - `public/app-icon-1024.png`, el ícono de la app en Meta y la foto de perfil del número de WhatsApp (WhatsApp
+    la recorta en un círculo: el dibujo deja margen para eso).
 
   Una prueba exige que `icon.svg` esté al día con el dibujo y que sus colores sean los de `--brand`.
   La portada se arma al compilar: la imagen para compartir lleva la URL de producción que el job de
@@ -307,23 +334,26 @@ logo es un globo de chat con un ✓, con el verde azulado de la app (`--brand`).
 
 ### Idiomas
 
-La app está en español (el de siempre) y en inglés, toda la web (el bot de WhatsApp sigue en español).
+La app está en español (el de siempre) y en inglés: la web y el bot de WhatsApp.
 
 - **Cuál ve cada quien:**
-  1. el que eligió en **Mi cuenta → Idioma** (`saveLanguageAction`): se guarda en su cuenta
+  1. el que eligió en **Configuración → Idioma** (`saveLanguageAction`): se guarda en su cuenta
      (`user.locale`) y en la cookie `idioma` de ese navegador, por un año;
   2. si no eligió en ese navegador, el de su cuenta: al iniciar sesión (también tras el segundo paso de un
      admin), Better Auth le pone la cookie (`hooks.after` en `src/lib/auth.ts`);
-  3. si no, el que pide el navegador (`Accept-Language`, `negotiateLocale` en `src/i18n/locales.ts`), sin
-     guardar nada: la primera visita sale en inglés si el navegador lo prefiere antes que el español.
+  3. sin sesión, el que eligió en el selector **ES · EN** de la portada, el login, el registro o la Ayuda
+     (`src/components/language-switch.tsx`, `chooseLanguageAction`): solo la cookie, por un año, y vuelve a la
+     misma página (nunca a otra dirección: `LANGUAGE_SWITCH_PAGES`);
+  4. si no, español, aunque el navegador pida otro idioma (decisión del dueño: el público es colombiano y las
+     páginas legales están en español).
 
   `user.locale` es `null` hasta que la persona elige (la base solo acepta `es` o `en`), y nadie más lo
   cambia: Better Auth lo tiene con `input: false`. La política de privacidad lo explica.
 
 - **Las direcciones no llevan el idioma.** Las páginas están en `src/app/[lang]/` y el proxy
-  (`src/proxy.ts`) arma cada una, por dentro, en el idioma de la cookie `idioma` (o, sin ella, en el del
-  navegador): `/dashboard` se arma como `/es/dashboard` (o `/en/dashboard`), y el navegador sigue viendo
-  `/dashboard`. Sin ninguno de los dos, en español (`src/i18n/locales.ts`).
+  (`src/proxy.ts`) arma cada una, por dentro, en el idioma de la cookie `idioma` (o, sin ella, en español):
+  `/dashboard` se arma como `/es/dashboard` (o `/en/dashboard`), y el navegador sigue viendo `/dashboard`
+  (`src/i18n/locales.ts`).
 - **Por qué así:** el `<html lang>` y los textos salen del segmento (`next/root-params`), sin leer
   cookies al armar la página. Las páginas públicas (inicio, login, registro, privacidad) siguen
   prearmadas, una vez por idioma.
@@ -346,7 +376,8 @@ La app está en español (el de siempre) y en inglés, toda la web (el bot de Wh
   auditoría de diseño tiene su modo en inglés (`AUDITORIA_IDIOMA=en`).
 - **Montos y fechas:** `formatMoney`, `parseAmountInput`, `formatAmountTyping`, `formatMonthName`,
   `formatShortDate`… reciben el idioma (por defecto, español). En inglés, con el formato de EE. UU.:
-  "$1,000,000.00" (en el campo de monto, la coma separa los miles) y "Oct 13". El bot sigue en español.
+  "$1,000,000.00" (en el campo de monto, la coma separa los miles) y "Oct 13". El bot responde con el formato
+  del idioma de la cuenta, pero lee los montos siempre como en Colombia (abajo).
   Los topes del bot en `/admin/bot` también se escriben con los miles del idioma ("1.000" o "1,000"):
   los campos y el servidor (`parseAiLimits`, `parseMonthlyTokenLimit`) aceptan ese separador y no el otro.
 - **Las categorías** se ven en inglés con el nombre que les puso el admin (`category.name_en`, opcional,
@@ -354,8 +385,25 @@ La app está en español (el de siempre) y en inglés, toda la web (el bot de Wh
   `categoryLabel`, `src/modules/transactions/category-name.ts`), que reciben el idioma: las que no lo
   reciben, como las del bot, dan el nombre en español. Lo que se guarda y lo que conoce el bot es siempre
   `name`.
-- **En la administración** quedan en español los comandos del bot (balance, reporte, deshacer, ayuda),
-  que se escriben así. Los avisos de la prueba de conexiones son datos (`ServiceWarning`,
+- **El bot de WhatsApp** (decisiones del dueño):
+  - **responde en el idioma de la cuenta** (`user.locale`, el de Configuración; sin elegir, español): sus
+    textos fijos (`src/modules/bot/replies.ts`), los montos, las fechas, los avisos de los presupuestos y el
+    nombre de las categorías en inglés (lo que guarda sigue siendo `name`);
+  - **entiende los comandos en los dos idiomas**, sea cual sea el de la cuenta: `report`, `undo`, `help`,
+    `balance september`, `balance last month`, `how much did I spend…?` (`src/modules/bot/commands.ts`);
+  - **se vincula con `VINCULAR 123456` o `LINK 123456`**: Mi cuenta muestra la palabra del idioma de la
+    página. Con un código que no sirve todavía no se sabe de qué cuenta es: responde en el idioma de la
+    palabra que se usó. A un número sin vincular le responde en español y, debajo, en inglés;
+  - **lee los montos siempre como pesos colombianos**, con el punto de los miles y la coma de los centavos,
+    también en inglés ("200.000" son doscientos mil). Escritos como en EE. UU. también los entiende: un
+    separador seguido de tres cifras es de los miles y de una o dos al final, de los centavos ("25,000" son
+    veinticinco mil), y la jerga en inglés ("20k", "2M", "1.5 million");
+  - **lo que escribe Claude va en el idioma de la cuenta:** la descripción de lo que registra ("Lunch", aunque
+    el mensaje diga "almuerzo"; los nombres de los comercios, como se escriben) y la respuesta cuando no
+    entiende un mensaje o falta un dato. Las instrucciones de su prompt (`src/modules/bot/prompt.ts`) siguen en
+    español; lo que cambia con el idioma está en `LANGUAGES`, con sus ejemplos y los comandos en ese idioma. Lo
+    mide `pnpm bot:eval` con sus casos en inglés.
+- **En la administración,** los avisos de la prueba de conexiones son datos (`ServiceWarning`,
   `src/lib/service-check.ts`): la frase la arma `connectionView` en el idioma de la página.
 - **Las descargas de Reportes** salen en el idioma de la página (la cookie). El CSV en inglés va como lo
   abre el Excel en inglés: separado por "," y con el punto de los centavos (en español, ";" y la coma), y
@@ -363,8 +411,6 @@ La app está en español (el de siempre) y en inglés, toda la web (el bot de Wh
   (`view.labels`, `src/modules/reports/pdf/view.ts`), así se prueban sin dibujarlo.
 - **Solo en español:** la política de privacidad y "Eliminar tus datos" (decisión del dueño). Sus páginas
   van con `lang="es"` y, con la app en inglés, una nota arriba lo dice (`privacidad/spanish-only.tsx`).
-  También el bot: el mensaje para vincular WhatsApp sigue siendo `VINCULAR <código>` y la Ayuda en
-  inglés lo aclara.
 - **Eliminar la cuenta** pide la palabra del idioma de la página: `ELIMINAR` o, en inglés, `DELETE`
   (`src/modules/account/confirmation.ts`).
 - **En un componente de cliente**, la ruta actual se lee con `useAppPathname()` (`src/i18n/navigation.ts`),
@@ -391,8 +437,13 @@ La app está en español (el de siempre) y en inglés, toda la web (el bot de Wh
   - **Lo que viene:** cambiar el correo se ve en "Tus datos", apagado con "Pronto". Llega cuando la app
     pueda enviar correos para confirmar el nuevo: sin eso, un correo mal escrito dejaría a la persona sin
     poder entrar. La moneda se muestra ("Peso colombiano (COP)") con "Pronto: USD y EUR".
-- **Apariencia: Sistema, Claro u Oscuro** (Mi cuenta, `src/lib/theme.ts`).
-  - **Dónde se guarda:** en el navegador (`localStorage`), no en la cuenta, así que cada dispositivo tiene la suya.
+- **Apariencia: Sistema, Claro u Oscuro** (Configuración, `src/lib/theme.ts`).
+  - **Dónde se guarda:** al elegirla, en la cuenta (`user.theme`, con `saveThemeAction`) y en la cookie `tema` de
+    ese navegador, por un año. Al iniciar sesión en otro navegador (también tras el segundo paso de un admin),
+    Better Auth le pone la cookie desde la cuenta (`hooks.after` en `src/lib/auth.ts`), como con el idioma. Sin
+    elegir (`null`), cada navegador tiene la suya. La cookie no es `HttpOnly`: la lee el script del `<head>`.
+    Antes se guardaba solo en `localStorage`; sin la cookie, todavía vale lo de ahí, y se sigue escribiendo para
+    avisar a las otras pestañas (el evento `storage`).
   - **Cómo se aplica:** un script en línea del `<head>` la aplica antes de pintar, sin parpadeo, también en las páginas sin sesión, que se sirven prearmadas.
   - **Los colores** del modo oscuro están dos veces en `globals.css`, uno por cada forma de llegar a él: con el sistema en oscuro y sin `data-theme="light"`, o con `data-theme="dark"`. `src/color-contrast.test.ts` exige que los dos bloques sean iguales.
   - **Sin `dark:`:** la variante de Tailwind solo mira el sistema, así que no se usa.
@@ -432,7 +483,13 @@ La app está en español (el de siempre) y en inglés, toda la web (el bot de Wh
     ("Egreso registrado en octubre de 2026").
   - **Comparación con el mes anterior** (`src/modules/transactions/month-comparison.ts`), en las tres
     tarjetas del Resumen: el balance en plata ("$120.000,00 más que agosto") y los ingresos y egresos
-    en porcentaje ("15% más que agosto"). No aparece si el mes anterior no tuvo movimientos.
+    en porcentaje ("15 % más que agosto"). Con el mes en curso, contra el anterior hasta el mismo día
+    (`monthRangeUpTo`: "15 % más que a esta altura de agosto"), porque contra el mes entero a mitad de
+    mes casi todo daría "menos que". No aparece si el mes anterior (hasta ese día) no tuvo movimientos.
+    El balance del bot ("balance") compara igual.
+  - **Cuánto se ahorró** (`monthSavedNote`), debajo del balance: "Vas ahorrando el 29 % de tus
+    ingresos" en el mes en curso, "Ahorraste…" en uno pasado. Nada si no sobró (el balance en naranja ya
+    lo dice).
 - **Buscar en la lista del mes de Ingresos y Egresos** (`src/components/searchable-transaction-list.tsx`):
   - **Cuándo aparece:** desde 6 movimientos en el mes (`SEARCH_FROM`). Con menos se ven todos de un
     vistazo. Si ya se estaba usando, no desaparece aunque queden menos (al borrar uno mientras se busca).
@@ -464,8 +521,12 @@ La app está en español (el de siempre) y en inglés, toda la web (el bot de Wh
   sección de Reportes; ahí ya no se muestran (tampoco en el PDF), pero se siguen descontando de los
   gastos más grandes y del gasto por día.
   - **Qué cuenta como fijo** (`src/modules/reports/recurring.ts`): los egresos con la misma
-    descripción (sin importar mayúsculas, tildes ni espacios) en al menos 3 de los últimos 4 meses, y no más de 2 veces en ninguno de ellos:
-    "Almuerzo" o "Taxi" se repiten todos los meses, pero muchas veces, y no son fijos. Cada uno con lo
+    descripción (sin importar mayúsculas, tildes ni espacios) en al menos 3 de los últimos 4 meses (el admin lo
+    cambia en Configuración → Valores de la app), y no más de 2 veces en ninguno de ellos:
+    "Almuerzo" o "Taxi" se repiten todos los meses, pero muchas veces, y no son fijos. Uno que se detectó
+    sigue siendo fijo hasta 3 meses después (`MONTHS_BACK`, en Fijos y en los avisos) aunque ya no cumpla la
+    regla: si no, el mes que no se pagó y el que empieza (todavía sin pago) lo sacaban, y su aviso de
+    atrasado desaparecía justo al cambiar de mes. Cada uno con lo
     que sumó el último de esos meses en que apareció, el total al mes y qué parte del gasto promedio
     es. Se detectan solos, y también se marcan a mano (`fixed-choices.ts`, tabla `fixed_expense_choice`):
     ✕ quita uno detectado (queda en "Quitados", de donde vuelve con "Volver a poner") o saca uno
@@ -478,6 +539,65 @@ La app está en español (el de siempre) y en inglés, toda la web (el bot de Wh
     Cerrado, cada gasto dice su último cambio ("11% desde marzo"). A cada cambio se le puede escribir
     una nota (hasta 280 caracteres; tabla `fixed_expense_note`), solo de un mes en que la persona pagó
     ese gasto; vaciarla la borra.
+  - **El estado de este mes** (`fixed-month.ts`): arriba, "5 de 8 pagados este mes" y "Faltan $X" ("Todos
+    pagados este mes" si no falta ninguno), y en cada gasto, "Pagado el 4 de oct." (con ✓), "Falta · lo sueles pagar el 22",
+    "Atrasado · …" (en rojo) o "No aplica este mes" (marcado "Este pago ya no aplica"). Sale del mismo calendario
+    de pagos que los avisos de próximos pagos (`paymentSchedules`, en `upcoming.ts`): lo que falta es lo mismo que
+    resta "Lo que te queda". Un gasto sin pago esperado este mes (empezó a pagarse después) no dice nada.
+- **Configuración** (`/configuracion`, en el menú de la cuenta, entre Mi cuenta y Ayuda): cómo funciona la app para
+  la persona, con un índice arriba y una tarjeta por sección: Presupuestos, Notificaciones, Apariencia e Idioma. Lo que
+  se agregue después (la moneda, el recordatorio de registro, las categorías propias) va ahí como otra sección. **Mi
+  cuenta** se queda con quién es y su seguridad: sus datos, la contraseña, WhatsApp y eliminar la cuenta (decisión
+  del dueño). Mi cuenta tiene un enlace a Configuración para quien busque ahí lo que se movió.
+- **Presupuestos** (Configuración → Presupuestos, `src/modules/budgets/`, tabla `category_budget`): un monto por mes
+  para una categoría de egresos, el mismo cada mes hasta que la persona lo cambie o lo quite (decisiones del dueño).
+  Se llega también desde el Resumen; `/presupuestos`, la dirección de antes, redirige ahí (`next.config.ts`).
+  - **La sección:** cómo va cada uno en el mes en curso, "Agregar un presupuesto" (con las categorías de egresos
+    disponibles que todavía no tienen), "Cambiar" (el monto) y "Quitar". Uno nuevo solo con una categoría que la
+    persona puede ver y no está archivada; el de una que el admin archivó se puede cambiar. Si el admin elimina la
+    categoría, el presupuesto se va con ella (cascada).
+  - **En el Resumen**, solo con el mes en curso: una barra por presupuesto, de la categoría más cerca del límite (o
+    más pasada) a la más lejos, con "Te quedan…" o "Te pasaste por…" (en rojo). Desde el 80 % (`NEAR_SHARE`; el
+    admin lo cambia en Configuración → Valores de la app) resalta la línea. Sin presupuestos, un enlace en "Egresos por categoría" invita a ponerlos.
+  - Cuenta lo gastado en la categoría en el mes (sin los borrados); los movimientos sin categoría no suman a ninguno.
+  - **Los avisos** (`budgetCrossings`, `getBudgetCrossings`): cuando un egreso del mes en curso hace llegar una
+    categoría al 80 % (o el de Valores de la app) o pasarse, una vez (si cruza los dos de una vez, solo el de pasarse). No se guarda qué se
+    avisó: avisa el egreso que cruza el umbral (antes, por debajo; con él, por encima), así que lo que ya estaba
+    cerca o pasado no vuelve a avisar. Llegan:
+    - en la respuesta del bot al registrar, entre lo registrado y el balance ("⚠️ Mercado: llevas…", "🚨 …te
+      pasaste del presupuesto por…"), sin plantillas de Meta: va dentro de la conversación que abrió la persona
+      (decisión del dueño). Un mensaje que Meta reenvía no guarda nada, así que no avisa dos veces;
+    - en Egresos, debajo del formulario, a la vista hasta el siguiente registro (un aviso emergente se iría
+      solo), con "Ver presupuestos". "Registrar pago" (los próximos pagos) no avisa: la tarjeta del Resumen ya lo
+      muestra al lado.
+- **Lo que te queda este mes** (`src/modules/reports/remaining.ts`, `month-remaining.tsx`): en el Resumen, solo
+  con el mes en curso y si ya hubo ingresos (antes del sueldo todo saldría negativo).
+  - **Lo libre:** ingresos − egresos − los gastos fijos que faltan por pagar este mes (sin pagar ni marcados "ya
+    no aplica", aunque los avisos estén apagados), y cuánto da por día en los que quedan, contando hoy. Se resta
+    solo lo fijo; el gasto variable que viene es una estimación y va en la proyección (decisión del dueño).
+  - **La proyección**, desde el día 7 (`PROJECTION_FROM_DAY`): los egresos de hasta hoy, más los fijos que
+    faltan, más el gasto variable de cada día (los egresos que no son de gastos fijos) en los días que quedan;
+    y lo que sobraría o faltaría. Las estimaciones van a la centena.
+  - Los datos de los gastos fijos los comparte con los avisos (`getFixedPaymentsData`, con `cache`).
+- **El dato del mes** (`src/modules/reports/month-fact.ts`, `getMonthFact`): debajo de "Egresos por categoría",
+  solo con el mes en curso. La categoría de egresos que más se salió de lo normal: lo que lleva del 1 a hoy frente
+  al promedio de lo que llevaba del 1 al mismo día en los 3 meses anteriores con movimientos (si no hay ninguno, no
+  sale), sin los gastos fijos (pagar el arriendo un día antes no es un cambio de hábito). Sale la que más subió en
+  plata, con al menos 20 % y $20.000 de diferencia (así $5.000 → $20.000 no es "300 % más"), o, si ninguna subió,
+  la que más bajó; también una categoría nueva o una sin gastos este mes (decisiones del dueño). "Ver en Reportes"
+  lleva a sus categorías (`#categorias`; `ScrollToHash` baja hasta ahí cuando la sección llega).
+- **El recordatorio de registro** (`src/modules/reminders/`, `dashboard/register-reminder.tsx`): si la persona
+  lleva 3 días o más sin registrar nada, en el Resumen (solo con el mes en curso) y en la campana: "Llevas 4 días sin
+  registrar nada." (o "Todavía no registras ningún movimiento.") con "Registrar un egreso" y, con WhatsApp
+  vinculado, "Escribirle al bot". Cuenta desde el día (en su zona) en que registró su último movimiento, por la
+  web o por WhatsApp y sin los eliminados, o, si nunca registró, desde que creó la cuenta. Solo en la web
+  (decisión del dueño: por WhatsApp haría falta una plantilla de Meta, que se cobra por mensaje). Marcarlo leído
+  en la campana lo saca hasta el próximo hueco (el id lleva el día desde el que cuenta).
+  - **Configuración → Recordatorio de registro** (`reminder-settings.tsx`, tabla `reminder_setting`, una fila
+    por cuenta que lo cambió): prenderlo o apagarlo y después de cuántos días sin registrar, de 1 a 14. Funciona
+    como Notificaciones: se guarda con el botón; apagado, los días se conservan. Va en su propia tabla para que
+    guardarlo no fije los avisos de próximos pagos (que siguen los Valores de la app mientras la persona no los
+    cambie).
 - **Próximos pagos en el Resumen** (`src/modules/reports/upcoming.ts`, `upcoming-payments.tsx`): los gastos
   fijos que tocan en los próximos días (3 si la persona no lo cambió) y los atrasados, del más viejo al
   más próximo. Solo en el mes actual y solo si hay alguno; los primeros 5 y el resto con "Mostrar más".
@@ -488,39 +608,64 @@ La app está en español (el de siempre) y en inglés, toda la web (el bot de Wh
     va sin categoría. Se registra como cualquier egreso web, con las mismas validaciones, y el aviso
     desaparece (ese mes ya está pagado).
   - **La campana** (`notification-bell.tsx`, `user-notifications.tsx`, `src/modules/notifications/`): arriba,
-    junto al menú de la cuenta, en todas las páginas. El número en rojo cuenta las notificaciones sin leer
-    (por ahora, los avisos de próximos pagos; cada una con su tipo en el id, `pago|YYYY-MM|<clave>`, para
-    sumar otros tipos). La lista trae los mismos avisos con "Registrar pago", "Este pago ya no aplica" y
-    "Marcar como leído" (o "Marcar todas como leídas"), que la saca de la campana (tabla
-    `notification_read`) pero el aviso sigue en el Resumen. Se cierra con Escape, al tocar fuera o al
-    salir con Tab, como el menú de la cuenta. Con los avisos apagados, no hay campana.
-  - **Mi cuenta → Notificaciones** (`notification-settings.tsx`, `upcoming-settings.ts`, tabla
+    junto al menú de la cuenta, en todas las páginas. El número en rojo cuenta las notificaciones sin leer:
+    el recordatorio de registro (primero) y los avisos de próximos pagos, cada una con su tipo en el id
+    (`registro|YYYY-MM-DD`, `pago|YYYY-MM|<clave>`); a los admins, antes, las alertas del bot (`bot|<tipo>|<fecha>`,
+    ver Bot de WhatsApp → Alertas del bot). La lista trae los mismos avisos con "Registrar pago",
+    "Este pago ya no aplica" y "Marcar como leída" (o "Marcar todas como leídas"), que la saca de la campana
+    (tabla `notification_read`) pero el aviso sigue en el Resumen. Se cierra con Escape, al tocar fuera o al
+    salir con Tab, como el menú de la cuenta. "Ver los próximos pagos en el Resumen", solo con esos avisos
+    prendidos; con ellos y el recordatorio apagados (y, para un admin, sin alertas del bot), no hay campana.
+  - **Configuración → Notificaciones** (`notification-settings.tsx`, `upcoming-settings.ts`, tabla
     `notification_setting`): prenderlos o apagarlos (apagados no se avisa nada, tampoco los atrasados) y
     con cuántos días de anticipación, de 0 (el mismo día) a 10, en un campo numérico con su error en
     español debajo. Se guarda con el botón; apagados, el campo queda inactivo y los días se conservan.
-    Sin guardar nada: prendidos, con 3 días. Vale en todos los dispositivos (no es como la apariencia).
+    Sin guardar nada: los de Valores de la app (si el admin no los cambió, prendidos, con 3 días). Vale en todos
+    los dispositivos.
   - **La fecha esperada:** la mediana de los días del mes de los últimos 3 pagos (resiste uno fuera de lo
     normal: el 5, el 5 y el 20 dan el 5); con menos pagos, con los que haya y "aprox.". Un 31 en un mes
     más corto es su último día, y los pagos alrededor del cambio de mes (el 30, el 31, el 1) van juntos.
   - **Pagado o no:** cada pago cuenta para la fecha esperada más cercana (a menos de medio mes), así que
-    el arriendo de octubre pagado el 2 de noviembre cuenta para octubre. El monto es el del último mes.
+    el arriendo de octubre pagado el 2 de noviembre cuenta para octubre, y el del 1 de noviembre pagado el
+    30 de octubre, para noviembre (se miran el primer y el último pago de cada mes). Uno pagado más de medio
+    mes tarde cuenta para el mes siguiente. El monto es el del último mes.
   - **Atrasados:** los que no tienen pago, hasta 3 meses atrás (`MONTHS_BACK`), en rojo. "Este pago ya no
     aplica" oculta solo el de ese mes (tabla `fixed_payment_skip`); para no avisar más de un gasto, se
     quita en Fijos.
-- **Ayuda** (`/ayuda`, desde el menú de la cuenta, entre Mi cuenta y Salir): cómo usar la app por temas
+- **Ayuda** (`/ayuda`, desde el menú de la cuenta, entre Configuración y Salir): cómo usar la app por temas
   que se abren (registrar movimientos, el bot de WhatsApp, gastos fijos y avisos, reportes y descargas,
   tu cuenta y tus datos). Los números salen de las constantes de la app y los comandos del bot, de la
   misma lista que su respuesta a "ayuda" (`src/modules/bot/help.ts`): si algo cambia, la ayuda también.
-  Con sesión y sin contacto, por ahora.
+  Arriba, **Ver el tutorial de bienvenida** lo vuelve a abrir.
+  - **Sin sesión** (decisión del dueño) se ve en la misma dirección: el proxy arma la versión pública
+    (`src/app/[lang]/ayuda-publica/`, `PUBLIC_VERSIONS` en `src/proxy.ts`; esa dirección por dentro lleva a
+    `/ayuda`). Se enlaza desde la portada (arriba y en el pie), el login y el registro. Dice lo mismo
+    (`help-content.tsx`), pero las páginas de la app van en negrita y no como enlace (llevarían al login), sin
+    las pestañas ni el tutorial, y con el selector de idioma y, al final, "Crear cuenta".
+  - Esos enlaces no se precargan (`prefetch={false}`): con sesión, `/ayuda` es otra página, y la precargada sin
+    sesión podría quedar en el navegador después de entrar.
+- **Tutorial de bienvenida** (`src/components/welcome-tutorial.tsx`, `src/modules/tutorial/`): una ventana con
+  cinco pasos cortos (qué es la app, el Resumen y cómo registrar, el bot de WhatsApp con el enlace a Mi cuenta,
+  Fijos y sus avisos, Reportes y presupuestos), con Atrás, Siguiente y Omitir.
+  - **Quién lo ve** (decisión del dueño): solo las cuentas nuevas, al entrar al Resumen, hasta que lo terminan
+    o lo omiten (Empezar, Omitir, Esc o el enlace a Mi cuenta). Queda en la cuenta (`user.tutorial_done_at`),
+    no en el navegador; las cuentas que ya existían quedaron con la fecha de la migración. No es un campo de
+    Better Auth: el registro no lo puede poner.
+  - **Los textos** usan los valores de la app (los avisos de pagos prendidos o no y el % de los presupuestos).
+  - **Accesibilidad:** se abre con el foco en Siguiente, que no se mueve al cambiar de paso (el paso nuevo se lee
+    desde una región `aria-live`); en el primer paso no hay Atrás y el foco pasa a Siguiente.
+  - **En las E2E,** `register()` lo omite; sus pruebas van en `e2e/tutorial.spec.ts` (`keepTutorial`).
 - **Reportes** (`/reportes`, la quinta pestaña; `src/modules/reports/`).
-  - **El período, en la URL:** sin parámetro, los últimos 12 meses contando el actual; con
-    `?periodo=2025`, ese año (el año en curso llega hasta el mes actual). Hay un chip por cada año con
-    movimientos. Un período mal escrito o futuro muestra los 12 meses. La pestaña no lleva el `?mes=`
-    de las otras.
+  - **El período, en la URL:** sin parámetro, los últimos 12 meses contando el actual. Con `?periodo=`:
+    `6-meses`, `3-meses` y `1-mes` ("Último mes", el actual; en inglés, "This month"), que también
+    terminan en el mes actual, o un año (`2025`; el año en curso llega hasta el mes actual). Hay un chip
+    por cada uno de esos cuatro y por cada año con movimientos. Un período mal escrito o futuro muestra
+    los 12 meses. La pestaña no lleva el `?mes=` de las otras.
   - **Las cifras del período:** ingresos, egresos, el balance con qué parte de los ingresos se ahorró,
     el gasto promedio por mes y el mes de más gasto. El promedio usa solo los meses completos (el
     actual va en curso y lo bajaría) desde el primero en que la persona registró algo (antes no usaba
-    la app).
+    la app). Con un período de un solo mes (el último mes, o el año en curso en enero), el promedio y el
+    mes de más gasto no salen, ni en la página ni en el PDF: repetirían los egresos.
   - **Ingresos y egresos por mes:** dos barras por mes, en el verde y el naranja de toda la app (no la
     paleta de la dona: aquí el color dice ingreso o egreso). Cada mes es un enlace a su Resumen, que el
     lector de pantalla lee con sus tres montos; con el mouse o con Tab, el detalle aparece debajo. "Ver
@@ -596,14 +741,35 @@ La app está en español (el de siempre) y en inglés, toda la web (el bot de Wh
 ## Bot de WhatsApp
 
 1. En **Mi cuenta**, la tarjeta **WhatsApp → Conectar WhatsApp** genera un código de 6 dígitos
-   (vence en 10 minutos). El usuario lo envía al bot como `VINCULAR 123456` y su número queda
-   asociado a su cuenta. Mientras no lo tenga vinculado, el Resumen muestra un aviso corto que lleva
-   ahí (`/cuenta#whatsapp`, `src/app/[lang]/(app)/dashboard/whatsapp-hint.tsx`); ya vinculado, el Resumen no
-   muestra nada de WhatsApp. A un número sin vincular, el bot le responde con ese mismo enlace.
+   (vence en 10 minutos). El usuario lo envía al bot como `VINCULAR 123456` (en inglés, `LINK 123456`) y su
+   número queda asociado a su cuenta. Mientras no lo tenga vinculado, el Resumen muestra un aviso corto que
+   lleva ahí (`/cuenta#whatsapp`, `src/app/[lang]/(app)/dashboard/whatsapp-hint.tsx`); ya vinculado, el Resumen
+   no muestra nada de WhatsApp. A un número sin vincular, el bot le responde con ese mismo enlace, en español y
+   en inglés (también si envía un audio).
 2. Cada mensaje llega a `POST /api/whatsapp/webhook`. Se verifica la firma `X-Hub-Signature-256`,
    se responde 200 de inmediato y el mensaje se procesa después (`after()`).
 3. Se deduplica por el ID del mensaje, se resuelven los comandos fijos (`balance`, `reporte`,
-   `deshacer`, `ayuda`) y el texto libre se interpreta con Claude. El bot responde por WhatsApp.
+   `deshacer`, `ayuda`, también en inglés: README → Idiomas) y el texto libre se interpreta con Claude. El bot
+   responde por WhatsApp, en el idioma de la cuenta.
+
+**Fotos de facturas** (`src/modules/bot/photo.ts`, `interpretPhoto` en `interpret.ts`): una foto se registra como
+un solo egreso con el total.
+- **Cómo llega:** el webhook trae solo el id de la foto. El bot le pide a Meta su dirección y la baja, las dos
+  veces con el token de WhatsApp (`downloadWhatsAppMedia`, `src/modules/whatsapp/client.ts`). La dirección la
+  manda Meta: el token solo va por HTTPS a un servidor de Meta (`isMediaUrl`), y la foto, hasta 5 MB. Se baja
+  después de ver que el número está vinculado y la cuenta no está suspendida, y antes de reservar el cupo de
+  Claude: si Meta no la entrega o no es JPEG, PNG o WebP (por sus bytes), no se gasta nada.
+- **Qué hace Claude:** recibe la foto y el texto que la acompaña (como pista). Solo con fotos, el prompt suma
+  sus reglas: el TOTAL (nunca los productos uno por uno), el comercio como descripción, la fecha impresa
+  (día primero) y que lo escrito en la foto son datos, nunca instrucciones.
+- **Qué se acepta:** un solo movimiento (con más, pide una factura por foto), con la fecha impresa si es de los
+  últimos 31 días (`PHOTO_MAX_DAYS_BACK`); si es más vieja o futura, la de hoy. Un comando escrito con la foto
+  ("deshacer") no se ejecuta.
+- **Qué se guarda:** lo registrado y, en el registro de mensajes, `[image]` con el texto que escribió. La foto
+  no se guarda (`/privacidad`). Cada foto cuenta como un mensaje interpretado en los límites y cuesta un poco
+  más que un texto: unos 1.500 a 4.800 tokens de imagen (Haiku 5.5, alrededor de US$0,0005 por foto).
+- **En las E2E**, el WhatsApp falso tiene una foto (`MEDIA` en `e2e/fake-services.mjs`) y el Claude falso la
+  reconoce por sus bytes. `pnpm bot:eval` tiene casos con facturas inventadas (`src/modules/bot/eval/fotos/`).
 
 **La descripción del historial** (`src/modules/bot/history-match.ts` y `history.ts`): antes de guardar lo
 que entendió Claude, el bot busca en el historial de la persona (del mismo tipo, sin lo eliminado, de los
@@ -627,7 +793,9 @@ tokens y funciona con Claude en pausa).
   - `balance mes pasado`;
   - en pregunta, para un mes, el mes pasado o este: `¿cuánto gasté en septiembre?`, `¿cuántos fueron
     mis ingresos en septiembre?`, `¿cuánto gané el mes pasado?`, `mis gastos de agosto`, `¿cómo me fue
-    en marzo?` (`ASK_*`). Los totales solos ("mis gastos") no cuentan: podrían ser otra cosa.
+    en marzo?` (`ASK_*`). Los totales solos ("mis gastos") no cuentan: podrían ser otra cosa;
+  - en inglés, lo mismo: `balance september`, `september balance`, `balance last month`, `last month's
+    balance`, `how much did I spend in august?`, `how am I doing?`, `my expenses this month`.
 - **Lo que se escapa de esas reglas** lo responde Claude. Si es una pregunta por saldos o totales
   (por ejemplo "¿cuánto he gastado en comida?"), su prompt le pide no calcular cifras y decir que
   escriba *balance* o *balance septiembre*. Lo prueban 3 casos de `pnpm bot:eval`.
@@ -644,6 +812,7 @@ Claude (no gasta tokens y funciona con Claude en pausa), con las mismas consulta
   - `reporte` o `informe` (también `mi reporte`, `reporte de los últimos 12 meses`): los últimos 12 meses;
   - con año, `reporte 2025`, `informe del 2025` o `reporte del año 2025`;
   - el año en curso: `reporte del año`, `reporte de este año` o `informe anual`;
+  - en inglés: `report`, `report 2025`, `2025 report`, `report this year` o `annual report`;
   - un año que todavía no llega, o de antes del 2000, lo dice sin consultar nada.
 
   "Resumen" sigue siendo el balance del mes. Lo demás ("reporte de gastos", "reporte del mes") va a Claude.
@@ -681,7 +850,7 @@ Resumen de lo que se revisa de forma automática (detalles y cómo reportar en [
 | Herramienta | Qué hace | Cuándo | ¿Bloquea? |
 |---|---|---|---|
 | **CodeQL** (`.github/workflows/codeql.yml`) | Análisis estático del código TypeScript y de los workflows (reglas `security-extended`) | Cada PR, cada push a `main` y los miércoles | Sí: el merge se bloquea si un PR agrega alertas altas o críticas |
-| **`pnpm audit`** (job de CI) | Vulnerabilidades conocidas en todas las dependencias (también las de desarrollo; las ignoradas, con su porqué en "Versiones forzadas de dependencias") | Cada PR y push | Sí, si son altas o críticas |
+| **`pnpm audit`** (job de CI) | Vulnerabilidades conocidas en todas las dependencias (también las de desarrollo; las ignoradas, con su porqué en "Versiones forzadas de dependencias") | Cada PR y push | Sí, si son altas o críticas. Si el registro de npm no responde, solo si cambió `pnpm-lock.yaml` (ver "Riesgos aceptados") |
 | **Dependabot** (`.github/dependabot.yml`) | Alertas y PRs de seguridad, y actualizaciones semanales agrupadas | Lunes y ante cada vulnerabilidad nueva | No: abre PRs que el dueño revisa y fusiona |
 | **Secret scanning + push protection** | Detecta credenciales en el repo y **rechaza pushes** que las contengan | Siempre | Sí |
 | **OWASP ZAP** (job `dast` del CI) | Escaneo dinámico pasivo del build de producción: cabeceras faltantes, cookies inseguras, fugas de información. Reglas en `.zap/rules.tsv` (FAIL bloquea; WARN aceptadas con su porqué) | Cada PR y push | Sí, ante reglas en FAIL; el despliegue también lo espera |
@@ -722,9 +891,12 @@ justifica.
 | **HSTS con `preload`** (`max-age` de 2 años, `includeSubDomains`) | En `*.vercel.app` no tiene efecto: solo el dueño de un dominio registrable puede pedir que entre a la lista de precarga (hstspreload.org), y nadie lo ha pedido. La cabecera sí obliga HTTPS a cada navegador que ya visitó la app | Se agregue un dominio propio: antes de pedir la precarga, confirmar que **todos** sus subdominios funcionan con HTTPS (salir de la lista tarda meses). Si no se va a pedir, se puede quitar `preload` |
 | **El rol de admin se da y se quita desde la app** (solo el super admin, en Usuarios) | Antes solo desde la terminal; el dueño lo pidió para no depender de la `DATABASE_URL`. Lo hace una sola cuenta (el super admin, marcado solo desde la terminal), con su código de Google Authenticator, y queda en el historial. Dar el rol cierra las sesiones de la persona y le exige la verificación en dos pasos para administrar; nadie le quita el rol al super admin desde la app | Hubiera más de una persona de confianza que necesite dar roles, o se agreguen roles con más permisos |
 | **Categorías: crear, renombrar y restaurar no piden el código** de Google Authenticator; archivar y eliminar sí (#50) | Son cambios que se ven de inmediato y se deshacen con otro cambio. Cada uno queda en `category_change` con el admin, y la sesión de admin ya exige los dos pasos al entrar | Las categorías empezaran a afectar algo más que el nombre y el emoji (por ejemplo, reglas del bot) |
+| **Registros: invitar y quitar un correo no piden el código** de Google Authenticator; cambiar quién puede crear una cuenta sí | Como crear categorías (#50): se ve de inmediato y se deshace con otro cambio. Una invitación solo sirve con los registros "solo con invitación" y para crear una cuenta común (nunca de admin). Cada cambio queda en el historial con el admin, y la sesión de admin ya exige los dos pasos al entrar. La invitación es el correo, no un enlace secreto: como la app no verifica correos, quien sepa un correo invitado podría registrarse antes con él (sería una cuenta común, y la persona invitada lo notaría al registrarse) | Una invitación diera algo más que crear una cuenta común (un rol, otra moneda, beneficios), o se agregue la verificación del correo |
 | **Eliminar una cuenta reinicia el contador de intentos de vinculación de su número** | Conservar esos intentos contradiría "al eliminar la cuenta se borra su historial". Aprovecharlo exige registrarse y vincular el número cada 5 intentos, contra un millón de códigos que viven 10 minutos | Se agregue un contador sin datos personales (por ejemplo, el número con hash, por una hora) |
+| **Si el registro de npm no responde, la auditoría de dependencias deja un aviso y el CI sigue**, solo si `pnpm-lock.yaml` no cambió (`scripts/dependency-audit.mjs`) | Un timeout del registro frenó el despliegue de #176 sin ninguna vulnerabilidad de por medio. Esas dependencias ya pasaron la auditoría: en un PR, las de la base; en `main`, las del PR, que la regla "Proteger main" exige al día. Lo único que se atrasa es ver un aviso publicado después: lo muestran la próxima corrida y Dependabot. Si el lockfile cambió, o no se puede comparar (con "Run workflow"), falla como ante una vulnerabilidad | El aviso amarillo apareciera en varias corridas seguidas (días sin auditar) |
 | **El filtro de enlaces de las respuestas del bot usa una lista de terminaciones** (`.com`, `.co`, `.net`…) | Una terminación rara pasaría, pero la respuesta solo le llega a quien escribió, y además tiene largo máximo | Hubiera respuestas reales con enlaces de otra terminación |
-| **El CLI de Vercel del despliegue trae 16 avisos sin versión corregida en su rama** (`.github/vercel-cli/`): 13 de `undici` 5.x, 2 de `@fastify/busboy` 2.x (llega con `undici` 5) y 1 de `braces` | El CLI usa `undici` 5 como cliente HTTP solo contra la API de Vercel, por HTTPS. Los avisos requieren que un servidor malicioso responda, WebSockets (el despliegue no los usa), o encabezados o cuerpos que controle un atacante (son fijos nuestros). `braces` recibe patrones del propio proyecto. Los demás avisos se corrigieron con overrides (ver "Versiones forzadas de dependencias") | Una versión del CLI pase a `undici` 6 o más (Dependabot la propone) |
+| **El CLI de Vercel del despliegue trae 20 avisos sin versión corregida en su rama** (`.github/vercel-cli/`): 17 de `undici` 5.x, 2 de `@fastify/busboy` 2.x (llega con `undici` 5) y 1 de `zod` 3.x | El CLI usa `undici` 5 como cliente HTTP solo contra la API de Vercel, por HTTPS. Los avisos requieren que un servidor malicioso responda (también los dos de TLS de octubre de 2026: una renegociación de TLS 1.2 que tumba el proceso, y callbacks propios de TLS, que el CLI no usa), WebSockets (el despliegue no los usa), o encabezados o cuerpos que controle un atacante (son fijos nuestros). `zod` 3 solo valida el resumen de compilación de los "backends" de Vercel (Express y similares, que este proyecto no usa), nunca datos de afuera; su arreglo solo existe en `zod` 4 y el CLI más nuevo sigue en `zod` 3. Los demás avisos se corrigieron con overrides (ver "Versiones forzadas de dependencias") | Una versión del CLI pase a `undici` 6 o más, o a `zod` 4 (Dependabot la propone) |
+| **`minimatch` < 11.0.1 y `glob` 9–14.0.1 con avisos de severidad media** ([GHSA-g3hv-75wg-m249](https://github.com/advisories/GHSA-g3hv-75wg-m249) y [GHSA-3g3m-2fjr-6pw4](https://github.com/advisories/GHSA-3g3m-2fjr-6pw4), octubre de 2026): `minimatch` 3 y 10 en las herramientas de desarrollo (ESLint, typescript-eslint, Stryker), y `minimatch` 10 y `glob` 13 en el CLI de Vercel del despliegue (los trae `@vercel/nft`) | El de `minimatch` necesita un patrón que escriba un atacante y la optimización de nivel 2 (hay que pedirla); el de `glob`, cortar una búsqueda con una señal de cancelación. Aquí los patrones son fijos (los archivos del repo para el lint, la mutación y la compilación) y nadie corta búsquedas así. Ninguno está en la app que corre en producción. El arreglo solo existe en versiones mayores nuevas (`minimatch` 11 y `glob` 14) que quitan funciones (`makeRe()`, `regexp`, `AST`): forzarlas puede romper el lint, la mutación o el despliegue, y la de ESLint (`minimatch` 3) no la acepta. Las alertas de Dependabot se descartaron como riesgo tolerable con este enlace | ESLint, typescript-eslint, Stryker o `@vercel/nft` pasen a `minimatch` 11 o a `glob` 14 (Dependabot lo propone), o salga un aviso de severidad alta |
 
 **Analítica y velocidad:** [Vercel Web Analytics](https://vercel.com/docs/analytics) y
 [Speed Insights](https://vercel.com/docs/speed-insights) (`<Analytics />` y `<SpeedInsights />` en
@@ -794,7 +966,7 @@ Hay dos roles (`src/lib/roles.ts`), guardados en la columna `user.role`, y un ad
 
 | Rol | Quién | Qué ve |
 |---|---|---|
-| `user` | Toda cuenta al registrarse | Resumen, Ingresos, Egresos, Fijos, Reportes y Mi cuenta |
+| `user` | Toda cuenta al registrarse | Resumen, Ingresos, Egresos, Fijos, Reportes, Mi cuenta y Configuración |
 | `admin` | Quien recibe el rol del super admin (en Usuarios) o desde la terminal | Todo lo de `user` y la sección de administración (pestaña **Admin**), con verificación en dos pasos obligatoria. Su etiqueta va en violeta |
 | super admin | Un admin con la marca `user.super_admin`: uno solo, puesto solo desde la terminal (`pnpm admin:super`) | Todo lo de `admin` y, además, dar y quitar el rol de admin en Usuarios. Su etiqueta ("Super admin") y su escudo van en dorado |
 
@@ -845,8 +1017,9 @@ Authenticator (o cualquier app TOTP); reglas propias en `src/modules/auth/two-fa
   tampoco, `pnpm admin:reset-2fa --env .env.produccion <correo>` la reinicia y cierra sus sesiones.
 - **Sesión cerrada en otro lado** (al activarla, al reiniciarla, al borrar la cuenta): el navegador
   conserva la cookie vieja. `requireUser` manda a `/login?sesion=vencida`, donde el proxy la borra
-  y el login avisa "Tu sesión se cerró" (`src/lib/expired-session.ts`); sin eso, el proxy y el
-  dashboard se mandaban el uno al otro sin fin.
+  (en una redirección a la misma dirección, no en la respuesta que arma el login: ahí Next repetía las
+  cookies sin borrarlas) y el login avisa "Tu sesión se cerró" (`src/lib/expired-session.ts`); sin eso,
+  el proxy y el dashboard se mandaban el uno al otro sin fin.
 
 **Hacerse admin** (en la terminal, dentro de la carpeta del proyecto, con la cuenta ya registrada en
 la app):
@@ -869,7 +1042,7 @@ y escribe el correo para confirmar. Si otra cuenta era el super admin, deja de s
 La pestaña **Admin** (solo para admins) abre `/admin`, organizada en **módulos**. Todos comparten un
 marco (`src/app/[lang]/(app)/admin/layout.tsx`): el título y una subnavegación con chips (Inicio y los
 módulos activos). **Inicio** muestra una tarjeta por módulo, con un resumen de los activos; los que
-vienen aparecen como "Pronto".
+vienen (hoy ninguno) aparecen como "Pronto".
 
 La pestaña va siempre en violeta (los colores `admin`) y con el escudo, como la etiqueta y el escudo del
 menú de la cuenta (`src/components/admin-badge.tsx`): se distingue de las de todos y avisa que ahí se
@@ -882,7 +1055,7 @@ actúa con permisos de admin.
 | Bot de WhatsApp | `/admin/bot` | Activo: qué pasó con los mensajes, consumo de Claude y errores, sin el texto |
 | Categorías | `/admin/categorias` | Activo: crear, editar, archivar, restaurar y eliminar las de ingresos y egresos |
 | Salud del sistema | `/admin/salud` | Activo: el estado de la app (lo mismo que `/api/health`), la versión, la base, la limpieza diaria, las conexiones del bot y los despliegues recientes |
-| Configuración | `/admin/configuracion` | Pronto |
+| Configuración | `/admin/configuracion` | Activo: quién puede crear una cuenta (registros abiertos, cerrados o solo con invitación), los correos invitados, el aviso para todos y los valores de la app (los avisos por defecto y los umbrales) |
 | Seguridad | `/admin/seguridad` | Activo: la verificación en dos pasos del admin |
 
 - **Registro único** (`src/modules/admin/modules.ts`): de ahí salen la subnavegación y las tarjetas.
@@ -956,6 +1129,30 @@ En **`/admin/bot`** el admin ve cómo funciona el bot, de todas las cuentas
 (`src/modules/admin/bot/`). Se busca por nombre, correo o número (con espacios o "+") y se filtra por
 la fecha de los mensajes, en hora de Colombia.
 
+- **Alertas del bot:** arriba de esta página y del Inicio del admin, lo que no anda y hay que arreglar,
+  con desde cuándo y qué hacer. Salen de lo que ya guarda cada mensaje y de la configuración, sin tabla
+  propia, y se apagan solas cuando el problema se resuelve. Las reglas están en
+  `src/modules/bot/alert-rules.ts` y la consulta en `src/modules/bot/alerts.ts`.
+
+  | Alerta | Cuándo se prende |
+  |---|---|
+  | El token de WhatsApp no sirve | El último envío falló con 401 o el código 190 de Meta |
+  | WhatsApp no envía | Los últimos 3 envíos fallaron por otra causa. Un número que no puede recibir (fuera de la lista de prueba de Meta) no cuenta |
+  | Claude: la API key, el modelo, los créditos o sin configurar | La última llamada falló por esa causa |
+  | Claude está fallando | Las últimas 3 llamadas fallaron (sobrecarga, red) |
+  | El tope mensual de tokens | Aviso desde el 80 % (en el tono de siempre) y alerta al 100 % |
+  | Mensajes sin procesar | Mensajes de las últimas 24 horas que siguen sin procesar a los 10 minutos |
+
+  Las alertas que son fallas, no los avisos, cuentan como un problema en [Salud del sistema](#salud-del-sistema).
+  Fuera de la app las vigila [la vigilancia cada hora](#vigilancia-cada-hora).
+
+  También van en **la campana** de quien puede administrar (el rol y la verificación en dos pasos:
+  `canAdminister`), en cualquier página y antes que todo, con la etiqueta Admin, qué pasa, desde cuándo y "Ver Bot de
+  WhatsApp" (qué hacer queda en el módulo). No se apagan en Configuración (decisión del dueño). "Marcar como leída"
+  la saca de la campana hasta que vuelva a pasar: su id lleva el tipo y desde cuándo (`bot|<tipo>|<fecha>`), así que
+  una falla que se arregla y vuelve es otra; el tope mensual vuelve el mes siguiente, y los mensajes sin procesar,
+  cada día mientras sigan.
+
 - **Configuración** (cada cambio pide el código de Google Authenticator y queda en Historial → Acciones
   del admin, con "Bot de WhatsApp" en vez de una cuenta):
 
@@ -964,6 +1161,7 @@ la fecha de los mensajes, en hora de Colombia.
   | Pausar / reanudar Claude | En pausa, el bot no llama a Claude: a lo escrito libremente responde que lo registren en la web, y *balance*, *deshacer* y *ayuda* siguen. No gasta créditos. Para frenar en segundos si algo sale mal o se dispara el gasto, sin desplegar |
   | Topes por cuenta | Mensajes con Claude por hora y por día (1–200 y 1–2.000, el de la hora no mayor que el del día; `AI_LIMIT_BOUNDS`). Al llegar, el bot pide esperar |
   | Tope mensual de tokens | Tokens de Claude al mes, de todas las cuentas (10.000–100.000.000, o sin tope; `MONTHLY_TOKEN_BOUNDS`). Muestra cuánto va del mes y, con el promedio por mensaje, para cuántos mensajes alcanza. Al llegar, el bot deja de usar Claude hasta el mes siguiente (en hora de Colombia), como en pausa. Es un tope suave: mensajes simultáneos pueden pasarlo un poco (`src/modules/bot/token-budget.ts`) |
+  | Modelo de Claude | Uno de la lista de `src/modules/bot/models.ts` (Haiku, Sonnet y Opus 5.5), con lo que acertó cada uno en `pnpm bot:eval` y cuánto cuestan 1.000 mensajes con el promedio de tokens de los de hasta ahora. Sin elección vale `BOT_MODEL` (para comparar en local) o Haiku 5.5. La prueba de conexión de Salud y la vigilancia usan el mismo. Para sumar un modelo: su precio en `pricing.ts`, medirlo con `pnpm bot:eval --model <id>` (cuesta créditos) y anotar el resultado en la lista |
 
   Se guarda en una sola fila (`bot_setting`); sin ella valen los de siempre: Claude activo y
   `AI_LIMITS` (20 por hora y 100 por día). El bot la lee en cada mensaje que necesitaría a Claude
@@ -1042,11 +1240,12 @@ sus valores; tamaños y cantidades). Se revisa al abrir la página (`src/modules
   - las variables de entorno obligatorias (`REQUIRED_ENV`), por nombre;
   - las migraciones (cuántas tiene la base de las del código, y la última);
   - cuánto tarda la base en responder;
-  - la última corrida de la limpieza diaria.
+  - la última corrida de la limpieza diaria;
+  - el bot de WhatsApp: sus [alertas](#bot-de-whatsapp-1) que son fallas.
 
-  Son problemas: una variable que falta, la base sin responder o sin todas las migraciones, y la
-  limpieza si falló o no corre desde hace más de 26 horas (un día y un margen). La tarjeta del Inicio
-  del admin lo muestra como un semáforo, con los mismos problemas.
+  Son problemas: una variable que falta, la base sin responder o sin todas las migraciones, la
+  limpieza si falló o no corre desde hace más de 26 horas (un día y un margen), y las alertas del bot.
+  La tarjeta del Inicio del admin lo muestra como un semáforo, con los mismos problemas.
 - **Versión:** el commit desplegado, cuándo se compiló, el entorno, la región de Vercel y la versión de
   Node. El commit y la fecha los fija `next.config.ts` al compilar (`GITHUB_SHA`, que el CI define al
   correr `vercel build`); en un build local no hay commit (`src/lib/build-info.ts`).
@@ -1066,6 +1265,57 @@ sus valores; tamaños y cantidades). Se revisa al abrir la página (`src/modules
   10 minutos en la caché de Next (sin token, GitHub deja 60 pedidos por hora). Si GitHub no responde,
   el resto de la página se ve igual, con un enlace a las releases. En las E2E, `GITHUB_API_URL` apunta
   al GitHub falso (`e2e/fake-services.mjs`).
+
+### Configuración de la app
+
+En **`/admin/configuracion`** el admin cambia lo que vale para toda la app (`src/modules/admin/configuracion/`):
+los **registros** (quién puede crear una cuenta), el **aviso para todos** y los **valores de la app**. Lo que venga
+va aquí como otra tarjeta.
+
+| Registros | Qué pasa en `/registro` |
+|---|---|
+| **Abiertos** (sin elegir, como siempre) | Cualquiera crea su cuenta |
+| **Solo con invitación** | Solo los correos de la lista de invitados (sin importar mayúsculas ni espacios). La página lo avisa |
+| **Cerrados** | Nadie crea una cuenta nueva, ni con invitación. La página lo avisa |
+
+- **Dónde se revisa:** en el servidor, en el registro de Better Auth (`src/lib/auth.ts` con
+  `src/modules/auth/signup-policy.ts`), no solo en la página: un registro por HTTP (curl) se rechaza
+  igual, con el correo de contacto en el mensaje. Las cuentas que ya existen entran como siempre.
+- **Cambiar el modo** pide el código de Google Authenticator y queda en el historial con el de antes
+  (`app_setting`, una sola fila: sin fila, abiertos).
+- **Los invitados** (`signup_invite`): agregarlos y quitarlos no pide el código, pero queda en el
+  historial con el admin (ver "Riesgos aceptados"). No se invita un correo que ya tiene cuenta. Al
+  registrarse, la invitación queda como usada ("Creó su cuenta el…"); si esa persona elimina su
+  cuenta, se borra su invitación y su correo sale de esos eventos ("invitó a alguien").
+- **Inicio** muestra cómo están los registros y, solo con invitación, cuántas invitaciones faltan por
+  usar; con un aviso vigente, hasta cuándo se ve.
+
+**El aviso para todos** (`app_notice`, una sola fila): un mensaje arriba de la app, del inicio de sesión y
+del registro, por ejemplo "Mantenimiento el sábado de 8 a 9" o "Nuevo: presupuestos".
+- **Uno a la vez**, de hasta 200 caracteres en una línea, con un texto opcional en inglés (vacío: se ve el de
+  español). Es **Información** (en el color de la marca) o **Importante** (en rojo, como las alertas).
+- **Se apaga solo** en la fecha y hora de fin, en hora de Colombia, hasta 31 días después. Uno vencido sigue
+  en Configuración (en rojo, "Venció el…") hasta que se publique otro o se quite.
+- **Publicarlo, cambiarlo y quitarlo** piden el código de Google Authenticator y quedan en el historial con el
+  texto, el tipo y la fecha de fin.
+- **Se cierra con la ✕** en cada navegador: la cookie `aviso-cerrado` guarda su versión (la fecha en que se
+  publicó), así el servidor tampoco lo dibuja al recargar. Si se publica otro, o se cambia el texto, tiene
+  otra versión y vuelve a aparecer.
+- Lo lee `src/modules/notice/current-notice.ts` en cada pedido (`src/components/site-notice.tsx`, dentro de
+  Suspense en los layouts de la app y de entrar), sin sesión.
+
+**Los valores de la app** (`app_values`, una sola fila; sin ella, los de siempre de `src/modules/app-values/values.ts`):
+
+| Valor | De siempre | Rango | A quién le aplica |
+|---|---|---|---|
+| Avisos de próximos pagos: prendidos y con cuántos días | Prendidos, 3 días | 0 a 10 días | A quien no eligió los suyos en Configuración → Notificaciones (sin fila en `notification_setting`); quien los eligió conserva los suyos |
+| Desde qué % un presupuesto "se acerca" | 80 % | 50 a 95 | A todas las cuentas: el Resumen, Configuración, el aviso del formulario y el del bot |
+| Cuándo un egreso es fijo: en al menos N de los últimos M meses | 3 de 4 | M de 3 a 6; N de 2 a M | A todas las cuentas: Fijos, Reportes (los descuenta), los próximos pagos y "Lo que te queda" |
+
+- Cambiarlos pide el código de Google Authenticator y queda en el historial con los de antes.
+- Los lee `src/modules/app-values/current.ts` (una consulta por pedido, con `cache`), sin sesión: las consultas
+  de cada cuenta, el bot y las páginas que los explican (Fijos y la Ayuda).
+- La base revisa los rangos (`check`), como el servidor.
 
 ### Historial de las cuentas
 
@@ -1088,6 +1338,9 @@ administrador.
 | `whatsapp_unlinked` | Se desvincula (`by_user`), el número pasa a otra cuenta (`number_moved`) o la cuenta vincula otro número (`number_changed`) | Número |
 | `whatsapp_link_failed` | Código inválido o vencido (`invalid_code`) o demasiados intentos (`rate_limited`) | Número; sin cuenta |
 | `login_unlocked`, `sessions_revoked`, `account_suspended`, `account_reactivated`, `account_deleted` | Acciones del admin en `/admin/usuarios` (y `whatsapp_unlinked` con `by_admin`) | `admin_id`: quién lo hizo; `details.note`: el motivo de una suspensión |
+| `signup_mode_changed`, `signup_invite_added`, `signup_invite_removed` | Acciones del admin en `/admin/configuracion`; sin cuenta | El modo nuevo y el de antes; el correo invitado (sale si esa persona elimina su cuenta) |
+| `notice_published`, `notice_removed` | El aviso para todos, en `/admin/configuracion`; sin cuenta | El texto en español, el tipo y la fecha de fin |
+| `app_values_changed` | Los valores de la app, en `/admin/configuracion`; sin cuenta | Los nuevos y los de antes |
 
 Las acciones del admin llevan `admin_id` (su cuenta) y tienen su chip, **Acciones del admin**, en los
 filtros del Historial; también se ven en el detalle de cada cuenta. Si se borra la cuenta del admin, la
@@ -1110,8 +1363,8 @@ pnpm account:delete persona@correo.com
 
 Borra lo mismo que el botón de la app (`deleteAccountData`): la cuenta, sus sesiones, movimientos,
 categorías propias, el número vinculado, sus mensajes del bot (también los que llegaron sin cuenta
-desde los números que tuvo antes, salvo que ese número sea hoy de otra cuenta) y sus intentos
-fallidos de login.
+desde los números que tuvo antes, salvo que ese número sea hoy de otra cuenta), sus intentos
+fallidos de login y su invitación (con su correo en los eventos de las invitaciones).
 Antes muestra en qué base de datos va a trabajar (sin la clave) y qué va a borrar, y pide escribir
 el correo de nuevo para confirmar. No uses SQL a mano: podrías dejar mensajes o intentos fallidos
 sueltos.
@@ -1147,7 +1400,9 @@ hacen falta:
 | Override | Por qué | Quitar cuando |
 |---|---|---|
 | `@esbuild-kit/core-utils>esbuild: ^0.25.4` | `drizzle-kit` 0.31 trae `esbuild` 0.18, vulnerable ([GHSA-67mh-4wv8-2f99](https://github.com/advisories/GHSA-67mh-4wv8-2f99)). Verificado: `drizzle-kit generate`, `check` y `migrate` siguen funcionando | `drizzle-kit` deje de depender de `@esbuild-kit` |
-| `typed-rest-client>qs: ^6.16.0` | Stryker 10.0.0 usa `typed-rest-client` 2.x con `qs` vulnerable (3 avisos de DoS) | Stryker actualice `typed-rest-client` a 3.x |
+| `typed-rest-client>qs: ^6.16.1` | Stryker 10.0.0 usa `typed-rest-client` 2.x con `qs` vulnerable (4 avisos de DoS; el último, [GHSA-6pq8-jhm2-2vcw](https://github.com/advisories/GHSA-6pq8-jhm2-2vcw), corregido en 6.16.1). Solo en desarrollo | Stryker actualice `typed-rest-client` a 3.x |
+| `undici@>=8.0.0 <8.12.2: 8.12.2` | `jsdom` (pruebas de componentes; también lo trae `vitest`) usa `undici` 8.12.1, con un DoS alto ([GHSA-xjj6-f33q-929c](https://github.com/advisories/GHSA-xjj6-f33q-929c)). Solo en desarrollo y en el CI. Forzada en vez de `pnpm update undici`, que re-resolvía otras dependencias (el `@babel/core` que ve Next); la 8.12.3 todavía no cumple los 7 días de `minimum-release-age` | `jsdom` traiga `undici` 8.12.2 o más nueva |
+| `fast-uri@>=3.0.0 <3.1.9: 3.1.9` | `ajv` (lo usa Stryker, solo para la mutación) trae `fast-uri` 3.1.8, con 4 avisos (2 moderados y 2 bajos: [GHSA-w74x-v6f9-j3xg](https://github.com/advisories/GHSA-w74x-v6f9-j3xg) y otros) sobre cómo normaliza URLs. Solo en desarrollo y en el CI. Editado a mano en el lockfile, como `undici`, para no re-resolver el resto | `ajv` traiga `fast-uri` 3.1.9 o más nueva |
 
 **Avisos ignorados en `pnpm audit`** (`package.json → pnpm.auditConfig.ignoreGhsas`). El CI audita
 todas las dependencias, también las de desarrollo, porque `drizzle-kit` y `tsx` corren con la base de
@@ -1183,14 +1438,14 @@ token de Vercel a mano).
   `pnpm audit` de la app.
 - **Cómo actualizarlo:** Dependabot lo propone (con `cooldown`), o a mano: cambia la versión en
   `.github/vercel-cli/package.json` y corre `pnpm install --dir .github/vercel-cli`.
-- **Versiones forzadas del CLI** (`.github/vercel-cli/package.json → pnpm.overrides`): corrigen 22
+- **Versiones forzadas del CLI** (`.github/vercel-cli/package.json → pnpm.overrides`): corrigen 26
   avisos de sus dependencias internas, siempre dentro de la misma versión mayor para no romperlo:
   - `tar` 7.5.22 (incluido un aviso crítico);
   - `minimatch` 10.2.6;
   - `js-yaml` 4.3.2;
   - `smol-toml` 1.9.0;
   - `path-to-regexp` 6.3.0 y 8.4.2;
-  - `ajv` 8.18.0;
+  - `ajv` 8.18.0, con `fast-uri` 3.1.9;
   - `undici` 5.29.0.
 
   Verificado con un `vercel build` local completo. Al actualizar el CLI, bórralas y vuelve a correr
@@ -1305,6 +1560,7 @@ Secretos necesarios en GitHub (*Settings → Secrets and variables → Actions*)
 | `VERCEL_ORG_ID` | Vercel → Team Settings → General → Team ID (`team_…`) |
 | `VERCEL_PROJECT_ID` | Vercel → proyecto → Settings → General → Project ID (`prj_…`) |
 | `VERCEL_AUTOMATION_BYPASS_SECRET` | Vercel → proyecto → Settings → Deployment Protection → Protection Bypass for Automation. Deja entrar a los smoke tests a la URL propia de cada versión, que Vercel protege |
+| `CRON_SECRET` | El mismo valor que en Vercel (Settings → Environment Variables). Lo usa la [vigilancia cada hora](#vigilancia-cada-hora) |
 
 Variables de la app en Vercel (*Settings → Environment Variables*): `DATABASE_URL` y
 `DATABASE_URL_UNPOOLED` (las crea Neon), `BETTER_AUTH_SECRET`, `ANTHROPIC_API_KEY` y las
@@ -1314,6 +1570,29 @@ Variables de la app en Vercel (*Settings → Environment Variables*): `DATABASE_
 Webhook en Meta: `https://<tu-app>.vercel.app/api/whatsapp/webhook`, el mismo
 `WHATSAPP_VERIFY_TOKEN` y suscripción al campo `messages`. La cuenta de WhatsApp Business debe
 estar suscrita a la app: `scripts/meta-subscribe.sh <WABA_ID> <APP_ID>`.
+
+### Vigilancia cada hora
+
+Un workflow de GitHub Actions (`.github/workflows/vigilancia.yml`, a los 23 minutos de cada hora) llama a
+`/api/cron/vigilancia` con `CRON_SECRET` (`scripts/vigilancia.mjs`). La ruta revisa:
+- lo mismo que `/api/health`;
+- la conexión con WhatsApp y con Claude, como "Probar conexiones" (sin enviar nada ni gastar créditos);
+- las alertas del bot.
+
+Si algo falla, o la app no responde, abre un issue con la etiqueta `vigilancia`: GitHub le avisa al dueño
+por correo y en el celular. Cuando todo vuelve a estar en orden, lo cierra con un comentario. Solo actúa
+al pasar de bien a mal o al revés, así que un problema que sigue no manda un aviso cada hora.
+
+- **El repositorio es público:** el issue y el log no dicen qué falla, solo dónde mirarlo (Salud del
+  sistema y Bot de WhatsApp). La ruta tampoco devuelve detalles, solo de qué tipo es cada problema.
+- **Necesita el secreto `CRON_SECRET` en GitHub** (*Settings → Secrets and variables → Actions*), con el
+  mismo valor que en Vercel. Si falta o no coincide, el workflow queda en rojo con el motivo, y GitHub
+  también avisa.
+- **El dominio** es el del último despliegue exitoso al entorno `production` de GitHub, que registra
+  `deploy.yml` con su `PRODUCTION_URL`, el único lugar donde está. Es donde corre la app de verdad.
+- **Para probarla:** *Actions → Vigilancia → Run workflow*.
+- **GitHub apaga los workflows programados** de un repositorio público que pasa 60 días sin actividad.
+  Si eso pasa, se vuelve a activar en *Actions → Vigilancia → Enable workflow*.
 
 ## Roadmap
 

@@ -5,7 +5,7 @@ import { getAppUrl } from "@/lib/app-url";
 // Las páginas que un buscador puede mostrar: las que se ven sin sesión. /cuenta-eliminada también es
 // pública, pero solo tiene sentido justo después de borrar la cuenta. Sin fecha de cambio
 // (lastModified): una fecha que no es real hace que los buscadores dejen de creerla.
-export const SITEMAP_PATHS = ["/", "/registro", "/login", "/privacidad", "/eliminar-datos"];
+export const SITEMAP_PATHS = ["/", "/registro", "/login", "/ayuda", "/privacidad", "/eliminar-datos"];
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // La URL de la app se lee en cada pedido: al compilar (en el CI, con `vercel build`) Vercel todavía

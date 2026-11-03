@@ -21,6 +21,20 @@ export async function sendWhatsApp(
     text === null
       ? { from, id, timestamp: String(Math.floor(Date.now() / 1000)), type: "audio", audio: { id: "a1" } }
       : { from, id, timestamp: String(Math.floor(Date.now() / 1000)), type: "text", text: { body: text } };
+  return postToWebhook(request, from, message, secret);
+}
+
+/** El id de la foto de una factura que tiene el WhatsApp falso (MEDIA en e2e/fake-services.mjs). */
+export const RECEIPT_MEDIA_ID = "7770001";
+
+/** Envía una foto (por defecto, la de una factura) con su texto, como la manda Meta: solo el id para bajarla. */
+export async function sendWhatsAppPhoto(request: APIRequestContext, from: string, caption?: string, mediaId = RECEIPT_MEDIA_ID) {
+  const image = { id: mediaId, mime_type: "image/png", sha256: "e2e", ...(caption ? { caption } : {}) };
+  const message = { from, id: `wamid.e2e.${randomUUID()}`, timestamp: String(Math.floor(Date.now() / 1000)), type: "image", image };
+  return postToWebhook(request, from, message, E2E_WHATSAPP_APP_SECRET);
+}
+
+async function postToWebhook(request: APIRequestContext, from: string, message: Record<string, unknown>, secret: string) {
   const body = JSON.stringify({
     object: "whatsapp_business_account",
     entry: [

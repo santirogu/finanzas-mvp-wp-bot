@@ -42,7 +42,7 @@ describe("BotFilterBar", () => {
 
   it("la fecha cuenta como un filtro activo", () => {
     render(<BotFilterBar filters={f({ date: "7d" })} panelOpen={false} />);
-    expect(filtersButton()).toHaveAccessibleName("Filtros (activos: 1)");
+    expect(filtersButton()).toHaveAccessibleName("Filtros: 1 activo");
   });
 
   it("solo filtra por la fecha de los mensajes, y el chip refleja la URL", () => {
@@ -86,7 +86,7 @@ describe("BotFilterBar en inglés", () => {
   it("la búsqueda y la fecha de los mensajes", () => {
     render(<BotFilterBar filters={f({ date: "hoy" })} panelOpen />, { wrapper: InEnglish });
     expect(screen.getByRole("searchbox", { name: "Search" })).toHaveAttribute("placeholder", "Name, email or number");
-    expect(screen.getByRole("button", { name: /^Filters/ })).toHaveAccessibleName("Filters (active: 1)");
+    expect(screen.getByRole("button", { name: /^Filters/ })).toHaveAccessibleName("Filters: 1 active");
     expect(screen.getByRole("group", { name: "Message date" })).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: "Today" })).toBeChecked();
   });

@@ -103,6 +103,41 @@ describe("EventItem", () => {
     expect(shown.icon.className).toContain("bg-admin-surface");
   });
 
+  it.each([
+    [{ type: "signup_mode_changed", details: { signupMode: "invite", previousSignupMode: "open" } }, "Ana Admin cambió quién puede crear una cuenta", "Configuración · ahora solo con invitación (antes abiertos) · 9:41 p. m."],
+    [{ type: "signup_invite_added", details: { email: "beto@test.local" } }, "Ana Admin invitó a beto@test.local a crear una cuenta", "Configuración · 9:41 p. m."],
+    [{ type: "signup_invite_removed", details: { email: "beto@test.local" } }, "Ana Admin quitó la invitación de beto@test.local", "Configuración · 9:41 p. m."],
+    // Si esa persona eliminó su cuenta, su correo ya no está (src/modules/account/delete-account.ts).
+    [{ type: "signup_invite_added" }, "Ana Admin invitó a alguien a crear una cuenta", "Configuración · 9:41 p. m."],
+    [{ type: "signup_invite_removed" }, "Ana Admin quitó una invitación", "Configuración · 9:41 p. m."],
+    [
+      { type: "notice_published", details: { notice: { message: "Nuevo: presupuestos", tone: "info", endsAt: "2026-10-26T01:00:00.000Z" } } },
+      "Ana Admin publicó un aviso para todos",
+      "Configuración · “Nuevo: presupuestos” · información · hasta el 25 de oct. de 2026, 8:00 p. m. · 9:41 p. m.",
+    ],
+    [
+      { type: "notice_removed", details: { notice: { message: "Nuevo: presupuestos", tone: "info", endsAt: "2026-10-26T01:00:00.000Z" } } },
+      "Ana Admin quitó el aviso para todos",
+      "Configuración · “Nuevo: presupuestos” · información · hasta el 25 de oct. de 2026, 8:00 p. m. · 9:41 p. m.",
+    ],
+    [
+      {
+        type: "app_values_changed",
+        details: {
+          appValues: { upcomingEnabled: true, upcomingDays: 3, budgetNearShare: 70, recurringMinMonths: 3, recurringWindow: 4 },
+          previousAppValues: { upcomingEnabled: true, upcomingDays: 3, budgetNearShare: 80, recurringMinMonths: 3, recurringWindow: 4 },
+        },
+      },
+      "Ana Admin cambió los valores de la app",
+      "Configuración · cerca del presupuesto: ahora 70\u00a0% (antes 80\u00a0%) · 9:41 p. m.",
+    ],
+  ] as const)("acción del admin sobre los registros %j, en su color", (overrides, sentence, meta) => {
+    const shown = renderItem({ entry: entry({ account: null, admin: { name: "Ana Admin" }, ...(overrides as Partial<LogEntry>) }) });
+    expect(shown.sentence).toBe(sentence);
+    expect(shown.meta).toBe(meta);
+    expect(shown.icon.className).toContain("bg-admin-surface");
+  });
+
   it("si la cuenta del admin ya no existe, dice 'Un admin'", () => {
     expect(renderItem({ entry: entry({ type: "login_unlocked", admin: null }) }).sentence).toBe(
       "Un admin desbloqueó el inicio de sesión de Ana Pérez",
@@ -188,6 +223,14 @@ describe("EventItem en inglés", () => {
     [{ type: "bot_limits_changed", account: null }, "Carla Admin changed Claude's per-account limits"],
     [{ type: "bot_monthly_limit_changed", account: null }, "Carla Admin changed Claude's monthly token limit"],
     [{ type: "bot_replies_resent", account: null }, "Carla Admin resent the bot replies that hadn't gone out"],
+    [{ type: "signup_mode_changed", account: null }, "Carla Admin changed who can create an account"],
+    [{ type: "signup_invite_added", account: null, details: { email: "beto@test.local" } }, "Carla Admin invited beto@test.local to create an account"],
+    [{ type: "signup_invite_removed", account: null, details: { email: "beto@test.local" } }, "Carla Admin removed the invitation for beto@test.local"],
+    [{ type: "signup_invite_added", account: null }, "Carla Admin invited someone to create an account"],
+    [{ type: "signup_invite_removed", account: null }, "Carla Admin removed an invitation"],
+    [{ type: "notice_published", account: null }, "Carla Admin published a notice for everyone"],
+    [{ type: "notice_removed", account: null }, "Carla Admin removed the notice for everyone"],
+    [{ type: "app_values_changed", account: null }, "Carla Admin changed the app values"],
   ] as const)("acción del admin %j", (overrides, sentence) => {
     expect(renderItem({ entry: entry({ admin: carla, ...(overrides as Partial<LogEntry>) }), locale: "en" }).sentence).toBe(sentence);
   });

@@ -11,10 +11,11 @@ const mocks = vi.hoisted(() => ({ requireAdmin: vi.fn(), refresh: vi.fn() }));
 vi.mock("@/lib/session", () => ({ requireAdmin: mocks.requireAdmin }));
 vi.mock("next/cache", () => ({ refresh: mocks.refresh }));
 
-const { changeAiLimitsAction, changeMonthlyLimitAction, pauseClaudeAction, resendRepliesAction, resumeClaudeAction } = await import("./actions");
+const { changeAiLimitsAction, changeBotModelAction, changeMonthlyLimitAction, pauseClaudeAction, resendRepliesAction, resumeClaudeAction } =
+  await import("./actions");
 const { pendingResends, resendFailedReplies } = await import("@/modules/admin/bot/resend");
 const { botSettingsForAdmin } = await import("@/modules/admin/bot/bot-settings");
-const { getBotSettings } = await import("@/modules/bot/settings");
+const { currentBotModel, getBotSettings } = await import("@/modules/bot/settings");
 
 // Cada código sirve una vez y nunca uno anterior: cada acción usa el de los siguientes 30 s.
 let step = 0;
@@ -50,6 +51,8 @@ describe("pausar y reanudar Claude", () => {
       monthlyTokenLimit: null,
       month: { used: 0, reached: false, resetsOn: "2026-11-01" },
       averageTokensPerCall: null,
+      averageUsage: null,
+      model: { id: "claude-haiku-5-5", chosen: false },
       updated: null,
     });
   });
@@ -96,7 +99,7 @@ describe("pausar y reanudar Claude", () => {
     const { code } = await seed();
     await db.insert(botSetting).values({ id: 1, aiPerHour: 7, aiPerDay: 70 });
     await pauseClaudeAction({}, form({ code: code() }));
-    expect(await getBotSettings()).toEqual({ claudePaused: true, limits: { perHour: 7, perDay: 70 }, monthlyTokenLimit: null });
+    expect(await getBotSettings()).toEqual({ claudePaused: true, limits: { perHour: 7, perDay: 70 }, monthlyTokenLimit: null, model: null });
   });
 });
 
@@ -105,7 +108,7 @@ describe("cambiar los topes por cuenta", () => {
     const { admin, code } = await seed();
     const result = await changeAiLimitsAction({}, form({ perHour: "30", perDay: "1.500", code: code() }));
     expect(result).toEqual({ message: "Los topes quedaron en 30 por hora y 1.500 por día, por cuenta." });
-    expect(await getBotSettings()).toEqual({ claudePaused: false, limits: { perHour: 30, perDay: 1500 }, monthlyTokenLimit: null });
+    expect(await getBotSettings()).toEqual({ claudePaused: false, limits: { perHour: 30, perDay: 1500 }, monthlyTokenLimit: null, model: null });
     expect(await events()).toEqual([
       {
         type: "bot_limits_changed",
@@ -120,7 +123,7 @@ describe("cambiar los topes por cuenta", () => {
     const { code } = await seed();
     await db.insert(botSetting).values({ id: 1, claudePaused: true, aiPerHour: 20, aiPerDay: 100 });
     await changeAiLimitsAction({}, form({ perHour: "5", perDay: "50", code: code() }));
-    expect(await getBotSettings()).toEqual({ claudePaused: true, limits: { perHour: 5, perDay: 50 }, monthlyTokenLimit: null });
+    expect(await getBotSettings()).toEqual({ claudePaused: true, limits: { perHour: 5, perDay: 50 }, monthlyTokenLimit: null, model: null });
   });
 
   it("fuera de rango o iguales, lo dice en su campo sin gastar el código", async () => {
@@ -152,7 +155,7 @@ describe("sin rol de admin", () => {
   it("ninguna acción ni consulta hace nada", async () => {
     await seed();
     mocks.requireAdmin.mockRejectedValue(new Error("NEXT_NOT_FOUND"));
-    for (const action of [pauseClaudeAction, resumeClaudeAction, changeAiLimitsAction]) {
+    for (const action of [pauseClaudeAction, resumeClaudeAction, changeAiLimitsAction, changeBotModelAction]) {
       await expect(action({}, form({ perHour: "30", perDay: "150", code: "123456" }))).rejects.toThrow("NEXT_NOT_FOUND");
     }
     await expect(botSettingsForAdmin()).rejects.toThrow("NEXT_NOT_FOUND");
@@ -174,7 +177,12 @@ describe("el tope mensual de tokens", () => {
     });
     expect((await getBotSettings()).monthlyTokenLimit).toBe(10_000);
     const view = await botSettingsForAdmin();
-    expect(view).toMatchObject({ monthlyTokenLimit: 10_000, month: { used: 3600, reached: false }, averageTokensPerCall: 1800 });
+    expect(view).toMatchObject({
+      monthlyTokenLimit: 10_000,
+      month: { used: 3600, reached: false },
+      averageTokensPerCall: 1800,
+      averageUsage: { input: 1700, output: 100 },
+    });
     expect(view.month.resetsOn).toMatch(/^\d{4}-\d{2}-01$/);
     expect(await events()).toEqual([
       { type: "bot_monthly_limit_changed", userId: null, adminId: admin.id, details: { monthlyLimit: 10_000, previousMonthlyLimit: null } },
@@ -206,6 +214,65 @@ describe("el tope mensual de tokens", () => {
     await seed();
     expect(await changeMonthlyLimitAction({}, form({ monthlyLimit: "20000", code: "000000" }))).toMatchObject({ field: "code" });
     expect((await getBotSettings()).monthlyTokenLimit).toBeNull();
+  });
+});
+
+describe("el modelo de Claude", () => {
+  it("con el código lo cambia: el bot lo usa desde el siguiente mensaje y el historial guarda el nuevo y el de antes", async () => {
+    const { admin, code } = await seed();
+    expect(await changeBotModelAction({}, form({ model: "claude-sonnet-5-5", code: code() }))).toEqual({
+      message: "El bot ahora usa Claude Sonnet 5.5, desde el siguiente mensaje.",
+    });
+    expect(mocks.refresh).toHaveBeenCalledTimes(1);
+    expect((await getBotSettings()).model).toBe("claude-sonnet-5-5");
+    expect(await currentBotModel()).toBe("claude-sonnet-5-5");
+    expect((await botSettingsForAdmin()).model).toEqual({ id: "claude-sonnet-5-5", chosen: true });
+    expect(await events()).toEqual([
+      {
+        type: "bot_model_changed",
+        userId: null,
+        adminId: admin.id,
+        details: { model: "claude-sonnet-5-5", previousModel: "claude-haiku-5-5" },
+      },
+    ]);
+  });
+
+  it("no toca la pausa ni los topes; sin elección, vale BOT_MODEL (para comparar en local)", async () => {
+    const { code } = await seed();
+    vi.stubEnv("BOT_MODEL", "claude-opus-5-5");
+    expect(await currentBotModel()).toBe("claude-opus-5-5");
+    await db.insert(botSetting).values({ id: 1, claudePaused: true, aiPerHour: 5, aiPerDay: 50, monthlyTokenLimit: 20_000 });
+    await changeBotModelAction({}, form({ model: "claude-haiku-5-5", code: code() }));
+    expect(await getBotSettings()).toEqual({
+      claudePaused: true,
+      limits: { perHour: 5, perDay: 50 },
+      monthlyTokenLimit: 20_000,
+      model: "claude-haiku-5-5",
+    });
+    expect((await events()).map((e) => e.details)).toEqual([{ model: "claude-haiku-5-5", previousModel: "claude-opus-5-5" }]);
+    vi.unstubAllEnvs();
+  });
+
+  it("uno que no está en la lista o el que ya usa: lo dice en su campo sin gastar el código", async () => {
+    const { code } = await seed();
+    const unused = code();
+    expect(await changeBotModelAction({}, form({ model: "claude-modelo-inventado", code: unused }))).toEqual({
+      error: "Elige uno de los modelos de la lista.",
+      field: "model",
+    });
+    expect(await changeBotModelAction({}, form({ model: "claude-haiku-5-5", code: unused }))).toEqual({
+      error: "El bot ya usa ese modelo: elige otro.",
+      field: "model",
+    });
+    // El código no se gastó: sirve para un cambio de verdad.
+    expect(await changeBotModelAction({}, form({ model: "claude-opus-5-5", code: unused }))).toMatchObject({ message: expect.any(String) });
+  });
+
+  it("con un código equivocado no cambia nada", async () => {
+    await seed();
+    expect(await changeBotModelAction({}, form({ model: "claude-opus-5-5", code: "000000" }))).toMatchObject({ field: "code" });
+    expect((await getBotSettings()).model).toBeNull();
+    expect(await events()).toEqual([]);
   });
 });
 

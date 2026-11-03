@@ -4,7 +4,7 @@ import postgres from "postgres";
 import { heading, newAdmin, setUpTwoFactor } from "./admin";
 import { monthOf, monthParam, shiftMonth, todayInTimezone } from "../src/lib/dates";
 import { e2eDatabaseUrl } from "./database-url";
-import { addTransaction, closeToasts, openAccountMenu, openTab, register, test, toast, visible } from "./helpers";
+import { addBudget, addTransaction, closeToasts, openAccountMenu, openTab, register, test, toast, visible } from "./helpers";
 
 // En las pantallas táctiles todo cabe en la pantalla, aunque los textos sean largos (sin scroll de
 // lado), y los campos tienen letra de 16 px o más: con menos, Safari del iPhone y del iPad hace zoom
@@ -159,7 +159,7 @@ test("en pantallas táctiles las páginas caben y los campos no hacen zoom @tact
   const fixedDescription = `Cuota del plan de telefonía móvil e internet del hogar ${id} `.repeat(3).slice(0, 140).trim();
 
   await test.step("páginas públicas", async () => {
-    for (const path of ["/", "/login", "/registro", "/privacidad", "/eliminar-datos", "/cuenta-eliminada"]) {
+    for (const path of ["/", "/login", "/registro", "/ayuda", "/privacidad", "/eliminar-datos", "/cuenta-eliminada"]) {
       await page.goto(path);
       await expectFitsOnScreens(page, path);
     }
@@ -198,8 +198,16 @@ test("en pantallas táctiles las páginas caben y los campos no hacen zoom @tact
     await expect(toast(page, /^Egreso registrado$/)).toBeVisible();
   });
 
+  await test.step("un presupuesto de la categoría más larga, pasado por el monto más largo", async () => {
+    await open(page, "/configuracion");
+    await visible(page.getByRole("button", { name: "Agregar un presupuesto" })).click();
+    await expectFitsOnScreens(page, "ventana de agregar un presupuesto");
+    await page.getByRole("dialog").getByRole("button", { name: "Cancelar" }).click();
+    await addBudget(page, category, "1");
+  });
+
   await test.step("las páginas de la persona", async () => {
-    for (const path of ["/dashboard", "/ingresos", "/egresos", "/gastos-fijos", "/reportes", "/cuenta", "/ayuda", `/dashboard?mes=${previousMonth}`, `/egresos?mes=${previousMonth}`]) {
+    for (const path of ["/dashboard", "/ingresos", "/egresos", "/gastos-fijos", "/reportes", "/configuracion", "/cuenta", "/ayuda", `/dashboard?mes=${previousMonth}`, `/egresos?mes=${previousMonth}`]) {
       await open(page, path);
       await expectFitsOnScreens(page, path);
     }
@@ -269,8 +277,11 @@ test("en pantallas táctiles las páginas caben y los campos no hacen zoom @tact
       insert into whatsapp_message (id, phone, body, status, intent, processed_at, ai_requested_at)
       values (${`wamid.tactil.${randomUUID()}`}, '573000000001', 'mensaje de prueba', 'processed',
               ${sql.json({ kind: "reply", text: "", usage })}, now(), now())`;
+    // Un invitado con un correo larguísimo (sin espacios): se parte en Configuración. Con los registros abiertos,
+    // invitar no cambia quién puede crear una cuenta.
+    await sql`insert into signup_invite (email) values (${`${"invitado-con-un-nombre-muy-largo".repeat(2)}.${randomUUID()}@finanzas-e2e.test`})`;
     await sql.end();
-    for (const path of ["/admin", "/admin/usuarios", "/admin/historial", "/admin/bot", "/admin/salud", "/admin/seguridad"]) {
+    for (const path of ["/admin", "/admin/usuarios", "/admin/historial", "/admin/bot", "/admin/salud", "/admin/configuracion", "/admin/seguridad"]) {
       await open(page, path);
       await expectFitsOnScreens(page, path);
     }

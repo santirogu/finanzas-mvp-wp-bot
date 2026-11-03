@@ -1,16 +1,17 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { BotCommandsText } from "@/components/bot-commands-text";
 import type { Locale } from "@/i18n/locales";
 import { getLocale } from "@/i18n/server";
 import { texts } from "@/i18n/texts";
 import { todayInTimezone } from "@/lib/dates";
 import { formatPercent, formatShare } from "@/lib/money";
 import { requireAdmin } from "@/lib/session";
+import { botAlerts } from "@/modules/admin/bot/alerts";
 import { botAccounts, botActivity, type AccountRow } from "@/modules/admin/bot/bot-activity";
 import { botSettingsForAdmin } from "@/modules/admin/bot/bot-settings";
 import { pendingResends } from "@/modules/admin/bot/resend";
+import { BOT_MODELS_EVALUATED_ON } from "@/modules/bot/models";
 import { formatCost, PRICES_CHECKED_ON } from "@/modules/bot/pricing";
 import {
   ACCOUNT_SORTS,
@@ -35,6 +36,7 @@ import {
 } from "@/modules/admin/bot/bot-filters";
 import { adminModuleLabel } from "@/modules/admin/modules";
 import { ADMIN_MAX_ROWS, ADMIN_PAGE_SIZE, ADMIN_TIMEZONE, formatDate, formatDateTime } from "@/modules/admin/shared/filters";
+import { BotAlerts } from "../bot-alerts";
 import { PageSkeleton } from "../../page-skeleton";
 import { ActiveFilters } from "../active-filters";
 import { BotSettings } from "./bot-settings";
@@ -46,7 +48,6 @@ export async function generateMetadata(): Promise<Metadata> {
   return adminMetadata("bot");
 }
 
-// Los comandos (balance, reporte, deshacer, ayuda) van como se escriben en el bot, que responde en español.
 const TEXTS = texts(
   {
     title: "Bot de WhatsApp",
@@ -121,7 +122,7 @@ const TEXTS = texts(
       filtering: " · filtering",
       claudeTitle: "Claude usage",
       claudeIntro: (date) =>
-        `Each free-text message uses one call; the commands (balance, reporte, deshacer, ayuda) don't. The cost is an estimate in US dollars with Anthropic's public prices as of ${date}; you see the actual charge in the Anthropic console.`,
+        `Each free-text message uses one call; the commands (balance, report, undo, help) don't. The cost is an estimate in US dollars with Anthropic's public prices as of ${date}; you see the actual charge in the Anthropic console.`,
       inputTokens: "Input tokens",
       outputTokens: "Output tokens",
       cost: "Estimated cost",
@@ -187,11 +188,12 @@ async function Bot({ params }: { params: Record<string, string | string[] | unde
   const count = (n: number) => formatCount(n, locale);
   const filters = parseBotFilters(params);
   const today = todayInTimezone(ADMIN_TIMEZONE);
-  const [activity, accounts, settings, resends] = await Promise.all([
+  const [activity, accounts, settings, resends, alerts] = await Promise.all([
     botActivity(filters, today),
     botAccounts(filters, today),
     botSettingsForAdmin(),
     pendingResends(),
+    botAlerts(),
   ]);
   const panelOpen = params.panel === "1";
   const filtered = activeBotFilters(filters).length > 0;
@@ -203,6 +205,7 @@ async function Bot({ params }: { params: Record<string, string | string[] | unde
 
   return (
     <div className="space-y-4">
+      <BotAlerts alerts={alerts} locale={locale} />
       <section className="card space-y-4 p-4" aria-labelledby="bot">
         <div className="space-y-1">
           <h2 id="bot" className="font-semibold">
@@ -233,6 +236,9 @@ async function Bot({ params }: { params: Record<string, string | string[] | unde
         monthlyTokenLimit={settings.monthlyTokenLimit}
         month={{ ...settings.month, resetsOn: formatDayMonth(settings.month.resetsOn, locale) }}
         averageTokensPerCall={settings.averageTokensPerCall}
+        averageUsage={settings.averageUsage}
+        model={settings.model.id}
+        modelsEvaluatedOn={formatPriceDate(BOT_MODELS_EVALUATED_ON, locale)}
         lastChange={settings.updated && `${settings.updated.by ?? t.someAdmin} · ${formatDateTime(settings.updated.at, locale)}`}
       />
       <p className="px-1 text-sm text-muted">
@@ -269,7 +275,7 @@ async function Bot({ params }: { params: Record<string, string | string[] | unde
                   >
                     <span className="flex justify-between gap-2 text-sm">
                       <span className={problem ? "font-medium text-danger" : selected ? "font-medium" : ""}>
-                        <BotCommandsText text={OUTCOME_TEXTS[locale][o]} locale={locale} />
+                        {OUTCOME_TEXTS[locale][o]}
                         {selected && <span className="font-normal text-muted">{t.filtering}</span>}
                       </span>
                       <span className="shrink-0 tabular-nums text-muted">
@@ -298,7 +304,7 @@ async function Bot({ params }: { params: Record<string, string | string[] | unde
             {t.claudeTitle}
           </h2>
           <p className="text-sm text-muted">
-            <BotCommandsText text={t.claudeIntro(formatPriceDate(PRICES_CHECKED_ON, locale))} locale={locale} />
+            {t.claudeIntro(formatPriceDate(PRICES_CHECKED_ON, locale))}
           </p>
         </div>
         {/* Las llamadas ya están arriba. Dos columnas desde 352 px: un total de cientos de millones de

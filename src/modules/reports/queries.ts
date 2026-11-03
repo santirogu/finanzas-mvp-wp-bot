@@ -1,9 +1,14 @@
 import "server-only";
 import { and, asc, desc, eq, gte, isNull, lt, sql } from "drizzle-orm";
+import { cache } from "react";
 import { db } from "@/db";
 import { category, transaction } from "@/db/schema";
 import { DEFAULT_LOCALE, type Locale } from "@/i18n/locales";
-import { compareMonths, type Month, monthOf, monthRange, shiftMonth } from "@/lib/dates";
+import { compareMonths, type Month, monthOf, monthParam, monthRange, shiftMonth } from "@/lib/dates";
+import { sumAmounts } from "@/lib/money";
+import { searchKey } from "@/lib/suggestions";
+import { getAppValues } from "@/modules/app-values/current";
+import { recurringRuleOf } from "@/modules/app-values/values";
 import { listActiveMonths } from "@/modules/transactions/queries";
 import { categoryNameIn } from "@/modules/transactions/category-name";
 import { NO_CATEGORIES } from "@/modules/transactions/search";
@@ -13,13 +18,16 @@ import type { CsvMovement } from "./csv";
 import type { DayDescriptionTotal } from "./daily";
 import { getFixedChoices } from "./fixed-choices";
 import { getLastPayments } from "./fixed-payments";
+import { type CategoryToDate, type MonthFact, monthFact } from "./month-fact";
 import { type FixedHistoryEntry, fixedHistories } from "./history";
 import { getExpenseHistoryMonths, getFixedNotes, noteKey } from "./history-notes";
 import { getPaymentSkips } from "./payment-skips";
 import { type ReportPeriod, reportPeriod } from "./period";
+import { type FixedMonth, fixedMonth } from "./fixed-month";
+import { type MonthFixed, monthFixed } from "./remaining";
 import { type DescriptionMonthTotal, recurringExpenses, recurringFrom } from "./recurring";
 import { monthSeries, type MonthTotals, periodSummary } from "./summary";
-import { type UpcomingPayment, upcomingPayments } from "./upcoming";
+import { MONTHS_BACK, type UpcomingPayment, upcomingPayments } from "./upcoming";
 import { getUpcomingSettings } from "./upcoming-settings";
 
 // Las consultas de Reportes. Reciben el userId ya validado por el Data Access Layer
@@ -179,17 +187,19 @@ export async function getReport(userId: string, period: ReportPeriod, current: M
   // Las categorías se comparan con los meses anteriores (pueden quedar fuera del período) y los gastos
   // fijos se buscan en los últimos meses (en un año que recién empieza, también los del anterior).
   const categoriesFrom = shiftMonth(last, -(AVERAGE_MONTHS + 1));
+  // Cuándo un gasto es fijo (Valores de la app): decide desde qué mes se consulta.
+  const rule = recurringRuleOf(await getAppValues());
   const [activeMonths, monthly, categories, descriptions, largest, choices] = await Promise.all([
     listActiveMonths(userId),
     getMonthlyTotals(userId, first, last),
     getCategoryMonthlyTotals(userId, compareMonths(categoriesFrom, first) < 0 ? categoriesFrom : first, last, locale),
-    getExpenseDescriptionsByMonth(userId, recurringFrom(period.months), last),
+    getExpenseDescriptionsByMonth(userId, recurringFrom(period.months, rule.window), last),
     getLargestExpenses(userId, first, last, locale),
     getFixedChoices(userId),
   ]);
   // Los gastos fijos (con lo que la persona agregó o quitó a mano) no se muestran en Reportes (tienen su
   // pestaña, /gastos-fijos), pero salen de los gastos más grandes y del gasto por día.
-  const recurring = recurringExpenses(descriptions, period.months, choices);
+  const recurring = recurringExpenses(descriptions, period.months, choices, rule);
   const series = monthSeries(period.months, monthly);
   return {
     activeMonths,
@@ -212,20 +222,22 @@ const firstActiveOf = (activeMonths: string[]) => (activeMonths.length > 0 ? mon
 export async function getFixedExpenses(userId: string, period: ReportPeriod, current: Month) {
   const first = period.months[0];
   const last = period.months[period.months.length - 1];
+  const rule = recurringRuleOf(await getAppValues());
   const [activeMonths, monthly, descriptions, choices, historyMonths, notes] = await Promise.all([
     listActiveMonths(userId),
     getMonthlyTotals(userId, first, last),
-    getExpenseDescriptionsByMonth(userId, recurringFrom(period.months), last),
+    getExpenseDescriptionsByMonth(userId, recurringFrom(period.months, rule.window, MONTHS_BACK), last),
     getFixedChoices(userId),
     getExpenseHistoryMonths(userId),
     getFixedNotes(userId),
   ]);
-  const recurring = recurringExpenses(descriptions, period.months, choices);
+  // Como los avisos (getFixedPaymentsData): uno atrasado sigue en Fijos al empezar el mes siguiente.
+  const recurring = recurringExpenses(descriptions, period.months, choices, rule, { keepFor: MONTHS_BACK });
   const byKey = fixedHistories(historyMonths, recurring.items.map((item) => item.key));
-  const histories: Record<string, FixedHistoryEntry[]> = {};
-  for (const [key, entries] of byKey) {
-    histories[key] = entries.map((entry) => ({ ...entry, note: notes.get(noteKey(key, entry.month)) ?? null }));
-  }
+  // Con fromEntries: la clave de un gasto como "__proto__" queda como una más (asignada, cambiaría el prototipo).
+  const histories: Record<string, FixedHistoryEntry[]> = Object.fromEntries(
+    [...byKey].map(([key, entries]) => [key, entries.map((entry) => ({ ...entry, note: notes.get(noteKey(key, entry.month)) ?? null }))]),
+  );
   const { averageExpense } = periodSummary(monthSeries(period.months, monthly), current, firstActiveOf(activeMonths));
   return { recurring, histories, averageExpense };
 }
@@ -248,15 +260,10 @@ export async function getUpcomingPayments(
 ): Promise<{ enabled: boolean; days: number; payments: (UpcomingPayment & { category: string | null })[] }> {
   const settings = await getUpcomingSettings(userId);
   if (!settings.enabled) return { ...settings, payments: [] };
-  const period = reportPeriod(undefined, current);
-  const [descriptions, choices, history, skipped, lastPayments] = await Promise.all([
-    getExpenseDescriptionsByMonth(userId, recurringFrom(period.months), period.months[period.months.length - 1]),
-    getFixedChoices(userId),
-    getExpenseHistoryMonths(userId),
-    getPaymentSkips(userId),
+  const [{ items, history, skipped }, lastPayments] = await Promise.all([
+    getFixedPaymentsData(userId, monthParam(current)),
     getLastPayments(userId, locale),
   ]);
-  const { items } = recurringExpenses(descriptions, period.months, choices);
   // Con la categoría del último pago: la que lleva "Registrar pago" (null, sin categoría: el aviso lo dice
   // en el idioma de la página).
   const payments = upcomingPayments(items, history, skipped, today, settings.days).map((payment) => ({
@@ -264,4 +271,86 @@ export async function getUpcomingPayments(
     category: lastPayments.get(payment.key)?.category ?? null,
   }));
   return { ...settings, payments };
+}
+
+/**
+ * Lo que miran los avisos de próximos pagos y "Lo que te queda": los gastos fijos (con lo del último mes), los
+ * egresos por mes y descripción y los pagos marcados "ya no aplica". Con `cache`: en el Resumen lo piden la página y
+ * la campana en el mismo request (`month`: el mes en curso, "YYYY-MM").
+ */
+const getFixedPaymentsData = cache(async (userId: string, month: string) => {
+  const period = reportPeriod(undefined, monthOf(`${month}-01`));
+  const rule = recurringRuleOf(await getAppValues());
+  const [descriptions, choices, history, skipped] = await Promise.all([
+    getExpenseDescriptionsByMonth(userId, recurringFrom(period.months, rule.window, MONTHS_BACK), period.months[period.months.length - 1]),
+    getFixedChoices(userId),
+    getExpenseHistoryMonths(userId),
+    getPaymentSkips(userId),
+  ]);
+  // Uno que no se pagó sigue siendo fijo (y avisando de lo atrasado) hasta MONTHS_BACK meses después: si no, al
+  // empezar el mes siguiente, sin el pago del anterior ni el del nuevo, dejaría de detectarse.
+  return { items: recurringExpenses(descriptions, period.months, choices, rule, { keepFor: MONTHS_BACK }).items, history, skipped };
+});
+
+/**
+ * Los gastos fijos del mes en curso para "Lo que te queda" (Resumen): lo que falta pagar y lo que ya se pagó. No
+ * depende de los avisos: cuenta aunque la persona los haya apagado.
+ */
+export async function getMonthFixed(userId: string, current: Month, today: string): Promise<MonthFixed> {
+  const { items, history, skipped } = await getFixedPaymentsData(userId, monthParam(current));
+  return monthFixed(items, history, skipped, today);
+}
+
+/**
+ * El estado del mes en curso de cada gasto fijo, para Fijos: pagado, falta (o atrasado) o "ya no aplica", y cuántos
+ * se pagaron. `today` (YYYY-MM-DD), en la zona de la persona.
+ */
+export async function getFixedMonth(userId: string, current: Month, today: string): Promise<FixedMonth> {
+  const { items, history, skipped } = await getFixedPaymentsData(userId, monthParam(current));
+  return fixedMonth(items, history, skipped, today);
+}
+
+/**
+ * Los egresos de cada mes del 1 al día `day`, por categoría y descripción (sin mayúsculas ni espacios en los
+ * extremos), de `first` a `last`: lo que compara el dato del mes, que después descarta los gastos fijos.
+ */
+async function getCategoryDescriptionsToDate(userId: string, first: Month, last: Month, day: number, locale: Locale) {
+  const description = sql<string>`lower(trim(${transaction.description}))`;
+  const rows = await db
+    .select({
+      month: monthOfTransaction,
+      name: sql<string>`coalesce(${categoryNameIn(locale)}, ${NO_CATEGORIES[locale]})`,
+      emoji: sql<string>`coalesce(${category.emoji}, '•')`,
+      description,
+      total: sql<string>`sum(${transaction.amount})`,
+    })
+    .from(transaction)
+    .leftJoin(category, eq(category.id, transaction.categoryId))
+    .where(and(activeBetween(userId, first, last), eq(transaction.type, "expense"), sql`extract(day from ${transaction.occurredOn}) <= ${day}`))
+    .groupBy(monthOfTransaction, category.name, category.nameEn, category.emoji, description);
+  return rows.map((row) => ({ ...row, total: Number(row.total) }));
+}
+
+/**
+ * El dato del mes del Resumen (src/modules/reports/month-fact.ts): el mes en curso hasta hoy (`today`, YYYY-MM-DD
+ * en la zona de la persona) frente a los mismos días de los AVERAGE_MONTHS anteriores en que tuvo movimientos, sin
+ * los gastos fijos (con lo que marcó a mano). null si no hay con qué comparar o nada se salió de lo normal.
+ */
+export async function getMonthFact(userId: string, current: Month, today: string, locale: Locale = DEFAULT_LOCALE): Promise<MonthFact | null> {
+  const active = new Set(await listActiveMonths(userId));
+  const averaged = Array.from({ length: AVERAGE_MONTHS }, (_, i) => shiftMonth(current, i - AVERAGE_MONTHS)).filter((month) => active.has(monthParam(month)));
+  if (averaged.length === 0) return null;
+  const [rows, fixed] = await Promise.all([
+    getCategoryDescriptionsToDate(userId, averaged[0], current, Number(today.slice(8, 10)), locale),
+    getFixedPaymentsData(userId, monthParam(current)),
+  ]);
+  const fixedKeys = new Set(fixed.items.map((item) => item.key));
+  const totals = new Map<string, CategoryToDate>();
+  for (const row of rows) {
+    if (fixedKeys.has(searchKey(row.description))) continue;
+    const key = `${row.month} ${row.emoji} ${row.name}`;
+    const seen = totals.get(key);
+    totals.set(key, { month: row.month, name: row.name, emoji: row.emoji, total: sumAmounts([seen?.total ?? 0, row.total]) });
+  }
+  return monthFact([...totals.values()], current, averaged);
 }

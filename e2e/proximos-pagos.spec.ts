@@ -140,7 +140,7 @@ test("los avisos se leen bien en modo oscuro", async ({ page }) => {
   expect(await seriousViolations(page)).toEqual([]);
 });
 
-test("Mi cuenta → Notificaciones: los días de anticipación cambian lo que avisa el Resumen; apagados, nada", async ({ page }) => {
+test("Configuración → Notificaciones: los días de anticipación cambian lo que avisa el Resumen; apagados, nada", async ({ page }) => {
   const { email } = await register(page);
   // Toca en 6 días: con los 3 de siempre todavía no avisa.
   const due = shiftDay(6);
@@ -155,7 +155,7 @@ test("Mi cuenta → Notificaciones: los días de anticipación cambian lo que av
   const days = () => settings().getByLabel("Días de anticipación");
 
   await test.step("un número fuera de rango no se guarda: lo dice debajo del campo", async () => {
-    await page.goto("/cuenta");
+    await page.goto("/configuracion");
     await expect(settings().getByRole("switch", { name: /Avisos de próximos pagos/ })).toBeChecked();
     await expect(days()).toHaveValue("3");
     await days().fill("11");
@@ -175,12 +175,18 @@ test("Mi cuenta → Notificaciones: los días de anticipación cambian lo que av
     await expect(card(page).getByRole("listitem").filter({ hasText: "Arriendo" }).getByText(when, { exact: true })).toBeVisible();
   });
 
-  await test.step("apagados: sin tarjeta, y al volver a Mi cuenta siguen apagados con sus días", async () => {
-    await page.goto("/cuenta");
+  await test.step("apagados: el interruptor queda apagado al guardar, sin tarjeta, y al volver siguen apagados con sus días", async () => {
+    await page.goto("/configuracion");
     await settings().getByText("Avisos de próximos pagos", { exact: true }).click();
     await expect(days()).toBeDisabled();
     await settings().getByRole("button", { name: "Guardar" }).click();
     await expect(toast(page, "Se apagaron los avisos de próximos pagos")).toHaveAttribute("data-tone", "removal");
+    // React vacía el formulario al terminar de guardar (el botón vuelve a "Guardar"): el interruptor tiene que
+    // seguir apagado, como dice el texto.
+    await expect(settings().getByRole("button", { name: "Guardar" })).toBeEnabled();
+    await expect(settings().getByRole("switch", { name: /Avisos de próximos pagos/ })).not.toBeChecked();
+    await expect(settings().getByText("Apagados", { exact: true })).toBeVisible();
+    await expect(days()).toBeDisabled();
     await page.reload();
     await expect(settings().getByRole("switch", { name: /Avisos de próximos pagos/ })).not.toBeChecked();
     await expect(days()).toHaveValue("10");
@@ -271,13 +277,25 @@ test("La campana: desde cualquier página, el número, Marcar como leída (sigue
     await expect(card(page).getByRole("listitem").filter({ hasText: "Netflix" })).toHaveCount(0);
   });
 
-  await test.step("con los avisos apagados, no hay campana", async () => {
+  await test.step("con los avisos apagados, la campana sigue (por el recordatorio de registro), sin el enlace a los pagos", async () => {
     await closeToasts(page);
-    await page.goto("/cuenta");
+    await page.goto("/configuracion");
     const settings = visible(page.getByRole("region", { name: "Notificaciones" }));
     await settings.getByText("Avisos de próximos pagos", { exact: true }).click();
     await settings.getByRole("button", { name: "Guardar" }).click();
     await expect(toast(page, "Se apagaron los avisos de próximos pagos")).toBeVisible();
+    await closeToasts(page);
+    await bell.click();
+    await expect(panel.getByText("No tienes notificaciones nuevas.")).toBeVisible();
+    await expect(panel.getByRole("link", { name: "Ver los próximos pagos en el Resumen" })).toHaveCount(0);
+  });
+
+  await test.step("con el recordatorio de registro también apagado, no hay campana", async () => {
+    await page.keyboard.press("Escape");
+    const reminder = visible(page.getByRole("region", { name: "Recordatorio de registro" }));
+    await reminder.getByText("Recordatorio", { exact: true }).click();
+    await reminder.getByRole("button", { name: "Guardar" }).click();
+    await expect(toast(page, "Se apagó el recordatorio de registro")).toBeVisible();
     await expect(page.getByRole("button", { name: /^Notificaciones/ })).toHaveCount(0);
   });
 });

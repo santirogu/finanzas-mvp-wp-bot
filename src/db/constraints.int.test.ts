@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { db } from "@/db";
-import { botSetting, category, fixedPaymentSkip, notificationRead, notificationSetting, transaction, whatsappLink, whatsappLinkCode } from "@/db/schema";
+import { botSetting, category, fixedPaymentSkip, notificationRead, notificationSetting, reminderSetting, transaction, whatsappLink, whatsappLinkCode } from "@/db/schema";
 import { createUser } from "../../test/integration/factories";
 
 // Las restricciones de la base (src/db/schema/) son la última defensa si el código falla: un monto
@@ -139,6 +139,18 @@ describe("configuración de los avisos", () => {
     const user = await createUser();
     expect(await rejectedBy(db.insert(notificationSetting).values({ userId: user.id }))).toBeNull();
     expect(await rejectedBy(db.insert(notificationSetting).values({ userId: user.id }))).toBe("notification_setting_pkey");
+  });
+});
+
+describe("configuración del recordatorio de registro", () => {
+  it("de 1 a 14 días (reminder_setting_days), una por cuenta", async () => {
+    const setting = async (days: number, userId?: string) => db.insert(reminderSetting).values({ userId: userId ?? (await createUser()).id, enabled: true, days });
+    expect(await rejectedBy(setting(0))).toBe("reminder_setting_days");
+    expect(await rejectedBy(setting(15))).toBe("reminder_setting_days");
+    expect(await rejectedBy(setting(14))).toBeNull();
+    const user = await createUser();
+    expect(await rejectedBy(setting(1, user.id))).toBeNull();
+    expect(await rejectedBy(setting(3, user.id))).toBe("reminder_setting_pkey");
   });
 });
 

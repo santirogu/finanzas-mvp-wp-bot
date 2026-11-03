@@ -70,14 +70,32 @@ export const PASSWORD = "clave-segura-e2e-123";
 export const uniqueEmail = () => `e2e-${randomUUID()}@finanzas-e2e.test`;
 
 /** Crea una cuenta desde el formulario de registro y espera a llegar al dashboard. */
-export async function register(page: Page, name = "Ana Pérez", email = uniqueEmail()) {
+export async function register(page: Page, name = "Ana Pérez", email = uniqueEmail(), { keepTutorial = false } = {}) {
   await page.goto("/registro");
   await page.getByLabel("Nombre").fill(name);
   await page.getByLabel("Correo").fill(email);
   await page.getByLabel("Contraseña").fill(PASSWORD);
   await page.getByRole("button", { name: "Crear cuenta" }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
+  // Una cuenta nueva ve el tutorial de bienvenida en el Resumen: las pruebas lo omiten, salvo las suyas
+  // (e2e/tutorial.spec.ts, con `keepTutorial`).
+  if (!keepTutorial) await closeTutorial(page, "Omitir");
   return { name, email };
+}
+
+/** La ventana del tutorial de bienvenida (src/components/welcome-tutorial.tsx), en español o en inglés. */
+export const tutorial = (page: Page) => page.getByRole("dialog", { name: /^(Te damos la bienvenida|Welcome to)/ });
+
+/**
+ * Cierra el tutorial con `button` (Omitir, Empezar…) y espera a que la cuenta lo dé por visto: si la prueba recargara
+ * antes, volvería a salir.
+ */
+export async function closeTutorial(page: Page, button: string) {
+  const dialog = page.getByRole("dialog");
+  const saved = page.waitForResponse((response) => response.request().method() === "POST" && "next-action" in response.request().headers());
+  await dialog.getByRole("button", { name: button, exact: true }).click();
+  await expect(dialog).toBeHidden();
+  expect((await saved).ok()).toBe(true);
 }
 
 /**
@@ -125,6 +143,19 @@ export async function openTab(page: Page, tab: "Resumen" | "Ingresos" | "Egresos
  * Un aviso de éxito lleva solo su mensaje: con una expresión anclada (/^Egreso registrado$/) se pide
  * ese exacto.
  */
+/** Pone un presupuesto desde Configuración (la categoría por su nombre) y espera el aviso. */
+export async function addBudget(page: Page, category: string, amount: string) {
+  await page.goto("/configuracion");
+  await visible(page.getByRole("button", { name: "Agregar un presupuesto" })).click();
+  const dialog = page.getByRole("dialog");
+  const select = dialog.getByLabel("Categoría");
+  const value = await select.locator("option", { hasText: category }).getAttribute("value");
+  await select.selectOption(value ?? "");
+  await dialog.getByLabel("Monto por mes").fill(amount);
+  await dialog.getByRole("button", { name: "Guardar" }).click();
+  await expect(toast(page, `Se guardó el presupuesto de ${category}`)).toBeVisible();
+}
+
 export const toast = (page: Page, text: string | RegExp) => toasts(page).filter({ hasText: text }).last();
 
 /** Todos los avisos emergentes que se ven. */

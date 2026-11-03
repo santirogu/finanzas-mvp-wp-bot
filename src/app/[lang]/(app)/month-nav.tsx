@@ -138,8 +138,11 @@ export function MonthNav({ nav, heading = false }: { nav: MonthNavData; heading?
               const look = cell.selected
                 ? "bg-brand font-semibold text-brand-foreground"
                 : `${cell.current ? "ring-1 ring-inset ring-control" : ""} ${cell.href ? "hover:bg-border/60" : "text-control"}`;
+              // El nombre completo para el lector de pantalla, como texto: con aria-label, el nombre tendría que contener
+              // la abreviatura que se ve ("ene"; WCAG 2.5.3).
               const content = (
                 <>
+                  <span className="sr-only">{label}</span>
                   <span aria-hidden>{cell.short}</span>
                   {cell.active && (
                     <span
@@ -155,7 +158,6 @@ export function MonthNav({ nav, heading = false }: { nav: MonthNavData; heading?
                   {cell.href ? (
                     <Link
                       href={cell.href}
-                      aria-label={label}
                       aria-current={cell.selected ? "page" : undefined}
                       onClick={() => setOpen(false)}
                       className={box}
@@ -164,7 +166,7 @@ export function MonthNav({ nav, heading = false }: { nav: MonthNavData; heading?
                     </Link>
                   ) : (
                     // Un mes futuro: se ve apagado y no se puede elegir.
-                    <span role="link" aria-disabled="true" aria-label={label} className={box}>
+                    <span role="link" aria-disabled="true" className={box}>
                       {content}
                     </span>
                   )}

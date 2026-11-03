@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { averageNote, type MonthPoint, monthSeries, periodSummary, savedNote } from "./summary";
+import { averageNote, type MonthPoint, monthSavedNote, monthSeries, periodSummary, savedNote } from "./summary";
 
 const m = (month: number, year = 2026) => ({ year, month });
 const october = m(10);
@@ -113,6 +113,17 @@ describe("savedNote y averageNote (las notas de las cifras, en la página y en e
     expect(savedNote("28")).toBe("Ahorraste el 28\u00a0% de tus ingresos");
     expect(savedNote("overspent")).toBe("Gastaste más de lo que ganaste");
     expect(savedNote(null)).toBeUndefined();
+  });
+
+  it("la del Resumen: 'vas ahorrando' con el mes en curso, 'ahorraste' con uno pasado; si no sobró, nada", () => {
+    expect(monthSavedNote(4200000, 1220000, true)).toBe("Vas ahorrando el 29\u00a0% de tus ingresos");
+    expect(monthSavedNote(4200000, 1220000, false)).toBe("Ahorraste el 29\u00a0% de tus ingresos");
+    expect(monthSavedNote(2000000, 2000000, true)).toBe("Vas ahorrando el 100\u00a0% de tus ingresos");
+    expect(monthSavedNote(1000, 4, false)).toBe("Ahorraste el <1\u00a0% de tus ingresos");
+    expect(monthSavedNote(1000000, 0, true)).toBeUndefined();
+    expect(monthSavedNote(0, -50000, false)).toBeUndefined();
+    expect(monthSavedNote(4200000, 1220000, true, "en")).toBe("You're saving 29% of your income");
+    expect(monthSavedNote(4200000, 1220000, false, "en")).toBe("You saved 29% of your income");
   });
 
   it("con cuántos meses se calculó el promedio y si dejó fuera el actual", () => {

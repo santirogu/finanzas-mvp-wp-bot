@@ -47,7 +47,16 @@ const ICON_PATHS: Record<LogEntry["type"], ReactNode> = {
   bot_claude_resumed: <path d="M4 5.5h12v8H9l-3.5 2.5v-2.5H4zM8.75 7.75v3.5L12 9.5z" />,
   bot_limits_changed: <path d="M4 6h12M4 10h12M4 14h12M7 4.5v3M13 8.5v3M9.5 12.5v3" />,
   bot_monthly_limit_changed: <path d="M4.5 5.5h11v10h-11zM4.5 8.5h11M7.5 4v3M12.5 4v3M7.5 12h5" />,
+  bot_model_changed: <path d="M6.5 6.5h7v7h-7zM8.5 4v2.5M11.5 4v2.5M8.5 13.5V16M11.5 13.5V16M4 8.5h2.5M4 11.5h2.5M13.5 8.5H16M13.5 11.5H16" />,
   bot_replies_resent: <path d="M15.5 9A5.5 5.5 0 1 0 14 13M15.5 5v4h-4" />,
+  signup_mode_changed: <path d="M6.5 9V7a3.5 3.5 0 0 1 7 0v2M5 9h10v7H5zM10 11.5v2" />,
+  signup_invite_added: <path d="M3.5 5.5h13v9h-13zM3.5 5.5l6.5 5 6.5-5" />,
+  signup_invite_removed: <path d="M3.5 5.5h13v9h-13zM3.5 5.5l6.5 5 6.5-5M7.5 17.5h5" />,
+  // Un megáfono; tachado al quitar el aviso.
+  notice_published: <path d="M3.5 8v4h2.5l5.5 3.5v-11L6 8H3.5zM14 8a3 3 0 0 1 0 4M15.5 6a6 6 0 0 1 0 8" />,
+  notice_removed: <path d="M3.5 8v4h2.5l5.5 3.5v-11L6 8H3.5zM3 3l14 14" />,
+  // Tres controles deslizantes: los valores de la app.
+  app_values_changed: <path d="M4 5.5h12M4 10h12M4 14.5h12M7 4v3M12.5 8.5v3M9 13v3" />,
 };
 
 const ADMIN_COLOR = "bg-admin-surface text-admin";
@@ -71,7 +80,14 @@ const ICON_COLORS: Record<LogEntry["type"], string> = {
   bot_claude_resumed: ADMIN_COLOR,
   bot_limits_changed: ADMIN_COLOR,
   bot_monthly_limit_changed: ADMIN_COLOR,
+  bot_model_changed: ADMIN_COLOR,
   bot_replies_resent: ADMIN_COLOR,
+  signup_mode_changed: ADMIN_COLOR,
+  signup_invite_added: ADMIN_COLOR,
+  signup_invite_removed: ADMIN_COLOR,
+  notice_published: ADMIN_COLOR,
+  notice_removed: ADMIN_COLOR,
+  app_values_changed: ADMIN_COLOR,
 };
 
 /** Los cambios de la configuración del bot (/admin/bot): no son de ninguna cuenta. */
@@ -80,7 +96,18 @@ const BOT_EVENTS: readonly LogEntry["type"][] = [
   "bot_claude_resumed",
   "bot_limits_changed",
   "bot_monthly_limit_changed",
+  "bot_model_changed",
   "bot_replies_resent",
+];
+
+/** Los cambios de la configuración de la app (/admin/configuracion): tampoco son de una cuenta. */
+const SETTINGS_EVENTS: readonly LogEntry["type"][] = [
+  "signup_mode_changed",
+  "signup_invite_added",
+  "signup_invite_removed",
+  "notice_published",
+  "notice_removed",
+  "app_values_changed",
 ];
 
 /**
@@ -125,11 +152,15 @@ export function EventItem({
     ? es
       ? "Bot de WhatsApp"
       : "WhatsApp bot"
-    : entry.type === "account_deleted"
+    : SETTINGS_EVENTS.includes(entry.type)
       ? es
-        ? "Sin datos de la cuenta"
-        : "No account data"
-      : (entry.account?.email ?? (es ? "Sin cuenta" : "No account"));
+        ? "Configuración"
+        : "Settings"
+      : entry.type === "account_deleted"
+        ? es
+          ? "Sin datos de la cuenta"
+          : "No account data"
+        : (entry.account?.email ?? (es ? "Sin cuenta" : "No account"));
   const sentence = es ? spanishSentence : englishSentence;
 
   return (
@@ -200,8 +231,23 @@ function spanishSentence(entry: LogEntry, { subject: who }: Who, phone: ReactNod
       return <>{admin} cambió los topes de Claude por cuenta</>;
     case "bot_monthly_limit_changed":
       return <>{admin} cambió el tope mensual de tokens de Claude</>;
+    case "bot_model_changed":
+      return <>{admin} cambió el modelo de Claude del bot</>;
     case "bot_replies_resent":
       return <>{admin} reenvió las respuestas del bot que no habían salido</>;
+    case "signup_mode_changed":
+      return <>{admin} cambió quién puede crear una cuenta</>;
+    case "signup_invite_added":
+      // Sin el correo si esa persona después eliminó su cuenta (src/modules/account/delete-account.ts).
+      return <>{admin} invitó a {entry.details.email ?? "alguien"} a crear una cuenta</>;
+    case "signup_invite_removed":
+      return entry.details.email ? <>{admin} quitó la invitación de {entry.details.email}</> : <>{admin} quitó una invitación</>;
+    case "notice_published":
+      return <>{admin} publicó un aviso para todos</>;
+    case "notice_removed":
+      return <>{admin} quitó el aviso para todos</>;
+    case "app_values_changed":
+      return <>{admin} cambió los valores de la app</>;
   }
 }
 
@@ -245,7 +291,21 @@ function englishSentence(entry: LogEntry, { subject, object, whose, account }: W
       return <>{admin} changed Claude&apos;s per-account limits</>;
     case "bot_monthly_limit_changed":
       return <>{admin} changed Claude&apos;s monthly token limit</>;
+    case "bot_model_changed":
+      return <>{admin} changed the bot&apos;s Claude model</>;
     case "bot_replies_resent":
       return <>{admin} resent the bot replies that hadn&apos;t gone out</>;
+    case "signup_mode_changed":
+      return <>{admin} changed who can create an account</>;
+    case "signup_invite_added":
+      return <>{admin} invited {entry.details.email ?? "someone"} to create an account</>;
+    case "signup_invite_removed":
+      return entry.details.email ? <>{admin} removed the invitation for {entry.details.email}</> : <>{admin} removed an invitation</>;
+    case "notice_published":
+      return <>{admin} published a notice for everyone</>;
+    case "notice_removed":
+      return <>{admin} removed the notice for everyone</>;
+    case "app_values_changed":
+      return <>{admin} changed the app values</>;
   }
 }

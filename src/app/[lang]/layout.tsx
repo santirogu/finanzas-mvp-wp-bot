@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { Suspense } from "react";
 import { ThemeSync } from "@/components/theme-sync";
 import { LocaleProvider } from "@/i18n/client";
 import { LOCALES } from "@/i18n/locales";
@@ -64,12 +65,15 @@ export default async function RootLayout({ children }: LayoutProps<"/[lang]">) {
       suppressHydrationWarning
     >
       <head>
-        {/* El tema elegido en Mi cuenta (src/lib/theme.ts), antes de pintar: sin parpadeo. */}
+        {/* El tema elegido en Configuración (src/lib/theme.ts), antes de pintar: sin parpadeo. */}
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>
       <body className="min-h-full flex flex-col font-sans">
         {/* Si el layout raíz cambia sin recargar (otro idioma), vuelve a poner el tema elegido. */}
-        <ThemeSync />
+        {/* Lee la ruta (usePathname): con Cache Components, fuera de Suspense no se pueden prearmar las rutas dinámicas. */}
+        <Suspense fallback={null}>
+          <ThemeSync />
+        </Suspense>
         <LocaleProvider locale={locale}>{children}</LocaleProvider>
         {/* Vercel Web Analytics y Speed Insights: visitas y velocidad de carga, anónimas y sin
             cookies (ver /privacidad). */}

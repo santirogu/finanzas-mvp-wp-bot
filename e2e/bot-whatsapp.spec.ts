@@ -1,9 +1,9 @@
-import { randomUUID } from "node:crypto";
+import { randomInt, randomUUID } from "node:crypto";
 import { expect } from "@playwright/test";
 import { FAKE_SERVICES_URL } from "./fake-config";
 import { formatMonthLabel, formatMonthName, monthOf, monthParam, shiftMonth, todayInTimezone } from "../src/lib/dates";
 import { addTransaction, goToWhatsApp, openTab, register, test, toast, visible } from "./helpers";
-import { newPhone, nthReply, sendWhatsApp, sentTo } from "./whatsapp";
+import { newPhone, nthReply, sendWhatsApp, sendWhatsAppPhoto, sentTo } from "./whatsapp";
 
 // El bot de WhatsApp de punta a punta: los mensajes llegan al webhook firmados igual que los manda
 // Meta, la app los procesa en el servidor real de Next y responde a un WhatsApp falso
@@ -111,6 +111,18 @@ test("vincular el número desde Mi cuenta y llevar las cuentas por WhatsApp", as
     expect(reply).toContain("Más detalle en *Reportes*: http://localhost:3100/reportes");
     expect((await (await request.get(`${FAKE_SERVICES_URL}/claude`)).json()).length).toBe(claudeBefore);
   });
+
+  await test.step("la foto de una factura queda registrada con su total: el bot la baja de Meta y se la manda a Claude", async () => {
+    await sendWhatsAppPhoto(request, phone, "mercado del mes");
+    expect(await nthReply(request, phone, 10)).toMatch(/✅ Egreso Anotado: \*Éxito\* — \$85\.400,00 \(Mercado\)/);
+    // El Claude falso solo la entiende si le llegaron los mismos bytes de la foto.
+    expect(await (await request.get(`${FAKE_SERVICES_URL}/claude`)).json()).toContain("[foto] mercado del mes");
+
+    await page.reload();
+    const row = visible(page.getByRole("listitem").filter({ hasText: "Éxito" }));
+    await expect(row).toContainText("Mercado · vía WhatsApp");
+    await expect(row).toContainText(/−\$85\.400,00/);
+  });
 });
 
 test("un número sin vincular recibe instrucciones y no puede usar el bot", async ({ request }) => {
@@ -161,10 +173,67 @@ test("si Meta entrega el mismo mensaje dos veces, se procesa una sola vez", asyn
   expect(await sentTo(request, phone)).toHaveLength(2);
 });
 
-test("a un audio responde que por ahora solo entiende texto", async ({ request }) => {
+// A una cuenta vinculada le responde que solo entiende textos y fotos (en la prueba en inglés, abajo).
+test("a un audio de un número sin vincular le explica cómo vincularlo", async ({ request }) => {
   const phone = newPhone();
   await sendWhatsApp(request, phone, null);
-  expect(await nthReply(request, phone, 1)).toBe("Por ahora solo entiendo mensajes de texto ✍️");
+  expect(await nthReply(request, phone, 1)).toContain("Este número aún no está vinculado a una cuenta.");
+});
+
+test("en inglés: vincular con LINK desde Mi cuenta, y el bot responde en inglés también a los comandos en español @principal", async ({
+  page,
+  request,
+}) => {
+  const phone = newPhone();
+  await register(page, "Ana Pérez");
+
+  await test.step("la cuenta en inglés (Configuración → Idioma)", async () => {
+    await page.goto("/configuracion");
+    await visible(page.getByRole("group", { name: "Idioma" })).locator("label", { hasText: "English" }).click();
+    await expect(page.locator("html")).toHaveAttribute("lang", "en");
+  });
+
+  const code = await test.step("Mi cuenta muestra el mensaje con LINK", async () => {
+    await page.goto("/cuenta");
+    await visible(page.getByRole("button", { name: "Connect WhatsApp" })).click();
+    const message = visible(page.getByText(/^LINK \d{6}$/));
+    await expect(message).toBeVisible();
+    await expect(page.getByRole("link", { name: "Open WhatsApp" })).toHaveAttribute("href", /^https:\/\/wa\.me\/573000000000\?text=LINK%20\d{6}$/);
+    return (await message.textContent())!.replace("LINK ", "");
+  });
+
+  await test.step("LINK y el código vinculan la cuenta, con la respuesta en inglés", async () => {
+    await sendWhatsApp(request, phone, `LINK ${code}`);
+    expect(await nthReply(request, phone, 1)).toBe("✅ All set, Ana! Your WhatsApp is linked.\n\nTry sending me: _spent 20k on lunch_");
+    await expect(visible(page.getByText("Connected"))).toBeVisible({ timeout: 15_000 });
+    await expect(visible(page.getByText("“spent 20k on lunch”"))).toBeVisible();
+  });
+
+  await test.step("un gasto: la confirmación en inglés, con los montos de EE. UU.", async () => {
+    await sendWhatsApp(request, phone, "I bought some shoes for $500.000");
+    const reply = await nthReply(request, phone, 2);
+    expect(reply).toMatch(/^✅ Expense noted: \*Shoes\* — \$500,000\.00 \(/);
+    expect(reply).toMatch(/\n[A-Z][a-z]+ balance: \*−\$500,000\.00\*\n_Send \*undo\* if I got it wrong\._$/);
+  });
+
+  await test.step("los comandos en inglés y en español responden en inglés; un audio, que solo entiende textos y fotos", async () => {
+    await sendWhatsApp(request, phone, "report");
+    expect(await nthReply(request, phone, 3)).toMatch(/^📊 \*Report from [A-Z][a-z]+ \d{4} to [A-Z][a-z]+ \d{4}\*\nIncome: \$0\.00\nExpenses: \$500,000\.00\n/);
+    await sendWhatsApp(request, phone, "deshacer");
+    expect(await nthReply(request, phone, 4)).toBe("Done, I deleted:\n🗑️ Shoes — $500,000.00");
+    await sendWhatsApp(request, phone, null);
+    expect(await nthReply(request, phone, 5)).toBe("For now I only understand text messages ✍️ and photos of receipts 🧾");
+  });
+
+  await test.step("a otro número, sin vincular: en español y debajo en inglés; un código que no sirve, en el idioma de la palabra", async () => {
+    const other = newPhone();
+    await sendWhatsApp(request, other, "hi");
+    const reply = await nthReply(request, other, 1);
+    expect(reply).toMatch(/^Hola 👋\nEste número aún no está vinculado/);
+    expect(reply).toContain("\n\nHi 👋\nThis number isn't linked to an account yet.");
+    await sendWhatsApp(request, other, "LINK 000000");
+    expect(await nthReply(request, other, 2)).toBe("That code isn't valid or has expired. Get another one in *My account*: tap *Connect WhatsApp*.");
+  });
 });
 
 test("el bot guarda la descripción que ya está en el historial, con su categoría @principal", async ({ page, request }) => {
@@ -186,4 +255,24 @@ test("el bot guarda la descripción que ya está en el historial, con su categor
   const rows = visible(page.getByRole("listitem").filter({ hasText: "Claro Postpago Cata Amor" }));
   await expect(rows).toHaveCount(2);
   await expect(rows.filter({ hasText: "vía WhatsApp" })).toContainText("Servicios");
+});
+
+// Safari mide de menos un texto con white-space: nowrap dentro de un párrafo: entre 428 y 442 px de ancho (los
+// iPhone Pro Max), con uno de cada tres finales de número, el número vinculado se salía de la tarjeta hasta 3 px.
+// Con este final (0002) se salía.
+test("en Safari, el número vinculado cabe en la tarjeta de los iPhone Pro Max @safari", async ({ page, request }) => {
+  const phone = `57300${randomInt(100, 1000)}0002`;
+  await register(page);
+  await goToWhatsApp(page);
+  await page.getByRole("button", { name: "Conectar WhatsApp" }).click();
+  const code = (await visible(page.getByText(/^VINCULAR \d{6}$/)).textContent())!.replace("VINCULAR ", "");
+  await sendWhatsApp(request, phone, `VINCULAR ${code}`);
+  await nthReply(request, phone, 1);
+  await page.reload();
+  const linked = visible(page.getByText(/^Registra movimientos escribiendo desde/));
+  await expect(linked).toContainText("+57 300 ••• 0002");
+  for (const width of [428, 430, 434, 438, 440, 442]) {
+    await page.setViewportSize({ width, height: 900 });
+    expect(await linked.evaluate((p) => p.scrollWidth - p.clientWidth), `${width} px`).toBeLessThanOrEqual(0);
+  }
 });

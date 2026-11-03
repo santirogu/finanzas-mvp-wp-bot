@@ -73,19 +73,40 @@ describe("proxy · idioma", () => {
     for (const value of ["fr", "", "ES", "EN", "es-CO", "en-US"]) expect(visit("/dashboard", cookie, `idioma=${value}`), value).toBe(inSpanish("/dashboard"));
   });
 
-  it("sin la cookie, en el idioma del navegador (sin guardar nada); la cookie manda sobre el navegador", () => {
-    expect(visit("/", undefined, "", "en-US,en;q=0.9")).toBe(`sigue a ${ORIGIN}/en`);
-    expect(visit("/login", undefined, "", "en-US,en;q=0.9")).toBe(`sigue a ${ORIGIN}/en/login`);
-    expect(visit("/dashboard", cookie, "", "fr-FR,fr;q=0.9,en;q=0.8")).toBe(`sigue a ${ORIGIN}/en/dashboard`);
-    expect(visit("/dashboard", cookie, "", "pt-BR")).toBe(inSpanish("/dashboard"));
-    expect(visit("/dashboard", cookie, "idioma=es", "en-US")).toBe(inSpanish("/dashboard"));
-    expect(visit("/privacidad", undefined, "", "en")).toBe(`sigue a ${ORIGIN}/en/privacidad`);
+  it("sin la cookie, en español aunque el navegador pida inglés (sin guardar nada); con la cookie, la cookie", () => {
+    expect(visit("/", undefined, "", "en-US,en;q=0.9")).toBe(inSpanish("/"));
+    expect(visit("/login", undefined, "", "en-US,en;q=0.9")).toBe(inSpanish("/login"));
+    expect(visit("/dashboard", cookie, "", "en")).toBe(inSpanish("/dashboard"));
+    expect(visit("/login", undefined, "idioma=en", "es-CO")).toBe(`sigue a ${ORIGIN}/en/login`);
     const response = proxy(new NextRequest(`${ORIGIN}/login`, { headers: { "accept-language": "en" } }));
     expect(response.headers.get("set-cookie")).toBeNull();
   });
 
   it("una dirección que ya trae el idioma no es una página: se arma como otra cualquiera (y da 404)", () => {
     expect(visit("/es/dashboard", cookie)).toBe(inSpanish("/es/dashboard"));
+  });
+});
+
+describe("proxy · la Ayuda, con o sin sesión en la misma dirección", () => {
+  const cookie = SESSION_COOKIES[0];
+
+  it("sin sesión arma la versión pública en /ayuda, en el idioma de la cookie y con los parámetros", () => {
+    expect(visit("/ayuda")).toBe(inSpanish("/ayuda-publica"));
+    expect(visit("/ayuda?tema=bot", undefined, "idioma=en")).toBe(`sigue a ${ORIGIN}/en/ayuda-publica?tema=bot`);
+  });
+
+  it.each(SESSION_COOKIES)("con sesión (%s), la de la app", (session) => {
+    expect(visit("/ayuda", session)).toBe(inSpanish("/ayuda"));
+    expect(visit("/ayuda", session, "idioma=en")).toBe(`sigue a ${ORIGIN}/en/ayuda`);
+  });
+
+  it("la versión pública no tiene dirección propia: con sesión o sin ella, lleva a /ayuda", () => {
+    expect(visit("/ayuda-publica")).toBe(`${ORIGIN}/ayuda`);
+    expect(visit("/ayuda-publica?x=1", cookie)).toBe(`${ORIGIN}/ayuda`);
+  });
+
+  it("solo la dirección exacta: lo que empieza como /ayuda sigue siendo privado", () => {
+    for (const path of ["/ayuda/algo", "/ayudas", "/ayuda-publica/algo"]) expect(visit(path), path).toBe(`${ORIGIN}/login`);
   });
 });
 
@@ -140,10 +161,22 @@ describe("proxy · sesión vencida (cookie vieja)", () => {
     return proxy(new NextRequest(`${ORIGIN}${path}`, { headers }));
   }
 
-  it.each(SESSION_COOKIES)("con %s deja ver el login en vez de mandarlo al dashboard (sin círculo)", (cookie) => {
+  it.each(SESSION_COOKIES)("con %s la borra en una redirección a la misma dirección, en vez de mandarlo al dashboard", (cookie) => {
     const response = visitExpired("/login?sesion=vencida", cookie);
+    expect(getRedirectUrl(response)).toBe(`${ORIGIN}/login?sesion=vencida`);
+    expect(response.headers.getSetCookie().some((c) => c.startsWith(`${cookie}=;`) && /Max-Age=0/i.test(c))).toBe(true);
+  });
+
+  it("ya sin la cookie, deja ver el login (sin círculo)", () => {
+    const response = proxy(new NextRequest(`${ORIGIN}/login?sesion=vencida`));
     expect(getRedirectUrl(response)).toBeNull();
     expect(getRewrittenUrl(response)).toBe(`${ORIGIN}/es/login?sesion=vencida`);
+    expect(response.headers.getSetCookie()).toEqual([]);
+  });
+
+  it("con solo otra cookie de sesión vieja (sin el token), también la borra", () => {
+    const response = visitExpired("/login?sesion=vencida", "better-auth.session_data");
+    expect(getRedirectUrl(response)).toBe(`${ORIGIN}/login?sesion=vencida`);
   });
 
   it("borra todas las cookies de sesión, con Secure en las de prefijo __Secure-", () => {

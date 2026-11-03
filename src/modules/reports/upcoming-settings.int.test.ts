@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { refresh } from "next/cache";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "@/db";
-import { notificationSetting } from "@/db/schema";
+import { appValues, notificationSetting } from "@/db/schema";
 import type { CurrentUser } from "@/lib/session";
 import { createUser } from "../../../test/integration/factories";
 
@@ -17,7 +17,7 @@ vi.mock("@/lib/session", () => ({
 }));
 vi.mock("next/cache", () => ({ refresh: vi.fn() }));
 
-const { DEFAULT_UPCOMING_SETTINGS, getUpcomingSettings, saveUpcomingSettings } = await import("./upcoming-settings");
+const { getUpcomingSettings, saveUpcomingSettings } = await import("./upcoming-settings");
 const { saveUpcomingSettingsAction } = await import("./actions");
 
 const rowsOf = (userId: string) =>
@@ -46,7 +46,14 @@ describe("getUpcomingSettings y saveUpcomingSettings", () => {
   it("sin guardar nada: prendidos, con 3 días", async () => {
     const user = await createUser();
     expect(await getUpcomingSettings(user.id)).toEqual({ enabled: true, days: 3 });
-    expect(DEFAULT_UPCOMING_SETTINGS).toEqual({ enabled: true, days: 3 });
+  });
+
+  it("sin guardar nada: los que eligió el admin en Valores de la app; quien guardó los suyos, los suyos", async () => {
+    const [user, other] = await Promise.all([createUser(), createUser()]);
+    await saveUpcomingSettings(other.id, { enabled: "on", days: "1" });
+    await db.insert(appValues).values({ id: 1, upcomingEnabled: false, upcomingDays: 7, budgetNearShare: 80, recurringMinMonths: 3, recurringWindow: 4 });
+    expect(await getUpcomingSettings(user.id)).toEqual({ enabled: false, days: 7 });
+    expect(await getUpcomingSettings(other.id)).toEqual({ enabled: true, days: 1 });
   });
 
   it.each([

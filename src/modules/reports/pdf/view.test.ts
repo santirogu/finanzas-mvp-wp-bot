@@ -49,6 +49,8 @@ describe("chartScale y axisLabel (el eje del gráfico)", () => {
     [1_500, "$1,5 mil"],
     [2_000_000, "$2 M"],
     [2_500_000, "$2,5 M"],
+    // Con un solo decimal, redondeado.
+    [1_234_567, "$1,2 M"],
   ])("%d → %s", (value, label) => {
     expect(axisLabel(value)).toBe(label);
   });
@@ -86,6 +88,24 @@ describe("reportPdfView", () => {
     expect(view.stats[3]).toEqual({ label: "Gasto promedio por mes", value: "—", note: "Se calcula cuando termine tu primer mes", tone: "default" });
     expect(view.stats[4]).toEqual({ label: "El mes de más gasto", value: "—", note: "Sin egresos en el período", tone: "default" });
     expect(view.stats[2].note).toBe("Ahorraste el 100\u00a0% de tus ingresos");
+  });
+
+  it("con un solo mes (el último mes), solo tres cifras: el promedio y el mes de más gasto repetirían los egresos", () => {
+    const { report, period, byDay } = sampleReport(sampleMovements(current, today), current, "es", "1-mes");
+    const view = reportPdfView({ report, period, byDay, current, today, name: "Ana", currency: "COP" });
+    expect(view.range).toBe("Octubre de 2026");
+    expect(view.stats.map((stat) => stat.label)).toEqual(["Ingresos", "Egresos", "Balance del período"]);
+    // Los egresos de octubre (el primero de la tabla de los 12 meses: va del más reciente al más antiguo).
+    expect(view.stats[1].value).toBe(year.months[0].expense);
+    expect(view.chart.bars).toHaveLength(1);
+  });
+
+  it("con los últimos 3 meses, las cinco cifras", () => {
+    const { report, period, byDay } = sampleReport(sampleMovements(current, today), current, "es", "3-meses");
+    const view = reportPdfView({ report, period, byDay, current, today, name: "Ana", currency: "COP" });
+    expect(view.range).toBe("De agosto a octubre de 2026");
+    expect(view.stats).toHaveLength(5);
+    expect(view.stats[3].note).toBe("En 2 meses, sin octubre (va en curso)");
   });
 
   it("el gráfico: un par de barras por mes, el año debajo del primero y de enero, y un eje redondo", () => {

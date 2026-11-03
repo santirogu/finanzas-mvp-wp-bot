@@ -20,11 +20,12 @@ const nextConfig: NextConfig = {
     const dev = process.env.NODE_ENV === "development";
     return [{ source: "/:path*", headers: securityHeaders({ dev }) }];
   },
-  // Rutas viejas de la administración (de antes de organizarla en módulos): siguen funcionando.
-  // Los parámetros de la URL pasan tal cual a la ruta nueva.
+  // Rutas viejas que siguen funcionando: las de la administración (de antes de organizarla en módulos), con los
+  // parámetros de la URL tal cual, y la de los presupuestos, que pasaron a Configuración.
   async redirects() {
     const historyParams = ["tipo", "q", "fecha", "desde", "hasta", "mostrar"];
     return [
+      { source: "/presupuestos", destination: "/configuracion#presupuestos", permanent: false },
       { source: "/admin/verificacion", destination: "/admin/seguridad", permanent: true },
       ...historyParams.map((key) => ({
         source: "/admin",

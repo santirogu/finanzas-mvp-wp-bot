@@ -7,13 +7,16 @@ import {
   accountEvent,
   adminCodeUse,
   category,
+  categoryBudget,
   fixedExpenseChoice,
   fixedExpenseNote,
   fixedPaymentSkip,
   notificationRead,
   notificationSetting,
   loginFailure,
+  reminderSetting,
   session,
+  signupInvite,
   transaction,
   twoFactor,
   user,
@@ -58,8 +61,11 @@ async function fullAccount(email: string, phone: string) {
   // Y una nota de su historial.
   await db.insert(fixedExpenseNote).values({ userId: id, descriptionKey: "web", month: "2026-10", note: "Subió" });
   await db.insert(fixedPaymentSkip).values({ userId: id, descriptionKey: "web", month: "2026-10" });
+  // Un presupuesto de su categoría.
+  await db.insert(categoryBudget).values({ userId: id, categoryId: personal.id, amount: 50000 });
   await db.insert(notificationSetting).values({ userId: id, upcomingDays: 5 });
   await db.insert(notificationRead).values({ userId: id, notificationId: "pago|2026-10|web" });
+  await db.insert(reminderSetting).values({ userId: id, enabled: false, days: 5 });
   // La verificación en dos pasos (su clave secreta y sus códigos de respaldo) y, como admin, el último
   // código con el que confirmó una acción: un admin también puede eliminar su cuenta.
   await db.insert(twoFactor).values({ id: randomUUID(), userId: id, secret: "secreto-cifrado", backupCodes: "codigos-cifrados" });
@@ -82,8 +88,10 @@ async function countsFor(userId: string, email: string, phone: string) {
     fixedExpenseChoice: await count(db.select().from(fixedExpenseChoice).where(eq(fixedExpenseChoice.userId, userId))),
     fixedExpenseNote: await count(db.select().from(fixedExpenseNote).where(eq(fixedExpenseNote.userId, userId))),
     fixedPaymentSkip: await count(db.select().from(fixedPaymentSkip).where(eq(fixedPaymentSkip.userId, userId))),
+    categoryBudget: await count(db.select().from(categoryBudget).where(eq(categoryBudget.userId, userId))),
     notificationSetting: await count(db.select().from(notificationSetting).where(eq(notificationSetting.userId, userId))),
     notificationRead: await count(db.select().from(notificationRead).where(eq(notificationRead.userId, userId))),
+    reminderSetting: await count(db.select().from(reminderSetting).where(eq(reminderSetting.userId, userId))),
     twoFactor: await count(db.select().from(twoFactor).where(eq(twoFactor.userId, userId))),
     adminCodeUse: await count(db.select().from(adminCodeUse).where(eq(adminCodeUse.userId, userId))),
   };
@@ -106,8 +114,10 @@ describe("deleteAccountData", () => {
       fixedExpenseChoice: 1,
       fixedExpenseNote: 1,
       fixedPaymentSkip: 1,
+      categoryBudget: 1,
       notificationSetting: 1,
       notificationRead: 1,
+      reminderSetting: 1,
       twoFactor: 1,
       adminCodeUse: 1,
     });
@@ -127,8 +137,10 @@ describe("deleteAccountData", () => {
       fixedExpenseChoice: 0,
       fixedExpenseNote: 0,
       fixedPaymentSkip: 0,
+      categoryBudget: 0,
       notificationSetting: 0,
       notificationRead: 0,
+      reminderSetting: 0,
       twoFactor: 0,
       adminCodeUse: 0,
     });
@@ -253,5 +265,33 @@ describe("deleteAccountData", () => {
     await deleteAccountData(row.id);
 
     expect(await db.select().from(loginFailure).where(eq(loginFailure.email, "dani@test.local"))).toEqual([]);
+  });
+
+  it("borra su invitación y quita su correo de los eventos de las invitaciones, sin tocar los de otros", async () => {
+    const admin = await signUp("admin@test.local");
+    await db.insert(signupInvite).values([{ email: "eva@test.local" }, { email: "otra@test.local" }]);
+    await db.insert(accountEvent).values([
+      { type: "signup_invite_added", adminId: admin, details: { email: "eva@test.local" } },
+      { type: "signup_invite_removed", adminId: admin, details: { email: "eva@test.local" } },
+      { type: "signup_invite_added", adminId: admin, details: { email: "otra@test.local" } },
+      { type: "signup_mode_changed", adminId: admin, details: { signupMode: "invite", previousSignupMode: "open" } },
+    ]);
+    // Con mayúsculas al registrarse: Better Auth lo guarda en minúsculas, como las invitaciones.
+    await auth.api.signUpEmail({ body: { name: "Eva", email: "Eva@Test.local", password: "clave-segura-123" } });
+    const [eva] = await db.select({ id: user.id }).from(user).where(eq(user.email, "eva@test.local"));
+
+    await deleteAccountData(eva.id);
+
+    expect(await db.select({ email: signupInvite.email }).from(signupInvite)).toEqual([{ email: "otra@test.local" }]);
+    const details = await db.select({ type: accountEvent.type, details: accountEvent.details }).from(accountEvent).where(eq(accountEvent.adminId, admin));
+    expect(details).toEqual(
+      expect.arrayContaining([
+        { type: "signup_invite_added", details: {} },
+        { type: "signup_invite_removed", details: {} },
+        { type: "signup_invite_added", details: { email: "otra@test.local" } },
+        { type: "signup_mode_changed", details: { signupMode: "invite", previousSignupMode: "open" } },
+      ]),
+    );
+    expect(details).toHaveLength(4);
   });
 });

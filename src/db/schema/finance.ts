@@ -81,6 +81,32 @@ export const transaction = pgTable(
   ],
 );
 
+// Los presupuestos de la persona (/presupuestos y el Resumen, src/modules/budgets/): un monto por mes para una
+// categoría de egresos, el mismo cada mes hasta que lo cambie o lo quite. Se borra con la cuenta y con la
+// categoría, si el admin la elimina (cascada).
+export const categoryBudget = pgTable(
+  "category_budget",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    categoryId: uuid("category_id")
+      .notNull()
+      .references(() => category.id, { onDelete: "cascade" }),
+    amount: numeric("amount", { precision: 18, scale: 2, mode: "number" }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (t) => [
+    uniqueIndex("category_budget_user_category_uq").on(t.userId, t.categoryId),
+    check("category_budget_amount_positive", sql`${t.amount} > 0`),
+  ],
+);
+
 // Los gastos fijos marcados a mano en Reportes (src/modules/reports/fixed-choices.ts): "include" suma uno
 // que el detector todavía no ve (lleva pocos meses) y "exclude" quita uno que detectó por error. La clave
 // es la descripción como la agrupa el detector: sin mayúsculas, tildes ni espacios de más (searchKey).
@@ -163,9 +189,28 @@ export const notificationSetting = pgTable(
   (t) => [check("notification_setting_upcoming_days", sql`${t.upcomingDays} between 0 and ${sql.raw(String(UPCOMING_DAYS_MAX))}`)],
 );
 
+// El recordatorio de registro (Configuración → Recordatorio de registro): si está prendido y desde cuántos días sin
+// registrar nada (de 1 a 14). Sin fila, los de siempre (prendido, 3 días: src/modules/reminders/). En su propia
+// tabla: una fila en notification_setting haría que los avisos de pagos dejaran de seguir los valores de la app.
+// Se borra con la cuenta.
+export const REMINDER_DAYS_MAX = 14;
+
+export const reminderSetting = pgTable(
+  "reminder_setting",
+  {
+    userId: text("user_id")
+      .primaryKey()
+      .references(() => user.id, { onDelete: "cascade" }),
+    enabled: boolean("enabled").notNull(),
+    days: smallint("days").notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [check("reminder_setting_days", sql`${t.days} between 1 and ${sql.raw(String(REMINDER_DAYS_MAX))}`)],
+);
+
 // Las notificaciones de la campana que la persona marcó como leídas: salen de la campana (el aviso sigue
-// en el Resumen). Por su id (src/modules/notifications/notifications.ts: "pago|YYYY-MM|<clave>"; otros
-// tipos, con otro prefijo). Se borran con la cuenta.
+// en el Resumen). Por su id (src/modules/notifications/notifications.ts: "pago|YYYY-MM|<clave>" o
+// "registro|YYYY-MM-DD"). Se borran con la cuenta.
 export const NOTIFICATION_ID_MAX_LENGTH = 200;
 
 export const notificationRead = pgTable(

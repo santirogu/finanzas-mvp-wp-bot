@@ -5,6 +5,7 @@ import { whatsappMessage } from "@/db/schema";
 import { requireAdmin } from "@/lib/session";
 import type { ServiceCheck } from "@/lib/service-check";
 import { checkClaudeConnection } from "@/modules/bot/claude-extractor";
+import { currentBotModel } from "@/modules/bot/settings";
 import { checkWhatsAppConnection } from "@/modules/whatsapp/client";
 
 // Probar los servicios del bot desde /admin/salud: el token de WhatsApp y la API key de Claude, con
@@ -24,7 +25,8 @@ export async function testConnections(): Promise<ConnectionReport> {
   await requireAdmin();
   const [whatsapp, claude, [last]] = await Promise.all([
     checkWhatsAppConnection(),
-    checkClaudeConnection(),
+    // Con el modelo que eligió el admin en /admin/bot.
+    currentBotModel().then(checkClaudeConnection),
     db.select({ at: max(whatsappMessage.receivedAt) }).from(whatsappMessage),
   ]);
   return { checkedAt: new Date(), whatsapp, claude, lastMessageAt: last.at };

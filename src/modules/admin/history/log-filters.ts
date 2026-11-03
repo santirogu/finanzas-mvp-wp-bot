@@ -20,6 +20,8 @@ import {
   type DatePreset,
   type Params,
 } from "../shared/filters";
+import { formatPercent } from "@/lib/money";
+import { botModelName } from "@/modules/bot/models";
 
 export {
   DATE_PRESETS,
@@ -57,7 +59,7 @@ export const EVENT_TYPES = [
 ] as const;
 export type EventType = (typeof EVENT_TYPES)[number];
 
-/** Los tipos que solo registra una acción del admin (/admin/usuarios, también del super admin, y /admin/bot). */
+/** Los tipos que solo registra una acción del admin (/admin/usuarios, también del super admin, /admin/bot y /admin/configuracion). */
 export const ADMIN_EVENT_TYPES = [
   "login_unlocked",
   "sessions_revoked",
@@ -70,7 +72,14 @@ export const ADMIN_EVENT_TYPES = [
   "bot_claude_resumed",
   "bot_limits_changed",
   "bot_monthly_limit_changed",
+  "bot_model_changed",
   "bot_replies_resent",
+  "signup_mode_changed",
+  "signup_invite_added",
+  "signup_invite_removed",
+  "notice_published",
+  "notice_removed",
+  "app_values_changed",
 ] as const;
 
 /** El chip "Acciones del admin": todo lo que hizo un admin, sea del tipo que sea. */
@@ -221,6 +230,9 @@ export function groupByDay<T extends { createdAt: Date }>(entries: T[], today: s
   return groups;
 }
 
+/** Cuántos caracteres del texto de un aviso se ven en el historial. */
+const NOTICE_EXCERPT = 60;
+
 const DETAIL_TEXTS = {
   es: {
     note: (note: string) => `motivo: ${note}`,
@@ -230,6 +242,14 @@ const DETAIL_TEXTS = {
     noLimit: "sin tope",
     monthly: (tokens: string) => `${tokens} tokens al mes`,
     change: (now: string, before: string | null) => `ahora ${now}${before === null ? "" : ` (antes ${before})`}`,
+    signupModes: { open: "abiertos", closed: "cerrados", invite: "solo con invitación" },
+    noticeTones: { info: "información", important: "importante" },
+    until: (date: string) => `hasta el ${date}`,
+    upcoming: (enabled: boolean, days: number) => `${enabled ? "prendidos" : "apagados"}, ${days} ${days === 1 ? "día" : "días"}`,
+    upcomingLabel: "avisos de pagos",
+    nearLabel: "cerca del presupuesto",
+    recurring: (min: number, window: number) => `${min} de ${window} meses`,
+    recurringLabel: "gastos fijos",
     resent: (n: number) => `${n} ${n === 1 ? "reenviada" : "reenviadas"}`,
     failedAgain: (n: number) => `${n} no ${n === 1 ? "salió" : "salieron"} otra vez`,
   },
@@ -241,6 +261,14 @@ const DETAIL_TEXTS = {
     noLimit: "no limit",
     monthly: (tokens: string) => `${tokens} tokens a month`,
     change: (now: string, before: string | null) => `now ${now}${before === null ? "" : ` (before ${before})`}`,
+    signupModes: { open: "open", closed: "closed", invite: "invitation only" },
+    noticeTones: { info: "information", important: "important" },
+    until: (date: string) => `until ${date}`,
+    upcoming: (enabled: boolean, days: number) => `${enabled ? "on" : "off"}, ${days} ${days === 1 ? "day" : "days"}`,
+    upcomingLabel: "bill notices",
+    nearLabel: "near the budget",
+    recurring: (min: number, window: number) => `${min} of ${window} months`,
+    recurringLabel: "bills",
     resent: (n: number) => `${n} resent`,
     failedAgain: (n: number) => `${n} didn't go out again`,
   },
@@ -263,6 +291,27 @@ export function eventDetail(details: AccountEventDetails, locale: Locale = DEFAU
   if ("monthlyLimit" in details) {
     const limit = (value: number | null | undefined) => (value == null ? t.noLimit : t.monthly(count(value)));
     parts.push(t.change(limit(details.monthlyLimit), limit(details.previousMonthlyLimit)));
+  }
+  if (details.model) parts.push(t.change(botModelName(details.model), details.previousModel ? botModelName(details.previousModel) : null));
+  if (details.signupMode) {
+    parts.push(t.change(t.signupModes[details.signupMode], details.previousSignupMode ? t.signupModes[details.previousSignupMode] : null));
+  }
+  if (details.notice) {
+    // El texto del aviso, corto (el completo se ve en Configuración mientras siga publicado).
+    const { message, tone, endsAt } = details.notice;
+    parts.push(`“${message.length > NOTICE_EXCERPT ? `${message.slice(0, NOTICE_EXCERPT).trimEnd()}…` : message}”`);
+    if (tone in t.noticeTones) parts.push(t.noticeTones[tone]);
+    parts.push(t.until(formatDateTime(new Date(endsAt), locale)));
+  }
+  if (details.appValues) {
+    // Solo lo que cambió (sin los de antes, todo).
+    const now = details.appValues;
+    const before = details.previousAppValues;
+    const changed = (keys: (keyof typeof now)[]) => !before || keys.some((key) => now[key] !== before[key]);
+    const group = (label: string, text: (v: typeof now) => string) => `${label}: ${t.change(text(now), before ? text(before) : null)}`;
+    if (changed(["upcomingEnabled", "upcomingDays"])) parts.push(group(t.upcomingLabel, (v) => t.upcoming(v.upcomingEnabled, v.upcomingDays)));
+    if (changed(["budgetNearShare"])) parts.push(group(t.nearLabel, (v) => formatPercent(v.budgetNearShare, locale)));
+    if (changed(["recurringMinMonths", "recurringWindow"])) parts.push(group(t.recurringLabel, (v) => t.recurring(v.recurringMinMonths, v.recurringWindow)));
   }
   if (details.resent !== undefined) {
     parts.push(`${t.resent(details.resent)}${details.failed ? ` · ${t.failedAgain(details.failed)}` : ""}`);

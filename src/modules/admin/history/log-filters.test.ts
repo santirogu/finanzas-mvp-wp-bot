@@ -76,7 +76,14 @@ describe("configuración", () => {
       "bot_claude_resumed",
       "bot_limits_changed",
       "bot_monthly_limit_changed",
+      "bot_model_changed",
       "bot_replies_resent",
+      "signup_mode_changed",
+      "signup_invite_added",
+      "signup_invite_removed",
+      "notice_published",
+      "notice_removed",
+      "app_values_changed",
     ]);
     expect(DATE_PRESETS.map((p) => DATE_PRESET_LABELS[p])).toEqual([
       "Todo",
@@ -398,6 +405,43 @@ describe("formatos", () => {
     // El tope mensual de tokens (null: sin tope) y el reenvío de respuestas.
     [{ monthlyLimit: 2_000_000, previousMonthlyLimit: null }, "ahora 2.000.000 tokens al mes (antes sin tope)"],
     [{ monthlyLimit: null, previousMonthlyLimit: 500_000 }, "ahora sin tope (antes 500.000 tokens al mes)"],
+    // El modelo de Claude, con su nombre (uno que no está en la lista, con su id).
+    [{ model: "claude-sonnet-5-5", previousModel: "claude-haiku-5-5" }, "ahora Claude Sonnet 5.5 (antes Claude Haiku 5.5)"],
+    [{ model: "claude-haiku-5-5", previousModel: "claude-modelo-x" }, "ahora Claude Haiku 5.5 (antes claude-modelo-x)"],
+    // Quién puede crear una cuenta (Configuración del admin).
+    [{ signupMode: "invite" as const, previousSignupMode: "open" as const }, "ahora solo con invitación (antes abiertos)"],
+    [{ signupMode: "closed" as const }, "ahora cerrados"],
+    // El correo de una invitación va en la frase, no en el detalle.
+    [{ email: "beto@test.local" }, ""],
+    // Los valores de la app: solo lo que cambió.
+    [
+      {
+        appValues: { upcomingEnabled: false, upcomingDays: 5, budgetNearShare: 70, recurringMinMonths: 3, recurringWindow: 4 },
+        previousAppValues: { upcomingEnabled: true, upcomingDays: 3, budgetNearShare: 80, recurringMinMonths: 3, recurringWindow: 4 },
+      },
+      "avisos de pagos: ahora apagados, 5 días (antes prendidos, 3 días) · cerca del presupuesto: ahora 70\u00a0% (antes 80\u00a0%)",
+    ],
+    [
+      {
+        appValues: { upcomingEnabled: true, upcomingDays: 1, budgetNearShare: 80, recurringMinMonths: 2, recurringWindow: 3 },
+        previousAppValues: { upcomingEnabled: true, upcomingDays: 3, budgetNearShare: 80, recurringMinMonths: 3, recurringWindow: 4 },
+      },
+      "avisos de pagos: ahora prendidos, 1 día (antes prendidos, 3 días) · gastos fijos: ahora 2 de 3 meses (antes 3 de 4 meses)",
+    ],
+    // Sin los de antes, todos.
+    [
+      { appValues: { upcomingEnabled: true, upcomingDays: 3, budgetNearShare: 80, recurringMinMonths: 3, recurringWindow: 4 } },
+      "avisos de pagos: ahora prendidos, 3 días · cerca del presupuesto: ahora 80\u00a0% · gastos fijos: ahora 3 de 4 meses",
+    ],
+    // El aviso para todos: el texto (corto), el tipo y hasta cuándo, en hora de Colombia.
+    [
+      { notice: { message: "Mantenimiento el sábado de 8 a 9", tone: "important" as const, endsAt: "2026-10-26T01:00:00.000Z" } },
+      "“Mantenimiento el sábado de 8 a 9” · importante · hasta el 25 de oct. de 2026, 8:00 p. m.",
+    ],
+    [
+      { notice: { message: `${"a".repeat(58)} b ${"c".repeat(20)}`, tone: "info" as const, endsAt: "2026-10-26T01:00:00.000Z" } },
+      `“${"a".repeat(58)} b…” · información · hasta el 25 de oct. de 2026, 8:00 p. m.`,
+    ],
     [{ resent: 3, failed: 0 }, "3 reenviadas"],
     [{ resent: 1, failed: 1 }, "1 reenviada · 1 no salió otra vez"],
     [{ resent: 0, failed: 2 }, "0 reenviadas · 2 no salieron otra vez"],
@@ -472,6 +516,19 @@ describe("en inglés", () => {
     ],
     [{ limits: { perHour: 30, perDay: 1500 } }, "now 30 per hour and 1,500 per day"],
     [{ monthlyLimit: 2_000_000, previousMonthlyLimit: null }, "now 2,000,000 tokens a month (before no limit)"],
+    [{ model: "claude-opus-5-5", previousModel: "claude-haiku-5-5" }, "now Claude Opus 5.5 (before Claude Haiku 5.5)"],
+    [{ signupMode: "open", previousSignupMode: "closed" }, "now open (before closed)"],
+    [
+      {
+        appValues: { upcomingEnabled: true, upcomingDays: 3, budgetNearShare: 75, recurringMinMonths: 3, recurringWindow: 4 },
+        previousAppValues: { upcomingEnabled: true, upcomingDays: 3, budgetNearShare: 80, recurringMinMonths: 3, recurringWindow: 4 },
+      },
+      "near the budget: now 75% (before 80%)",
+    ],
+    [
+      { notice: { message: "Maintenance", tone: "important", endsAt: "2026-10-26T01:00:00.000Z" } },
+      "“Maintenance” · important · until Oct 25, 2026, 8:00 PM",
+    ],
     [{ resent: 1 }, "1 resent"],
     [{ resent: 3, failed: 2 }, "3 resent · 2 didn't go out again"],
   ] as const)("el detalle %j", (details, expected) => {

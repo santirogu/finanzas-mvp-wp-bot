@@ -12,7 +12,8 @@ textos.
 - No usar "Finanzas MVP", "Finanzas" ni "Finanzas Bot", los nombres de antes. Hay una excepción: donde
   se explica el cambio, como en Google Authenticator: "Anotado (antes, Finanzas MVP)".
 - **Al registrar, el bot responde "✅ Egreso Anotado: …" o "✅ Ingreso Anotado: …"**, con la A
-  mayúscula de la marca. Es una decisión del dueño: no es un error de mayúsculas.
+  mayúscula de la marca. Es una decisión del dueño: no es un error de mayúsculas. En inglés, "✅ Expense
+  noted: …" y "✅ Income noted: …", como el eslogan ("It's noted.").
 - **Eslogan:** "Escribe tu gasto por WhatsApp. Queda anotado." (en inglés, "Text your expense on WhatsApp.
   It's noted.").
 
@@ -68,17 +69,24 @@ textos.
 | ingreso, Ingresos | income, Income | entrada | |
 | egreso, Egresos | expense, Expenses | salida; outflow; spending (en títulos) | También en los títulos de los análisis: "Egresos por categoría", "Los egresos más grandes" ("Expenses by category"). "Gasto" sí: en "gasto fijo", "gasto promedio", los verbos ("qué días gastas más") y lo que se le escribe al bot ("gasté"). |
 | gasto fijo, Fijos | bill, Bills | gasto recurrente; recurring | "Bills" porque "Recurring" no cabía en 375 px. |
+| Configuración | Settings | Ajustes; Preferencias; Opciones | El menú de la cuenta: "Mi cuenta" (quién eres y tu seguridad) y "Configuración" (cómo funciona la app para ti). Las secciones se nombran "Configuración → Notificaciones". |
+| presupuesto, Presupuestos | budget, Budgets | límite; tope (en títulos) | El monto por mes de una categoría de egresos. En las explicaciones se acepta "tope" ("un tope por mes"). Se "pone", se "cambia" y se "quita" (no "eliminar": borra una configuración, no datos). |
 | Resumen | Overview | dashboard, tablero | |
 | Reportes | Reports | informes | |
+| los períodos de Reportes: Últimos 12 meses, Últimos 6 meses, Últimos 3 meses, Último mes | Last 12 months, Last 6 months, Last 3 months, This month | Mes actual; Last month, Past month | Todos cuentan el mes en curso: "Último mes" es el actual (lo pidió el dueño así), y en inglés "This month", porque "Last month" es el anterior. |
 | Mi cuenta | My account | perfil | |
 | Ayuda | Help | | |
 | categoría | category | | "Otros" es la de respaldo; en inglés, su nombre lo pone el admin. |
 | balance | balance | saldo | El bot entiende "saldo", pero responde "balance". |
 | aviso (de un pago) | notice | recordatorio; reminder | |
 | campana, notificaciones | bell, notifications | | |
+| recordatorio de registro | reminder to add transactions | aviso de registro; notificación de inactividad | Cuando la persona lleva días sin registrar nada (Resumen, campana y Configuración). "Recordatorio" se reserva para esto: los de los pagos son "avisos". |
 | Entrar (botón), iniciar sesión | Sign in, sign in | loguearse, login; log in | |
 | Salir (botón), cerrar sesión | Sign out, sign out | log out | |
 | Crear cuenta, registrarte | Create account, sign up | | |
+| los registros: abiertos, solo con invitación, cerrados | sign-ups: open, invitation only, closed | inscripciones; registrations | Quién puede crear una cuenta (Configuración del admin). Se "invita" un correo y se "quita" la invitación. |
+| el aviso para todos (en el admin), el aviso general (en la franja) | the notice for everyone, general notice | anuncio, banner, comunicado | Un mensaje del admin arriba de la app, el login y el registro: "Información" o "Importante". No confundir con los avisos emergentes (los toasts, la región "Avisos"). Se "publica", se "cambia" y se "quita"; la persona lo "oculta" con la ✕. |
+| los valores de la app | the app values | ajustes, parámetros, configuración global | Los avisos de próximos pagos por defecto y los umbrales (el % de "se acerca", cuándo un gasto es fijo), en la Configuración del admin. |
 | contraseña | password | clave, password | "Clave" solo en la configuración de Google Authenticator, que la llama así. |
 | correo | email | email, e-mail, mail | "Correo electrónico" se acepta la primera vez en las páginas legales. |
 | verificación en dos pasos | two-step verification | 2FA, doble factor | |
@@ -87,7 +95,7 @@ textos.
 | eliminar | delete | suprimir; erase | En botones y títulos, "Eliminar". En las explicaciones se acepta "borrar" ("se borran tus datos"). En inglés, "remove" es quitar algo de una lista sin borrarlo (un filtro, un gasto fijo). |
 | archivar, restaurar | archive, restore | | |
 | suspender, reactivar | suspend, reactivate | | |
-| deshacer | undo | | |
+| deshacer | undo | | También los comandos del bot: "reporte" → "report", "ayuda" → "help", "VINCULAR" → "LINK" ("balance" es igual). El bot entiende los dos idiomas. |
 | toca, elige | tap, choose | pulsa, presiona, selecciona; press, pick, select | La app se usa sobre todo en el celular. "Elige" para escoger una opción. "Haz clic" / "click" se aceptan solo en lo que se ve con mouse (por ejemplo, la ayuda de un gráfico que se abre al pasar el puntero). |
 | registrar (un movimiento) | add | record, track | "Registrar ingreso" → "Add income"; "el bot registra" → "the bot adds". |
 | celular | phone | móvil, teléfono | "Número de teléfono" se acepta en las páginas legales. |
@@ -99,8 +107,6 @@ textos.
 
 ## Lo que queda en español a propósito
 
-- El bot de WhatsApp (por ahora): sus mensajes y los ejemplos de lo que se le escribe ("gasté 20 mil
-  en almuerzo"), también en la web en inglés.
 - La política de privacidad y "Eliminar tus datos", con `lang="es"` y una nota en inglés.
 - Los nombres de las categorías por defecto (el inglés lo pone el admin) y el simulador (solo en
   desarrollo).

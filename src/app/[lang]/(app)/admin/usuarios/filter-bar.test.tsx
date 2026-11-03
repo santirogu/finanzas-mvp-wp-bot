@@ -40,7 +40,7 @@ describe("UsersFilterBar", () => {
     expect(screen.getByRole("searchbox", { name: "Buscar" })).toHaveValue("ana");
     expect(screen.getByRole("searchbox", { name: "Buscar" })).toHaveAttribute("placeholder", "Nombre, correo o número");
     // La búsqueda cuenta como filtro activo (como en el Historial).
-    expect(filtersButton()).toHaveAccessibleName("Filtros (activos: 1)");
+    expect(filtersButton()).toHaveAccessibleName("Filtros: 1 activo");
     expect(filtersButton()).toHaveAttribute("aria-expanded", "false");
   });
 
@@ -56,7 +56,7 @@ describe("UsersFilterBar", () => {
         panelOpen={false}
       />,
     );
-    expect(filtersButton()).toHaveAccessibleName("Filtros (activos: 5)");
+    expect(filtersButton()).toHaveAccessibleName("Filtros: 5 activos");
   });
 
   it("tiene los grupos Rol, WhatsApp, Estado y Fecha de registro, con Todos marcado al empezar", () => {
@@ -162,7 +162,7 @@ describe("UsersFilterBar en inglés", () => {
   it("la búsqueda, el botón, los grupos y sus chips", () => {
     render(<UsersFilterBar filters={f({ search: "ana", role: "user", suspended: true })} panelOpen />, { wrapper: InEnglish });
     expect(screen.getByRole("searchbox", { name: "Search" })).toHaveAttribute("placeholder", "Name, email or number");
-    expect(screen.getByRole("button", { name: /^Filters/ })).toHaveAccessibleName("Filters (active: 3)");
+    expect(screen.getByRole("button", { name: /^Filters/ })).toHaveAccessibleName("Filters: 3 active");
     expect(screen.getAllByRole("group").map((g) => g.querySelector("legend")?.textContent)).toEqual([
       "Role",
       "WhatsApp",

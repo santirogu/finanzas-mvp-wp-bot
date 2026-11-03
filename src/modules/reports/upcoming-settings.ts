@@ -5,7 +5,8 @@ import { notificationSetting } from "@/db/schema";
 import { DEFAULT_LOCALE, type Locale } from "@/i18n/locales";
 import { texts } from "@/i18n/texts";
 import type { ToastTone } from "@/lib/toasts";
-import { DAYS_AHEAD, DAYS_AHEAD_MESSAGES, daysAheadPhrase, MAX_DAYS_AHEAD } from "./upcoming";
+import { getAppValues } from "@/modules/app-values/current";
+import { DAYS_AHEAD_MESSAGES, daysAheadPhrase, MAX_DAYS_AHEAD } from "./upcoming";
 
 const TEXTS = texts(
   { saved: (when: string) => `Se guardó: te avisaremos ${when} de cada pago fijo`, off: "Se apagaron los avisos de próximos pagos" },
@@ -13,20 +14,20 @@ const TEXTS = texts(
 );
 
 // La configuración de los avisos de próximos pagos (Mi cuenta → Notificaciones; la tabla
-// notification_setting): si están prendidos y con cuántos días de anticipación. Sin fila, los valores por
-// defecto. Reciben el userId ya validado por el Data Access Layer (src/lib/session.ts) y siempre filtran
-// por él.
+// notification_setting): si están prendidos y con cuántos días de anticipación. Sin fila (la persona nunca los
+// cambió), los que eligió el admin en Valores de la app o, si no, los de siempre (prendidos, 3 días). Reciben el
+// userId ya validado por el Data Access Layer (src/lib/session.ts) y siempre filtran por él.
 
 export type UpcomingSettings = { enabled: boolean; days: number };
-
-export const DEFAULT_UPCOMING_SETTINGS: UpcomingSettings = { enabled: true, days: DAYS_AHEAD };
 
 export async function getUpcomingSettings(userId: string): Promise<UpcomingSettings> {
   const [row] = await db
     .select({ enabled: notificationSetting.upcomingEnabled, days: notificationSetting.upcomingDays })
     .from(notificationSetting)
     .where(eq(notificationSetting.userId, userId));
-  return row ?? DEFAULT_UPCOMING_SETTINGS;
+  if (row) return row;
+  const values = await getAppValues();
+  return { enabled: values.upcomingEnabled, days: values.upcomingDays };
 }
 
 export type UpcomingSettingsResult = { ok: true; message: string; tone: ToastTone } | { ok: false; error: string; field?: "days" };

@@ -46,14 +46,16 @@ export default defineConfig({
     // Safari no manda el click de un toque cuyo pointerdown se canceló (y Chromium sí).
     { name: "iphone", use: { ...devices["iPhone 15"] }, grep: /@safari/, testIgnore: GLOBAL_SETTINGS },
     { name: "ipad", use: { ...devices["iPad Pro 11"] }, grep: /@safari/, testIgnore: GLOBAL_SETTINGS },
-    // Lo que cambia la configuración de toda la app (pausar Claude, los topes del bot): si corriera a
-    // la vez que las demás, sus mensajes recibirían "Claude está en pausa". En local va después de
-    // todas; en el CI, en su propia parte, con su propia base (--no-deps).
+    // Lo que cambia la configuración de toda la app (pausar Claude, los topes del bot, cerrar los
+    // registros): si corriera a la vez que las demás, sus mensajes recibirían "Claude está en pausa" y
+    // no podrían crear cuentas. En local va después de todas; en el CI, en su propia parte, con su propia
+    // base (--no-deps). Un archivo a la vez: con los registros cerrados, los demás no podrían registrarse.
     {
       name: "configuracion",
       use: { ...devices["Desktop Chrome"] },
       testMatch: GLOBAL_SETTINGS,
       dependencies: ["escritorio", "celular", "tableta", "iphone", "ipad"],
+      workers: 1,
     },
   ],
   webServer: [

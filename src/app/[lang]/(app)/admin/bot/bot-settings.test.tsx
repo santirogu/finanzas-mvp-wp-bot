@@ -1,7 +1,7 @@
 import { screen, within } from "@testing-library/react";
 import { findToast, renderWithToaster as render, toasts } from "../../../../../../test/toaster";
 import userEvent from "@testing-library/user-event";
-import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { BotSettingsProps } from "./bot-settings";
 
 // Las Server Actions se simulan: aquí se prueba la interfaz (qué se muestra, qué se envía y cómo
@@ -11,22 +11,13 @@ const actions = vi.hoisted(() => ({
   resumeClaudeAction: vi.fn(),
   changeAiLimitsAction: vi.fn(),
   changeMonthlyLimitAction: vi.fn(),
+  changeBotModelAction: vi.fn(),
 }));
 vi.mock("./actions", () => actions);
 
 const { BotSettings } = await import("./bot-settings");
 
 // jsdom no tiene showModal ni close: lo mínimo para abrir y cerrar la ventana.
-beforeAll(() => {
-  HTMLDialogElement.prototype.showModal = function (this: HTMLDialogElement) {
-    this.setAttribute("open", "");
-  };
-  HTMLDialogElement.prototype.close = function (this: HTMLDialogElement) {
-    this.removeAttribute("open");
-    this.dispatchEvent(new Event("close"));
-  };
-});
-
 beforeEach(() => {
   for (const action of Object.values(actions)) action.mockReset();
 });
@@ -37,6 +28,9 @@ const props = (overrides: Partial<BotSettingsProps> = {}): BotSettingsProps => (
   monthlyTokenLimit: null,
   month: { used: 37579, reached: false, resetsOn: "1 de noviembre" },
   averageTokensPerCall: 1708,
+  averageUsage: { input: 1500, output: 208 },
+  model: "claude-haiku-5-5",
+  modelsEvaluatedOn: "21 de oct. de 2026",
   lastChange: null,
   ...overrides,
 });
@@ -251,6 +245,72 @@ describe("BotSettings · tope mensual de tokens", () => {
   });
 });
 
+describe("BotSettings · modelo de Claude", () => {
+  it("el de ahora, cuánto acertó en bot:eval y cuánto cuestan 1.000 mensajes con el promedio de tokens", () => {
+    render(<BotSettings {...props()} />);
+    const row = section().getAllByRole("listitem")[3];
+    expect(row).toHaveTextContent("Modelo de ClaudeClaude Haiku 5.5: acertó 58 de 58 frases de prueba · unos US$0,25 cada 1.000 mensajes");
+    // Sin mensajes todavía, sin costo; uno de BOT_MODEL que no está en la lista, sin evaluación.
+    render(<BotSettings {...props({ averageUsage: null, model: "claude-modelo-x" })} />);
+    expect(screen.getAllByRole("region", { name: "Configuración" })[1]).toHaveTextContent("claude-modelo-x: —");
+  });
+
+  it("la ventana: cada modelo con lo suyo, el de ahora marcado; se envía el elegido con el código", async () => {
+    actions.changeBotModelAction.mockResolvedValue({ message: "El bot ahora usa Claude Sonnet 5.5, desde el siguiente mensaje." });
+    render(<BotSettings {...props()} />);
+    await userEvent.click(section().getByRole("button", { name: "Cambiar el modelo de Claude" }));
+    expect(screen.getByRole("dialog", { name: "Cambiar el modelo de Claude" })).toHaveAccessibleDescription(/pnpm bot:eval, el 21 de oct\. de 2026/);
+    const options = dialog().getAllByRole("radio");
+    expect(options.map((option) => option.getAttribute("value"))).toEqual(["claude-haiku-5-5", "claude-sonnet-5-5", "claude-opus-5-5"]);
+    expect(dialog().getByRole("radio", { name: /Claude Haiku 5\.5 \(el de ahora\)/ })).toBeChecked();
+    expect(dialog().getByRole("radio", { name: /Claude Sonnet 5\.5/ }).closest("label")).toHaveTextContent(
+      "Acertó 57 de 58 frases de prueba · unos US$5,08 cada 1.000 mensajes",
+    );
+
+    await userEvent.click(dialog().getByRole("radio", { name: /Claude Sonnet 5\.5/ }));
+    await userEvent.type(dialog().getByLabelText("Código de Google Authenticator"), "123456");
+    await userEvent.click(dialog().getByRole("button", { name: "Cambiar modelo" }));
+    const sent = actions.changeBotModelAction.mock.calls[0][1] as FormData;
+    expect([sent.get("model"), sent.get("code")]).toEqual(["claude-sonnet-5-5", "123456"]);
+    expect(await findToast()).toHaveTextContent("El bot ahora usa Claude Sonnet 5.5, desde el siguiente mensaje.");
+  });
+
+  it("si el servidor rechaza el modelo, el error va debajo de la lista y la elección sigue", async () => {
+    actions.changeBotModelAction.mockResolvedValue({ error: "El bot ya usa ese modelo: elige otro.", field: "model" });
+    render(<BotSettings {...props()} />);
+    await userEvent.click(section().getByRole("button", { name: "Cambiar el modelo de Claude" }));
+    await userEvent.type(dialog().getByLabelText("Código de Google Authenticator"), "123456");
+    await userEvent.click(dialog().getByRole("button", { name: "Cambiar modelo" }));
+    expect(await dialog().findByText("El bot ya usa ese modelo: elige otro.")).toBeInTheDocument();
+    expect(dialog().getByRole("group", { name: "Modelo" })).toHaveAccessibleDescription("El bot ya usa ese modelo: elige otro.");
+    expect(dialog().getByRole("radio", { name: /Claude Haiku 5\.5/ })).toBeChecked();
+  });
+
+  // React vacía el formulario al terminar la acción: con radios controlados volvía a quedar marcado el de
+  // ahora y, al volver a enviar, se mandaba ese y no el elegido.
+  it("la elección del modelo sigue tras un código equivocado y se vuelve a enviar", async () => {
+    actions.changeBotModelAction.mockResolvedValue({ error: "El código no es correcto.", field: "code" });
+    render(<BotSettings {...props()} />);
+    await userEvent.click(section().getByRole("button", { name: "Cambiar el modelo de Claude" }));
+    await userEvent.click(dialog().getByRole("radio", { name: /Claude Sonnet 5\.5/ }));
+    await userEvent.type(dialog().getByLabelText("Código de Google Authenticator"), "111111");
+    await userEvent.click(dialog().getByRole("button", { name: "Cambiar modelo" }));
+    expect(await dialog().findByText("El código no es correcto.")).toBeInTheDocument();
+    expect(dialog().getByRole("radio", { name: /Claude Sonnet 5\.5/ })).toBeChecked();
+    expect(dialog().getByRole("radio", { name: /Claude Haiku 5\.5/ })).not.toBeChecked();
+    expect(dialog().getByLabelText("Código de Google Authenticator")).toHaveValue("");
+
+    actions.changeBotModelAction.mockResolvedValue({ message: "El bot ahora usa Claude Sonnet 5.5, desde el siguiente mensaje." });
+    // userEvent recuerda el valor de antes de que React limpiara el campo: se borra primero.
+    await userEvent.clear(dialog().getByLabelText("Código de Google Authenticator"));
+    await userEvent.type(dialog().getByLabelText("Código de Google Authenticator"), "123456");
+    await userEvent.click(dialog().getByRole("button", { name: "Cambiar modelo" }));
+    expect(await findToast()).toHaveTextContent("El bot ahora usa Claude Sonnet 5.5, desde el siguiente mensaje.");
+    const sent = actions.changeBotModelAction.mock.calls[1][1] as FormData;
+    expect([sent.get("model"), sent.get("code")]).toEqual(["claude-sonnet-5-5", "123456"]);
+  });
+});
+
 describe("BotSettings en inglés", () => {
   const en = (overrides: Partial<BotSettingsProps> = {}) => props({ month: { used: 37579, reached: false, resetsOn: "November 1" }, ...overrides });
   const settings = () => within(screen.getByRole("region", { name: "Settings" }));
@@ -264,6 +324,7 @@ describe("BotSettings en inglés", () => {
     expect(settings().getByText("No changes: the defaults apply.")).toBeInTheDocument();
     expect(settings().getByRole("button", { name: "Pause Claude" })).toBeInTheDocument();
     expect(settings().getByRole("button", { name: "Change the limits per account" })).toHaveTextContent("Change");
+    expect(rows[3]).toHaveTextContent("Claude modelClaude Haiku 5.5: got 58 of 58 test phrases right · about $0.25 per 1,000 messages");
   });
 
   it("en pausa, y alcanzado el tope mensual", () => {
@@ -271,7 +332,7 @@ describe("BotSettings en inglés", () => {
       english: true,
     });
     const rows = settings().getAllByRole("listitem");
-    expect(rows[0]).toHaveTextContent("Paused by the monthly limit until November 1: the bot only answers balance, reporte, deshacer and ayuda.");
+    expect(rows[0]).toHaveTextContent("Paused by the monthly limit until November 1: the bot only answers balance, report, undo and help.");
     expect(rows[2]).toHaveTextContent("Reached: 31,000 of 30,000. Claude comes back on November 1.");
     expect(settings().getByText("Last change: Ana Admin · Oct 16")).toBeInTheDocument();
   });

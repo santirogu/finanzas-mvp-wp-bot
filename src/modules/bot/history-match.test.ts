@@ -10,6 +10,13 @@ describe("meaningfulWords", () => {
     expect(meaningfulWords("de la")).toEqual([]);
     expect(meaningfulWords("Plan 5G-Max")).toEqual(["plan", "5g", "max"]);
   });
+
+  it.each(["a", "al", "con", "de", "del", "el", "en", "la", "las", "lo", "los", "mi", "mis", "para", "por", "su", "sus", "un", "una", "y"])(
+    "'%s' no cuenta",
+    (word) => {
+      expect(meaningfulWords(`pago ${word} claro`)).toEqual(["pago", "claro"]);
+    },
+  );
 });
 
 describe("matchHistory", () => {
@@ -28,6 +35,8 @@ describe("matchHistory", () => {
     // Con menos letras, solo al comienzo: "ago" no está en "postpago".
     expect(matchHistory("ago claro", [entry("Postpago Claro")])).toBeNull();
     expect(matchHistory("ne claro", [entry("Netflix Claro")])).toBeNull();
+    // Igual, aunque tenga menos de 3 letras: "tv" está en "Plan TV Cable".
+    expect(matchHistory("tv cable", [entry("Plan TV Cable")])?.description).toBe("Plan TV Cable");
   });
 
   it("sin importar tildes, mayúsculas, el orden ni las palabras que no cuentan", () => {
@@ -50,6 +59,11 @@ describe("matchHistory", () => {
     expect(matchHistory("pago claro", [entry("Claro Postpago Cata", 2), entry("Claro Postpago Hogar", 5)])?.description).toBe("Claro Postpago Hogar");
     expect(matchHistory("pago claro", [entry("Claro Postpago Cata", 3), entry("Claro Postpago Hogar", 3)])).toBeNull();
     expect(matchHistory("pago claro", [entry("Claro Postpago Cata", 3), entry("Claro Postpago Hogar", 3), entry("Claro Postpago Mamá", 4)])?.description).toBe("Claro Postpago Mamá");
+  });
+
+  it("las palabras vacías del inglés tampoco cuentan", () => {
+    expect(meaningfulWords("Lunch with the team at the office")).toEqual(["lunch", "team", "office"]);
+    expect(matchHistory("lunch with Ana", [entry("Lunch Ana")])?.description).toBe("Lunch Ana");
   });
 
   it("sin historial, sin palabras que cuenten o sin coincidencias, ninguna", () => {

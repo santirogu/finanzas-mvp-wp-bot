@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page } from "@playwright/test";
 import { monthOf, monthParam, shiftMonth, todayInTimezone } from "../src/lib/dates";
+import { BOT_COMMANDS, BOT_EXAMPLES } from "../src/modules/bot/help";
 import { totp } from "../test/totp";
 import { newAdmin, setUpTwoFactor, wrongCode } from "./admin";
 import { PASSWORD, addTransaction, logIn, newPerson, register, test, toast, uniqueEmail, visible } from "./helpers";
@@ -22,6 +23,14 @@ test("sin sesión: la portada, el login y el registro en inglés, con sus mensaj
   await page.goto("/");
   await expect(page.locator("html")).toHaveAttribute("lang", "en");
   await expect(visible(page.getByRole("heading", { level: 1, name: "Text your expense on WhatsApp. It's noted." }))).toBeVisible();
+  // La conversación de ejemplo, como le responde el bot a una cuenta en inglés.
+  const example = visible(page.getByRole("figure", { name: /An example conversation with the bot/ }));
+  await expect(example.getByRole("listitem")).toHaveText([
+    "spent 25k on lunch",
+    /✅ Expense noted: Lunch — \$25,000\.00 \(Food\)/,
+    "and 12k for a taxi",
+    /✅ Expense noted: Taxi — \$12,000\.00 \(Transportation\)\s*This month's balance: \$1,284,500\.00/,
+  ]);
 
   await visible(page.getByRole("link", { name: "Sign in" })).click();
   await expect(page).toHaveURL(/\/login$/);
@@ -127,7 +136,10 @@ test("en inglés: Reportes, con la descarga del CSV para el Excel en inglés @pr
   await page.goto("/reportes");
   await expect(page).toHaveTitle("Reports · Anotado");
   await expect(visible(page.getByRole("heading", { level: 1, name: "Reports" }))).toBeVisible();
-  await expect(visible(page.getByRole("navigation", { name: "Period" }).getByRole("link", { name: "Last 12 months" }))).toHaveAttribute("aria-current", "page");
+  const periods = visible(page.getByRole("navigation", { name: "Period" }));
+  await expect(periods.getByRole("link", { name: "Last 12 months" })).toHaveAttribute("aria-current", "page");
+  // "This month", no "Last month" (sería el anterior): el último de estos períodos es el actual.
+  await expect(periods.getByRole("link")).toHaveText(["Last 12 months", "Last 6 months", "Last 3 months", "This month", /^\d{4}$/]);
   await expect(visible(page.getByRole("region", { name: "Period summary" }))).toContainText("$1,250.50");
   await expect(visible(page.getByRole("heading", { name: "Expenses by category" }))).toBeVisible();
   await expect(visible(page.getByRole("heading", { name: "Which days do you spend the most?" }))).toBeVisible();
@@ -143,7 +155,7 @@ test("en inglés: Reportes, con la descarga del CSV para el Excel en inglés @pr
   expect(lines[1]).toMatch(/^\d{4}-\d{2}-\d{2},Expense,Almuerzo,No category,-1250\.50,Web$/);
 });
 
-test("en inglés: Mi cuenta, la Ayuda y las páginas legales (solo en español, con su nota) @principal", async ({ page }) => {
+test("en inglés: Mi cuenta, Configuración, la Ayuda y las páginas legales (solo en español, con su nota) @principal", async ({ page }) => {
   await register(page);
   await inEnglish(page);
 
@@ -152,16 +164,36 @@ test("en inglés: Mi cuenta, la Ayuda y las páginas legales (solo en español, 
   await expect(visible(page.getByRole("heading", { level: 1, name: "My account" }))).toBeVisible();
   await expect(visible(page.getByRole("region", { name: "Your details" }))).toContainText("User");
   await expect(visible(page.getByRole("region", { name: "Security" }))).toBeVisible();
-  await expect(visible(page.getByRole("region", { name: "Notifications" }))).toBeVisible();
   await expect(visible(page.getByLabel("Type DELETE to confirm"))).toBeVisible();
   expect(await seriousViolations(page)).toEqual([]);
+
+  await visible(page.getByRole("link", { name: "Settings" })).click();
+  await expect(page).toHaveURL(/\/configuracion$/);
+  await expect(page).toHaveTitle("Settings · Anotado");
+  await expect(visible(page.getByRole("heading", { level: 1, name: "Settings" }))).toBeVisible();
+  for (const name of ["Budgets", "Notifications", "Appearance", "Language"]) {
+    await expect(visible(page.getByRole("region", { name }))).toBeVisible();
+  }
+  await visible(page.getByRole("button", { name: "Add a budget" })).click();
+  await expect(page.getByRole("dialog").getByLabel("Amount per month")).toBeVisible();
+  expect(await seriousViolations(page)).toEqual([]);
+  await page.getByRole("dialog").getByRole("button", { name: "Cancel" }).click();
 
   await page.goto("/ayuda");
   await expect(page).toHaveTitle("Help · Anotado");
   const topics = visible(page.getByRole("region", { name: "Help topics" }));
   await topics.locator("summary", { hasText: "The WhatsApp bot" }).click();
-  await expect(topics).toContainText("For now the bot answers in Spanish.");
-  const closed = topics.locator("details:not([open])");
+  // Los comandos y los ejemplos del bot, en inglés, como su respuesta a "help".
+  const bot = topics.locator("details").filter({ has: page.locator("summary", { hasText: "The WhatsApp bot" }) });
+  await expect(bot.locator("strong", { hasText: /^LINK$/ })).toBeVisible();
+  for (const example of BOT_EXAMPLES.en) await expect(bot).toContainText(example);
+  for (const { command, description } of BOT_COMMANDS.en) {
+    await expect(bot.locator("li", { hasText: description }).locator("strong").first()).toHaveText(command);
+  }
+  const faq = visible(page.getByRole("region", { name: "Frequently asked questions" }));
+  await faq.locator("summary", { hasText: "How do I change my WhatsApp number?" }).click();
+  await expect(faq).toContainText("tap Unlink number");
+  const closed = page.locator("main details:not([open])");
   while ((await closed.count()) > 0) await closed.first().locator("summary").click();
   expect(await seriousViolations(page)).toEqual([]);
 
@@ -204,8 +236,9 @@ test("en inglés: la administración (Seguridad, el inicio, Usuarios y una acci�
     await expect(page).toHaveTitle("Administration · Anotado");
     await expect(page.getByRole("heading", { level: 1, name: "Administration" })).toBeVisible();
     const nav = visible(page.getByRole("navigation", { name: "Administration sections" }));
-    await expect(nav.getByRole("link")).toHaveText(["Home", "History", "Users", "WhatsApp bot", "Categories", "System health", "Security"]);
+    await expect(nav.getByRole("link")).toHaveText(["Home", "History", "Users", "WhatsApp bot", "Categories", "System health", "Settings", "Security"]);
     await expect(visible(page.getByText("Two-step verification on"))).toBeVisible();
+    await expect(visible(page.getByText("Sign-ups open"))).toBeVisible();
     expect(await seriousViolations(page)).toEqual([]);
     await nav.getByRole("link", { name: "Users", exact: true }).click();
     await expect(page).toHaveURL(/\/admin\/usuarios$/);
@@ -222,7 +255,7 @@ test("en inglés: la administración (Seguridad, el inicio, Usuarios y una acci�
     const account = visible(page.getByRole("list", { name: "Accounts" })).getByRole("listitem").first();
     await expect(account).toContainText("Beto Inglés");
     await expect(account).toContainText(/No WhatsApp · Signed up: [A-Z][a-z]{2} \d{1,2}, \d{4}/);
-    const filters = visible(page.getByRole("button", { name: "Filters (active: 1)" }));
+    const filters = visible(page.getByRole("button", { name: "Filters: 1 active" }));
     await filters.click();
     await expect(visible(page.getByRole("group", { name: "Status" }))).toContainText("Sign-in locked");
     expect(await seriousViolations(page)).toEqual([]);
@@ -330,20 +363,20 @@ test("en inglés: el Historial, el Bot y Categorías de la administración @prin
   });
 });
 
-test("elegir el idioma en Mi cuenta: la app cambia, y la cuenta lo lleva a otro navegador @principal", async ({ page, browser }) => {
+test("elegir el idioma en Configuración: la app cambia, y la cuenta lo lleva a otro navegador @principal", async ({ page, browser }) => {
   const email = uniqueEmail();
   await register(page, "Ana Pérez", email);
 
-  await test.step("en Mi cuenta, English: Mi cuenta vuelve en inglés, con el aviso", async () => {
-    await page.goto("/cuenta");
+  await test.step("en Configuración, English: Configuración vuelve en inglés, con el aviso", async () => {
+    await page.goto("/configuracion");
     await expect(page.locator("html")).toHaveAttribute("lang", "es");
     const language = visible(page.getByRole("group", { name: "Idioma" }));
     await expect(language.getByRole("radio", { name: "Español" })).toBeChecked();
     expect(await seriousViolations(page)).toEqual([]);
     await language.locator("label", { hasText: "English" }).click();
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
-    await expect(page).toHaveURL(/\/cuenta$/);
-    await expect(visible(page.getByRole("heading", { level: 1, name: "My account" }))).toBeVisible();
+    await expect(page).toHaveURL(/\/configuracion(#idioma)?$/);
+    await expect(visible(page.getByRole("heading", { level: 1, name: "Settings" }))).toBeVisible();
     await expect(page.getByRole("region", { name: "Notices" }).getByText("Language saved")).toBeVisible();
     await expect(visible(page.getByRole("group", { name: "Language" })).getByRole("radio", { name: "English" })).toBeChecked();
     await page.goto("/dashboard");
@@ -359,7 +392,7 @@ test("elegir el idioma en Mi cuenta: la app cambia, y la cuenta lo lleva a otro 
     await expect(other.locator("html")).toHaveAttribute("lang", "en");
 
     // De vuelta a español desde ese navegador.
-    await other.goto("/cuenta");
+    await other.goto("/configuracion");
     await visible(other.getByRole("group", { name: "Language" })).locator("label", { hasText: "Español" }).click();
     await expect(other.locator("html")).toHaveAttribute("lang", "es");
     await expect(other.getByRole("region", { name: "Avisos" }).getByText("Idioma guardado")).toBeVisible();
@@ -367,19 +400,29 @@ test("elegir el idioma en Mi cuenta: la app cambia, y la cuenta lo lleva a otro 
   });
 });
 
-test("la primera visita, sin elegir, en el idioma del navegador @principal", async ({ browser }) => {
-  for (const [locale, lang, heading] of [
-    ["en-US", "en", "Sign in"],
-    ["fr-FR", "es", "Inicia sesión"],
-  ] as const) {
-    const context = await browser.newContext({ locale });
-    const page = await context.newPage();
-    await page.goto("/login");
-    await expect(page.locator("html")).toHaveAttribute("lang", lang);
-    await expect(visible(page.getByRole("heading", { level: 1, name: heading }))).toBeVisible();
-    expect((await context.cookies()).map((c) => c.name)).not.toContain("idioma");
-    await context.close();
-  }
+test("la primera visita es en español aunque el navegador esté en inglés; ES · EN lo cambia y se recuerda @principal", async ({ browser }) => {
+  const context = await browser.newContext({ locale: "en-US" });
+  const page = await context.newPage();
+  await page.goto("/");
+  await expect(page.locator("html")).toHaveAttribute("lang", "es");
+  expect((await context.cookies()).map((c) => c.name)).not.toContain("idioma");
+  const languages = visible(page.getByRole("group", { name: "Idioma" }));
+  await expect(languages.getByRole("button", { name: "Español" })).toHaveAttribute("aria-pressed", "true");
+
+  // EN: la misma página, en inglés, y queda guardado para las demás.
+  await languages.getByRole("button", { name: "English" }).click();
+  await expect(page.locator("html")).toHaveAttribute("lang", "en");
+  await expect(page).toHaveURL(/\/$/);
+  await expect(visible(page.getByRole("group", { name: "Language" }).getByRole("button", { name: "English" }))).toHaveAttribute("aria-pressed", "true");
+  await page.goto("/login");
+  await expect(visible(page.getByRole("heading", { level: 1, name: "Sign in" }))).toBeVisible();
+  expect(await seriousViolations(page)).toEqual([]);
+
+  // ES desde el login: se queda en el login, en español.
+  await visible(page.getByRole("group", { name: "Language" })).getByRole("button", { name: "Español" }).click();
+  await expect(visible(page.getByRole("heading", { level: 1, name: "Inicia sesión" }))).toBeVisible();
+  await expect(page).toHaveURL(/\/login$/);
+  await context.close();
 });
 
 test("cambiar de idioma no cambia la apariencia elegida (ni al elegirlo ni al entrar con la cuenta) @principal", async ({ page, browser }) => {
@@ -387,11 +430,11 @@ test("cambiar de idioma no cambia la apariencia elegida (ni al elegirlo ni al en
   await page.emulateMedia({ colorScheme: "dark" });
   const email = uniqueEmail();
   await register(page, "Ana Pérez", email);
-  await page.goto("/cuenta");
+  await page.goto("/configuracion");
   await visible(page.getByRole("group", { name: "Apariencia" })).locator("label", { hasText: "Claro" }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
 
-  await test.step("al elegir English en Mi cuenta", async () => {
+  await test.step("al elegir English en Configuración", async () => {
     await visible(page.getByRole("group", { name: "Idioma" })).locator("label", { hasText: "English" }).click();
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
     await expect(page.locator("html")).toHaveAttribute("data-theme", "light");

@@ -61,6 +61,12 @@ describe("healthProblems", () => {
     expect(problems({}, { startedAt: hoursAgo(50), ok: false })).toEqual([{ kind: "cleanup_failed", at: hoursAgo(50) }]);
   });
 
+  it("las alertas del bot que son fallas, al final, con cuántas son", () => {
+    const of = (botAlerts: number) => healthProblems({ report: report(), lastCleanup: null, builtAt: hoursAgo(1), now: NOW, botAlerts });
+    expect(of(0)).toEqual([]);
+    expect(of(2)).toEqual([{ kind: "bot_alerts", count: 2 }]);
+  });
+
   it("varios a la vez, de lo más grave a lo menos", () => {
     expect(problems({ missingEnv: ["A"], appliedMigration: null }, { startedAt: hoursAgo(2), ok: false }).map((p) => p.kind)).toEqual([
       "missing_env",
@@ -89,6 +95,8 @@ describe("problemLabel", () => {
       [{ kind: "cleanup_failed", at }, "La última limpieza diaria falló (20 de oct. de 2026, 4:00 a. m.)", "The last daily cleanup failed (Oct 20, 2026, 4:00 AM)"],
       [{ kind: "cleanup_late", since: at }, "La limpieza diaria no corre desde el 20 de oct. de 2026, 4:00 a. m.", "The daily cleanup hasn't run since Oct 20, 2026, 4:00 AM"],
       [{ kind: "cleanup_late", since: null }, "La limpieza diaria todavía no ha corrido", "The daily cleanup hasn't run yet"],
+      [{ kind: "bot_alerts", count: 1 }, "El bot tiene 1 alerta", "The bot has 1 alert"],
+      [{ kind: "bot_alerts", count: 3 }, "El bot tiene 3 alertas", "The bot has 3 alerts"],
     ] as const;
     for (const [problem, es, en] of cases) {
       expect(problemLabel(problem).replace(/\s/g, " ")).toBe(es);

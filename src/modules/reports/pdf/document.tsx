@@ -73,15 +73,11 @@ function LogoMark({ size }: { size: number }) {
   return (
     <Svg viewBox={BRAND_MARK.viewBox} style={{ width: size, height: size }}>
       <Rect x={0} y={0} width={32} height={32} rx={BRAND_MARK.radius} fill={BRAND_MARK.brand} />
-      <Path d={BRAND_MARK.bubble} fill={BRAND_MARK.brandForeground} />
-      <Path
-        d={BRAND_MARK.check}
-        fill="none"
-        stroke={BRAND_MARK.brand}
-        strokeWidth={BRAND_MARK.checkWidth}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+      <Path d={BRAND_MARK.letter} fill={BRAND_MARK.brandForeground} />
+      <Path d={BRAND_MARK.tip} fill={BRAND_MARK.brandForeground} stroke={BRAND_MARK.brandForeground} strokeWidth={BRAND_MARK.tipRound} strokeLinejoin="round" />
+      {/* El ✓, con un borde del color del fondo que corta la "A" a su alrededor. */}
+      <Path d={BRAND_MARK.check} fill="none" stroke={BRAND_MARK.brand} strokeWidth={BRAND_MARK.checkCutWidth} strokeLinecap="round" strokeLinejoin="round" />
+      <Path d={BRAND_MARK.check} fill="none" stroke={BRAND_MARK.brandForeground} strokeWidth={BRAND_MARK.checkWidth} strokeLinecap="round" strokeLinejoin="round" />
     </Svg>
   );
 }
@@ -106,7 +102,8 @@ function Header({ view }: { view: ReportPdfView }) {
 }
 
 function Stats({ view }: { view: ReportPdfView }) {
-  // Tres arriba y dos abajo (el mes de más gasto, a lo ancho de dos), como en un computador.
+  // Tres arriba y dos abajo (el mes de más gasto, a lo ancho de dos), como en un computador. Con un solo
+  // mes, solo las tres de arriba.
   const third = (CONTENT_WIDTH - 2 * GAP) / 3;
   const widths = [third, third, third, third, 2 * third + GAP];
   return (

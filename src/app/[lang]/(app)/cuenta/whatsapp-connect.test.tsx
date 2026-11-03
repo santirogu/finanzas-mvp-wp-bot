@@ -121,14 +121,15 @@ describe("WhatsAppConnect", () => {
 });
 
 describe("WhatsAppConnect · en inglés", () => {
-  it("los textos en inglés; el mensaje para el bot sigue en español (VINCULAR)", async () => {
+  it("los textos en inglés, con el ejemplo y el mensaje para el bot en inglés (LINK)", async () => {
     render(<WhatsAppConnect botNumber="573001112233" showSimulator />, { wrapper: InEnglish });
-    expect(screen.getByText(/Connect your number and add expenses by writing/)).toBeVisible();
+    expect(screen.getByText(/Connect your number and add expenses by writing/)).toHaveTextContent("“I bought some shoes for $500.000”.");
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Connect WhatsApp" }));
     });
-    expect(screen.getByText("VINCULAR 482913")).toBeVisible();
-    expect(screen.getByRole("link", { name: "Open WhatsApp" })).toHaveAttribute("href", "https://wa.me/573001112233?text=VINCULAR%20482913");
+    expect(screen.getByText("LINK 482913")).toBeVisible();
+    expect(screen.getByText("LINK 482913")).not.toHaveAttribute("lang");
+    expect(screen.getByRole("link", { name: "Open WhatsApp" })).toHaveAttribute("href", "https://wa.me/573001112233?text=LINK%20482913");
     expect(screen.getByText(/It expires in 10 minutes/)).toBeVisible();
     expect(screen.getByRole("link", { name: "Try it in the simulator" })).toHaveAttribute("href", "/simulador");
   });

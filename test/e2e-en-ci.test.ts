@@ -18,6 +18,14 @@ const parts = [...ci.matchAll(/^ +- parte: (\d+)\n +pruebas: (.+)$/gm)].map(([, 
 }));
 
 describe("las E2E del CI", () => {
+  it("el reporte de Playwright se guarda si algo falló o si una prueba pasó al reintentarla (su traza queda)", () => {
+    expect(ci.match(/- name: Guardar reporte de Playwright\n +if: (.+)\n/)?.[1]).toBe("failure() || hashFiles('test-results/**/trace.zip') != ''");
+    // La condición depende de que la traza del intento que falló se conserve, y de que en el CI haya reintento.
+    const config = read("playwright.config.ts");
+    expect(config).toContain('trace: "retain-on-failure"');
+    expect(config).toContain("retries: CI ? 1 : 0");
+  });
+
   it("lee los proyectos y las partes", () => {
     expect(projects).toEqual(["escritorio", "celular", "tableta", "iphone", "ipad", "configuracion"]);
     expect(parts.length).toBeGreaterThan(1);

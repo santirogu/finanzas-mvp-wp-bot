@@ -169,6 +169,62 @@
       "when": 1792549920940,
       "tag": "0023_registro-de-las-tareas-programadas",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1792633214187,
+      "tag": "0024_modelo-del-bot",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1792673499075,
+      "tag": "0025_presupuestos",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1792719258419,
+      "tag": "0026_apariencia-en-la-cuenta",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1792728059085,
+      "tag": "0027_registros-por-invitacion",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1792774066020,
+      "tag": "0028_aviso-para-todos",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1792779321356,
+      "tag": "0029_valores-de-la-app",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1792790084428,
+      "tag": "0030_recordatorio-de-registro",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1793238031877,
+      "tag": "0031_tutorial-de-bienvenida",
+      "breakpoints": true
     }
   ]
 }

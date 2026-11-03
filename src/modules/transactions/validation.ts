@@ -31,25 +31,32 @@ export const transactionTypeSchema = z.enum(["income", "expense"]);
 const amountIssue = (message: string) => ({ code: "custom" as const, message });
 
 /**
- * El formulario web, en el idioma de la página: el monto se lee con sus separadores (en inglés, "1,250.50")
- * y los mensajes salen en ese idioma. El monto, en pesos con hasta dos decimales (centavos).
+ * Un monto escrito en un formulario, en el idioma de la página: se lee con sus separadores (en inglés,
+ * "1,250.50"), mayor que cero y hasta MAX_AMOUNT, en pesos con hasta dos decimales (centavos). Lo usan los
+ * movimientos y los presupuestos.
  */
+export function amountSchema(locale: Locale) {
+  const t = TEXTS[locale];
+  return z.string().transform((value, ctx) => {
+    const parsed = parseAmountInput(value, locale);
+    if (parsed === null) {
+      ctx.addIssue(amountIssue(t.amount));
+      return z.NEVER;
+    }
+    if (parsed > MAX_AMOUNT) {
+      ctx.addIssue(amountIssue(t.tooMuch(formatMoney(MAX_AMOUNT, "COP", locale))));
+      return z.NEVER;
+    }
+    return parsed;
+  });
+}
+
+/** El formulario web de un movimiento, en el idioma de la página (los mensajes salen en ese idioma). */
 export function transactionSchema(locale: Locale) {
   const t = TEXTS[locale];
   return z.object({
     type: transactionTypeSchema,
-    amount: z.string().transform((value, ctx) => {
-      const parsed = parseAmountInput(value, locale);
-      if (parsed === null) {
-        ctx.addIssue(amountIssue(t.amount));
-        return z.NEVER;
-      }
-      if (parsed > MAX_AMOUNT) {
-        ctx.addIssue(amountIssue(t.tooMuch(formatMoney(MAX_AMOUNT, "COP", locale))));
-        return z.NEVER;
-      }
-      return parsed;
-    }),
+    amount: amountSchema(locale),
     // Sin caracteres de control (pegados de otro lado): no se ven y el nulo haría fallar la base.
     description: z.string().transform(withoutControlChars).pipe(z.string().trim().min(1, t.description).max(140, t.tooLong)),
     categoryId: z.uuid(t.category).optional().or(z.literal("").transform(() => undefined)),
