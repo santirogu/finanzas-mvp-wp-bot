@@ -68,7 +68,7 @@ cambiar. Lo marcado "(fuentes secundarias)" no se pudo leer en la fuente oficial
 |---|---|---|
 | Seguridad para evitar adulteración, pérdida, consulta o acceso no autorizado. | Ley 1581, art. 17 lit. d | `/auditoria-seguridad` (no se repite aquí: se cita su último informe). |
 | Exigir a los encargados seguridad y privacidad. | art. 17 lit. i | Los términos o el acuerdo de tratamiento (DPA) de cada proveedor: pregunta para el abogado. |
-| Un manual interno de políticas y procedimientos (consultas, reclamos, incidentes). | art. 17 lit. k | ¿El README tiene cómo atender un reclamo, borrar a pedido (`pnpm account:delete`) y qué hacer ante un incidente? |
+| Un manual interno de políticas y procedimientos (consultas, reclamos, incidentes). | art. 17 lit. k | README → "Consultas, reclamos e incidentes (datos personales)" y "Borrar datos a pedido": ¿siguen al día con la política y con los comandos? |
 | Informar a la autoridad las violaciones a los códigos de seguridad que pongan en riesgo los datos. | art. 17 lit. n | ¿Hay un procedimiento de incidentes? Según la Circular Única de la SIC, se reportan en el RNBD dentro de 15 días hábiles, también quien no está obligado a inscribir bases (fuentes secundarias: confirmar en la SIC). |
 | Responsabilidad demostrada: poder mostrar a la SIC las medidas, proporcionales al tamaño y a los riesgos. | Decreto 1377, art. 26 | Este informe, los de seguridad y las pruebas del repo son parte de esa evidencia. |
 
