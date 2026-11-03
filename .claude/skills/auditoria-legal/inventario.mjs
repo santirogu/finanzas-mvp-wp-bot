@@ -183,7 +183,7 @@ section(
       ["Quién atiende peticiones, consultas y reclamos", /consultas y reclamos/i.test(policy)],
       ["Procedimiento para ejercer los derechos", /Consultas y reclamos/.test(policy) && /días hábiles/.test(policy)],
       ["Fecha de entrada en vigencia de la política", /entrada en vigencia|vigente desde|rige desde/i.test(policy)],
-      ["Período de vigencia de la base de datos", /vigencia de la base|período de vigencia|base de datos estará vigente/i.test(policy)],
+      ["Período de vigencia de la base de datos", /vigencia de la base|período de vigencia|base de datos[^.]{0,40}estará\s+vigente/i.test(policy)],
     ];
     return checks.filter(([, ok]) => !ok).map(([what]) => `falta: ${what}`);
   },

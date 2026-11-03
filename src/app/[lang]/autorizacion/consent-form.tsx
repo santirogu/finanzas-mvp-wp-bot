@@ -11,14 +11,14 @@ import { acceptPrivacyAction, type PrivacyConsentState } from "@/modules/account
 const TEXTS = texts(
   {
     messages: { privacy: { required: "Para seguir, marca la casilla de la autorización." } } as Record<string, FieldMessages>,
-    label: "Autorizo el tratamiento de mis datos personales según la política de privacidad.",
+    label: "Soy mayor de 18 años y autorizo el tratamiento de mis datos personales según la política de privacidad.",
     accept: "Aceptar y continuar",
     pending: "Un momento…",
   },
   {
     en: {
       messages: { privacy: { required: "To continue, check the authorization box." } },
-      label: "I authorize the processing of my personal data under the privacy policy.",
+      label: "I'm 18 or older and I authorize the processing of my personal data under the privacy policy.",
       accept: "Accept and continue",
       pending: "One moment…",
     },

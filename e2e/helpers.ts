@@ -71,7 +71,7 @@ export const PASSWORD = "clave-segura-e2e-123";
 export const uniqueEmail = () => `e2e-${randomUUID()}@finanzas-e2e.test`;
 
 /** La casilla de la autorización de los datos del registro (src/lib/privacy.ts). */
-export const privacyBox = (page: Page) => page.getByRole("checkbox", { name: /^Autorizo el tratamiento de mis datos personales/ });
+export const privacyBox = (page: Page) => page.getByRole("checkbox", { name: /^Soy mayor de 18 años y autorizo el tratamiento de mis datos personales/ });
 
 /** Crea una cuenta desde el formulario de registro (con la autorización de los datos) y espera a llegar al dashboard. */
 export async function register(page: Page, name = "Ana Pérez", email = uniqueEmail(), { keepTutorial = false } = {}) {

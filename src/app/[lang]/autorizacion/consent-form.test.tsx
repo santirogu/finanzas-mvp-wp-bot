@@ -9,7 +9,7 @@ vi.mock("@/modules/account/actions", () => ({ acceptPrivacyAction: action }));
 
 const { ConsentForm } = await import("./consent-form");
 
-const box = () => screen.getByRole("checkbox", { name: /^Autorizo el tratamiento de mis datos personales/ });
+const box = () => screen.getByRole("checkbox", { name: /^Soy mayor de 18 años y autorizo el tratamiento de mis datos personales/ });
 const button = () => screen.getByRole("button", { name: /Aceptar y continuar|Un momento/ });
 
 beforeEach(() => {
@@ -53,7 +53,7 @@ describe("ConsentForm (la autorización de los datos, en /autorizacion)", () => 
 
   it("en inglés", async () => {
     render(<ConsentForm />, { wrapper: InEnglish });
-    expect(screen.getByRole("checkbox", { name: "I authorize the processing of my personal data under the privacy policy." })).not.toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "I'm 18 or older and I authorize the processing of my personal data under the privacy policy." })).not.toBeChecked();
     await userEvent.click(screen.getByRole("button", { name: "Accept and continue" }));
     expect(screen.getByRole("checkbox")).toHaveAccessibleDescription("To continue, check the authorization box.");
   });

@@ -467,8 +467,10 @@ La app está en español (el de siempre) y en inglés: la web y el bot de WhatsA
   - **Los colores** del modo oscuro están dos veces en `globals.css`, uno por cada forma de llegar a él: con el sistema en oscuro y sin `data-theme="light"`, o con `data-theme="dark"`. `src/color-contrast.test.ts` exige que los dos bloques sean iguales.
   - **Sin `dark:`:** la variante de Tailwind solo mira el sistema, así que no se usa.
 - **La autorización para tratar los datos** (Ley 1581 de 2012 y Decreto 1377 de 2013; `src/lib/privacy.ts`).
-  - **Al registrarse:** una casilla sin marcar en el formulario. Better Auth exige que el pedido traiga la versión
-    vigente de la política (`privacyConsent`) y la guarda en la cuenta (`user.privacy_version` y
+  - **Al registrarse:** una casilla sin marcar en el formulario, "Soy mayor de 18 años y autorizo el tratamiento de
+    mis datos…" (la app es solo para mayores de edad), y debajo, plegado, el resumen de lo que se autoriza
+    (`src/components/privacy-summary.tsx`, el mismo de `/autorizacion`). Better Auth exige que el pedido traiga la
+    versión vigente de la política (`privacyConsent`) y la guarda en la cuenta (`user.privacy_version` y
     `privacy_accepted_at`) con el evento `privacy_accepted` en el historial: es la prueba.
   - **Las cuentas sin ella** (las de antes de pedirla): `requireUser` las manda a `/autorizacion`, donde la dan,
     cierran sesión o eliminan su cuenta (eso último con `requireSignedIn`, que no la exige). El bot no les interpreta

@@ -31,6 +31,15 @@ export default function PrivacyPage() {
         </section>
 
         <section>
+          <h2>Quién puede usar {BRAND_NAME}</h2>
+          <p>
+            {BRAND_NAME} es solo para mayores de 18 años: no recopilamos a sabiendas datos de niños, niñas ni
+            adolescentes. Al autorizar el tratamiento de tus datos confirmas que eres mayor de edad. Si sabemos que una
+            cuenta es de un menor de edad, la eliminamos con todos sus datos.
+          </p>
+        </section>
+
+        <section>
           <h2>Responsable del tratamiento</h2>
           <p>
             El responsable de tus datos es <strong>{DATA_CONTROLLER.name}</strong>, persona natural, con domicilio en{" "}
@@ -46,8 +55,9 @@ export default function PrivacyPage() {
           <h2>Datos que recopilamos</h2>
           <ul>
             <li>
-              <strong>Datos de la cuenta:</strong> nombre, correo electrónico y contraseña (guardada
-              de forma cifrada, nunca en texto plano).
+              <strong>Datos de la cuenta:</strong> nombre, correo electrónico, contraseña (guardada
+              de forma cifrada, nunca en texto plano) y zona horaria (para saber qué día es para ti; hoy, la de
+              Colombia).
             </li>
             <li>
               <strong>Información financiera que registras:</strong> montos, descripciones,
@@ -67,6 +77,11 @@ export default function PrivacyPage() {
               <strong>Los pagos que ya no aplican:</strong> si en un aviso de próximo pago tocas{" "}
               <strong>Este pago ya no aplica</strong>, guardamos el gasto (sin mayúsculas ni tildes) y el mes. Se
               guardan hasta que elimines tu cuenta.
+            </li>
+            <li>
+              <strong>Los pagos que registras desde un aviso:</strong> si en un aviso de próximo pago tocas{" "}
+              <strong>Registrar pago</strong>, además del egreso guardamos de qué mes es, para dar ese aviso por
+              pagado. Se borra con ese egreso o con tu cuenta.
             </li>
             <li>
               <strong>Tu configuración de las notificaciones:</strong> si en <strong>Configuración</strong> prendes
@@ -104,6 +119,10 @@ export default function PrivacyPage() {
               <strong>Historial de tu cuenta:</strong> la fecha en que te registraste y la de cada cambio de tu
               contraseña (nunca la contraseña). También la de cada vinculación, desvinculación o intento de
               vinculación de WhatsApp, con el número usado.
+            </li>
+            <li>
+              <strong>El tutorial de bienvenida:</strong> guardamos cuándo lo terminaste o lo omitiste, para no
+              mostrártelo otra vez, hasta que elimines tu cuenta.
             </li>
             <li>
               <strong>Datos técnicos de la sesión:</strong> dirección IP (si es IPv6, solo la parte
@@ -166,6 +185,24 @@ export default function PrivacyPage() {
               navegador y el país. Tampoco usa cookies ni se asocia a ninguna persona o dirección IP.
             </li>
           </ul>
+        </section>
+
+        <section>
+          <h2>Datos sensibles</h2>
+          <p>
+            Los datos sensibles son los que afectan tu intimidad o podrían usarse para discriminarte, como los de tu
+            salud, tu origen étnico, tus creencias o tu vida sexual. {BRAND_NAME} no los necesita: no estás obligado a
+            darlos ni a autorizar su tratamiento, y nada de la app depende de que lo hagas.
+          </p>
+          <p>Aun así, pueden llegar sin que los pidamos, por ejemplo en:</p>
+          <ul>
+            <li>la foto de una factura de una farmacia o de una clínica;</li>
+            <li>una descripción como “cita con el psiquiatra”;</li>
+            <li>un egreso en la categoría Salud.</li>
+          </ul>
+          <p>
+            Si no quieres compartirlos, tapa esa parte de la foto, no la envíes o escribe una descripción más general.
+          </p>
         </section>
 
         <section>
@@ -291,7 +328,8 @@ export default function PrivacyPage() {
           <p>
             Para tratar tus datos necesitamos tu autorización previa, expresa e informada. La das al crear tu cuenta,
             con la casilla del registro; si tu cuenta es de antes, la primera vez que entras después de que empezamos a
-            pedirla. Guardamos qué versión de esta política autorizaste y cuándo.
+            pedirla. Al darla confirmas que eres mayor de 18 años. Guardamos qué versión de esta política autorizaste y
+            cuándo.
           </p>
           <p>
             Puedes revocarla cuando quieras eliminando tu cuenta o escribiéndonos; sin ella no puedes seguir usando la
@@ -301,9 +339,17 @@ export default function PrivacyPage() {
 
         <section>
           <h2>Tus derechos</h2>
+          <p>Como titular de tus datos, puedes:</p>
+          <ul>
+            <li>conocerlos, actualizarlos y rectificarlos;</li>
+            <li>pedir la prueba de la autorización que nos diste;</li>
+            <li>saber, si lo pides, cómo los usamos;</li>
+            <li>revocar la autorización o pedir que los borremos;</li>
+            <li>acceder a ellos gratis;</li>
+            <li>presentar quejas ante la Superintendencia de Industria y Comercio (ver “Consultas y reclamos”).</li>
+          </ul>
           <p>
-            Puedes conocer, actualizar, rectificar y eliminar tus datos, así como revocar la
-            autorización para tratarlos. Tus movimientos los puedes editar o eliminar en la app, y
+            Tus movimientos los puedes editar o eliminar en la app, y
             descargar en un archivo (CSV) desde <strong>Reportes</strong>. Tu cuenta completa la
             puedes eliminar en <strong>Mi cuenta</strong>. Para cualquier otra
             solicitud, escríbenos a{" "}
@@ -323,7 +369,8 @@ export default function PrivacyPage() {
                 {CONTACT_EMAIL}
               </a>{" "}
               desde el correo de tu cuenta y dinos qué necesitas: conocer tus datos, corregirlos, actualizarlos,
-              eliminarlos o revocar tu autorización.
+              eliminarlos, pedir la prueba de tu autorización o revocarla. En un reclamo, cuéntanos qué pasó y adjunta
+              lo que quieras que tengamos en cuenta.
             </li>
             <li>
               <strong>Consultas</strong> (conocer tus datos o cómo los usamos): te respondemos en máximo 10 días
@@ -361,6 +408,15 @@ export default function PrivacyPage() {
             Usamos conexiones cifradas (HTTPS), contraseñas cifradas y verificación de la firma de
             cada mensaje recibido desde WhatsApp. Ningún sistema es infalible, pero tomamos medidas
             razonables para proteger tu información.
+          </p>
+        </section>
+
+        <section>
+          <h2>Vigencia</h2>
+          <p>
+            Esta versión de la política rige desde el {LEGAL_UPDATED_AT}. La base de datos de {BRAND_NAME} estará
+            vigente mientras la app preste el servicio, y tus datos se conservan como explica “Cuánto tiempo los
+            conservamos”.
           </p>
         </section>
 

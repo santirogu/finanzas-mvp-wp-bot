@@ -33,7 +33,7 @@ const { AuthForm } = await import("./auth-form");
 
 const email = () => screen.getByLabelText("Correo");
 const password = () => screen.getByLabelText("Contraseña");
-const consent = () => screen.getByRole("checkbox", { name: /^Autorizo el tratamiento de mis datos personales/ });
+const consent = () => screen.getByRole("checkbox", { name: /^Soy mayor de 18 años y autorizo el tratamiento de mis datos personales/ });
 
 async function fillLogin(mail = "ana@gmail.com", pass = "clave-segura-123") {
   await userEvent.type(email(), mail);
@@ -271,13 +271,23 @@ describe("AuthForm · registro", () => {
     await userEvent.type(password(), "clave-segura-123");
     await userEvent.click(screen.getByRole("button", { name: "Crear cuenta" }));
     expect(mocks.signUp).not.toHaveBeenCalled();
-    expect(consent()).toHaveAccessibleDescription("Para crear tu cuenta, autoriza el tratamiento de tus datos.");
+    expect(consent()).toHaveAccessibleDescription("Para crear tu cuenta, confirma que eres mayor de edad y autoriza el tratamiento de tus datos.");
     expect(consent()).toHaveFocus();
 
     await userEvent.click(consent());
     expect(consent()).not.toHaveAttribute("aria-invalid");
     await userEvent.click(screen.getByRole("button", { name: "Crear cuenta" }));
     expect(mocks.signUp).toHaveBeenCalledOnce();
+  });
+
+  it("bajo la casilla, plegado, lo que se autoriza (Ley 1581, art. 12)", async () => {
+    render(<AuthForm mode="register" />);
+    const summary = screen.getByText("Qué autorizas");
+    expect(summary.closest("details")).not.toHaveAttribute("open");
+    await userEvent.click(summary);
+    expect(summary.closest("details")).toHaveAttribute("open");
+    expect(screen.getByText("Solo para mayores de 18 años.")).toBeVisible();
+    expect(screen.getByText("Datos sensibles")).toBeVisible();
   });
 
   it("el login no la pide", () => {
@@ -351,8 +361,8 @@ describe("AuthForm · en inglés", () => {
     expect(await screen.findByText(/Did you mean/)).toHaveTextContent("Did you mean ana@gmail.com?");
     expect(screen.getByRole("button", { name: "Yes, fix it" })).toBeVisible();
     expect(screen.getByRole("link", { name: "Sign in" })).toHaveAttribute("href", "/login");
-    expect(screen.getByRole("checkbox", { name: /^I authorize the processing of my personal data/ })).not.toBeChecked();
+    expect(screen.getByRole("checkbox", { name: /^I'm 18 or older and I authorize the processing of my personal data/ })).not.toBeChecked();
     await userEvent.click(screen.getByRole("button", { name: "Create account" }));
-    expect(screen.getByRole("checkbox")).toHaveAccessibleDescription("To create your account, authorize the processing of your data.");
+    expect(screen.getByRole("checkbox")).toHaveAccessibleDescription("To create your account, confirm you're of age and authorize the processing of your data.");
   });
 });

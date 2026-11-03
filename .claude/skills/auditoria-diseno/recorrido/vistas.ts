@@ -74,6 +74,15 @@ export const VISTAS: Vista[] = [
   },
   { id: "registro", titulo: "Crear cuenta", ruta: fija("/registro") },
   {
+    id: "registro-autorizacion",
+    titulo: "Crear cuenta con \"Qué autorizas\" abierto",
+    ruta: fija("/registro"),
+    preparar: async (page) => {
+      await page.getByText("Qué autorizas").click();
+      await expect(visible(page.getByText("Solo para mayores de 18 años."))).toBeVisible();
+    },
+  },
+  {
     id: "registro-sugerencia",
     titulo: "Crear cuenta con la sugerencia de correo",
     ruta: fija("/registro"),
