@@ -10,6 +10,7 @@ import { consumeLinkCode, createLinkCode, unlinkUser } from "@/modules/whatsapp/
 import { capturingSender, createUser, fakeDownloader, fakeExtractor, incoming } from "../../../test/integration/factories";
 import { deleteAccountData } from "./delete-account";
 import { recordEvents } from "./events";
+import { CONSENT } from "../../../test/integration/auth-http";
 
 // El historial de cada cuenta (registro y vinculación de WhatsApp), con la base de verdad: cada
 // cambio deja su evento, en la misma transacción.
@@ -30,21 +31,25 @@ async function link(userId: string, phone: string) {
 }
 
 describe("registro", () => {
-  it("crear una cuenta (Better Auth) deja el evento de registro", async () => {
-    await auth.api.signUpEmail({ body: { name: "Ana", email: "ana@test.local", password: "clave-segura-123" } });
+  it("crear una cuenta (Better Auth) deja el evento de registro y el de la autorización de los datos", async () => {
+    await auth.api.signUpEmail({ body: { name: "Ana", email: "ana@test.local", password: "clave-segura-123", ...CONSENT } });
     const [ana] = await db.select().from(user).where(eq(user.email, "ana@test.local"));
 
-    expect(await events()).toEqual([{ type: "registered", userId: ana.id, phone: null, details: {} }]);
-    const [event] = await db.select().from(accountEvent);
-    expect(Math.abs(event.createdAt.getTime() - ana.createdAt.getTime())).toBeLessThan(5_000);
+    expect(await events()).toEqual([
+      { type: "registered", userId: ana.id, phone: null, details: {} },
+      { type: "privacy_accepted", userId: ana.id, phone: null, details: { privacyVersion: CONSENT.privacyConsent } },
+    ]);
+    for (const event of await db.select().from(accountEvent)) {
+      expect(Math.abs(event.createdAt.getTime() - ana.createdAt.getTime())).toBeLessThan(5_000);
+    }
   });
 
   it("un registro fallido (correo repetido) no deja otro evento", async () => {
-    await auth.api.signUpEmail({ body: { name: "Ana", email: "ana@test.local", password: "clave-segura-123" } });
+    await auth.api.signUpEmail({ body: { name: "Ana", email: "ana@test.local", password: "clave-segura-123", ...CONSENT } });
     await expect(
-      auth.api.signUpEmail({ body: { name: "Otra", email: "ana@test.local", password: "clave-segura-123" } }),
+      auth.api.signUpEmail({ body: { name: "Otra", email: "ana@test.local", password: "clave-segura-123", ...CONSENT } }),
     ).rejects.toThrow();
-    expect(await events()).toHaveLength(1);
+    expect((await events()).map((event) => event.type)).toEqual(["registered", "privacy_accepted"]);
   });
 });
 

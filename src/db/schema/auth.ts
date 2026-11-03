@@ -30,6 +30,10 @@ export const user = pgTable(
     // reactive (src/modules/account/suspension.ts). El motivo es interno: solo lo ve el admin.
     suspendedAt: timestamp("suspended_at", { withTimezone: true }),
     suspensionReason: text("suspension_reason"),
+    // La versión de la política de privacidad que autorizó y cuándo (src/lib/privacy.ts). null: todavía no autoriza
+    // ninguna (las cuentas de antes de pedirla): la app se la pide al entrar y el bot no le registra nada.
+    privacyVersion: text("privacy_version"),
+    privacyAcceptedAt: timestamp("privacy_accepted_at", { withTimezone: true }),
     // El idioma que eligió en Configuración ("es" o "en"); null si no eligió: ve la app en el de la cookie del
     // navegador o, sin ella, en español. Al iniciar sesión en otro navegador, se le pone ahí también
     // (src/lib/auth.ts).

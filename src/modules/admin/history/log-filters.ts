@@ -252,6 +252,7 @@ const DETAIL_TEXTS = {
     recurringLabel: "gastos fijos",
     resent: (n: number) => `${n} ${n === 1 ? "reenviada" : "reenviadas"}`,
     failedAgain: (n: number) => `${n} no ${n === 1 ? "salió" : "salieron"} otra vez`,
+    privacyVersion: (version: string) => `versión ${version} de la política de privacidad`,
   },
   en: {
     note: (note: string) => `reason: ${note}`,
@@ -271,6 +272,7 @@ const DETAIL_TEXTS = {
     recurringLabel: "bills",
     resent: (n: number) => `${n} resent`,
     failedAgain: (n: number) => `${n} didn't go out again`,
+    privacyVersion: (version: string) => `privacy policy version ${version}`,
   },
 } as const satisfies Record<Locale, unknown>;
 
@@ -313,6 +315,7 @@ export function eventDetail(details: AccountEventDetails, locale: Locale = DEFAU
     if (changed(["budgetNearShare"])) parts.push(group(t.nearLabel, (v) => formatPercent(v.budgetNearShare, locale)));
     if (changed(["recurringMinMonths", "recurringWindow"])) parts.push(group(t.recurringLabel, (v) => t.recurring(v.recurringMinMonths, v.recurringWindow)));
   }
+  if (details.privacyVersion) parts.push(t.privacyVersion(details.privacyVersion));
   if (details.resent !== undefined) {
     parts.push(`${t.resent(details.resent)}${details.failed ? ` · ${t.failedAgain(details.failed)}` : ""}`);
   }

@@ -6,6 +6,7 @@ import { expect } from "vitest";
 import { db } from "@/db";
 import { user } from "@/db/schema";
 import { auth } from "@/lib/auth";
+import { PRIVACY_VERSION } from "@/lib/privacy";
 import { findAccountRole } from "@/modules/account/terminal";
 import { secretFromUri, totp } from "../totp";
 
@@ -76,9 +77,12 @@ export async function updateUserFromServer(body: Record<string, unknown>, cookie
 }
 export const sessionOf = (jar: Jar) => auth.api.getSession({ headers: new Headers({ cookie: jar.header() }) });
 
+/** La casilla de la autorización de los datos del registro (src/lib/privacy.ts): sin ella no se crea la cuenta. */
+export const CONSENT = { privacyConsent: PRIVACY_VERSION };
+
 export async function register(email: string, name = "Ana") {
   const jar = new Jar();
-  expect((await post("/sign-up/email", { name, email, password: PASSWORD }, jar)).status).toBe(200);
+  expect((await post("/sign-up/email", { name, email, password: PASSWORD, ...CONSENT }, jar)).status).toBe(200);
   return jar;
 }
 

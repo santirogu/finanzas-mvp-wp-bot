@@ -4,7 +4,7 @@ import { CONTACT_EMAIL } from "@/lib/contact";
 import { CONFIRMATION_WORD } from "@/modules/account/confirmation";
 
 export { CONTACT_EMAIL };
-export const LEGAL_UPDATED_AT = "28 de octubre de 2026";
+export const LEGAL_UPDATED_AT = "3 de noviembre de 2026";
 
 export const legalProseClass =
   "mt-8 space-y-8 leading-relaxed [&_h2]:text-lg [&_h2]:font-semibold [&_li]:mt-1 [&_p]:mt-2 [&_ul]:mt-2 [&_ul]:list-disc [&_ul]:pl-5";
@@ -32,7 +32,7 @@ export function DataDeletionSteps() {
           {CONTACT_EMAIL}
         </a>{" "}
         desde el correo con el que te registraste, con el asunto “Eliminar mi cuenta”. Borraremos
-        todo en un plazo máximo de 30 días y te confirmaremos por correo.
+        todo en un plazo máximo de 15 días hábiles y te confirmaremos por correo.
       </li>
     </ul>
   );

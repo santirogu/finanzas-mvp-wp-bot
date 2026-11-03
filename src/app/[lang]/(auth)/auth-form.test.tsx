@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TOO_MANY_ATTEMPTS } from "@/lib/auth-errors";
+import { PRIVACY_VERSION } from "@/lib/privacy";
 import { InEnglish } from "../../../../test/locale";
 
 // Better Auth y el router se simulan: se prueba qué envía el formulario y qué muestra.
@@ -32,6 +33,7 @@ const { AuthForm } = await import("./auth-form");
 
 const email = () => screen.getByLabelText("Correo");
 const password = () => screen.getByLabelText("Contraseña");
+const consent = () => screen.getByRole("checkbox", { name: /^Autorizo el tratamiento de mis datos personales/ });
 
 async function fillLogin(mail = "ana@gmail.com", pass = "clave-segura-123") {
   await userEvent.type(email(), mail);
@@ -172,6 +174,7 @@ describe("AuthForm · verificación en dos pasos", () => {
     await userEvent.type(screen.getByLabelText("Nombre"), "Ana");
     await userEvent.type(email(), "ana@gmail.com");
     await userEvent.type(password(), "clave-segura-123");
+    await userEvent.click(consent());
     await userEvent.click(screen.getByRole("button", { name: "Crear cuenta" }));
     expect(mocks.replace).toHaveBeenCalledWith("/dashboard");
   });
@@ -182,6 +185,7 @@ describe("AuthForm · registro", () => {
     await userEvent.type(screen.getByLabelText("Nombre"), "Ana Pérez");
     await userEvent.type(email(), mail);
     await userEvent.type(password(), "clave-segura-123");
+    await userEvent.click(consent());
   }
 
   it("pide nombre y una contraseña nueva de al menos 8 caracteres, y enlaza al login", () => {
@@ -202,10 +206,12 @@ describe("AuthForm · registro", () => {
     await fillRegister("ana@gmail.com");
     await userEvent.click(screen.getByRole("button", { name: "Crear cuenta" }));
 
+    // Con la versión de la política que autorizó: el servidor la exige (src/lib/auth.ts).
     expect(mocks.signUp).toHaveBeenCalledWith({
       name: "Ana Pérez",
       email: "ana@gmail.com",
       password: "clave-segura-123",
+      privacyConsent: PRIVACY_VERSION,
     });
     expect(mocks.replace).toHaveBeenCalledWith("/dashboard");
   });
@@ -251,6 +257,32 @@ describe("AuthForm · registro", () => {
 
     const input = screen.getByRole("textbox", { name: "Correo" });
     expect(input).toHaveAccessibleDescription(/Quisiste decir ana@gmail.com/);
+  });
+
+  it("la casilla de la autorización de los datos: sin marcar, obligatoria y con el enlace a la política", async () => {
+    render(<AuthForm mode="register" />);
+    expect(consent()).not.toBeChecked();
+    expect(consent()).toBeRequired();
+    expect(screen.getByRole("link", { name: "política de privacidad" })).toHaveAttribute("href", "/privacidad");
+    expect(screen.getByRole("link", { name: "política de privacidad" })).toHaveAttribute("target", "_blank");
+
+    await userEvent.type(screen.getByLabelText("Nombre"), "Ana Pérez");
+    await userEvent.type(email(), "ana@gmail.com");
+    await userEvent.type(password(), "clave-segura-123");
+    await userEvent.click(screen.getByRole("button", { name: "Crear cuenta" }));
+    expect(mocks.signUp).not.toHaveBeenCalled();
+    expect(consent()).toHaveAccessibleDescription("Para crear tu cuenta, autoriza el tratamiento de tus datos.");
+    expect(consent()).toHaveFocus();
+
+    await userEvent.click(consent());
+    expect(consent()).not.toHaveAttribute("aria-invalid");
+    await userEvent.click(screen.getByRole("button", { name: "Crear cuenta" }));
+    expect(mocks.signUp).toHaveBeenCalledOnce();
+  });
+
+  it("el login no la pide", () => {
+    render(<AuthForm mode="login" />);
+    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
   });
 
   it("avisa si ya existe una cuenta con ese correo", async () => {
@@ -319,5 +351,8 @@ describe("AuthForm · en inglés", () => {
     expect(await screen.findByText(/Did you mean/)).toHaveTextContent("Did you mean ana@gmail.com?");
     expect(screen.getByRole("button", { name: "Yes, fix it" })).toBeVisible();
     expect(screen.getByRole("link", { name: "Sign in" })).toHaveAttribute("href", "/login");
+    expect(screen.getByRole("checkbox", { name: /^I authorize the processing of my personal data/ })).not.toBeChecked();
+    await userEvent.click(screen.getByRole("button", { name: "Create account" }));
+    expect(screen.getByRole("checkbox")).toHaveAccessibleDescription("To create your account, authorize the processing of your data.");
   });
 });

@@ -4,7 +4,7 @@ import postgres from "postgres";
 import { heading, newAdmin, setUpTwoFactor } from "./admin";
 import { monthOf, monthParam, shiftMonth, todayInTimezone } from "../src/lib/dates";
 import { e2eDatabaseUrl } from "./database-url";
-import { addBudget, addTransaction, closeToasts, openAccountMenu, openTab, register, test, toast, visible } from "./helpers";
+import { addBudget, addTransaction, closeToasts, openAccountMenu, openTab, register, test, toast, visible, withoutPrivacyConsent } from "./helpers";
 
 // En las pantallas táctiles todo cabe en la pantalla, aunque los textos sean largos (sin scroll de
 // lado), y los campos tienen letra de 16 px o más: con menos, Safari del iPhone y del iPad hace zoom
@@ -146,6 +146,17 @@ test("las cinco pestañas de una persona caben en 375 px sin deslizar la franja;
   await page.setViewportSize({ width: 320, height: 700 });
   expect(await hidden()).toBeGreaterThan(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0);
+});
+
+test("la autorización de los datos (una cuenta de antes de pedirla) cabe, con su error y la eliminación abierta @tactil", async ({ page }) => {
+  const { email } = await register(page, "María Fernanda Rodríguez de las Casas");
+  await withoutPrivacyConsent(email);
+  await open(page, "/autorizacion");
+  await page.getByRole("button", { name: "Aceptar y continuar" }).click();
+  await expect(visible(page.getByText("Para seguir, marca la casilla de la autorización."))).toBeVisible();
+  await page.getByText("Eliminar mi cuenta", { exact: true }).click();
+  await expect(visible(page.getByLabel("Tu contraseña"))).toBeVisible();
+  await expectFitsOnScreens(page, "/autorizacion");
 });
 
 test("en pantallas táctiles las páginas caben y los campos no hacen zoom @tactil", async ({ page }) => {

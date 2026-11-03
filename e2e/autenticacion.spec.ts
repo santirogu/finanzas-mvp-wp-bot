@@ -1,6 +1,6 @@
 import { expect, type Page } from "@playwright/test";
 import { TOO_MANY_ATTEMPTS } from "../src/lib/auth-errors";
-import { PASSWORD, fakeIp, formAlert, newPerson, register, test, uniqueEmail } from "./helpers";
+import { PASSWORD, fakeIp, formAlert, newPerson, privacyBox, register, test, uniqueEmail } from "./helpers";
 
 test.describe("sin sesión", () => {
   for (const path of ["/dashboard", "/ingresos", "/egresos"]) {
@@ -146,7 +146,10 @@ test.describe("sin JavaScript (antes de que cargue la página)", () => {
       const context = await browser.newContext({ javaScriptEnabled: false });
       const page = await context.newPage();
       await page.goto(path);
-      if (path === "/registro") await page.getByLabel("Nombre").fill("Ana");
+      if (path === "/registro") {
+        await page.getByLabel("Nombre").fill("Ana");
+        await privacyBox(page).check();
+      }
       await page.getByLabel("Correo").fill(uniqueEmail());
       await page.getByLabel("Contraseña").fill("secreto-que-no-debe-verse");
       await page.getByRole("button", { name: button }).click();
@@ -170,6 +173,7 @@ test.describe("registro", () => {
     await page.getByLabel("Nombre").fill("Otra persona");
     await page.getByLabel("Correo").fill(email);
     await page.getByLabel("Contraseña").fill(PASSWORD);
+    await privacyBox(page).check();
     await page.getByRole("button", { name: "Crear cuenta" }).click();
     await expect(formAlert(page)).toHaveText("Ya existe una cuenta con ese correo.");
     await page.close();

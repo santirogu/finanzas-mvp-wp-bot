@@ -27,6 +27,7 @@ async function signIn(user: Awaited<ReturnType<typeof createUser>>) {
     role: user.role,
     superAdmin: user.superAdmin,
     twoFactorEnabled: user.twoFactorEnabled,
+    privacyVersion: user.privacyVersion,
   };
 }
 

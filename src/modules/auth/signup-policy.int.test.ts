@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { db } from "@/db";
 import { appSetting, signupInvite, user } from "@/db/schema";
-import { json, PASSWORD, post } from "../../../test/integration/auth-http";
+import { CONSENT, json, PASSWORD, post } from "../../../test/integration/auth-http";
 import { checkSignup, getSignupMode, markInviteUsed } from "./signup-policy";
 
 // Quién puede crear una cuenta (Configuración del admin): la política con la base de verdad y el registro por
@@ -51,7 +51,7 @@ describe("la política de registro", () => {
 });
 
 describe("el registro por HTTP", () => {
-  const signUp = (email: string) => post("/sign-up/email", { name: "Ana", email, password: PASSWORD });
+  const signUp = (email: string) => post("/sign-up/email", { name: "Ana", email, password: PASSWORD, ...CONSENT });
 
   it("abiertos: crea la cuenta como siempre", async () => {
     expect((await signUp("ana@test.local")).status).toBe(200);

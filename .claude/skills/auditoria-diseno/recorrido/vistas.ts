@@ -126,6 +126,23 @@ export const VISTAS: Vista[] = [
   },
   { id: "cuenta", titulo: "Mi cuenta (sin WhatsApp: para conectarlo)", persona: "vacia", ruta: fija("/cuenta") },
   {
+    id: "autorizacion",
+    titulo: "Autorizar el uso de los datos (una cuenta de antes de pedirla)",
+    persona: "sinAutorizar",
+    ruta: fija("/autorizacion"),
+  },
+  {
+    id: "autorizacion-error",
+    titulo: "Autorizar el uso de los datos: sin marcar la casilla, y la eliminación abierta",
+    persona: "sinAutorizar",
+    ruta: fija("/autorizacion"),
+    preparar: async (page) => {
+      await page.getByRole("button", { name: "Aceptar y continuar" }).click();
+      await expect(visible(page.getByText("Para seguir, marca la casilla de la autorización."))).toBeVisible();
+      await page.getByText("Eliminar mi cuenta", { exact: true }).click();
+    },
+  },
+  {
     id: "cuenta-contrasena",
     titulo: "Mi cuenta: cambiar la contraseña (el formulario abierto)",
     persona: "vacia",

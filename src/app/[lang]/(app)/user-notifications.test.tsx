@@ -24,6 +24,7 @@ vi.mock("@/lib/session", () => ({
     role: data.role,
     superAdmin: false,
     twoFactorEnabled: data.twoFactorEnabled,
+    privacyVersion: "2026-11-03",
   })),
   canAdminister: (user: CurrentUser) => user.role === "admin" && user.twoFactorEnabled,
 }));

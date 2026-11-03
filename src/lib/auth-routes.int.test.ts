@@ -5,7 +5,7 @@ import { db } from "@/db";
 import { loginFailure, twoFactor, user } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { AUTH_DISABLED_PATHS, AUTH_HTTP_ROUTES } from "@/modules/auth/http-routes";
-import { adminWithTwoFactor, Jar, json, nextIp, PASSWORD, post, register, signIn } from "../../test/integration/auth-http";
+import { adminWithTwoFactor, CONSENT, Jar, json, nextIp, PASSWORD, post, register, signIn } from "../../test/integration/auth-http";
 import { totp } from "../../test/totp";
 
 // Las rutas de Better Auth que la app atiende (src/modules/auth/http-routes.ts) y lo que se cerró en
@@ -75,7 +75,7 @@ describe("las rutas que usa la app siguen funcionando por el route handler", () 
   it("registrarse, salir (desde el servidor) y entrar", async () => {
     const jar = new Jar();
     const signUp = await routeRequest("POST", "/sign-up/email", {
-      body: { name: "Ana", email: "ana@test.local", password: PASSWORD },
+      body: { name: "Ana", email: "ana@test.local", password: PASSWORD, ...CONSENT },
       jar,
     });
     expect(signUp.status).toBe(200);
@@ -148,14 +148,14 @@ describe("el nombre se valida al registrarse", () => {
     ["un control de dirección", "\u202EanA", "El nombre tiene caracteres que no se permiten."],
     ["un carácter nulo", "Ana\u0000", "El nombre tiene caracteres que no se permiten."],
   ])("rechaza %s sin crear la cuenta", async (_, name, message) => {
-    const response = await post("/sign-up/email", { name, email: "ana@test.local", password: PASSWORD });
+    const response = await post("/sign-up/email", { name, email: "ana@test.local", password: PASSWORD, ...CONSENT });
     expect(response.status).toBe(400);
     expect(await json(response)).toMatchObject({ code: "INVALID_NAME", message });
     expect(await db.select().from(user)).toEqual([]);
   });
 
   it("guarda el nombre sin espacios de más", async () => {
-    await post("/sign-up/email", { name: "  Ana   María\n", email: "ana@test.local", password: PASSWORD });
+    await post("/sign-up/email", { name: "  Ana   María\n", email: "ana@test.local", password: PASSWORD, ...CONSENT });
     const [row] = await db.select({ name: user.name }).from(user).where(eq(user.email, "ana@test.local"));
     expect(row.name).toBe("Ana María");
   });

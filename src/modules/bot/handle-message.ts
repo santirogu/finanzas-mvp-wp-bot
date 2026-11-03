@@ -7,6 +7,7 @@ import { envVar } from "@/lib/env";
 import { compareMonths, currentMonthRange, monthRange, monthRangeUpTo, shiftMonth, todayInTimezone } from "@/lib/dates";
 import { getBudgetCrossings } from "@/modules/budgets/budgets";
 import { budgetAlert } from "@/modules/budgets/progress";
+import { hasCurrentConsent } from "@/lib/privacy";
 import { describeError } from "@/lib/safe-log";
 import {
   createTransactionsFromMessage,
@@ -147,6 +148,10 @@ async function respond(msg: IncomingMessage, deps: Deps, language: { locale: Loc
   // Suspendida por el admin: no se interpreta (ni se gasta Claude) ni se registra nada.
   if (user.suspendedAt) {
     return { reply: replies.suspendedReply(locale), intent: null, userId: user.id, status: "processed" };
+  }
+  // Sin la autorización vigente de sus datos (src/lib/privacy.ts): ni Claude ni registros hasta que la dé en la app.
+  if (!hasCurrentConsent(user.privacyVersion)) {
+    return { reply: replies.privacyConsentReply(deps.appUrl, locale), intent: null, userId: user.id, status: "processed" };
   }
   if (!content) {
     return { reply: replies.unsupportedTypeReply(locale), intent: null, userId: user.id, status: "processed" };

@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "./auth";
 import { EXPIRED_SESSION_LOGIN } from "./expired-session";
+import { hasCurrentConsent, PRIVACY_CONSENT_PATH } from "./privacy";
 import { hasRole, isSuperAdmin, parseRole, type Role, TWO_FACTOR_SETUP_PATH } from "./roles";
 
 export type CurrentUser = {
@@ -16,6 +17,8 @@ export type CurrentUser = {
   superAdmin: boolean;
   /** Verificación en dos pasos activa (Google Authenticator). Obligatoria para administrar. */
   twoFactorEnabled: boolean;
+  /** La versión de la política de privacidad que autorizó (src/lib/privacy.ts); null si ninguna. */
+  privacyVersion: string | null;
 };
 
 export { TWO_FACTOR_SETUP_PATH };
@@ -27,7 +30,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   if (!session) return null;
   // Al suspenderla se cierran sus sesiones; si quedara alguna (dos pedidos a la vez), no sirve.
   if (session.user.suspendedAt) return null;
-  const { id, name, email, timezone, role, superAdmin, twoFactorEnabled } = session.user;
+  const { id, name, email, timezone, role, superAdmin, twoFactorEnabled, privacyVersion } = session.user;
   return {
     id,
     name,
@@ -38,10 +41,25 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
     role: parseRole(role),
     superAdmin: superAdmin === true,
     twoFactorEnabled: twoFactorEnabled === true,
+    privacyVersion: typeof privacyVersion === "string" ? privacyVersion : null,
   };
 });
 
+/**
+ * Para todo lo de la cuenta (páginas, acciones y rutas): la sesión y la autorización vigente de los datos. Sin
+ * sesión lleva al login; sin la autorización, a darla (src/lib/privacy.ts): nada de la app usa sus datos antes.
+ */
 export async function requireUser(): Promise<CurrentUser> {
+  const user = await requireSignedIn();
+  if (!hasCurrentConsent(user.privacyVersion)) redirect(PRIVACY_CONSENT_PATH);
+  return user;
+}
+
+/**
+ * La sesión sin exigir la autorización de los datos. Solo para darla (/autorizacion) y para eliminar la cuenta: quien
+ * no la da puede irse con sus datos borrados. Todo lo demás usa requireUser.
+ */
+export async function requireSignedIn(): Promise<CurrentUser> {
   const user = await getCurrentUser();
   // Sin sesión válida aquí, el navegador trae una cookie vieja (sin cookie, el proxy ya habría
   // mandado al login): ver src/lib/expired-session.ts.

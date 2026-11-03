@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { randomInt, randomUUID } from "node:crypto";
 import { test as base, expect, type Browser, type Locator, type Page } from "@playwright/test";
+import postgres from "postgres";
 import { e2eDatabaseUrl } from "./database-url";
 
 /**
@@ -69,18 +70,32 @@ export const PASSWORD = "clave-segura-e2e-123";
 /** Correo único por prueba, en un dominio que no se parece a ninguno popular (sin sugerencias). */
 export const uniqueEmail = () => `e2e-${randomUUID()}@finanzas-e2e.test`;
 
-/** Crea una cuenta desde el formulario de registro y espera a llegar al dashboard. */
+/** La casilla de la autorización de los datos del registro (src/lib/privacy.ts). */
+export const privacyBox = (page: Page) => page.getByRole("checkbox", { name: /^Autorizo el tratamiento de mis datos personales/ });
+
+/** Crea una cuenta desde el formulario de registro (con la autorización de los datos) y espera a llegar al dashboard. */
 export async function register(page: Page, name = "Ana Pérez", email = uniqueEmail(), { keepTutorial = false } = {}) {
   await page.goto("/registro");
   await page.getByLabel("Nombre").fill(name);
   await page.getByLabel("Correo").fill(email);
   await page.getByLabel("Contraseña").fill(PASSWORD);
+  await privacyBox(page).check();
   await page.getByRole("button", { name: "Crear cuenta" }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
   // Una cuenta nueva ve el tutorial de bienvenida en el Resumen: las pruebas lo omiten, salvo las suyas
   // (e2e/tutorial.spec.ts, con `keepTutorial`).
   if (!keepTutorial) await closeTutorial(page, "Omitir");
   return { name, email };
+}
+
+/**
+ * Le quita la autorización de los datos a una cuenta, como las de antes de pedirla (src/lib/privacy.ts): la app la
+ * manda a /autorizacion y el bot no le registra nada hasta que la dé.
+ */
+export async function withoutPrivacyConsent(email: string) {
+  const sql = postgres(e2eDatabaseUrl(), { max: 1, onnotice: () => {} });
+  await sql`update "user" set privacy_version = null, privacy_accepted_at = null where email = ${email}`;
+  await sql.end();
 }
 
 /** La ventana del tutorial de bienvenida (src/components/welcome-tutorial.tsx), en español o en inglés. */

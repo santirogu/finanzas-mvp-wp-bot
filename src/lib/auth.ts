@@ -10,6 +10,7 @@ import { localeCookieOptions } from "@/i18n/cookie";
 import { LOCALE_COOKIE, isLocale } from "@/i18n/locales";
 import { isTheme, THEME_KEY } from "@/lib/theme";
 import { AUTH_ERROR_TEXTS } from "@/lib/auth-errors";
+import { PRIVACY_VERSION } from "@/lib/privacy";
 import { checkSignup, markInviteUsed } from "@/modules/auth/signup-policy";
 import { themeCookieOptions } from "@/lib/theme-cookie";
 import { recordEvent } from "@/modules/account/events";
@@ -82,6 +83,10 @@ export const auth = betterAuth({
       locale: { type: "string", required: false, input: false },
       // La apariencia que eligió en Configuración (o null): input: false → solo la guarda Configuración (saveThemeAction).
       theme: { type: "string", required: false, input: false },
+      // La autorización de los datos (src/lib/privacy.ts): input: false → solo la guardan el registro (con la casilla,
+      // abajo) y /autorizacion. Nadie la da por otra persona ni la cambia con "actualizar perfil".
+      privacyVersion: { type: "string", required: false, input: false },
+      privacyAcceptedAt: { type: "date", required: false, input: false },
     },
   },
   // Límite de intentos por IP (contra quien prueba contraseñas a la fuerza), guardado en Postgres.
@@ -110,6 +115,14 @@ export const auth = betterAuth({
         if (!signup.ok) {
           const code = signup.reason === "closed" ? "SIGNUP_CLOSED" : "SIGNUP_NOT_INVITED";
           throw APIError.from("FORBIDDEN", { code, message: AUTH_ERROR_TEXTS.es.codes[code] });
+        }
+        // La casilla de la autorización de los datos, con la versión vigente de la política (src/lib/privacy.ts): sin
+        // ella no se crea la cuenta. La guarda databaseHooks.user.create, abajo.
+        if (ctx.body?.privacyConsent !== PRIVACY_VERSION) {
+          throw APIError.from("BAD_REQUEST", {
+            code: "PRIVACY_CONSENT_REQUIRED",
+            message: AUTH_ERROR_TEXTS.es.codes.PRIVACY_CONSENT_REQUIRED,
+          });
         }
         return { context: { body: { ...ctx.body, name: name.value } } };
       }
@@ -172,9 +185,19 @@ export const auth = betterAuth({
     },
     user: {
       create: {
+        // Al registrarse, la autorización que exigió hooks.before (la casilla) queda guardada con la cuenta. Solo ahí:
+        // una cuenta creada de otra forma (la semilla, la terminal) la da al entrar, en /autorizacion.
+        before: async (newUser, ctx) => {
+          if (ctx?.path !== "/sign-up/email") return;
+          return { data: { ...newUser, privacyVersion: PRIVACY_VERSION, privacyAcceptedAt: new Date() } };
+        },
         after: async (created) => {
           try {
+            // De a uno: así la autorización queda después del registro en el historial (la misma hora no los ordena).
             await recordEvent({ type: "registered", userId: created.id });
+            if (typeof created.privacyVersion === "string") {
+              await recordEvent({ type: "privacy_accepted", userId: created.id, details: { privacyVersion: created.privacyVersion } });
+            }
           } catch (error) {
             console.error("[historial] no se pudo registrar el evento de registro", created.id, describeError(error));
           }

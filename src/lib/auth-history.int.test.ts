@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { db } from "@/db";
 import { accountEvent, user } from "@/db/schema";
+import { CONSENT } from "../../test/integration/auth-http";
 
 // Si guardar el evento de registro o marcar la invitación como usada falla, la cuenta se crea igual (y el error
 // queda en el log): perder una línea del historial es mejor que impedir registrarse.
@@ -28,7 +29,7 @@ describe("historial al registrarse", () => {
     const logged = vi.spyOn(console, "error").mockImplementation(() => {});
 
     const result = await auth.api.signUpEmail({
-      body: { name: "Ana", email: "ana@test.local", password: "clave-segura-123" },
+      body: { name: "Ana", email: "ana@test.local", password: "clave-segura-123", ...CONSENT },
     });
 
     expect(result.user.email).toBe("ana@test.local");

@@ -53,6 +53,7 @@ describe("vinculación de WhatsApp", () => {
       timezone: "America/Bogota",
       locale: "en",
       suspendedAt: null,
+      privacyVersion: user.privacyVersion,
     });
     expect(await getUserByPhone("573000000000")).toBeNull();
   });

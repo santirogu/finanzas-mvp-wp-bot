@@ -24,6 +24,8 @@ const PAGES = {
   "/cuenta-eliminada": "pública siempre (se llega justo después de eliminar la cuenta)",
   "/[...rest]": "la 404 de las direcciones que no existen: solo llama a notFound() (sin sesión, el proxy manda al login)",
   "/cuenta": "requiere sesión",
+  "/autorizacion":
+    "requiere sesión, sin exigir la autorización de los datos (requireSignedIn): es donde se da. Con ella, lleva al Resumen; solo la cuenta propia",
   "/ayuda": "pública: con sesión, la de la app (valida la sesión); sin sesión, el proxy arma /ayuda-publica. Solo textos de ayuda (no lee datos de la persona)",
   "/ayuda-publica": "la Ayuda sin sesión: el proxy la arma en /ayuda y esta dirección lleva a /ayuda. Solo textos de ayuda",
   "/dashboard": "requiere sesión",
@@ -71,7 +73,9 @@ const SERVER_ACTIONS = {
   unlinkWhatsAppAction: "requireUser; solo desvincula el número propio",
   simulateMessageAction: "solo en desarrollo + requireUser",
   signOutAction: "sin sesión no hay nada que cerrar",
-  deleteAccountAction: "requireUser + contraseña + palabra de confirmación; solo la cuenta propia",
+  // Sin la autorización de los datos (requireSignedIn): quien no la da puede irse con todo borrado.
+  deleteAccountAction: "requireSignedIn + contraseña + palabra de confirmación; solo la cuenta propia",
+  acceptPrivacyAction: "requireSignedIn + la casilla marcada; solo guarda la autorización de la cuenta propia",
   saveLanguageAction: "requireUser; solo el idioma de la cuenta propia (y la cookie de este navegador)",
   saveThemeAction: "requireUser; solo la apariencia de la cuenta propia (una de las tres de la app)",
   chooseLanguageAction:
@@ -148,6 +152,10 @@ const TERMINAL_MODULE = /from\s+["'](@\/modules\/account\/terminal|[./]+(modules
 // y el marco de la sección (que solo dibuja el título y la subnavegación). Todo lo demás de
 // administración usa requireAdmin.
 const ADMIN_ROLE_ONLY_FILES = ["src/app/[lang]/(app)/admin/layout.tsx", "src/app/[lang]/(app)/admin/seguridad/page.tsx"];
+// requireSignedIn no exige la autorización de los datos (src/lib/privacy.ts): solo la página donde se da y, en las
+// acciones de la cuenta, darla y eliminar la cuenta. Todo lo demás usa requireUser.
+const SIGNED_IN_ONLY_FILES = ["src/app/[lang]/autorizacion/page.tsx", "src/modules/account/actions.ts"];
+const SIGNED_IN_ONLY_ACTIONS = ["acceptPrivacyAction", "deleteAccountAction"];
 // Donde se usa requireSuperAdmin (además de session.ts, donde se define): la capa de datos de las
 // acciones sobre una cuenta y sus Server Actions.
 const SUPER_ADMIN_FILES = [
@@ -240,8 +248,9 @@ function reachesCall(file: string, fns: string[], seen = new Set<string>()): boo
   return false;
 }
 
-// requireAdmin y requireAdminRole también validan la sesión (llaman a requireUser).
-const reachesRequireUser = (file: string) => reachesCall(file, ["requireUser", "requireAdmin", "requireAdminRole"]);
+// requireAdmin y requireAdminRole también validan la sesión (llaman a requireUser); requireSignedIn, la sesión sin la
+// autorización de los datos (solo en SIGNED_IN_ONLY_FILES).
+const reachesRequireUser = (file: string) => reachesCall(file, ["requireUser", "requireAdmin", "requireAdminRole", "requireSignedIn"]);
 
 // ── Pruebas ───────────────────────────────────────────────────────────────────────────────────
 
@@ -465,7 +474,7 @@ describe("Server Actions", () => {
   it("validan la sesión con requireUser() (o requireAdmin()) antes de hacer cualquier cosa", () => {
     for (const action of serverActions().filter((a) => !ACTIONS_WITHOUT_SESSION.includes(a.name))) {
       const body = action.body;
-      const check = body.search(/await\s+require(User|Admin|SuperAdmin)\(\)/);
+      const check = body.search(/await\s+require(User|Admin|SuperAdmin|SignedIn)\(\)/);
       expect(check, `${action.name} no llama a requireUser()`).toBeGreaterThan(-1);
       // Nada toca la base ni el bot antes de validar la sesión.
       const firstDataAccess = body.search(/\bdb\.|createLinkCode\(|unlinkUser\(|handleIncomingMessage\(|isCategoryAvailable\(|readForm\(|verifyPassword\(|deleteAccountData\(/);
@@ -484,6 +493,22 @@ describe("Server Actions", () => {
     expect(simulate.body.indexOf('process.env.NODE_ENV === "production"')).toBeLessThan(
       simulate.body.indexOf("requireUser()"),
     );
+  });
+});
+
+describe("la autorización de los datos (src/lib/privacy.ts)", () => {
+  it("requireSignedIn (sin exigirla) solo se usa donde se da y para eliminar la cuenta", () => {
+    const users = sourceFiles
+      .filter((f) => relative(ROOT, f) !== "src/lib/session.ts")
+      .filter((f) => /\brequireSignedIn\b/.test(read(f)))
+      .map((f) => relative(ROOT, f))
+      .sort();
+    expect(users).toEqual([...SIGNED_IN_ONLY_FILES].sort());
+    const withSignedIn = serverActions()
+      .filter((a) => /await\s+requireSignedIn\(\)/.test(a.body))
+      .map((a) => a.name)
+      .sort();
+    expect(withSignedIn).toEqual(SIGNED_IN_ONLY_ACTIONS);
   });
 });
 

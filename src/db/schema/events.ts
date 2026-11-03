@@ -13,6 +13,8 @@ export const accountEventType = pgEnum("account_event_type", [
   "whatsapp_link_failed",
   // La persona cambió su contraseña en Mi cuenta (sin la contraseña, claro).
   "password_changed",
+  // Autorizó el tratamiento de sus datos (al registrarse o en /autorizacion), con la versión de la política.
+  "privacy_accepted",
   // Acciones del admin (/admin/usuarios), con admin_id.
   "login_unlocked",
   "sessions_revoked",
@@ -68,6 +70,8 @@ export type AccountEventDetails = {
   email?: string;
   /** El aviso que se publicó o se quitó (notice_published, notice_removed): el texto en español, el tipo y hasta cuándo. */
   notice?: { message: string; tone: "info" | "important"; endsAt: string };
+  /** La versión de la política de privacidad que autorizó (privacy_accepted, src/lib/privacy.ts). */
+  privacyVersion?: string;
   /** Cómo quedaron los valores de la app, y cómo estaban (app_values_changed). */
   appValues?: AppValuesDetail;
   previousAppValues?: AppValuesDetail;

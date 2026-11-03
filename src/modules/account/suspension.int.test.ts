@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { db } from "@/db";
 import { loginFailure, session, user } from "@/db/schema";
 import { ACCOUNT_SUSPENDED } from "@/lib/auth-errors";
-import { PASSWORD, post, register, sessionOf, signIn, updateUserFromServer } from "../../../test/integration/auth-http";
+import { CONSENT, PASSWORD, post, register, sessionOf, signIn, updateUserFromServer } from "../../../test/integration/auth-http";
 import { createUser } from "../../../test/integration/factories";
 import { isSuspended } from "./suspension";
 
@@ -90,7 +90,7 @@ describe("nadie se quita (ni se pone) la suspensión desde la app", () => {
   });
 
   it("el registro ignora un suspendedAt que mande el cliente", async () => {
-    const response = await post("/sign-up/email", { name: "Ana", email: "ana@test.local", password: PASSWORD, suspendedAt: null });
+    const response = await post("/sign-up/email", { name: "Ana", email: "ana@test.local", password: PASSWORD, suspendedAt: null, ...CONSENT });
     expect([200, 400]).toContain(response.status);
     const [row] = await db.select({ suspendedAt: user.suspendedAt }).from(user).where(eq(user.email, "ana@test.local"));
     expect(row?.suspendedAt ?? null).toBeNull();

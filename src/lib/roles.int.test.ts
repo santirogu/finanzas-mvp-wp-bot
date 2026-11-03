@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { db } from "@/db";
 import { user } from "@/db/schema";
 import { findAccountRole, listAdmins, setRole } from "@/modules/account/terminal";
-import { updateUserFromServer } from "../../test/integration/auth-http";
+import { CONSENT, updateUserFromServer } from "../../test/integration/auth-http";
 import { auth } from "./auth";
 
 // Roles con Better Auth y la base de verdad. Cada prueba intenta un camino para que alguien se dé
@@ -36,7 +36,7 @@ const sessionCookie = (response: Response) => response.headers.getSetCookie().ma
 
 /** Registra una cuenta por HTTP y devuelve la cookie de sesión. */
 async function register(email: string, extra: Record<string, unknown> = {}) {
-  const response = await post("/sign-up/email", { name: "Ana", email, password: PASSWORD, ...extra });
+  const response = await post("/sign-up/email", { name: "Ana", email, password: PASSWORD, ...CONSENT, ...extra });
   expect(response.status).toBe(200);
   const cookie = sessionCookie(response);
   expect(cookie).toContain("session_token");
@@ -79,7 +79,7 @@ describe("rol al registrarse", () => {
 
   it("también desde el servidor (auth.api), por si algún día se registra a alguien desde código", async () => {
     await auth.api.signUpEmail({
-      body: { name: "Beto", email: "beto@test.local", password: PASSWORD, role: "admin" } as never,
+      body: { name: "Beto", email: "beto@test.local", password: PASSWORD, role: "admin", ...CONSENT } as never,
     });
     expect(await roleInDb("beto@test.local")).toBe("user");
   });

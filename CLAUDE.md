@@ -253,6 +253,10 @@ de Vercel ni muevas las migraciones fuera del job `deploy`.
   `src/logs.test.ts` lo exige. Tampoco loguees textos de mensajes, correos ni montos.
 - **Retención:** si agregas datos que la política promete borrar con el tiempo, súmalos a
   `runDailyCleanup` (`src/modules/account/retention.ts`) con su prueba, y actualiza `/privacidad`.
+- **Autorización de los datos** (README → Decisiones importantes): toda página, acción o ruta de la cuenta usa
+  `requireUser()`, que exige la autorización vigente; `requireSignedIn()` (sin exigirla) es solo para
+  `/autorizacion` y para eliminar la cuenta. Si cambia lo que se hace con los datos (qué se guarda, para qué, con
+  quién o por cuánto tiempo), cambia `PRIVACY_VERSION` (`src/lib/privacy.ts`) en el mismo PR que `/privacidad`.
 - Para borrar una cuenta a pedido usa `pnpm account:delete <correo>` (README → Borrar datos a
   pedido), nunca SQL a mano. Si agregas una tabla con datos de la persona sin clave foránea en
   cascada hacia `user`, bórrala también en `deleteAccountData` (`src/modules/account/`).

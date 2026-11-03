@@ -2,16 +2,18 @@ import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { transaction, user, whatsappMessage } from "@/db/schema";
+import { PRIVACY_VERSION } from "@/lib/privacy";
 import type { ExtractionResult, Extractor } from "@/modules/bot/claude-extractor";
 import type { RawTransaction } from "@/modules/bot/normalize";
 import type { MediaDownloader, SendResult } from "@/modules/whatsapp/client";
 import type { IncomingMessage } from "@/modules/whatsapp/payload";
 
+/** Una cuenta que ya autorizó el tratamiento de sus datos (src/lib/privacy.ts); `privacyVersion: null`, una que no. */
 export async function createUser(overrides: Partial<typeof user.$inferInsert> = {}) {
   const id = randomUUID();
   const [row] = await db
     .insert(user)
-    .values({ id, name: "Ana Pérez", email: `${id}@test.local`, ...overrides })
+    .values({ id, name: "Ana Pérez", email: `${id}@test.local`, privacyVersion: PRIVACY_VERSION, privacyAcceptedAt: new Date(), ...overrides })
     .returning();
   return row;
 }

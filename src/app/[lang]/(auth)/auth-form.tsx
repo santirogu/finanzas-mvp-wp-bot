@@ -11,6 +11,7 @@ import { authClient } from "@/lib/auth-client";
 import { authErrorMessage } from "@/lib/auth-errors";
 import { suggestEmailCorrection } from "@/lib/email-typo";
 import type { FieldMessages } from "@/lib/field-errors";
+import { PRIVACY_VERSION } from "@/lib/privacy";
 import { afterLoginPath } from "@/lib/roles";
 import { MAX_NAME_LENGTH } from "@/modules/auth/account-name";
 import { TwoFactorLogin } from "./two-factor-login";
@@ -22,6 +23,7 @@ const TEXTS = texts(
       name: { required: "Escribe tu nombre." },
       email: { required: "Escribe tu correo." },
       password: { required: "Escribe tu contraseña." },
+      privacy: { required: "Para crear tu cuenta, autoriza el tratamiento de tus datos." },
     } as Record<string, FieldMessages>,
     login: { title: "Inicia sesión", subtitle: "Bienvenido de nuevo", submit: "Entrar", other: "¿No tienes cuenta? ", otherLink: "Regístrate" },
     register: {
@@ -34,6 +36,8 @@ const TEXTS = texts(
     name: "Nombre",
     email: "Correo",
     password: "Contraseña",
+    // La autorización de los datos (Ley 1581): la casilla, sin marcar (src/lib/privacy.ts).
+    privacy: { before: "Autorizo el tratamiento de mis datos personales según la ", link: "política de privacidad", after: "." },
     didYouMean: "¿Quisiste decir",
     fix: "Sí, corregir",
     keepEmail: "Si tu correo está bien escrito, toca “Crear cuenta” de nuevo.",
@@ -46,6 +50,7 @@ const TEXTS = texts(
         name: { required: "Enter your name." },
         email: { required: "Enter your email." },
         password: { required: "Enter your password." },
+        privacy: { required: "To create your account, authorize the processing of your data." },
       },
       login: { title: "Sign in", subtitle: "Welcome back", submit: "Sign in", other: "Don't have an account? ", otherLink: "Sign up" },
       register: {
@@ -58,6 +63,7 @@ const TEXTS = texts(
       name: "Name",
       email: "Email",
       password: "Password",
+      privacy: { before: "I authorize the processing of my personal data under the ", link: "privacy policy", after: " (in Spanish)." },
       didYouMean: "Did you mean",
       fix: "Yes, fix it",
       keepEmail: "If your email is spelled right, tap “Create account” again.",
@@ -83,6 +89,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
   const nameErrorId = useId();
   const emailErrorId = useId();
   const passwordErrorId = useId();
+  const privacyErrorId = useId();
   const { errors, formProps } = useFieldErrors(t.messages);
   // Quien tiene la verificación en dos pasos pasa a un segundo paso después de la contraseña.
   const [needsCode, setNeedsCode] = useState(false);
@@ -110,7 +117,8 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
 
     startTransition(async () => {
       const { data, error } = isRegister
-        ? await authClient.signUp.email({ name, email, password })
+        ? // Con la versión de la política que autorizó (la casilla): sin ella, el servidor no crea la cuenta (src/lib/auth.ts).
+          await authClient.signUp.email({ name, email, password, privacyConsent: PRIVACY_VERSION } as Parameters<typeof authClient.signUp.email>[0])
         : await authClient.signIn.email({ email, password });
 
       if (error) {
@@ -214,6 +222,29 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
           </label>
           <FieldError id={passwordErrorId} message={errors.password} />
         </div>
+        {isRegister && (
+          <div className="space-y-1.5">
+            <label className="flex min-h-11 cursor-pointer items-start gap-3 text-sm">
+              <input
+                type="checkbox"
+                name="privacy"
+                required
+                aria-invalid={Boolean(errors.privacy) || undefined}
+                aria-describedby={describedBy(errors.privacy && privacyErrorId)}
+                className="mt-0.5 size-5 shrink-0 cursor-pointer accent-brand"
+              />
+              <span>
+                {t.privacy.before}
+                {/* En otra pestaña, para no perder lo escrito. */}
+                <Link href="/privacidad" target="_blank" className="font-medium text-brand underline underline-offset-2">
+                  {t.privacy.link}
+                </Link>
+                {t.privacy.after}
+              </span>
+            </label>
+            <FieldError id={privacyErrorId} message={errors.privacy} />
+          </div>
+        )}
 
         {error && (
           <p role="alert" className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger">

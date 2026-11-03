@@ -36,6 +36,7 @@ async function signIn() {
     role: user.role,
     superAdmin: user.superAdmin,
     twoFactorEnabled: user.twoFactorEnabled,
+    privacyVersion: user.privacyVersion,
   };
   return user;
 }

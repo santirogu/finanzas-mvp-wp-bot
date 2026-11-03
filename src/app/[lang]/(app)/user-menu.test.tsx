@@ -22,6 +22,7 @@ const ANA: CurrentUser = {
   role: "user",
   superAdmin: false,
   twoFactorEnabled: false,
+  privacyVersion: "2026-11-03",
 };
 
 beforeEach(() => {

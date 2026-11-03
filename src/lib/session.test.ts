@@ -12,8 +12,17 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("./auth", () => ({ auth: { api: { getSession: mocks.getSession } } }));
 
-const { TWO_FACTOR_SETUP_PATH, canAdminister, getCurrentUser, requireAdmin, requireAdminRole, requireSuperAdmin, requireUser } =
-  await import("./session");
+const {
+  TWO_FACTOR_SETUP_PATH,
+  canAdminister,
+  getCurrentUser,
+  requireAdmin,
+  requireAdminRole,
+  requireSignedIn,
+  requireSuperAdmin,
+  requireUser,
+} = await import("./session");
+const { PRIVACY_CONSENT_PATH, PRIVACY_VERSION } = await import("./privacy");
 
 const sessionUser = {
   id: "u1",
@@ -23,6 +32,7 @@ const sessionUser = {
   role: "user",
   emailVerified: false,
   image: null,
+  privacyVersion: "2026-11-03",
 };
 
 // Con llaves: mockReset() devuelve el mock y, si el hook lo devolviera, Vitest lo llamaría como
@@ -48,6 +58,7 @@ describe("getCurrentUser", () => {
       role: "user",
       superAdmin: false,
       twoFactorEnabled: false,
+      privacyVersion: "2026-11-03",
     });
     const { headers } = mocks.getSession.mock.calls[0][0];
     expect(headers.get("cookie")).toBe("sesion=1");
@@ -91,6 +102,25 @@ describe("requireUser", () => {
     mocks.getSession.mockResolvedValue({ user: sessionUser });
     expect(await requireUser()).toMatchObject({ id: "u1" });
   });
+
+  it("sin la autorización vigente de sus datos, va a darla (también un admin)", async () => {
+    expect(sessionUser.privacyVersion).toBe(PRIVACY_VERSION);
+    for (const privacyVersion of [null, undefined, "", "2020-01-01", 1]) {
+      mocks.getSession.mockResolvedValue({ user: { ...sessionUser, privacyVersion } });
+      await expect(requireUser(), String(privacyVersion)).rejects.toThrow(`NEXT_REDIRECT:${PRIVACY_CONSENT_PATH}`);
+    }
+    mocks.getSession.mockResolvedValue(admin(true, { privacyVersion: null }));
+    await expect(requireAdmin()).rejects.toThrow(`NEXT_REDIRECT:${PRIVACY_CONSENT_PATH}`);
+  });
+});
+
+describe("requireSignedIn (solo para dar la autorización y eliminar la cuenta)", () => {
+  it("pide la sesión, pero no la autorización", async () => {
+    mocks.getSession.mockResolvedValue(null);
+    await expect(requireSignedIn()).rejects.toThrow("NEXT_REDIRECT:/login?sesion=vencida");
+    mocks.getSession.mockResolvedValue({ user: { ...sessionUser, privacyVersion: null } });
+    expect(await requireSignedIn()).toMatchObject({ id: "u1", privacyVersion: null });
+  });
 });
 
 describe("getCurrentUser · verificación en dos pasos", () => {
@@ -105,7 +135,9 @@ describe("getCurrentUser · verificación en dos pasos", () => {
   });
 });
 
-const admin = (twoFactorEnabled: unknown) => ({ user: { ...sessionUser, role: "admin", twoFactorEnabled } });
+const admin = (twoFactorEnabled: unknown, extra: Record<string, unknown> = {}) => ({
+  user: { ...sessionUser, role: "admin", twoFactorEnabled, ...extra },
+});
 
 describe("requireAdmin", () => {
   it("sin sesión redirige a /login", async () => {
@@ -141,12 +173,13 @@ describe("requireAdmin", () => {
       role: "admin",
       superAdmin: false,
       twoFactorEnabled: true,
+      privacyVersion: "2026-11-03",
     });
   });
 });
 
 describe("canAdminister (lo de admin fuera de /admin, sin redirigir)", () => {
-  const user = { id: "u1", name: "Ana", email: "ana@test.local", timezone: "America/Bogota", superAdmin: false };
+  const user = { id: "u1", name: "Ana", email: "ana@test.local", timezone: "America/Bogota", superAdmin: false, privacyVersion: null };
 
   it("solo con el rol de admin y la verificación en dos pasos, como requireAdmin", () => {
     expect(canAdminister({ ...user, role: "admin", twoFactorEnabled: true })).toBe(true);

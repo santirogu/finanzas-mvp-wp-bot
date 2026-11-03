@@ -6,6 +6,7 @@ import { CONTACT_EMAIL } from "@/lib/contact";
 import { formatMonthLabel, formatMonthName, formatShortDate, type Month, type MonthRange } from "@/lib/dates";
 import { BRAND_NAME } from "@/lib/brand";
 import { formatMoney, formatPercent, formatShare } from "@/lib/money";
+import { PRIVACY_CONSENT_PATH } from "@/lib/privacy";
 import type { CategoryReport } from "@/modules/reports/categories";
 import { periodHref, type ReportPeriod } from "@/modules/reports/period";
 import type { RecurringReport } from "@/modules/reports/recurring";
@@ -55,6 +56,9 @@ const TEXTS = texts(
     linked: (name: string) => `✅ ¡Listo${name}! Tu WhatsApp quedó vinculado.\n\nPrueba escribiéndome: _gasté 20 mil en almuerzo_`,
     // Cuenta suspendida por el admin: no se registra nada, tampoco responde los comandos, y no se dice el motivo.
     suspended: `Tu cuenta está suspendida, así que no puedo registrar movimientos ni responder tus consultas. Si crees que es un error, escríbenos a ${CONTACT_EMAIL}.`,
+    // Sin la autorización vigente de sus datos (src/lib/privacy.ts): no se interpreta ni se registra nada.
+    privacyConsent: (appUrl: string) =>
+      `Antes de seguir, necesito que autorices el uso de tus datos en la app: ${appUrl}${PRIVACY_CONSENT_PATH}. Después escríbeme de nuevo.`,
     linkInvalid: "Ese código no es válido o ya venció. Pide otro en *Mi cuenta*: toca *Conectar WhatsApp*.",
     linkRateLimited: "Recibí demasiados códigos equivocados desde este número. Espera una hora y vuelve a intentarlo.",
     unsupportedType: "Por ahora solo entiendo mensajes de texto ✍️ y fotos de facturas 🧾",
@@ -126,6 +130,7 @@ const TEXTS = texts(
       ],
       linked: (name) => `✅ All set${name}! Your WhatsApp is linked.\n\nTry sending me: _spent 20k on lunch_`,
       suspended: `Your account is suspended, so I can't add transactions or answer your questions. If you think it's a mistake, write to us at ${CONTACT_EMAIL}.`,
+      privacyConsent: (appUrl) => `Before we go on, please authorize the use of your data in the app: ${appUrl}${PRIVACY_CONSENT_PATH}. Then write to me again.`,
       linkInvalid: "That code isn't valid or has expired. Get another one in *My account*: tap *Connect WhatsApp*.",
       linkRateLimited: "I got too many wrong codes from this number. Wait an hour and try again.",
       unsupportedType: "For now I only understand text messages ✍️ and photos of receipts 🧾",
@@ -323,6 +328,7 @@ export const notLinkedReply = (appUrl: string) =>
 export const linkedReply = (name: string, locale: Locale) => TEXTS[locale].linked(firstName(name));
 
 export const suspendedReply = (locale: Locale) => TEXTS[locale].suspended;
+export const privacyConsentReply = (appUrl: string, locale: Locale) => TEXTS[locale].privacyConsent(appUrl);
 
 /** Con el código equivocado no se sabe de qué cuenta es: va en el idioma de la palabra que usó ("VINCULAR" o "LINK"). */
 export const linkInvalidReply = (locale: Locale) => TEXTS[locale].linkInvalid;

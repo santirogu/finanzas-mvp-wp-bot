@@ -5,7 +5,7 @@ import { BOT_COMMANDS, BOT_EXAMPLES } from "../src/modules/bot/help";
 import { MAX_TRANSACTIONS_PER_MESSAGE } from "../src/modules/bot/limits";
 import { RECURRING_MIN_MONTHS, RECURRING_WINDOW } from "../src/modules/reports/recurring";
 import { DAYS_AHEAD, MAX_DAYS_AHEAD } from "../src/modules/reports/upcoming";
-import { closeTutorial, openAccountMenu, PASSWORD, register, test, uniqueEmail, visible } from "./helpers";
+import { closeTutorial, openAccountMenu, PASSWORD, privacyBox, register, test, uniqueEmail, visible } from "./helpers";
 
 // Ayuda (desde el menú de la cuenta): los temas y las preguntas frecuentes, que se abren, y lo que dicen sale
 // de lo mismo que usa la app (los comandos del bot, los meses de los gastos fijos, los días de los avisos, el
@@ -144,6 +144,7 @@ test("después de ver la Ayuda sin sesión y entrar, la Ayuda es la de la app", 
   await visible(page.getByLabel("Nombre")).fill("Ana Pérez");
   await visible(page.getByLabel("Correo")).fill(uniqueEmail());
   await visible(page.getByLabel("Contraseña")).fill(PASSWORD);
+  await privacyBox(page).check();
   await page.getByRole("button", { name: "Crear cuenta" }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
   await closeTutorial(page, "Omitir");

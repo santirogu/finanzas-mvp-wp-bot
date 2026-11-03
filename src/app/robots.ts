@@ -16,6 +16,7 @@ export const PRIVATE_PATHS = [
   "/configuracion",
   "/movimientos/",
   "/cuenta",
+  "/autorizacion",
   "/admin",
   "/simulador",
   "/api/",
