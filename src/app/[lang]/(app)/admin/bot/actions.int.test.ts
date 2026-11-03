@@ -17,14 +17,16 @@ const { pendingResends, resendFailedReplies } = await import("@/modules/admin/bo
 const { botSettingsForAdmin } = await import("@/modules/admin/bot/bot-settings");
 const { currentBotModel, getBotSettings } = await import("@/modules/bot/settings");
 
-// Cada código sirve una vez y nunca uno anterior: cada acción usa el de los siguientes 30 s.
+// Cada código sirve una vez y nunca uno anterior: cada acción usa el de los siguientes 30 s. Si la acción recibe
+// la hora (`now`, el reenvío), los códigos van con esa misma hora: con la del reloj, si cambiaba el período de 30 s
+// entre que se fijó `now` y el segundo código, este quedaba dos períodos adelante y no pasaba.
 let step = 0;
 async function seed() {
   const { admin, codeAt } = await createAdminWithTwoFactor();
   mocks.requireAdmin.mockReset().mockResolvedValue({ id: admin.id, role: "admin", twoFactorEnabled: true });
   mocks.refresh.mockReset();
   step = 0;
-  return { admin, code: () => codeAt(new Date(Date.now() + 30_000 * step++)) };
+  return { admin, code: (at = new Date()) => codeAt(new Date(at.getTime() + 30_000 * step++)) };
 }
 
 const form = (fields: Record<string, string>) => {
@@ -317,7 +319,7 @@ describe("reenviar las respuestas que no salieron", () => {
     const now = new Date();
     await failedReplies(now);
     const sent: { to: string; body: string }[] = [];
-    const result = await resendFailedReplies({ code: code() }, now, async (to, body) => {
+    const result = await resendFailedReplies({ code: code(now) }, now, async (to, body) => {
       sent.push({ to, body });
       return { ok: true };
     });
@@ -341,7 +343,7 @@ describe("reenviar las respuestas que no salieron", () => {
     const { code } = await seed();
     const now = new Date();
     await failedReplies(now);
-    const result = await resendFailedReplies({ code: code() }, now, async (to) =>
+    const result = await resendFailedReplies({ code: code(now) }, now, async (to) =>
       to === "573002223344" ? { ok: false, error: "401 token vencido" } : { ok: true },
     );
     expect(result).toEqual({ ok: true, message: "Se reenvió 1 respuesta; 1 no salió otra vez." });
@@ -349,7 +351,7 @@ describe("reenviar las respuestas que no salieron", () => {
     expect(await pendingResends(now)).toBe(1);
     expect((await events())[0].details).toEqual({ resent: 1, failed: 1 });
 
-    const again = await resendFailedReplies({ code: code() }, now, async () => ({ ok: false, error: "401 token vencido" }));
+    const again = await resendFailedReplies({ code: code(now) }, now, async () => ({ ok: false, error: "401 token vencido" }));
     expect(again).toEqual({ ok: false, error: "No salió ninguna: WhatsApp rechazó la respuesta otra vez." });
   });
 
@@ -441,8 +443,8 @@ describe("en inglés (el idioma de quien hace el pedido)", () => {
     await failed("wamid.en1");
     await failed("wamid.en2");
     const rejectOne = vi.fn().mockResolvedValueOnce({ ok: true }).mockResolvedValueOnce({ ok: false, error: "400 {}" });
-    expect(await resendFailedReplies({ code: code() }, now, rejectOne)).toEqual({ ok: true, message: "1 reply was resent; 1 didn't go out again." });
+    expect(await resendFailedReplies({ code: code(now) }, now, rejectOne)).toEqual({ ok: true, message: "1 reply was resent; 1 didn't go out again." });
     const rejectAll = vi.fn(async () => ({ ok: false as const, error: "400 {}" }));
-    expect(await resendFailedReplies({ code: code() }, now, rejectAll)).toEqual({ ok: false, error: "None went out: WhatsApp rejected the reply again." });
+    expect(await resendFailedReplies({ code: code(now) }, now, rejectAll)).toEqual({ ok: false, error: "None went out: WhatsApp rejected the reply again." });
   });
 });
