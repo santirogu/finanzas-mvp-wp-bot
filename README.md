@@ -305,17 +305,20 @@ scripts/seed.ts                     Categorías por defecto
 ### Marca
 
 La app se llama **Anotado** (antes, Finanzas MVP): escribes el gasto por WhatsApp y queda anotado. El
-logo es un globo de chat con un ✓, con el verde azulado de la app (`--brand`).
+logo es la "A" de Anotado escrita con un lápiz (su pierna izquierda) y cruzada por un ✓, en blanco sobre el
+verde azulado de la app (`--brand`). Nació de una propuesta de Gemini (noviembre de 2026), redibujada en vectores
+con el verde exacto y margen para el recorte en círculo de WhatsApp. Antes era un globo de chat con un ✓.
 - **El nombre** sale de `BRAND_NAME` (`src/lib/brand.ts`), el mismo en todos los idiomas: nunca se
   escribe a mano. Siempre "Anotado", con mayúscula, también en el logo.
 - **El logo** (`src/components/logo.tsx`) se dibuja desde `src/lib/brand-mark.json` y usa los colores de
-  la marca de cada tema: en oscuro, el cuadro verde claro y el globo oscuro.
+  la marca de cada tema: en oscuro, el cuadro verde claro y la "A" oscura.
 - **Los íconos y la imagen para compartir** salen del mismo dibujo con `pnpm brand:assets`
   (`scripts/brand-assets.mjs`, con Chromium de Playwright):
   - `src/app/icon.svg`, `favicon.ico` y `apple-icon.png`, la pestaña y la pantalla de inicio del iPhone;
   - `public/marca/`, los del manifest (`src/app/manifest.ts`);
   - `src/app/opengraph-image.png`, la vista previa al compartir el enlace;
-  - `public/app-icon-1024.png`, el ícono de la app en Meta.
+  - `public/app-icon-1024.png`, el ícono de la app en Meta y la foto de perfil del número de WhatsApp (WhatsApp
+    la recorta en un círculo: el dibujo deja margen para eso).
 
   Una prueba exige que `icon.svg` esté al día con el dibujo y que sus colores sean los de `--brand`.
   La portada se arma al compilar: la imagen para compartir lleva la URL de producción que el job de

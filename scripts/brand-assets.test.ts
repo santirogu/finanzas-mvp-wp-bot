@@ -11,8 +11,15 @@ describe("markSvg", () => {
     const svg = markSvg();
     expect(svg).toContain(`viewBox="${mark.viewBox}"`);
     expect(svg).toContain(`rx="${mark.radius}"`);
-    expect(svg).toContain(`d="${mark.bubble}" fill="${mark.brandForeground}"`);
-    expect(svg).toContain(`d="${mark.check}" fill="none" stroke="${mark.brand}" stroke-width="${mark.checkWidth}"`);
+    expect(svg).toContain(`d="${mark.letter}" fill="${mark.brandForeground}"`);
+    expect(svg).toContain(`d="${mark.tip}" fill="${mark.brandForeground}" stroke="${mark.brandForeground}" stroke-width="${mark.tipRound}"`);
+    // El ✓ va encima de su borde del color del fondo (si no, el borde lo taparía).
+    const cut = svg.indexOf(`d="${mark.check}" fill="none" stroke="${mark.brand}" stroke-width="${mark.checkCutWidth}"`);
+    const check = svg.indexOf(`d="${mark.check}" fill="none" stroke="${mark.brandForeground}" stroke-width="${mark.checkWidth}"`);
+    expect(cut).toBeGreaterThan(svg.indexOf(`d="${mark.letter}"`));
+    expect(check).toBeGreaterThan(cut);
+    // El borde es más ancho que el ✓: es el que corta la "A".
+    expect(mark.checkCutWidth).toBeGreaterThan(mark.checkWidth);
     // Sin tamaño, se adapta a donde lo pongan.
     expect(svg.match(/^<svg[^>]*>/)?.[0]).not.toContain("width");
   });
