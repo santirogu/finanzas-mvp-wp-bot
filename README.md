@@ -629,8 +629,13 @@ La app está en español (el de siempre) y en inglés: la web y el bot de WhatsA
     más corto es su último día, y los pagos alrededor del cambio de mes (el 30, el 31, el 1) van juntos.
   - **Pagado o no:** cada pago cuenta para la fecha esperada más cercana (a menos de medio mes), así que
     el arriendo de octubre pagado el 2 de noviembre cuenta para octubre, y el del 1 de noviembre pagado el
-    30 de octubre, para noviembre (se miran el primer y el último pago de cada mes). Uno pagado más de medio
-    mes tarde cuenta para el mes siguiente. El monto es el del último mes.
+    30 de octubre, para noviembre (se miran el primer y el último pago de cada mes). El monto es el del último
+    mes.
+  - **Registrar pago desde un aviso:** el pago queda unido al mes de ese aviso (tabla `fixed_payment_link`, con el
+    egreso; se borra con él y con la cuenta) y cuenta para ese mes aunque se pague más de medio mes tarde: el
+    arriendo del 5 de octubre pagado el 1 de noviembre desde su aviso deja pagado octubre, y noviembre sigue
+    pendiente. Un egreso borrado deja de contar. Los pagos registrados desde Egresos o por el bot no saben de qué
+    mes son: siguen con la fecha más cercana (uno de más de medio mes tarde cuenta para el mes siguiente).
   - **Atrasados:** los que no tienen pago, hasta 3 meses atrás (`MONTHS_BACK`), en rojo. "Este pago ya no
     aplica" oculta solo el de ese mes (tabla `fixed_payment_skip`); para no avisar más de un gasto, se
     quita en Fijos.
