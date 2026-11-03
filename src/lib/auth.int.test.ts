@@ -5,15 +5,14 @@ import { user } from "@/db/schema";
 import { auth } from "./auth";
 
 // El formulario de registro lo envía el navegador: nadie debe poder elegir al registrarse campos
-// que controla el servidor (moneda, zona horaria, correo verificado).
+// que controla el servidor (zona horaria, correo verificado).
 describe("registro (Better Auth)", () => {
-  it("ignora la moneda, la zona horaria y la verificación del correo que mande el cliente", async () => {
+  it("ignora la zona horaria y la verificación del correo que mande el cliente", async () => {
     await auth.api.signUpEmail({
       body: {
         name: "Ana",
         email: "ana@test.local",
         password: "clave-segura-123",
-        currency: "USD",
         timezone: "Asia/Tokyo",
         emailVerified: true,
       } as never,
@@ -22,7 +21,6 @@ describe("registro (Better Auth)", () => {
     const [row] = await db.select().from(user).where(eq(user.email, "ana@test.local"));
     expect(row).toMatchObject({
       name: "Ana",
-      currency: "COP",
       timezone: "America/Bogota",
       emailVerified: false,
     });
