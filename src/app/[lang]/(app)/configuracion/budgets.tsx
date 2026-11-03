@@ -29,7 +29,8 @@ const TEXTS = texts(
     change: "Cambiar",
     changeName: (name: string) => `Cambiar el presupuesto de ${name}`,
     remove: "Quitar",
-    removeName: (name: string) => `Quitar el presupuesto de ${name}`,
+    // Empieza con lo que dice el botón ("Quitar" o "Quitando…"): WCAG 2.5.3.
+    removeName: (label: string, name: string) => `${label} el presupuesto de ${name}`,
     removing: "Quitando…",
     messages: {
       categoryId: { required: "Elige una categoría." },
@@ -52,7 +53,7 @@ const TEXTS = texts(
       change: "Change",
       changeName: (name) => `Change the ${name} budget`,
       remove: "Remove",
-      removeName: (name) => `Remove the ${name} budget`,
+      removeName: (label, name) => `${label} the ${name} budget`,
       removing: "Removing…",
       messages: {
         categoryId: { required: "Choose a category." },
@@ -117,6 +118,7 @@ function BudgetItem({ row }: { row: BudgetRow }) {
     if (result.message && result.tone) toast({ tone: result.tone, message: result.message, focus: true });
     return result;
   }, {});
+  const removeLabel = removing ? t.removing : t.remove;
   return (
     <li className="py-3">
       <BudgetBar row={row} />
@@ -134,10 +136,10 @@ function BudgetItem({ row }: { row: BudgetRow }) {
           <button
             type="submit"
             disabled={removing}
-            aria-label={t.removeName(row.name)}
+            aria-label={t.removeName(removeLabel, row.name)}
             className="inline-flex min-h-11 items-center text-sm font-medium text-danger disabled:opacity-60 pointer-fine:min-h-7"
           >
-            {removing ? t.removing : t.remove}
+            {removeLabel}
           </button>
         </form>
       </div>

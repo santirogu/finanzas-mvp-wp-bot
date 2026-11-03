@@ -61,7 +61,8 @@ const TEXTS = texts(
     used: (date: string) => `Creó su cuenta el ${date}`,
     remove: "Quitar",
     removing: "Quitando…",
-    removeLabel: (email: string) => `Quitar la invitación de ${email}`,
+    // Empieza con lo que dice el botón ("Quitar" o "Quitando…"): WCAG 2.5.3.
+    removeLabel: (label: string, email: string) => `${label} la invitación de ${email}`,
     emailRequired: "Escribe el correo.",
   },
   {
@@ -94,7 +95,7 @@ const TEXTS = texts(
       used: (date) => `Created their account on ${date}`,
       remove: "Remove",
       removing: "Removing…",
-      removeLabel: (email) => `Remove the invitation for ${email}`,
+      removeLabel: (label, email) => `${label} the invitation for ${email}`,
       emailRequired: "Enter the email.",
     },
   },
@@ -221,16 +222,17 @@ function InviteForm({ onDone }: { onDone: (message: string) => void }) {
 function RemoveButton({ email, onDone }: { email: string; onDone: (message: string) => void }) {
   const t = useTexts(TEXTS);
   const [state, formAction, busy] = useNotifyingAction(removeSignupInviteAction, onDone);
+  const label = busy ? t.removing : t.remove;
   return (
     <form action={formAction} className="flex shrink-0 flex-col items-end">
       <input type="hidden" name="email" value={email} />
       <button
         type="submit"
         disabled={busy}
-        aria-label={t.removeLabel(email)}
+        aria-label={t.removeLabel(label, email)}
         className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium transition hover:bg-background disabled:opacity-60"
       >
-        {busy ? t.removing : t.remove}
+        {label}
       </button>
       {state.error && (
         <span role="alert" className="mt-1 text-xs text-danger">

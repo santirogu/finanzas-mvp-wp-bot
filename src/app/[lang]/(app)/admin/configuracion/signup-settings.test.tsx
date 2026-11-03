@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { findToast, renderWithToaster as render, toasts } from "../../../../../../test/toaster";
@@ -159,6 +159,21 @@ describe("SignupSettings · invitados", () => {
     expect(toast).toHaveTextContent("Se quitó la invitación de beto@test.local");
     expect(toast).toHaveAttribute("data-tone", "removal");
     expect(toast).toHaveFocus();
+  });
+
+  it("mientras quita, el botón dice «Quitando…» (también su nombre) y no deja enviar dos veces", async () => {
+    let finish!: (state: { error: string }) => void;
+    actions.removeSignupInviteAction.mockReturnValue(new Promise((resolve) => (finish = resolve)));
+    render(<SignupSettings {...props({ invites: [{ email: "beto@test.local", date: "21 de oct. de 2026", used: false }] })} />);
+    const remove = section().getByRole("button", { name: "Quitar la invitación de beto@test.local" });
+    await userEvent.click(remove);
+    await waitFor(() => expect(remove).toHaveTextContent("Quitando…"));
+    // El nombre empieza con lo que se ve, también mientras espera (WCAG 2.5.3).
+    expect(remove).toHaveAccessibleName("Quitando… la invitación de beto@test.local");
+    expect(remove).toBeDisabled();
+    finish({ error: "Esa invitación ya no existe." });
+    expect(await section().findByRole("alert")).toHaveTextContent("Esa invitación ya no existe.");
+    expect(remove).toHaveAccessibleName("Quitar la invitación de beto@test.local");
   });
 });
 

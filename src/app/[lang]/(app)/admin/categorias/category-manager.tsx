@@ -74,7 +74,8 @@ const TEXTS = texts(
     asksCode: "Pide el código",
     restore: "Restaurar",
     restoring: "Restaurando…",
-    restoreLabel: (name: string) => `Restaurar ${name}`,
+    // Empieza con lo que dice el botón ("Restaurar" o "Restaurando…"): WCAG 2.5.3.
+    restoreLabel: (label: string, name: string) => `${label} ${name}`,
     editTitle: (name: string) => `Editar la categoría ${name}`,
     newTitle: (type: CategoryType) => `Nueva categoría de ${type === "expense" ? "egresos" : "ingresos"}`,
     formIntro: (typeName: string) => `${typeName} · se aplica de inmediato en los formularios y en el bot.`,
@@ -128,7 +129,7 @@ const TEXTS = texts(
       asksCode: "Asks for the code",
       restore: "Restore",
       restoring: "Restoring…",
-      restoreLabel: (name) => `Restore ${name}`,
+      restoreLabel: (label, name) => `${label} ${name}`,
       editTitle: (name) => `Edit the category ${name}`,
       newTitle: (type) => `New ${type === "expense" ? "expense" : "income"} category`,
       formIntro: (typeName) => `${typeName} · it applies right away in the forms and in the bot.`,
@@ -369,16 +370,17 @@ function MoreActions({ name, actions }: { name: string; actions: { label: string
 function RestoreButton({ category, onDone }: { category: ManagedCategory; onDone: (message: string) => void }) {
   const t = useTexts(TEXTS);
   const [state, formAction, busy] = useNotifyingAction(restoreCategoryAction, onDone);
+  const label = busy ? t.restoring : t.restore;
   return (
     <form action={formAction} className="flex flex-col items-end">
       <input type="hidden" name="id" value={category.id} />
       <button
         type="submit"
         disabled={busy}
-        aria-label={t.restoreLabel(category.name)}
+        aria-label={t.restoreLabel(label, category.name)}
         className="rounded-lg border border-border px-3 py-1.5 text-sm font-medium hover:bg-background disabled:opacity-60"
       >
-        {busy ? t.restoring : t.restore}
+        {label}
       </button>
       {state.error && (
         <span role="alert" className="mt-1 text-xs text-danger">

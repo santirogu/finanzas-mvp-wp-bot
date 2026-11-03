@@ -1,4 +1,4 @@
-import { fireEvent, screen, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { MarkReadState } from "@/modules/notifications/actions";
@@ -114,14 +114,22 @@ describe("NotificationBell", () => {
     expect(sent()).toEqual(["pago|2026-10|gimnasio", "pago|2026-10|netflix"]);
   });
 
-  it("un error de la acción queda junto al botón", async () => {
-    markRead.mockResolvedValue({ error: "No se pudo marcar como leída." });
+  it("mientras marca, el botón dice «Marcando…» (también su nombre); un error queda junto al botón", async () => {
+    let finish!: (state: MarkReadState) => void;
+    markRead.mockReturnValue(new Promise((resolve) => (finish = resolve)));
     const user = userEvent.setup();
     render(<NotificationBell notifications={TWO.slice(0, 1)} today="2026-10-20" upcomingEnabled />);
     await user.click(bell());
     expect(panel().queryByRole("button", { name: "Marcar todas como leídas" })).toBeNull();
-    await user.click(panel().getByRole("button", { name: /^Marcar como leída/ }));
+    const mark = panel().getByRole("button", { name: "Marcar como leída: Gimnasio, octubre" });
+    await user.click(mark);
+    await waitFor(() => expect(mark).toHaveTextContent("Marcando…"));
+    // El nombre empieza con lo que se ve, también mientras espera (WCAG 2.5.3).
+    expect(mark).toHaveAccessibleName("Marcando…: Gimnasio, octubre");
+    expect(mark).toBeDisabled();
+    finish({ error: "No se pudo marcar como leída." });
     expect(await panel().findByRole("alert")).toHaveTextContent("No se pudo marcar como leída.");
+    expect(mark).toHaveAccessibleName("Marcar como leída: Gimnasio, octubre");
   });
 
   it("Escape la cierra y el foco vuelve a la campana; con la ventana de Registrar pago abierta, Escape no la cierra", async () => {

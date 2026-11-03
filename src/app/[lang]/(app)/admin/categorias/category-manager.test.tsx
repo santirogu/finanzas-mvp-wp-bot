@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import { findToast, renderWithToaster as render, toasts } from "../../../../../../test/toaster";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -131,11 +131,19 @@ describe("la lista", () => {
     expect(toast).toHaveAttribute("data-tone", "success");
   });
 
-  it("si restaurar falla, lo dice junto al botón", async () => {
-    actions.restoreCategoryAction.mockResolvedValue({ error: "La categoría no está archivada." });
+  it("mientras restaura, el botón dice «Restaurando…» (también su nombre); si falla, lo dice junto al botón", async () => {
+    let finish!: (state: { error: string }) => void;
+    actions.restoreCategoryAction.mockReturnValue(new Promise((resolve) => (finish = resolve)));
     renderManager();
-    await userEvent.click(within(row("Videojuegos")).getByRole("button", { name: "Restaurar Videojuegos" }));
+    const restore = within(row("Videojuegos")).getByRole("button", { name: "Restaurar Videojuegos" });
+    await userEvent.click(restore);
+    await waitFor(() => expect(restore).toHaveTextContent("Restaurando…"));
+    // El nombre empieza con lo que se ve, también mientras espera (WCAG 2.5.3).
+    expect(restore).toHaveAccessibleName("Restaurando… Videojuegos");
+    expect(restore).toBeDisabled();
+    finish({ error: "La categoría no está archivada." });
     expect(await within(row("Videojuegos")).findByRole("alert")).toHaveTextContent("La categoría no está archivada.");
+    expect(restore).toHaveAccessibleName("Restaurar Videojuegos");
   });
 });
 

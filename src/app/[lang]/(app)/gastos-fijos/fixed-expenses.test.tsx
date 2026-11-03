@@ -113,7 +113,7 @@ describe("FixedExpenses", () => {
     expect(await findToast()).toHaveAttribute("data-tone", "success");
   });
 
-  it("mientras vuelve a poner uno, el botón dice «Volviendo…» y no deja enviar dos veces", async () => {
+  it("mientras vuelve a poner uno, el botón dice «Volviendo…» (también su nombre) y no deja enviar dos veces", async () => {
     let finish: (state: FixedExpenseState) => void = () => {};
     action.mockReturnValue(new Promise((resolve) => (finish = resolve)));
     const user = userEvent.setup();
@@ -122,11 +122,14 @@ describe("FixedExpenses", () => {
     const restore = section().getByRole("button", { name: "Volver a poner Netflix en los gastos fijos" });
     await user.click(restore);
     await waitFor(() => expect(restore).toHaveTextContent("Volviendo…"));
+    // El nombre empieza con lo que se ve, también mientras espera (WCAG 2.5.3; axe lo marcaba).
+    expect(restore).toHaveAccessibleName("Volviendo… Netflix en los gastos fijos");
     expect(restore).toBeDisabled();
     await user.click(restore);
     expect(action).toHaveBeenCalledTimes(1);
     finish({ error: "Ese egreso no está entre tus movimientos." });
     await waitFor(() => expect(restore).toBeEnabled());
+    expect(restore).toHaveAccessibleName("Volver a poner Netflix en los gastos fijos");
   });
 
   describe("agregar un gasto fijo", () => {
@@ -413,7 +416,22 @@ describe("FixedExpenses · en inglés", () => {
     expect(bills.getByRole("button", { name: "Delete note" })).toBeVisible();
     expect(bills.getByRole("button", { name: "Save note" })).toBeVisible();
     await userEvent.click(bills.getByText("Removed (1)"));
-    expect(bills.getByRole("button", { name: "Put Netflix back in your bills" })).toHaveTextContent("Put back");
+    // Con el nombre empezando por lo que se ve: "Put Netflix back…" no contenía "Put back" (WCAG 2.5.3).
+    expect(bills.getByRole("button", { name: "Put back Netflix in your bills" })).toHaveTextContent("Put back");
+  });
+
+  it("mientras vuelve a poner uno, el nombre del botón empieza con «Putting back…»", async () => {
+    let finish: (state: FixedExpenseState) => void = () => {};
+    action.mockReturnValue(new Promise((resolve) => (finish = resolve)));
+    const user = userEvent.setup();
+    render(<FixedExpenses {...props} />, { english: true });
+    await user.click(screen.getByText("Removed (1)"));
+    const restore = screen.getByRole("button", { name: "Put back Netflix in your bills" });
+    await user.click(restore);
+    await waitFor(() => expect(restore).toHaveTextContent("Putting back…"));
+    expect(restore).toHaveAccessibleName("Putting back… Netflix in your bills");
+    finish({ error: "That expense isn't among your transactions." });
+    await waitFor(() => expect(restore).toBeEnabled());
   });
 
   it("agregar un gasto fijo, con su mensaje en inglés", async () => {

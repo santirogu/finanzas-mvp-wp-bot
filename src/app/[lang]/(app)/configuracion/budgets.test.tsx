@@ -152,6 +152,22 @@ describe("Budgets · cambiar y quitar", () => {
     expect(toast).toHaveAttribute("data-tone", "removal");
     expect(toast).toHaveFocus();
   });
+
+  it("mientras quita, el botón dice «Quitando…» (también su nombre) y no deja enviar dos veces", async () => {
+    let finish!: (state: BudgetState) => void;
+    remove.mockReturnValue(new Promise((resolve) => (finish = resolve)));
+    const user = userEvent.setup();
+    render(<Budgets rows={ROWS} options={OPTIONS} month="octubre" />);
+    const button = section().getByRole("button", { name: "Quitar el presupuesto de Transporte" });
+    await user.click(button);
+    await waitFor(() => expect(button).toHaveTextContent("Quitando…"));
+    // El nombre empieza con lo que se ve, también mientras espera (WCAG 2.5.3).
+    expect(button).toHaveAccessibleName("Quitando… el presupuesto de Transporte");
+    expect(button).toBeDisabled();
+    finish({ error: "Ese presupuesto ya no existe." });
+    expect(await section().findByRole("alert")).toHaveTextContent("Ese presupuesto ya no existe.");
+    expect(button).toHaveAccessibleName("Quitar el presupuesto de Transporte");
+  });
 });
 
 describe("Budgets · en inglés", () => {
