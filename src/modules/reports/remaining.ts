@@ -5,7 +5,7 @@ import { formatMoney, formatPercent, roundToCents, sumAmounts } from "@/lib/mone
 import { searchKey } from "@/lib/suggestions";
 import type { HistoryMonth } from "./history";
 import type { FixedOption } from "./recurring";
-import { upcomingPayments } from "./upcoming";
+import { type PaymentLink, upcomingPayments } from "./upcoming";
 
 // "Lo que te queda este mes" (Resumen, solo con el mes en curso): lo que entró menos lo que salió y los gastos
 // fijos que faltan por pagar, cuánto da por día hasta fin de mes y, desde PROJECTION_FROM_DAY, cómo cerraría el
@@ -29,17 +29,18 @@ export type MonthFixed = {
 
 /**
  * Los gastos fijos (`items`) del mes de `today` (YYYY-MM-DD): lo que falta pagar, sin importar con cuánta
- * anticipación avisa la persona, y lo que ya se pagó. `history` y `skipped`, como en `upcomingPayments`.
+ * anticipación avisa la persona, y lo que ya se pagó. `history`, `skipped` y `links`, como en `upcomingPayments`.
  */
 export function monthFixed(
   items: (FixedOption & { amount: number })[],
   history: HistoryMonth[],
   skipped: ReadonlySet<string>,
   today: string,
+  links: readonly PaymentLink[] = [],
 ): MonthFixed {
   const month = today.slice(0, 7);
   // Con 31 días de anticipación entran todos los de este mes; los atrasados de otros meses y los del siguiente, no.
-  const pending = upcomingPayments(items, history, skipped, today, 31)
+  const pending = upcomingPayments(items, history, skipped, today, 31, links)
     .filter((payment) => payment.month === month)
     .map(({ description, amount }) => ({ description, amount }));
   const keys = new Set(items.map((item) => item.key));

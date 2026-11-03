@@ -1,15 +1,17 @@
 import "server-only";
 import { and, desc, eq, isNull } from "drizzle-orm";
 import { db } from "@/db";
-import { category, transaction } from "@/db/schema";
+import { category, fixedPaymentLink, transaction } from "@/db/schema";
 import { DEFAULT_LOCALE, type Locale } from "@/i18n/locales";
 import { texts } from "@/i18n/texts";
+import { monthOf, monthParam, shiftMonth } from "@/lib/dates";
 import { formatMoney } from "@/lib/money";
 import { searchKey } from "@/lib/suggestions";
 import type { ToastTone } from "@/lib/toasts";
 import { categoryNameIn } from "@/modules/transactions/category-name";
 import { isCategoryAvailable } from "@/modules/transactions/queries";
 import { transactionSchema } from "@/modules/transactions/validation";
+import { MONTHS_BACK, type PaymentLink } from "./upcoming";
 
 // "Registrar pago" en los avisos de próximos pagos del Resumen: registra el pago de un gasto fijo como un
 // egreso más, con la descripción y la categoría del último pago (las busca el servidor, nunca las da el
@@ -71,6 +73,29 @@ const TEXTS = texts(
   },
 );
 
+/**
+ * Los pagos registrados desde un aviso (fixed_payment_link), con la fecha de su egreso: cada uno cuenta para el mes
+ * de su aviso (src/modules/reports/upcoming.ts). Sin los egresos borrados (al restaurarlo, vuelve a contar).
+ */
+export async function getPaymentLinks(userId: string): Promise<PaymentLink[]> {
+  return db
+    .select({ key: fixedPaymentLink.descriptionKey, month: fixedPaymentLink.month, paidOn: transaction.occurredOn })
+    .from(fixedPaymentLink)
+    .innerJoin(transaction, eq(transaction.id, fixedPaymentLink.transactionId))
+    .where(and(eq(fixedPaymentLink.userId, userId), eq(transaction.userId, userId), isNull(transaction.deletedAt)));
+}
+
+/**
+ * El mes del aviso desde el que se registró el pago ("YYYY-MM"), si es uno que puede tener aviso: de MONTHS_BACK
+ * meses atrás (los atrasados) al siguiente al de `today` (a fin de mes ya avisa del 1). Si no, null: el pago se
+ * registra igual y cuenta para la fecha esperada más cercana.
+ */
+export function paymentMonth(raw: unknown, today: string): string | null {
+  if (typeof raw !== "string" || !/^\d{4}-(0[1-9]|1[0-2])$/.test(raw)) return null;
+  const current = monthOf(today);
+  return raw >= monthParam(shiftMonth(current, -MONTHS_BACK)) && raw <= monthParam(shiftMonth(current, 1)) ? raw : null;
+}
+
 export type RegisterPaymentResult =
   | { ok: true; message: string; tone: ToastTone }
   | { ok: false; error: string; field?: "amount" | "occurredOn" };
@@ -78,12 +103,13 @@ export type RegisterPaymentResult =
 /**
  * Registra el pago de un gasto fijo (`description`, como lo muestra el aviso) con el monto y la fecha que
  * confirmó la persona. `today` (YYYY-MM-DD, en su zona): la fecha no puede ser después. Si la categoría del
- * último pago ya no se puede elegir (el admin la archivó), va sin categoría. El monto se lee y los mensajes
- * salen en el idioma de la página (`locale`).
+ * último pago ya no se puede elegir (el admin la archivó), va sin categoría. `month` es el mes del aviso: el pago
+ * queda unido a él (fixed_payment_link), así que cuenta para ese mes aunque se pague más de medio mes tarde. El
+ * monto se lee y los mensajes salen en el idioma de la página (`locale`).
  */
 export async function registerFixedPayment(
   user: { id: string; currency: string },
-  raw: { description: unknown; amount: unknown; occurredOn: unknown },
+  raw: { description: unknown; amount: unknown; occurredOn: unknown; month?: unknown },
   today: string,
   locale: Locale = DEFAULT_LOCALE,
 ): Promise<RegisterPaymentResult> {
@@ -104,15 +130,13 @@ export async function registerFixedPayment(
   const { amount, occurredOn } = parsed.data;
   if (occurredOn > today) return { ok: false, error: t.future, field: "occurredOn" };
   const categoryId = last.categoryId && (await isCategoryAvailable(user.id, last.categoryId, "expense")) ? last.categoryId : null;
-  await db.insert(transaction).values({
-    userId: user.id,
-    type: "expense",
-    amount,
-    currency: user.currency,
-    description: last.description,
-    categoryId,
-    occurredOn,
-    source: "web",
+  const month = paymentMonth(raw.month, today);
+  await db.transaction(async (tx) => {
+    const [created] = await tx
+      .insert(transaction)
+      .values({ userId: user.id, type: "expense", amount, currency: user.currency, description: last.description, categoryId, occurredOn, source: "web" })
+      .returning({ id: transaction.id });
+    if (month) await tx.insert(fixedPaymentLink).values({ userId: user.id, transactionId: created.id, descriptionKey: searchKey(last.description), month });
   });
   return { ok: true, message: t.registered(last.description, formatMoney(amount, user.currency, locale)), tone: "success" };
 }

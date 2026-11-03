@@ -119,11 +119,23 @@ export type PaymentSchedule = {
 };
 
 /**
+ * Un pago registrado desde un aviso ("Registrar pago", tabla fixed_payment_link): el gasto, el mes del aviso
+ * ("YYYY-MM") y la fecha del egreso. Cuenta para ese mes aunque se haya pagado más de medio mes tarde.
+ */
+export type PaymentLink = { key: string; month: string; paidOn: string };
+
+/**
  * El calendario de pagos de cada gasto fijo (`items`), por su clave, a partir de los egresos por mes y descripción
  * (`history`): desde el mes que corresponde a su primer pago hasta el siguiente al de `today` (YYYY-MM-DD). Sin
- * pagos, el gasto no está. Lo comparten los avisos de próximos pagos y el estado del mes de Fijos.
+ * pagos, el gasto no está. Lo comparten los avisos de próximos pagos y el estado del mes de Fijos. `links`: los
+ * pagos registrados desde un aviso, que cuentan para el mes de su aviso.
  */
-export function paymentSchedules(items: readonly Pick<FixedOption, "key">[], history: HistoryMonth[], today: string): Map<string, PaymentSchedule> {
+export function paymentSchedules(
+  items: readonly Pick<FixedOption, "key">[],
+  history: HistoryMonth[],
+  today: string,
+  links: readonly PaymentLink[] = [],
+): Map<string, PaymentSchedule> {
   const payments = paymentsByKey(history, new Set(items.map((item) => item.key)));
   const current = monthOf(today);
   const schedules = new Map<string, PaymentSchedule>();
@@ -140,10 +152,19 @@ export function paymentSchedules(items: readonly Pick<FixedOption, "key">[], his
       const date = dateInMonth(monthParam(month), day);
       if (daysBetween(dates[0], date) >= -HALF_MONTH) due.push({ month: monthParam(month), date, paidOn: null });
     }
-    // Cada pago cuenta para la fecha esperada más cercana (pagar el 2 de noviembre lo de octubre, si se
+    // Un pago registrado desde un aviso cuenta para el mes del aviso, y ya no para otro.
+    const unlinked = [...all];
+    for (const link of links) {
+      if (link.key !== item.key) continue;
+      const linked = due.find((d) => d.month === link.month);
+      if (linked) linked.paidOn ??= link.paidOn;
+      const used = unlinked.indexOf(link.paidOn);
+      if (used >= 0) unlinked.splice(used, 1);
+    }
+    // Los demás cuentan para la fecha esperada más cercana (pagar el 2 de noviembre lo de octubre, si se
     // suele pagar el 30, cuenta para octubre; pagar el 30 de octubre lo del 1 de noviembre, para noviembre).
     // Los pagos van del más viejo al más nuevo: queda el primero.
-    for (const paid of all) {
+    for (const paid of unlinked) {
       const nearest = due.reduce((best, d) => (Math.abs(daysBetween(paid, d.date)) < Math.abs(daysBetween(paid, best.date)) ? d : best));
       if (Math.abs(daysBetween(paid, nearest.date)) <= HALF_MONTH) nearest.paidOn ??= paid;
     }
@@ -155,8 +176,8 @@ export function paymentSchedules(items: readonly Pick<FixedOption, "key">[], his
 /**
  * Los pagos de los gastos fijos (`items`) que hay que avisar hoy (`today`, YYYY-MM-DD en la zona de la
  * persona), de la fecha más vieja a la más próxima. `history` son los egresos por mes y descripción (de
- * todo el tiempo), `skipped`, los pagos marcados "ya no aplica" ("<clave> YYYY-MM"), y `daysAhead`, con
- * cuántos días de anticipación se avisa (0: el mismo día).
+ * todo el tiempo), `skipped`, los pagos marcados "ya no aplica" ("<clave> YYYY-MM"), `daysAhead`, con
+ * cuántos días de anticipación se avisa (0: el mismo día), y `links`, los pagos registrados desde un aviso.
  */
 export function upcomingPayments(
   items: (FixedOption & { amount: number })[],
@@ -164,8 +185,9 @@ export function upcomingPayments(
   skipped: ReadonlySet<string>,
   today: string,
   daysAhead: number = DAYS_AHEAD,
+  links: readonly PaymentLink[] = [],
 ): UpcomingPayment[] {
-  const schedules = paymentSchedules(items, history, today);
+  const schedules = paymentSchedules(items, history, today, links);
   const oldest = monthParam(shiftMonth(monthOf(today), -MONTHS_BACK));
   const result: UpcomingPayment[] = [];
   for (const item of items) {

@@ -232,6 +232,24 @@ test("Registrar pago desde el aviso: con el monto y la fecha que se confirman, y
   });
 });
 
+test("Registrar pago en un aviso atrasado más de medio mes: cuenta para su mes y el aviso se va", async ({ page }) => {
+  const { email } = await register(page);
+  // Vencía hace 20 días: la fecha esperada más cercana a hoy es la del mes siguiente (en unos 10 días). Sin el mes del
+  // aviso, el pago contaría para ese y el atrasado seguiría ahí.
+  const due = shiftDay(-20);
+  await addPayments(email, [{ description: "Arriendo", amount: 1800000, dates: paymentsFor(due), category: "Vivienda" }]);
+  await page.reload();
+  const rent = card(page).getByRole("listitem").filter({ hasText: "Arriendo" });
+  await expect(rent).toContainText("Atrasado");
+  await rent.getByRole("button", { name: "Registrar pago de Arriendo" }).click();
+  const dialog = page.getByRole("dialog", { name: "Registrar pago de Arriendo" });
+  await expect(dialog.getByLabel("Fecha")).toHaveValue(today);
+  await dialog.getByRole("button", { name: "Registrar pago" }).click();
+  await expect(toast(page, "Se registró el pago de “Arriendo”: −$1.800.000,00")).toBeVisible();
+  // Ni el atrasado ni el del mes siguiente (que todavía no toca).
+  await expect(card(page)).toHaveCount(0);
+});
+
 test("La campana: desde cualquier página, el número, Marcar como leída (sigue en el Resumen) y Registrar pago", async ({ page }) => {
   const { email } = await register(page);
   await addPayments(email, [

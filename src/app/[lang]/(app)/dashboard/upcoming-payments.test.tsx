@@ -135,14 +135,15 @@ describe("UpcomingPayments · Registrar pago", () => {
     expect(amount).toHaveValue("1.850.000,00");
   });
 
-  it("Registrar pago manda el gasto, el monto y la fecha; se cierra y avisa en verde con el foco", async () => {
+  it("Registrar pago manda el gasto, el mes del aviso, el monto y la fecha; se cierra y avisa en verde con el foco", async () => {
     register.mockResolvedValue({ message: "Se registró el pago de «Arriendo»: −$1.850.000,00", tone: "success" });
     const user = userEvent.setup();
     await open(user);
     await user.clear(dialog().getByLabelText("Monto"));
     await user.type(dialog().getByLabelText("Monto"), "1850000");
     await user.click(dialog().getByRole("button", { name: "Registrar pago" }));
-    expect(Object.fromEntries(register.mock.calls[0][1])).toEqual({ description: "Arriendo", amount: "1.850.000,00", occurredOn: TODAY });
+    // El mes del aviso: el pago cuenta para ese mes aunque se pague tarde.
+    expect(Object.fromEntries(register.mock.calls[0][1])).toEqual({ description: "Arriendo", month: "2026-10", amount: "1.850.000,00", occurredOn: TODAY });
     const toast = await findToast();
     expect(toast).toHaveTextContent("Se registró el pago de «Arriendo»: −$1.850.000,00");
     expect(toast).toHaveAttribute("data-tone", "success");

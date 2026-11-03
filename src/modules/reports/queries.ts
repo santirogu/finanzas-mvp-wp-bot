@@ -17,7 +17,7 @@ import { AVERAGE_MONTHS, type CategoryMonthTotal, categoryReport } from "./categ
 import type { CsvMovement } from "./csv";
 import type { DayDescriptionTotal } from "./daily";
 import { getFixedChoices } from "./fixed-choices";
-import { getLastPayments } from "./fixed-payments";
+import { getLastPayments, getPaymentLinks } from "./fixed-payments";
 import { type CategoryToDate, type MonthFact, monthFact } from "./month-fact";
 import { type FixedHistoryEntry, fixedHistories } from "./history";
 import { getExpenseHistoryMonths, getFixedNotes, noteKey } from "./history-notes";
@@ -260,13 +260,13 @@ export async function getUpcomingPayments(
 ): Promise<{ enabled: boolean; days: number; payments: (UpcomingPayment & { category: string | null })[] }> {
   const settings = await getUpcomingSettings(userId);
   if (!settings.enabled) return { ...settings, payments: [] };
-  const [{ items, history, skipped }, lastPayments] = await Promise.all([
+  const [{ items, history, skipped, links }, lastPayments] = await Promise.all([
     getFixedPaymentsData(userId, monthParam(current)),
     getLastPayments(userId, locale),
   ]);
   // Con la categoría del último pago: la que lleva "Registrar pago" (null, sin categoría: el aviso lo dice
   // en el idioma de la página).
-  const payments = upcomingPayments(items, history, skipped, today, settings.days).map((payment) => ({
+  const payments = upcomingPayments(items, history, skipped, today, settings.days, links).map((payment) => ({
     ...payment,
     category: lastPayments.get(payment.key)?.category ?? null,
   }));
@@ -275,21 +275,22 @@ export async function getUpcomingPayments(
 
 /**
  * Lo que miran los avisos de próximos pagos y "Lo que te queda": los gastos fijos (con lo del último mes), los
- * egresos por mes y descripción y los pagos marcados "ya no aplica". Con `cache`: en el Resumen lo piden la página y
+ * egresos por mes y descripción, los pagos marcados "ya no aplica" y los registrados desde un aviso. Con `cache`: en el Resumen lo piden la página y
  * la campana en el mismo request (`month`: el mes en curso, "YYYY-MM").
  */
 const getFixedPaymentsData = cache(async (userId: string, month: string) => {
   const period = reportPeriod(undefined, monthOf(`${month}-01`));
   const rule = recurringRuleOf(await getAppValues());
-  const [descriptions, choices, history, skipped] = await Promise.all([
+  const [descriptions, choices, history, skipped, links] = await Promise.all([
     getExpenseDescriptionsByMonth(userId, recurringFrom(period.months, rule.window, MONTHS_BACK), period.months[period.months.length - 1]),
     getFixedChoices(userId),
     getExpenseHistoryMonths(userId),
     getPaymentSkips(userId),
+    getPaymentLinks(userId),
   ]);
   // Uno que no se pagó sigue siendo fijo (y avisando de lo atrasado) hasta MONTHS_BACK meses después: si no, al
   // empezar el mes siguiente, sin el pago del anterior ni el del nuevo, dejaría de detectarse.
-  return { items: recurringExpenses(descriptions, period.months, choices, rule, { keepFor: MONTHS_BACK }).items, history, skipped };
+  return { items: recurringExpenses(descriptions, period.months, choices, rule, { keepFor: MONTHS_BACK }).items, history, skipped, links };
 });
 
 /**
@@ -297,8 +298,8 @@ const getFixedPaymentsData = cache(async (userId: string, month: string) => {
  * depende de los avisos: cuenta aunque la persona los haya apagado.
  */
 export async function getMonthFixed(userId: string, current: Month, today: string): Promise<MonthFixed> {
-  const { items, history, skipped } = await getFixedPaymentsData(userId, monthParam(current));
-  return monthFixed(items, history, skipped, today);
+  const { items, history, skipped, links } = await getFixedPaymentsData(userId, monthParam(current));
+  return monthFixed(items, history, skipped, today, links);
 }
 
 /**
@@ -306,8 +307,8 @@ export async function getMonthFixed(userId: string, current: Month, today: strin
  * se pagaron. `today` (YYYY-MM-DD), en la zona de la persona.
  */
 export async function getFixedMonth(userId: string, current: Month, today: string): Promise<FixedMonth> {
-  const { items, history, skipped } = await getFixedPaymentsData(userId, monthParam(current));
-  return fixedMonth(items, history, skipped, today);
+  const { items, history, skipped, links } = await getFixedPaymentsData(userId, monthParam(current));
+  return fixedMonth(items, history, skipped, today, links);
 }
 
 /**

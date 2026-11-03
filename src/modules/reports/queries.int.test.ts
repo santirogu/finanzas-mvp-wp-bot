@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { appValues, category, fixedExpenseChoice, fixedExpenseNote, fixedPaymentSkip, notificationSetting, transaction } from "@/db/schema";
 import { listCategories } from "@/modules/transactions/queries";
 import { createUser } from "../../../test/integration/factories";
+import { registerFixedPayment } from "./fixed-payments";
 import { reportPeriod } from "./period";
 import {
   getCategoryMonthlyTotals,
@@ -457,6 +458,20 @@ describe("getUpcomingPayments (los avisos del Resumen)", () => {
     await addTx({ userId: ana.id, description: "Internet", amount: 95000, occurredOn: "2026-11-01" });
     await db.insert(fixedPaymentSkip).values({ userId: ana.id, descriptionKey: "arriendo", month: "2026-10" });
     expect(await due("2026-11-01")).toEqual([]);
+  });
+
+  it("un pago registrado desde el aviso de un mes atrasado lo quita, aunque sea más de medio mes tarde", async () => {
+    const ana = await createUser();
+    for (const month of ["07", "08", "09"]) await addTx({ userId: ana.id, description: "Arriendo", amount: 1800000, occurredOn: `2026-${month}-05` });
+    const november = { year: 2026, month: 11 };
+    const due = async (today: string) => (await getUpcomingPayments(ana.id, november, today)).payments.map((p) => [p.description, p.month]);
+    expect(await due("2026-11-01")).toEqual([["Arriendo", "2026-10"]]);
+    // El 1 de noviembre lo paga desde el aviso de octubre: octubre queda pagado y el 2, a 3 días, avisa del de noviembre.
+    await registerFixedPayment(ana, { description: "Arriendo", amount: "1800000", occurredOn: "2026-11-01", month: "2026-10" }, "2026-11-01");
+    expect(await due("2026-11-01")).toEqual([]);
+    expect(await due("2026-11-02")).toEqual([["Arriendo", "2026-11"]]);
+    expect((await getFixedMonth(ana.id, november, "2026-11-02")).statuses.get("arriendo")).toMatchObject({ kind: "pending" });
+    expect((await getMonthFixed(ana.id, november, "2026-11-02")).pending.map((p) => p.description)).toEqual(["Arriendo"]);
   });
 
   it("uno quitado de los gastos fijos no avisa; uno agregado a mano, sí", async () => {
