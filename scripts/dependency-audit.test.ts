@@ -53,6 +53,10 @@ describe("classifyAudit", () => {
     expect(classifyAudit({ status: 0, stdout: `${TIMEOUT}\n` })).toEqual({ verdict: "registro", message: TIMEOUT });
   });
 
+  it("código 0 con un informe a medias (sin metadata) no está limpia", () => {
+    expect(classifyAudit({ status: 0, stdout: '{"advisories":{}}' })).toEqual({ verdict: "registro", message: '{"advisories":{}}' });
+  });
+
   it.each([
     ["el informe sin avisos con código 1", { status: 1, stdout: report() }, report()],
     [

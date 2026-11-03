@@ -428,6 +428,28 @@ describe("formatos", () => {
       },
       "avisos de pagos: ahora prendidos, 1 día (antes prendidos, 3 días) · gastos fijos: ahora 2 de 3 meses (antes 3 de 4 meses)",
     ],
+    // Basta que cambie uno de los dos valores del grupo para mostrarlo.
+    [
+      {
+        appValues: { upcomingEnabled: false, upcomingDays: 3, budgetNearShare: 80, recurringMinMonths: 3, recurringWindow: 4 },
+        previousAppValues: { upcomingEnabled: true, upcomingDays: 3, budgetNearShare: 80, recurringMinMonths: 3, recurringWindow: 4 },
+      },
+      "avisos de pagos: ahora apagados, 3 días (antes prendidos, 3 días)",
+    ],
+    [
+      {
+        appValues: { upcomingEnabled: true, upcomingDays: 3, budgetNearShare: 80, recurringMinMonths: 2, recurringWindow: 4 },
+        previousAppValues: { upcomingEnabled: true, upcomingDays: 3, budgetNearShare: 80, recurringMinMonths: 3, recurringWindow: 4 },
+      },
+      "gastos fijos: ahora 2 de 4 meses (antes 3 de 4 meses)",
+    ],
+    [
+      {
+        appValues: { upcomingEnabled: true, upcomingDays: 3, budgetNearShare: 80, recurringMinMonths: 3, recurringWindow: 6 },
+        previousAppValues: { upcomingEnabled: true, upcomingDays: 3, budgetNearShare: 80, recurringMinMonths: 3, recurringWindow: 4 },
+      },
+      "gastos fijos: ahora 3 de 6 meses (antes 3 de 4 meses)",
+    ],
     // Sin los de antes, todos.
     [
       { appValues: { upcomingEnabled: true, upcomingDays: 3, budgetNearShare: 80, recurringMinMonths: 3, recurringWindow: 4 } },
@@ -441,6 +463,21 @@ describe("formatos", () => {
     [
       { notice: { message: `${"a".repeat(58)} b ${"c".repeat(20)}`, tone: "info" as const, endsAt: "2026-10-26T01:00:00.000Z" } },
       `“${"a".repeat(58)} b…” · información · hasta el 25 de oct. de 2026, 8:00 p. m.`,
+    ],
+    // Si el corte cae justo después de un espacio, el "…" va pegado a la palabra.
+    [
+      { notice: { message: `${"a".repeat(59)} ${"c".repeat(20)}`, tone: "info" as const, endsAt: "2026-10-26T01:00:00.000Z" } },
+      `“${"a".repeat(59)}…” · información · hasta el 25 de oct. de 2026, 8:00 p. m.`,
+    ],
+    // Con justo 60 caracteres cabe entero, sin "…".
+    [
+      { notice: { message: "a".repeat(60), tone: "info" as const, endsAt: "2026-10-26T01:00:00.000Z" } },
+      `“${"a".repeat(60)}” · información · hasta el 25 de oct. de 2026, 8:00 p. m.`,
+    ],
+    // Un tipo que la app ya no conoce no deja un hueco entre los puntos.
+    [
+      { notice: { message: "Aviso", tone: "urgente" as never, endsAt: "2026-10-26T01:00:00.000Z" } },
+      "“Aviso” · hasta el 25 de oct. de 2026, 8:00 p. m.",
     ],
     [{ resent: 3, failed: 0 }, "3 reenviadas"],
     [{ resent: 1, failed: 1 }, "1 reenviada · 1 no salió otra vez"],

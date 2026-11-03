@@ -10,9 +10,9 @@ import { axisLabel, chartScale, reportPdfView } from "./view";
 const current: Month = { year: 2026, month: 10 };
 const today = "2026-10-20";
 
-function viewOf(movements: SampleMovement[], { name = "Ana", currency = "COP" } = {}) {
-  const { report, period, byDay } = sampleReport(movements, current);
-  return reportPdfView({ report, period, byDay, current, today, name, currency });
+function viewOf(movements: SampleMovement[], { name = "Ana", currency = "COP", locale = "es" as "es" | "en" } = {}) {
+  const { report, period, byDay } = sampleReport(movements, current, locale);
+  return reportPdfView({ report, period, byDay, current, today, name, currency, locale });
 }
 
 const year = viewOf(sampleMovements(current, today));
@@ -49,6 +49,9 @@ describe("chartScale y axisLabel (el eje del gráfico)", () => {
     [1_500, "$1,5 mil"],
     [2_000_000, "$2 M"],
     [2_500_000, "$2,5 M"],
+    // Desde mil, en miles (justo 1.000 también).
+    [1_000, "$1 mil"],
+    [999, "$999"],
     // Con un solo decimal, redondeado.
     [1_234_567, "$1,2 M"],
   ])("%d → %s", (value, label) => {
@@ -57,6 +60,27 @@ describe("chartScale y axisLabel (el eje del gráfico)", () => {
 });
 
 describe("reportPdfView", () => {
+  it("los textos fijos de la hoja, completos (los títulos y encabezados que acomoda document.tsx)", () => {
+    const { page, ...fixed } = year.labels;
+    expect(fixed).toEqual({
+      title: "Reporte de tus finanzas",
+      income: "Ingresos",
+      expenses: "Egresos",
+      byMonth: "Ingresos y egresos por mes",
+      monthByMonth: "Mes a mes",
+      month: "Mes",
+      balance: "Balance",
+      inProgress: " (en curso)",
+      categories: "Egresos por categoría",
+      biggest: "Los egresos más grandes",
+      biggestIntro: "Los egresos más altos del período, sin contar los gastos fijos.",
+      daily: "¿Qué días gastas más?",
+      dailyIntro: "El gasto promedio de cada día de la semana, sin los gastos fijos y contando los días sin gastos.",
+      language: "es-CO",
+    });
+    expect(page(2, 3)).toBe("Página 2 de 3");
+  });
+
   it("el encabezado y el pie: el período, la persona, cuándo se generó y la moneda", () => {
     expect(year).toMatchObject({
       range: "De noviembre de 2025 a octubre de 2026",
@@ -220,9 +244,24 @@ describe("reportPdfView · en inglés", () => {
   const view = reportPdfView({ report, period, byDay, current, today, name: "Ana", currency: "COP", locale: "en" });
 
   it("el encabezado, las cifras y los textos fijos de la hoja", () => {
-    expect(view.labels.title).toBe("Your finances report");
-    expect(view.labels.page(1, 2)).toBe("Page 1 of 2");
-    expect(view.labels.language).toBe("en-US");
+    const { page, ...fixed } = view.labels;
+    expect(fixed).toEqual({
+      title: "Your finances report",
+      income: "Income",
+      expenses: "Expenses",
+      byMonth: "Income and expenses by month",
+      monthByMonth: "Month by month",
+      month: "Month",
+      balance: "Balance",
+      inProgress: " (in progress)",
+      categories: "Expenses by category",
+      biggest: "The biggest expenses",
+      biggestIntro: "The highest expenses in the period, not counting your bills.",
+      daily: "Which days do you spend the most?",
+      dailyIntro: "The average spending for each day of the week, without your bills and counting the days without spending.",
+      language: "en-US",
+    });
+    expect(page(1, 2)).toBe("Page 1 of 2");
     expect(view.range).toBe("November 2025 to October 2026");
     expect(view.generated).toBe("Generated on October 20, 2026");
     expect(view.currency).toBe("Amounts in Colombian pesos (COP)");
@@ -234,10 +273,20 @@ describe("reportPdfView · en inglés", () => {
     expect(view.chart.bars.at(-1)?.short).toBe("Oct");
     expect(view.chart.ticks.at(-1)?.label).toMatch(/^\$[\d.]+ (M|K)$/);
     expect(view.months[0].label).toBe("October 2026");
-    expect(view.categories.intro).toMatch(/^What each one added up to in the period/);
+    expect(view.categories.intro).toBe(
+      "What each one added up to in the period, and how you did in September compared with its average for June to August.",
+    );
     expect(view.daily.weekdays.map((d) => d.label)).toEqual(["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]);
     expect(view.daily.halves.map((h) => h.label)).toEqual(["1st to 15th", "16th to month end"]);
     expect(view.daily.halves[0].share).toMatch(/% of spending$/);
+  });
+
+  it("si todos los egresos son fijos, o si no hubo egresos, lo dice en inglés", () => {
+    const rent = (month: number) => expense(`2026-0${month}-05`, "Arriendo", 1800000, "Vivienda");
+    const allFixed = viewOf([rent(6), rent(7), rent(8), rent(9)], { locale: "en" });
+    expect(allFixed.biggest.empty).toBe("All the expenses in the period are bills.");
+    expect(allFixed.daily.empty).toBe("All the expenses in the period are bills.");
+    expect(viewOf([income("2026-09-01", 1000000)], { locale: "en" }).biggest.empty).toBe("No expenses in the period.");
   });
 
   it("el eje en inglés", () => {

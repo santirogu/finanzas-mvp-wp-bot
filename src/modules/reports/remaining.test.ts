@@ -147,6 +147,15 @@ describe("remainingView (los textos de la tarjeta)", () => {
     expect(view(fixed([]), "2026-10-21", { income: 100000, expense: 200000 }).note).toBe("Este mes ya gastaste más de lo que te entró.");
   });
 
+  it("si cerraría justo, sin sobrar ni faltar, dice que no le sobraría nada", () => {
+    // Todo lo gastado fue de fijos ya pagados: el cierre es lo mismo que entró.
+    const even = { income: 900000, expense: 900000 };
+    expect(view(fixed([], 900000), "2026-10-21", even).projection).toBe("A este ritmo cerrarías octubre con $900.000,00 en egresos: te sobrarían $0,00.");
+    expect(view(fixed([], 900000), "2026-10-21", even, "en").projection).toBe(
+      "At this pace you'd end October with $900,000.00 in expenses: $0.00 left over.",
+    );
+  });
+
   it("el último día del mes, y antes de la primera semana, sin proyección", () => {
     expect(view(fixed([]), "2026-10-31", { income: 100000, expense: 0 }).note).toBe("$100.000,00 para hoy, el último día del mes");
     expect(view(fixed([]), "2026-10-03").projection).toBeNull();
@@ -165,5 +174,7 @@ describe("remainingView (los textos de la tarjeta)", () => {
     expect(v.rows[2].detail).toBe("Internet, Celular, and Tarjeta");
     expect(v.projection).toBe("At this pace you'd end October with $4,168,100.00 in expenses: $31,900.00 left over.");
     expect(view(fixed(pendingOct), "2026-10-21", { income: 1000000, expense: 900000 }, "en").projection).toMatch(/ short\.$/);
+    expect(view(fixed([]), "2026-10-21", { income: 100000, expense: 200000 }, "en").note).toBe("This month you've already spent more than came in.");
+    expect(view(fixed([]), "2026-10-31", { income: 100000, expense: 0 }, "en").note).toBe("$100,000.00 for today, the last day of the month");
   });
 });
