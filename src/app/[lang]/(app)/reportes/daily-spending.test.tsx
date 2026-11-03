@@ -40,7 +40,6 @@ const props = (overrides: Partial<DailySpendingProps> = {}): DailySpendingProps 
   })),
   insight: "Gastas más los sábados: 641 % más que el promedio de los otros días.",
   halves: { first: 580000, second: 420000 },
-  currency: "COP",
   empty: null,
   ...overrides,
 });

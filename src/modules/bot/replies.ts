@@ -167,7 +167,6 @@ export function registeredReply(
   items: ParsedTransaction[],
   ctx: {
     today: string;
-    currency: string;
     balance: number;
     range: MonthRange;
     locale: Locale;
@@ -175,7 +174,7 @@ export function registeredReply(
   },
 ): string {
   const t = TEXTS[ctx.locale];
-  const money = (n: number) => formatMoney(n, ctx.currency, ctx.locale);
+  const money = (n: number) => formatMoney(n, ctx.locale);
   const lines = items.map((item) => {
     const extras = [item.category, item.occurredOn !== ctx.today ? formatShortDate(item.occurredOn, { locale: ctx.locale }) : null]
       .filter(Boolean)
@@ -204,11 +203,11 @@ const CHANGE_ARROWS = { up: "↗ ", down: "↘ ", same: "" } as const;
  */
 export function balanceReply(
   summary: Summary,
-  ctx: { currency: string; range: Month; locale: Locale; previous?: { month: Month; summary: Summary; upToToday: boolean } },
+  ctx: { range: Month; locale: Locale; previous?: { month: Month; summary: Summary; upToToday: boolean } },
 ): string {
   const { locale } = ctx;
   const t = TEXTS[locale];
-  const money = (n: number) => formatMoney(n, ctx.currency, locale);
+  const money = (n: number) => formatMoney(n, locale);
   if (summary.count === 0) {
     return `${t.noMonthTransactions(formatMonthName(ctx.range, { withYear: true, locale }))}. ${t.tryWriting}.`;
   }
@@ -218,7 +217,6 @@ export function balanceReply(
         summary.balance,
         previous.summary.balance,
         previousMonthReference(formatMonthName(previous.month, { locale }), previous.upToToday, locale),
-        ctx.currency,
         locale,
       )
     : null;
@@ -249,11 +247,11 @@ export function reportReply(
   // De los gastos fijos solo hacen falta cuántos son y lo que suman.
   report: { summary: PeriodSummary; categories: CategoryReport; recurring: Pick<RecurringReport, "total"> & { items: readonly unknown[] } },
   period: ReportPeriod,
-  ctx: { currency: string; appUrl: string; locale: Locale },
+  ctx: { appUrl: string; locale: Locale },
 ): string {
   const { locale } = ctx;
   const t = TEXTS[locale];
-  const money = (n: number) => formatMoney(n, ctx.currency, locale);
+  const money = (n: number) => formatMoney(n, locale);
   const link = `${ctx.appUrl}${periodHref(period.id)}`;
   const { summary, categories, recurring } = report;
   // Dentro de una frase: en español, en minúscula ("de noviembre de 2025…"); en inglés, los meses van con mayúscula.
@@ -289,10 +287,10 @@ export const futureYearReply = (year: number, locale: Locale) => TEXTS[locale].f
 /** "reporte 1999": antes del primer año que se puede ver (el mismo límite de la web). */
 export const tooOldYearReply = (locale: Locale) => TEXTS[locale].tooOldYear;
 
-export function undoReply(removed: { description: string; amount: number; type: string }[], currency: string, locale: Locale) {
+export function undoReply(removed: { description: string; amount: number; type: string }[], locale: Locale) {
   const t = TEXTS[locale];
   if (removed.length === 0) return t.nothingToUndo;
-  const lines = removed.map((item) => `🗑️ ${item.description} — ${formatMoney(item.amount, currency, locale)}`);
+  const lines = removed.map((item) => `🗑️ ${item.description} — ${formatMoney(item.amount, locale)}`);
   return [t.undone, ...lines].join("\n");
 }
 

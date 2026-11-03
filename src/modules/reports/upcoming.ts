@@ -298,7 +298,6 @@ export type UpcomingItem = {
 export function upcomingItems(
   payments: (UpcomingPayment & { category?: string | null })[],
   today: string,
-  currency: string,
   locale: Locale = DEFAULT_LOCALE,
 ): UpcomingItem[] {
   return payments.map((payment) => ({
@@ -308,7 +307,7 @@ export function upcomingItems(
     emoji: payment.emoji,
     month: payment.month,
     monthName: formatMonthName(monthOf(`${payment.month}-01`), { withYear: payment.month.slice(0, 4) !== today.slice(0, 4), locale }),
-    amount: `≈ −${formatMoney(payment.amount, currency, locale)}`,
+    amount: `≈ −${formatMoney(payment.amount, locale)}`,
     when: whenLabel(payment.days, locale),
     dateLine: dateLine(payment, today, locale),
     overdue: payment.days < 0,

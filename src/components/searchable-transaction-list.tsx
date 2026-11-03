@@ -44,14 +44,12 @@ export function SearchableTransactionList({
   items,
   type,
   inMonth,
-  currency,
   emptyMessage,
 }: {
   items: TransactionRow[];
   type: "income" | "expense";
   /** "este mes" o "en septiembre" (inMonthPhrase). */
   inMonth: string;
-  currency: string;
   emptyMessage: string;
 }) {
   const [typed, setTyped] = useState("");
@@ -81,7 +79,7 @@ export function SearchableTransactionList({
         {hits && hits.length > 0 && (
           <p className={`whitespace-nowrap text-sm font-semibold tabular-nums ${isIncome ? "text-income" : "text-expense"}`}>
             {isIncome ? "+" : "−"}
-            {formatMoney(sumAmounts(shown.map((row) => row.amount)), currency, locale)}
+            {formatMoney(sumAmounts(shown.map((row) => row.amount)), locale)}
           </p>
         )}
       </div>

@@ -58,7 +58,7 @@ export default function ConfiguracionPage() {
 /**
  * Configuración (en el menú de la cuenta, junto a Mi cuenta): cómo funciona la app para la persona. Presupuestos,
  * los avisos de próximos pagos, el recordatorio de registro, la apariencia y el idioma; lo que se agregue después
- * (la moneda…) va aquí como otra sección. Mi cuenta se queda con quién es y su seguridad (decisión del dueño).
+ * va aquí como otra sección. Mi cuenta se queda con quién es y su seguridad (decisión del dueño).
  */
 async function Settings() {
   const user = await requireUser();
@@ -94,7 +94,7 @@ async function Settings() {
         </ul>
       </nav>
 
-      <Budgets rows={budgetRows(progress, user.currency, locale)} options={options} month={formatMonthName(current, { locale })} />
+      <Budgets rows={budgetRows(progress, locale)} options={options} month={formatMonthName(current, { locale })} />
 
       <NotificationSettings {...notifications} />
 

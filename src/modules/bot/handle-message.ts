@@ -198,7 +198,6 @@ async function respond(msg: IncomingMessage, deps: Deps, language: { locale: Loc
       const items = await withHistoryDescriptions(user.id, intent.items, categories, today);
       const saved = await createTransactionsFromMessage({
         userId: user.id,
-        currency: user.currency,
         messageId: msg.id,
         items,
         categories,
@@ -215,11 +214,10 @@ async function respond(msg: IncomingMessage, deps: Deps, language: { locale: Loc
           items.map((item) => ({ ...item, category: item.category && label(item.type, item.category) })),
           {
             today,
-            currency: user.currency,
             balance: summary.balance,
             range,
             locale,
-            budgetAlerts: crossings.map((crossing) => ({ level: crossing.level, text: budgetAlert(crossing, user.currency, locale) })),
+            budgetAlerts: crossings.map((crossing) => ({ level: crossing.level, text: budgetAlert(crossing, locale) })),
           },
         ),
       };
@@ -240,7 +238,6 @@ async function respond(msg: IncomingMessage, deps: Deps, language: { locale: Loc
         return {
           ...base,
           reply: replies.balanceReply(summary, {
-            currency: user.currency,
             range: asked.month,
             locale,
             previous: { month: previous, summary: before, upToToday },
@@ -254,11 +251,11 @@ async function respond(msg: IncomingMessage, deps: Deps, language: { locale: Loc
         if ("tooOld" in asked) return { ...base, reply: replies.tooOldYearReply(locale) };
         const period = reportPeriod(asked.id, range, locale);
         const report = await getReport(user.id, period, range, locale);
-        return { ...base, reply: replies.reportReply(report, period, { currency: user.currency, appUrl: deps.appUrl, locale }) };
+        return { ...base, reply: replies.reportReply(report, period, { appUrl: deps.appUrl, locale }) };
       }
       if (intent.command === "undo") {
         const removed = await undoLastWhatsAppEntry(user.id);
-        return { ...base, reply: replies.undoReply(removed, user.currency, locale) };
+        return { ...base, reply: replies.undoReply(removed, locale) };
       }
       return { ...base, reply: replies.helpReply(locale, user.name) };
     }

@@ -13,7 +13,7 @@ const now = new Date("2026-10-20T17:00:00Z");
 const add = (userId: string, values: Partial<typeof transaction.$inferInsert>) =>
   db.insert(transaction).values({ userId, type: "expense", amount: 1000, description: "Movimiento", occurredOn: "2026-10-05", ...values });
 
-const owner = (user: { id: string; name: string }) => ({ ...user, timezone: "America/Bogota", currency: "COP" });
+const owner = (user: { id: string; name: string }) => ({ ...user, timezone: "America/Bogota" });
 
 describe("reportPdfData", () => {
   it("los últimos 12 meses de la persona, sin lo de otra cuenta ni lo eliminado", async () => {

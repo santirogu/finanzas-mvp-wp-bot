@@ -21,7 +21,6 @@ vi.mock("@/lib/session", () => ({
     name: "Ana",
     email: "ana@test.local",
     timezone: "America/Bogota",
-    currency: "COP",
     role: data.role,
     superAdmin: false,
     twoFactorEnabled: data.twoFactorEnabled,

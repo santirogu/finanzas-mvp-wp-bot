@@ -10,9 +10,9 @@ import { axisLabel, chartScale, reportPdfView } from "./view";
 const current: Month = { year: 2026, month: 10 };
 const today = "2026-10-20";
 
-function viewOf(movements: SampleMovement[], { name = "Ana", currency = "COP", locale = "es" as "es" | "en" } = {}) {
+function viewOf(movements: SampleMovement[], { name = "Ana", locale = "es" as "es" | "en" } = {}) {
   const { report, period, byDay } = sampleReport(movements, current, locale);
-  return reportPdfView({ report, period, byDay, current, today, name, currency, locale });
+  return reportPdfView({ report, period, byDay, current, today, name, locale });
 }
 
 const year = viewOf(sampleMovements(current, today));
@@ -89,7 +89,6 @@ describe("reportPdfView", () => {
       currency: "Montos en pesos colombianos (COP)",
       empty: null,
     });
-    expect(viewOf([], { currency: "USD" }).currency).toBe("Montos en USD");
   });
 
   it("las cinco cifras del período, con sus notas y colores", () => {
@@ -116,7 +115,7 @@ describe("reportPdfView", () => {
 
   it("con un solo mes (el último mes), solo tres cifras: el promedio y el mes de más gasto repetirían los egresos", () => {
     const { report, period, byDay } = sampleReport(sampleMovements(current, today), current, "es", "1-mes");
-    const view = reportPdfView({ report, period, byDay, current, today, name: "Ana", currency: "COP" });
+    const view = reportPdfView({ report, period, byDay, current, today, name: "Ana" });
     expect(view.range).toBe("Octubre de 2026");
     expect(view.stats.map((stat) => stat.label)).toEqual(["Ingresos", "Egresos", "Balance del período"]);
     // Los egresos de octubre (el primero de la tabla de los 12 meses: va del más reciente al más antiguo).
@@ -126,7 +125,7 @@ describe("reportPdfView", () => {
 
   it("con los últimos 3 meses, las cinco cifras", () => {
     const { report, period, byDay } = sampleReport(sampleMovements(current, today), current, "es", "3-meses");
-    const view = reportPdfView({ report, period, byDay, current, today, name: "Ana", currency: "COP" });
+    const view = reportPdfView({ report, period, byDay, current, today, name: "Ana" });
     expect(view.range).toBe("De agosto a octubre de 2026");
     expect(view.stats).toHaveLength(5);
     expect(view.stats[3].note).toBe("En 2 meses, sin octubre (va en curso)");
@@ -241,7 +240,7 @@ describe("reportPdfView", () => {
 
 describe("reportPdfView · en inglés", () => {
   const { report, period, byDay } = sampleReport(sampleMovements(current, today), current, "en");
-  const view = reportPdfView({ report, period, byDay, current, today, name: "Ana", currency: "COP", locale: "en" });
+  const view = reportPdfView({ report, period, byDay, current, today, name: "Ana", locale: "en" });
 
   it("el encabezado, las cifras y los textos fijos de la hoja", () => {
     const { page, ...fixed } = view.labels;
@@ -297,6 +296,6 @@ describe("reportPdfView · en inglés", () => {
 
   it("sin movimientos", () => {
     const none = sampleReport([], current, "en");
-    expect(reportPdfView({ ...none, current, today, name: "Ana", currency: "COP", locale: "en" }).empty).toBe("You don't have transactions yet.");
+    expect(reportPdfView({ ...none, current, today, name: "Ana", locale: "en" }).empty).toBe("You don't have transactions yet.");
   });
 });

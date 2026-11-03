@@ -62,13 +62,12 @@ async function Fixed() {
       <FixedExpenses
         items={fixed.recurring.items}
         histories={historiesView(fixed, current, locale)}
-        month={fixedMonthView(month, today, user.currency, locale)}
+        month={fixedMonthView(month, today, locale)}
         removed={fixed.recurring.removed}
         candidates={fixed.recurring.candidates}
         total={fixed.recurring.total}
         periodMonths={period.months.length}
         averageExpense={fixed.averageExpense?.amount ?? 0}
-        currency={user.currency}
       />
     </div>
   );

@@ -20,7 +20,6 @@ const sessionUser = {
   name: "Ana Pérez",
   email: "ana@test.local",
   timezone: "America/Bogota",
-  currency: "COP",
   role: "user",
   emailVerified: false,
   image: null,
@@ -46,7 +45,6 @@ describe("getCurrentUser", () => {
       name: "Ana Pérez",
       email: "ana@test.local",
       timezone: "America/Bogota",
-      currency: "COP",
       role: "user",
       superAdmin: false,
       twoFactorEnabled: false,
@@ -62,11 +60,9 @@ describe("getCurrentUser", () => {
     expect(await getCurrentUser()).toMatchObject({ id: "u1" });
   });
 
-  it("usa Bogotá y COP si el usuario no tiene zona horaria o moneda", async () => {
-    mocks.getSession.mockResolvedValue({
-      user: { ...sessionUser, timezone: null, currency: undefined },
-    });
-    expect(await getCurrentUser()).toMatchObject({ timezone: "America/Bogota", currency: "COP" });
+  it("usa Bogotá si el usuario no tiene zona horaria", async () => {
+    mocks.getSession.mockResolvedValue({ user: { ...sessionUser, timezone: null } });
+    expect(await getCurrentUser()).toMatchObject({ timezone: "America/Bogota" });
   });
 });
 
@@ -142,7 +138,6 @@ describe("requireAdmin", () => {
       name: "Ana Pérez",
       email: "ana@test.local",
       timezone: "America/Bogota",
-      currency: "COP",
       role: "admin",
       superAdmin: false,
       twoFactorEnabled: true,
@@ -151,7 +146,7 @@ describe("requireAdmin", () => {
 });
 
 describe("canAdminister (lo de admin fuera de /admin, sin redirigir)", () => {
-  const user = { id: "u1", name: "Ana", email: "ana@test.local", timezone: "America/Bogota", currency: "COP", superAdmin: false };
+  const user = { id: "u1", name: "Ana", email: "ana@test.local", timezone: "America/Bogota", superAdmin: false };
 
   it("solo con el rol de admin y la verificación en dos pasos, como requireAdmin", () => {
     expect(canAdminister({ ...user, role: "admin", twoFactorEnabled: true })).toBe(true);

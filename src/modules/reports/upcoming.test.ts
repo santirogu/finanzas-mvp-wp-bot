@@ -231,7 +231,7 @@ describe("whenLabel y dateLine (los textos del aviso)", () => {
 describe("upcomingItems (los avisos listos para mostrar)", () => {
   it("con su id, el mes, el monto aproximado en negativo, cuándo y si está atrasado", () => {
     const history = paid("Arriendo", "2026-07-05", "2026-08-04", "2026-09-06");
-    expect(upcomingItems(upcomingPayments([rent], history, NONE, "2026-10-10"), "2026-10-10", "COP")).toEqual([
+    expect(upcomingItems(upcomingPayments([rent], history, NONE, "2026-10-10"), "2026-10-10")).toEqual([
       {
         id: "arriendo 2026-10",
         key: "arriendo",
@@ -251,14 +251,13 @@ describe("upcomingItems (los avisos listos para mostrar)", () => {
     const [withCategory] = upcomingItems(
       upcomingPayments([rent], history, NONE, "2026-10-10").map((p) => ({ ...p, category: "🏠 Vivienda" })),
       "2026-10-10",
-      "COP",
     );
     expect(withCategory.category).toBe("🏠 Vivienda");
   });
 
   it("un pago del año siguiente lleva el año en el nombre del mes", () => {
     const first = paid("Arriendo", "2026-10-01", "2026-11-01", "2026-12-01");
-    const [item] = upcomingItems(upcomingPayments([rent], first, NONE, "2026-12-30"), "2026-12-30", "COP");
+    const [item] = upcomingItems(upcomingPayments([rent], first, NONE, "2026-12-30"), "2026-12-30");
     expect(item).toMatchObject({ monthName: "enero de 2027", when: "En 2 días", overdue: false });
   });
 });
@@ -330,7 +329,7 @@ describe("los textos de los avisos en inglés", () => {
 
   it("el aviso listo para mostrar: el mes, el monto y el campo con el formato de EE. UU., y sin categoría", () => {
     const history = paid("Arriendo", "2026-07-05", "2026-08-04", "2026-09-06");
-    const [item] = upcomingItems(upcomingPayments([rent], history, NONE, "2026-10-10"), "2026-10-10", "COP", "en");
+    const [item] = upcomingItems(upcomingPayments([rent], history, NONE, "2026-10-10"), "2026-10-10", "en");
     expect(item).toMatchObject({
       monthName: "October",
       amount: "≈ −$1,800,000.00",
@@ -340,7 +339,7 @@ describe("los textos de los avisos en inglés", () => {
       amountInput: "1,800,000.00",
     });
     // Con categoría (null también es "sin categoría").
-    const [withCategory] = upcomingItems([{ ...upcomingPayments([rent], history, NONE, "2026-10-10")[0], category: null }], "2026-10-10", "COP", "en");
+    const [withCategory] = upcomingItems([{ ...upcomingPayments([rent], history, NONE, "2026-10-10")[0], category: null }], "2026-10-10", "en");
     expect(withCategory.category).toBe("No category");
   });
 });

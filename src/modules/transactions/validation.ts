@@ -44,7 +44,7 @@ export function amountSchema(locale: Locale) {
       return z.NEVER;
     }
     if (parsed > MAX_AMOUNT) {
-      ctx.addIssue(amountIssue(t.tooMuch(formatMoney(MAX_AMOUNT, "COP", locale))));
+      ctx.addIssue(amountIssue(t.tooMuch(formatMoney(MAX_AMOUNT, locale))));
       return z.NEVER;
     }
     return parsed;

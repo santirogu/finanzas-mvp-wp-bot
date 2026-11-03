@@ -48,11 +48,11 @@ const percents: Readonly<Record<Locale, Intl.NumberFormat>> = {
 };
 
 /** El balance frente al del mes anterior, en plata: "$120.000,00 más que agosto" (`ref`, de `previousMonthReference`). */
-export function balanceChange(current: number, previous: number, ref: Reference, currency?: string, locale: Locale = DEFAULT_LOCALE): MonthChange {
+export function balanceChange(current: number, previous: number, ref: Reference, locale: Locale = DEFAULT_LOCALE): MonthChange {
   const t = TEXTS[locale];
   const diff = roundToCents(current - previous);
   if (diff === 0) return { direction: "same", text: t.same(ref) };
-  const amount = formatMoney(Math.abs(diff), currency, locale);
+  const amount = formatMoney(Math.abs(diff), locale);
   return {
     // Stryker disable next-line EqualityOperator: una diferencia de 0 ya volvió arriba ("Igual que…")
     direction: diff > 0 ? "up" : "down",

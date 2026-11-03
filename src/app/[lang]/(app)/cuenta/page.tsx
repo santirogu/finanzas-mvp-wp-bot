@@ -19,9 +19,6 @@ const TEXTS = texts(
     changeEmail: "Cambiar correo",
     changeEmailSoon: "Pronto: cuando podamos enviarte un correo para confirmarlo",
     role: "Tipo de cuenta",
-    currency: "Moneda",
-    currencySoon: "Pronto: USD y EUR",
-    currencies: { COP: "Peso colombiano" } as Record<string, string>,
     soon: "Pronto",
     settings: "¿Buscas los presupuestos, los avisos, la apariencia o el idioma? Están en",
     settingsLink: "Configuración",
@@ -38,9 +35,6 @@ const TEXTS = texts(
       changeEmail: "Change email",
       changeEmailSoon: "Soon: once we can send you an email to confirm it",
       role: "Account type",
-      currency: "Currency",
-      currencySoon: "Soon: USD and EUR",
-      currencies: { COP: "Colombian peso" },
       soon: "Soon",
       settings: "Looking for budgets, notices, appearance or language? They're in",
       settingsLink: "Settings",
@@ -109,9 +103,6 @@ async function Account() {
             <span className="break-all">{user.email}</span>
           </DataRow>
           <DataRow label={t.role}>{roleLabel(user.role, user.superAdmin, locale)}</DataRow>
-          <DataRow label={t.currency} action={<Soon label={t.currencySoon} />}>
-            {t.currencies[user.currency] ? `${t.currencies[user.currency]} (${user.currency})` : user.currency}
-          </DataRow>
         </dl>
       </section>
 

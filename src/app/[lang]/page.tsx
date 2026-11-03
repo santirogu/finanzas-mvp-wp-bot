@@ -165,7 +165,7 @@ export default async function Home() {
 
 /** Una conversación con el bot, como se ve en WhatsApp: tu mensaje a la derecha y la respuesta a la izquierda. */
 function ChatExample({ label, chat, locale }: { label: string; chat: (typeof TEXTS)[Locale]["chat"]; locale: Locale }) {
-  const money = (amount: number) => formatMoney(amount, "COP", locale);
+  const money = (amount: number) => formatMoney(amount, locale);
   const sent = "ml-auto w-fit max-w-[85%] rounded-2xl rounded-br-md bg-brand/10 px-4 py-2.5";
   const received = "mr-auto w-fit max-w-[85%] rounded-2xl rounded-bl-md bg-background px-4 py-2.5";
   return (

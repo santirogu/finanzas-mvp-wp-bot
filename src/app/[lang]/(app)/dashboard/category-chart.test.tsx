@@ -18,7 +18,7 @@ const CATEGORIES = [
 const TOTAL = 1_000_000;
 
 function renderChart(categories = CATEGORIES, total = TOTAL) {
-  render(<CategoryChart slices={chartSlices(categories, total)} total={total} currency="COP" />);
+  render(<CategoryChart slices={chartSlices(categories, total)} total={total} />);
   return { slices: () => [...document.querySelectorAll("circle[data-slice]")] };
 }
 
@@ -143,7 +143,7 @@ describe("CategoryChart", () => {
 describe("CategoryChart · en inglés", () => {
   it("el total al centro, los montos y las chicas juntas, en inglés", () => {
     const small = [cat("Vivienda", "🏠", 900_000), cat("Café", "☕", 10_000), cat("Parqueadero", "🚗", 10_000)];
-    render(<CategoryChart slices={chartSlices(small, 920_000)} total={920_000} currency="COP" />, { wrapper: InEnglish });
+    render(<CategoryChart slices={chartSlices(small, 920_000)} total={920_000} />, { wrapper: InEnglish });
     expect(screen.getByText("Expenses")).toBeVisible();
     expect(screen.getByText("$920,000.00")).toBeVisible();
     expect(screen.getByRole("button", { name: /^2 more/ })).toHaveTextContent("$20,000.00 · 2%");

@@ -83,7 +83,7 @@ describe("monthFactText", () => {
     [{ ...base, direction: "down", name: "Domicilios", current: 0, average: 120000, pct: 100 }, "Domicilios: no llevas nada, y a esta altura en tus últimos 3 meses solías llevar $120.000,00."],
     [{ ...base, averaged: [m(9)], direction: "up", name: "Mercado", current: 150000, average: 100000, pct: 1500 }, "Mercado: llevas $150.000,00, 1.500\u00a0% más que a esta altura de septiembre."],
   ])("%j", (fact, text) => {
-    expect(monthFactText(fact, "COP")).toBe(text);
+    expect(monthFactText(fact)).toBe(text);
   });
 
   it.each<[MonthFact, string]>([
@@ -92,6 +92,6 @@ describe("monthFactText", () => {
     [{ ...base, direction: "up", name: "Trips", current: 500000, average: 0, pct: null }, "Trips: $500,000.00 so far, and by this point in your last 3 months you didn't spend on it."],
     [{ ...base, direction: "down", name: "Delivery", current: 0, average: 120000, pct: 100 }, "Delivery: nothing so far, and by this point in your last 3 months you usually had $120,000.00."],
   ])("en inglés: %j", (fact, text) => {
-    expect(monthFactText(fact, "COP", "en")).toBe(text);
+    expect(monthFactText(fact, "en")).toBe(text);
   });
 });

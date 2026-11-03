@@ -36,7 +36,7 @@ describe("vinculación de WhatsApp", () => {
   });
 
   it("consumir el código crea el vínculo y permite encontrar al usuario por teléfono", async () => {
-    const user = await createUser({ name: "Ana", timezone: "America/Bogota", currency: "COP", locale: "en" });
+    const user = await createUser({ name: "Ana", timezone: "America/Bogota", locale: "en" });
     const { code } = await createLinkCode(user.id);
 
     // Con el idioma de la cuenta, para la respuesta del bot.
@@ -51,7 +51,6 @@ describe("vinculación de WhatsApp", () => {
       id: user.id,
       name: "Ana",
       timezone: "America/Bogota",
-      currency: "COP",
       locale: "en",
       suspendedAt: null,
     });

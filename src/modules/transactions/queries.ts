@@ -67,7 +67,6 @@ export async function listTransactions(
       id: transaction.id,
       type: transaction.type,
       amount: transaction.amount,
-      currency: transaction.currency,
       description: transaction.description,
       occurredOn: transaction.occurredOn,
       source: transaction.source,

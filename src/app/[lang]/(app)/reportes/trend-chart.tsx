@@ -52,10 +52,10 @@ const heightOf = (amount: number, top: number) => (amount > 0 ? Math.max((amount
  * naranja, los colores de cada uno en toda la app) y, al pasar el mouse o llegar con Tab, el detalle de
  * ese mes debajo. Cada mes es un enlace a su Resumen: el lector de pantalla lee en él todo lo del mes.
  */
-export function TrendChart({ points, currency }: { points: TrendPoint[]; currency: string }) {
+export function TrendChart({ points }: { points: TrendPoint[] }) {
   const [active, setActive] = useState<number | null>(null);
   const locale = useLocale();
-  const money = (n: number) => formatMoney(n, currency, locale);
+  const money = (n: number) => formatMoney(n, locale);
   const top = Math.max(...points.flatMap((p) => [p.income, p.expense]), 0);
   const detail = (p: TrendPoint) => TEXTS[locale].detail(p.name, money(p.income), money(p.expense), money(p.balance));
   const shown = active === null ? null : points[active];

@@ -11,7 +11,7 @@ import { type ReportPdfView, reportPdfView } from "./view";
  * `user` (la persona de la sesión, ya validada por requireUser), en el idioma `locale`. `now`, para las pruebas.
  */
 export async function reportPdfData(
-  user: Pick<CurrentUser, "id" | "name" | "timezone" | "currency">,
+  user: Pick<CurrentUser, "id" | "name" | "timezone">,
   periodParam: unknown,
   now: Date = new Date(),
   locale: Locale = DEFAULT_LOCALE,
@@ -23,5 +23,5 @@ export async function reportPdfData(
     getExpensesByDay(user.id, period.months[0], period.months[period.months.length - 1]),
   ]);
   const today = todayInTimezone(user.timezone, now);
-  return { period, view: reportPdfView({ report, period, byDay, current, today, name: user.name, currency: user.currency, locale }) };
+  return { period, view: reportPdfView({ report, period, byDay, current, today, name: user.name, locale }) };
 }

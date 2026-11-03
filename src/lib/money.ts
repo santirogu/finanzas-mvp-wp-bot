@@ -9,9 +9,10 @@ const formatters = new Map<string, Intl.NumberFormat>();
  * Un monto como se muestra en toda la app (web y bot): con dos decimales y sin espacio después del
  * símbolo, "$1.000.000,00", "$45.900,50" o "−$50.000,00" (en inglés, "$1,000,000.00"). Los negativos
  * llevan el signo menos tipográfico (U+2212), el mismo que las listas les ponen a los egresos, no el
- * guion de Intl.
+ * guion de Intl. La app lleva todo en pesos colombianos; `currency` existe solo para los costos de Claude,
+ * que el admin ve en dólares ("US$0,07").
  */
-export function formatMoney(amount: number, currency = "COP", locale: Locale = DEFAULT_LOCALE): string {
+export function formatMoney(amount: number, locale: Locale = DEFAULT_LOCALE, currency: "COP" | "USD" = "COP"): string {
   const key = `${locale} ${currency}`;
   let fmt = formatters.get(key);
   // Stryker disable next-line ConditionalExpression: el caché solo evita crear el formateador cada vez; el resultado es el mismo

@@ -662,7 +662,7 @@ describe("handleIncomingMessage · comandos", () => {
     expect(await activeTransactions(user.id)).toEqual([]);
 
     await handleIncomingMessage(incoming("deshacer"), d);
-    expect(sender.sent[2].body).toBe(replies.undoReply([], "COP", "es"));
+    expect(sender.sent[2].body).toBe(replies.undoReply([], "es"));
   });
 
   it("deshacer no toca los movimientos de otro usuario, aunque sean más recientes", async () => {
@@ -1139,7 +1139,7 @@ describe("handleIncomingMessage · cuenta en inglés", () => {
       "You don't have any transactions from January to December 2025. Send me something like “spent 20k on lunch” and you'll see how you're doing here.",
     );
     expect(bodies[3]).toBe(replies.helpReply("en", "Ana Pérez"));
-    expect(bodies[4]).toBe(replies.undoReply([], "COP", "en"));
+    expect(bodies[4]).toBe(replies.undoReply([], "en"));
     expect(bodies[5]).toBe(replies.tooOldMonthReply("en"));
     expect(bodies[6]).toBe(replies.futureYearReply(current.year + 1, "en"));
     expect(extractor.calls).toBe(0);

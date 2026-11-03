@@ -52,7 +52,7 @@ describe("budgetProgress", () => {
 });
 
 describe("budgetRows (los textos)", () => {
-  const rows = (b: Budget[], spent: Map<string, number>, locale: "es" | "en" = "es") => budgetRows(budgetProgress(b, spent, locale), "COP", locale);
+  const rows = (b: Budget[], spent: Map<string, number>, locale: "es" | "en" = "es") => budgetRows(budgetProgress(b, spent, locale), locale);
   const nbsp = (s: string) => s.replace(/ /g, " ");
 
   it("cuánto lleva de cuánto, el porcentaje, la barra y cuánto le queda", () => {
@@ -151,12 +151,12 @@ describe("budgetAlert (el texto del aviso)", () => {
   const crossing = (level: "near" | "over", spent: number, share: number) => ({ categoryId: "m", name: "Mercado", amount: 500000, level, spent, share });
 
   it("cuánto lleva de cuánto, o por cuánto se pasó", () => {
-    expect(nbsp(budgetAlert(crossing("near", 410000, 82), "COP"))).toBe("Mercado: llevas $410.000,00 de $500.000,00 (82 %)");
-    expect(budgetAlert(crossing("over", 510000.5, 102), "COP")).toBe("Mercado: te pasaste del presupuesto por $10.000,50 ($510.000,50 de $500.000,00)");
+    expect(nbsp(budgetAlert(crossing("near", 410000, 82)))).toBe("Mercado: llevas $410.000,00 de $500.000,00 (82 %)");
+    expect(budgetAlert(crossing("over", 510000.5, 102))).toBe("Mercado: te pasaste del presupuesto por $10.000,50 ($510.000,50 de $500.000,00)");
   });
 
   it("en inglés", () => {
-    expect(budgetAlert(crossing("near", 410000, 82), "COP", "en")).toBe("Mercado: $410,000.00 of $500,000.00 so far (82%)");
-    expect(budgetAlert(crossing("over", 510000, 102), "COP", "en")).toBe("Mercado: $10,000.00 over budget ($510,000.00 of $500,000.00)");
+    expect(budgetAlert(crossing("near", 410000, 82), "en")).toBe("Mercado: $410,000.00 of $500,000.00 so far (82%)");
+    expect(budgetAlert(crossing("over", 510000, 102), "en")).toBe("Mercado: $10,000.00 over budget ($510,000.00 of $500,000.00)");
   });
 });

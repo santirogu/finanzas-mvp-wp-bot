@@ -195,7 +195,7 @@ function SpanishTopics({ values, A }: { values: AppValues; A: PageLink }) {
         <p>
           Debajo de <strong>Egresos por categoría</strong>, el <strong>Dato del mes</strong> te dice qué se salió de lo normal. Compara
           lo que llevas este mes con lo que solías llevar a esta altura en tus últimos meses, sin los gastos fijos. Sale la categoría
-          que más subió en plata (al menos {formatPercent(FACT_MIN_SHARE)} y {formatMoney(FACT_MIN_AMOUNT, "COP")}) o, si ninguna, la que
+          que más subió en plata (al menos {formatPercent(FACT_MIN_SHARE)} y {formatMoney(FACT_MIN_AMOUNT)}) o, si ninguna, la que
           más bajó.
         </p>
       </Topic>
@@ -313,7 +313,7 @@ function EnglishTopics({ values, A }: { values: AppValues; A: PageLink }) {
         <p>
           Below <strong>Expenses by category</strong>, <strong>This month</strong> tells you what&apos;s off its usual. It compares what
           you have so far this month with what you usually had by this point, without bills. It shows the category that went up the most
-          in money (at least {formatPercent(FACT_MIN_SHARE, "en")} and {formatMoney(FACT_MIN_AMOUNT, "COP", "en")}) or, if none did, the
+          in money (at least {formatPercent(FACT_MIN_SHARE, "en")} and {formatMoney(FACT_MIN_AMOUNT, "en")}) or, if none did, the
           one that went down the most.
         </p>
       </Topic>

@@ -224,8 +224,8 @@ describe("formatMoney", () => {
     expect(formatMoney(1000000)).not.toMatch(/\s/);
   });
 
-  it("otras monedas, igual: dos decimales y sin espacio", () => {
-    expect(formatMoney(1234.5, "USD")).toBe("US$1.234,50");
+  it("en dólares (los costos de Claude), igual: dos decimales y sin espacio", () => {
+    expect(formatMoney(1234.5, "es", "USD")).toBe("US$1.234,50");
   });
 });
 
@@ -263,12 +263,12 @@ describe("formatPercent", () => {
 
 describe("en inglés (los separadores al revés)", () => {
   it("formatMoney: $1,000,000.00, con el mismo signo menos y el peso como $", () => {
-    expect(formatMoney(1_000_000, "COP", "en")).toBe("$1,000,000.00");
-    expect(formatMoney(45_900.5, "COP", "en")).toBe("$45,900.50");
-    expect(formatMoney(-50_000, "COP", "en")).toBe("−$50,000.00");
-    expect(formatMoney(0, "COP", "en")).toBe("$0.00");
+    expect(formatMoney(1_000_000, "en")).toBe("$1,000,000.00");
+    expect(formatMoney(45_900.5, "en")).toBe("$45,900.50");
+    expect(formatMoney(-50_000, "en")).toBe("−$50,000.00");
+    expect(formatMoney(0, "en")).toBe("$0.00");
     // El español no cambia, aunque antes se haya pedido el inglés (cada idioma, su formateador).
-    expect(formatMoney(1_000_000, "COP", "es")).toBe("$1.000.000,00");
+    expect(formatMoney(1_000_000, "es")).toBe("$1.000.000,00");
     expect(formatMoney(1_000_000)).toBe("$1.000.000,00");
   });
 

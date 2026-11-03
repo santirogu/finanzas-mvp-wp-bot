@@ -140,7 +140,7 @@ async function Reports({ period: param, calendar: calendarParam }: { period: Par
     getExpensesByDay(user.id, period.months[0], period.months[period.months.length - 1]),
     getMonthExpenses(user.id, calendar, locale),
   ]);
-  const money = (n: number) => formatMoney(n, user.currency, locale);
+  const money = (n: number) => formatMoney(n, locale);
 
   return (
     <div className="space-y-6">
@@ -180,7 +180,7 @@ async function Reports({ period: param, calendar: calendarParam }: { period: Par
 
           <section className="card p-4" aria-label={t.byMonth}>
             <h2 className="font-semibold">{t.byMonth}</h2>
-            <TrendChart points={trendPoints(report, current, locale)} currency={user.currency} />
+            <TrendChart points={trendPoints(report, current, locale)} />
             <MonthTable report={report} current={current} money={money} locale={locale} />
           </section>
 
@@ -196,7 +196,6 @@ async function Reports({ period: param, calendar: calendarParam }: { period: Par
           <DailySpending
             key={monthParam(calendar)}
             {...dailyView({ report, period, month: calendar, byDay, monthExpenses, today: todayInTimezone(user.timezone), locale })}
-            currency={user.currency}
           />
         </>
       )}
@@ -228,7 +227,7 @@ function dailyView({
   monthExpenses: ExpenseRow[];
   today: string;
   locale: Locale;
-}): Omit<DailySpendingProps, "currency"> {
+}): DailySpendingProps {
   const t = TEXTS[locale];
   const fixed = report.recurring.items;
   const days = dayTotals(byDay, fixed);

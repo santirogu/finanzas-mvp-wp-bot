@@ -42,11 +42,11 @@ const TEXTS = texts(
  * en la lista o en la dona, resalta su tajada. La lista dice todo lo que muestra la dona: el lector de
  * pantalla lee la lista (la dona es decorativa).
  */
-export function CategoryChart({ slices, total, currency }: { slices: ChartSlice[]; total: number; currency: string }) {
+export function CategoryChart({ slices, total }: { slices: ChartSlice[]; total: number }) {
   const locale = useLocale();
   const t = TEXTS[locale];
   const [active, setActive] = useState<number | null>(null);
-  const money = (n: number) => formatMoney(n, currency, locale);
+  const money = (n: number) => formatMoney(n, locale);
   const toggle = (i: number) => setActive(active === i ? null : i);
   const arcs = donutArcs(slices);
   const totalLabel = money(total);
