@@ -1,9 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { getAppUrl, getPublicUrl, getVercelOrigins } from "./app-url";
+import { getAppUrl, getVercelOrigins } from "./app-url";
 
 beforeEach(() => {
   for (const name of [
     "BETTER_AUTH_URL",
+    "APP_PUBLIC_URL",
     "VERCEL_PROJECT_PRODUCTION_URL",
     "VERCEL_URL",
     "VERCEL_BRANCH_URL",
@@ -28,22 +29,20 @@ describe("getAppUrl", () => {
   it("en local usa localhost:3000", () => {
     expect(getAppUrl()).toBe("http://localhost:3000");
   });
-});
 
-describe("getPublicUrl", () => {
-  it("la que fijó el build desde PRODUCTION_URL, sin la barra final", () => {
-    expect(getPublicUrl("https://finanzas-mvp-wp-bot.vercel.app/")).toBe("https://finanzas-mvp-wp-bot.vercel.app");
+  it("la de producción que fijó el build (PRODUCTION_URL del despliegue) va antes que la de Vercel", () => {
+    vi.stubEnv("VERCEL_PROJECT_PRODUCTION_URL", "finanzas-mvp-wp-bot.vercel.app");
+    expect(getAppUrl({ built: "https://anotadoapp.vercel.app/" })).toBe("https://anotadoapp.vercel.app");
+    // BETTER_AUTH_URL sigue mandando (las E2E).
+    vi.stubEnv("BETTER_AUTH_URL", "http://localhost:3100");
+    expect(getAppUrl({ built: "https://anotadoapp.vercel.app" })).toBe("http://localhost:3100");
   });
 
-  it("sin ella (en local, en las E2E), la de getAppUrl", () => {
-    expect(getPublicUrl("")).toBe("http://localhost:3000");
-    vi.stubEnv("BETTER_AUTH_URL", "https://finanzas.co");
-    expect(getPublicUrl(undefined)).toBe("https://finanzas.co");
-  });
-
-  it("por defecto lee APP_PUBLIC_URL (lo que fija next.config.ts)", () => {
-    vi.stubEnv("APP_PUBLIC_URL", "https://anotado.co");
-    expect(getPublicUrl()).toBe("https://anotado.co");
+  it("por defecto lee APP_PUBLIC_URL (lo que fija next.config.ts); vacía no cuenta", () => {
+    vi.stubEnv("APP_PUBLIC_URL", "https://anotadoapp.vercel.app");
+    expect(getAppUrl()).toBe("https://anotadoapp.vercel.app");
+    vi.stubEnv("APP_PUBLIC_URL", "");
+    expect(getAppUrl()).toBe("http://localhost:3000");
   });
 });
 
