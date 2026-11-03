@@ -189,6 +189,23 @@ pnpm dev                        # http://localhost:3000 (antes, copia la base lo
     - un área o una página, por ejemplo `/auditoria-textos en` o `/auditoria-textos /egresos`.
   - **El informe**, con los textos extraídos, queda en `reports/textos/` (ignorado por git). Los
     arreglos van en ramas `fix/…`.
+- **Auditoría legal** (`/auditoria-legal`, un skill de Claude Code en `.claude/skills/auditoria-legal/`): compara
+  lo que la app hace con los datos de las personas con lo que exigen por escrito la Ley 1581 de 2012 y el Decreto
+  1377 de 2013. **No es asesoría legal:** lo que pide interpretar la norma queda como pregunta para un abogado.
+  - **Qué revisa:** la autorización y su prueba, el contenido mínimo de la política, los datos sensibles y de
+    menores, los derechos y sus plazos, los proveedores fuera de Colombia, la retención y el borrado, y los
+    deberes ante la SIC.
+  - **Cómo trabaja:**
+    - un inventario automático (`inventario.mjs`, solo lee archivos) compara las tablas, los servicios externos y
+      los plazos de borrado con lo que dice `/privacidad`, y revisa el contenido mínimo de la política;
+    - Claude recorre un checklist con cada norma y su artículo, leídos en su fuente oficial;
+    - cada hallazgo lleva la norma y la evidencia en la app.
+  - **Modos:**
+    - `completa`: una vez al mes, y antes de abrir la app al público;
+    - `cambios`: antes de un PR que agregue datos de las personas, un servicio externo, cambie la retención, la
+      autorización o las páginas legales;
+    - un área, por ejemplo `/auditoria-legal sensibles` o `/auditoria-legal terceros`.
+  - **El informe** queda en `reports/legal/` (ignorado por git), con una sección de preguntas para el abogado.
 - **Errores de los formularios**: en español, debajo de cada campo y nunca el globo del navegador
   (que sale en su idioma, "Please fill out this field."). Los traduce `src/lib/field-errors.ts` y
   los muestra `useFieldErrors`; `src/forms.test.ts` exige que todo formulario con campos validados lo
