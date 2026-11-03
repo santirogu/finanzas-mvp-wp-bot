@@ -56,6 +56,22 @@ const webhook = (messages: unknown[], contacts: unknown[] = []) => ({
 });
 
 describe("extractMessages", () => {
+  it("la respuesta a un botón (el Sí o No del 4x1000): su id y su título, sin texto", () => {
+    const tap = (interactive: unknown) =>
+      extractMessages(webhook([{ id: "wamid.B", from: "573001112233", timestamp: "1791950000", type: "interactive", interactive }]))[0];
+    expect(tap({ type: "button_reply", button_reply: { id: "gmf:si:wamid.A", title: "Sí" } })).toMatchObject({
+      type: "interactive",
+      text: null,
+      image: null,
+      button: { id: "gmf:si:wamid.A", title: "Sí" },
+    });
+    // Otro tipo de interactivo, sin id, o con un id de más de 256 caracteres (el límite de Meta): sin botón.
+    expect(tap({ type: "list_reply", list_reply: { id: "x", title: "x" } }).button).toBeNull();
+    expect(tap({ type: "button_reply", button_reply: { title: "Sí" } }).button).toBeNull();
+    expect(tap({ type: "button_reply", button_reply: { id: "x".repeat(257), title: "Sí" } }).button).toBeNull();
+    expect(tap({ type: "button_reply", button_reply: { id: "x", title: 5 } }).button).toEqual({ id: "x", title: "" });
+  });
+
   it("extrae mensajes de texto con el nombre del contacto", () => {
     const payload = webhook(
       [
@@ -76,6 +92,7 @@ describe("extractMessages", () => {
         type: "text",
         text: "balance",
         image: null,
+        button: null,
         timestamp: 1791950000,
         profileName: "Santiago",
       },

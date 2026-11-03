@@ -28,6 +28,7 @@ const cat = (overrides: Partial<ManagedCategory>): ManagedCategory => ({
   nameEn: null,
   emoji: "🛒",
   archived: false,
+  isTax: false,
   movements: 124,
   isDefault: false,
   ...overrides,
@@ -72,6 +73,17 @@ describe("la lista", () => {
     expect(row("Otros")).toHaveTextContent("su nombre no se cambia");
     expect(otros.getByRole("button", { name: "Editar Otros" })).toBeInTheDocument();
     expect(otros.queryByRole("button", { name: /Más acciones/ })).toBeNull();
+  });
+
+  it("la del 4x1000: 'Del 4x1000', y como Otros solo se edita, sin cambiarle el nombre", async () => {
+    renderManager([cat({ id: "c5", name: "Impuestos", emoji: "🏛️", isTax: true })]);
+    const impuestos = within(row("Impuestos"));
+    expect(impuestos.getByText("Del 4x1000")).toBeInTheDocument();
+    expect(row("Impuestos")).toHaveTextContent("su nombre no se cambia");
+    expect(impuestos.queryByRole("button", { name: /Más acciones/ })).toBeNull();
+    await userEvent.click(impuestos.getByRole("button", { name: "Editar Impuestos" }));
+    expect(within(dialog()).getByLabelText(/^Nombre$/)).toHaveAttribute("readonly");
+    expect(within(dialog()).getByText("A “Impuestos” solo se le pueden cambiar el emoji y el nombre en inglés.")).toBeInTheDocument();
   });
 
   it("'⋯' muestra Archivar y Eliminar (que piden el código) y se vuelve a cerrar", async () => {

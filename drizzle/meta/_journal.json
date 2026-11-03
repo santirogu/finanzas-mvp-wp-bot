@@ -246,6 +246,13 @@
       "when": 1793716946766,
       "tag": "0034_autorizacion-de-datos",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1793729576355,
+      "tag": "0035_aplicar-4x1000",
+      "breakpoints": true
     }
   ]
 }

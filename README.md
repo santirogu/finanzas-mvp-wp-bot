@@ -480,6 +480,20 @@ La app está en español (el de siempre) y en inglés: la web y el bot de WhatsA
     `/privacidad` no la cambia.
   - **El responsable del tratamiento** (`DATA_CONTROLLER`, `src/lib/contact.ts`) sale en `/privacidad` y en
     `/autorizacion`, con el procedimiento de consultas y reclamos y los plazos de ley.
+- **El 4x1000** (el gravamen a los movimientos financieros; `src/modules/transactions/gmf.ts`, decisión del dueño,
+  2026-11-03).
+  - **Qué es:** un egreso aparte por el 0,4 % de otro (redondeado a los centavos), en "Impuestos", con su misma fecha y
+    la descripción "4x1000 · <egreso>".
+  - **Atado a su egreso** (`transaction.tax_of`, único):
+    - si el egreso se edita, se recalcula;
+    - si se borra o se restaura, el 4x1000 también;
+    - no cuenta para detectar gastos fijos (`getExpenseDescriptionsByMonth`).
+  - **En la web:** la casilla "Aplicar 4x1000" del formulario de egresos nuevos (el servidor revisa que esté prendido).
+  - **En el bot:** después de registrar egresos, una sola pregunta con dos botones de WhatsApp (Sí / No). El id de cada
+    botón lleva el mensaje que registró los egresos (`gmf:si:<wamid>`): el Sí registra el 4x1000 de cada egreso de ese
+    mensaje que siga ahí y no lo tenga, sin Claude. El del bot usa el id externo del mismo mensaje (`<wamid>:4x<n>`),
+    así "deshacer" se lleva el egreso y su 4x1000 juntos.
+  - **Configuración → 4x1000** (`user.gmf_enabled`, prendido por defecto): apagado, ni la casilla ni la pregunta.
 - **Solo pesos colombianos** (decisión del dueño, 2026-11-03): ni la cuenta ni los movimientos tienen otra
   moneda. Llevar dólares o euros obligaría a convertir con la TRM de cada día para sumar los totales. El único
   monto en otra moneda es el costo de Claude que ve el admin, en dólares (`formatMoney(…, "USD")`).
@@ -1262,8 +1276,9 @@ de inmediato en los formularios y en el bot (`src/modules/admin/categories/`).
 | Restaurar | No | Vuelve a los formularios y al bot |
 | Eliminar | Sí | Si tiene movimientos, avisa: pasan a "Otros" de su tipo (los de todas las cuentas, también los eliminados), en la misma transacción |
 
-**"Otros"** es la que usa el bot si ninguna encaja: solo se le cambian el emoji y el nombre en inglés (no
-se renombra, archiva ni elimina). Cada cambio queda en `category_change` con el admin y el nombre y emoji de ese momento
+**"Otros"** es la que usa el bot si ninguna encaja, e **"Impuestos"** la del 4x1000 (si no existe, la crea la app la
+primera vez que se registra uno, `taxCategoryId`; si estaba archivada, la restaura): a las dos solo se les cambian el
+emoji y el nombre en inglés (no se renombran, archivan ni eliminan). Cada cambio queda en `category_change` con el admin y el nombre y emoji de ese momento
 (así una eliminada se sigue leyendo) y se ve en "Cambios recientes". Las categorías propias de cada
 cuenta (`category.user_id`) no se administran aquí.
 

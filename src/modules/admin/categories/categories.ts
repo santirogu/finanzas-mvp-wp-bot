@@ -13,6 +13,8 @@ import {
   DEFAULT_CATEGORY,
   foldName,
   isDefaultCategory,
+  isSystemCategory,
+  isTaxCategory,
   parseCategoryName,
   parseEmoji,
   parseEnglishName,
@@ -39,6 +41,8 @@ export type AdminCategory = {
   movements: number;
   /** "Otros": la que usa el bot si ninguna encaja; solo se le cambian el emoji y el nombre en inglés. */
   isDefault: boolean;
+  /** La del 4x1000 (src/modules/transactions/gmf.ts): como "Otros", solo se le cambian el emoji y el nombre en inglés. */
+  isTax: boolean;
 };
 
 export type CategoryChange = CategoryChangeEntry & { id: string; createdAt: Date };
@@ -60,15 +64,17 @@ const TEXTS = texts(
   {
     created: (label: string) => `Se creó la categoría ${label}.`,
     gone: "Esta categoría ya no existe.",
-    defaultOnlyEmoji: `A “${DEFAULT_CATEGORY}” solo se le pueden cambiar el emoji y el nombre en inglés.`,
+    defaultOnlyEmoji: (name: string) => `A “${name}” solo se le pueden cambiar el emoji y el nombre en inglés.`,
     nothing: "No había nada que cambiar.",
     saved: (label: string) => `Se guardó la categoría ${label}.`,
     cannotArchive: `“${DEFAULT_CATEGORY}” no se puede archivar: es la categoría por defecto.`,
+    cannotArchiveTax: (name: string) => `“${name}” no se puede archivar: la usa el 4x1000.`,
     alreadyArchived: "La categoría ya está archivada.",
     archived: (label: string) => `Se archivó la categoría ${label}.`,
     notArchived: "La categoría no está archivada.",
     restored: (label: string) => `Se restauró la categoría ${label}.`,
     cannotDelete: `“${DEFAULT_CATEGORY}” no se puede eliminar: es la categoría por defecto.`,
+    cannotDeleteTax: (name: string) => `“${name}” no se puede eliminar: la usa el 4x1000.`,
     missingDefault: `Falta la categoría “${DEFAULT_CATEGORY}”: créala antes de eliminar otra.`,
     deleted: (label: string, moved: number) =>
       `Se eliminó la categoría ${label}${moved ? `; ${moved} ${moved === 1 ? "movimiento pasó" : "movimientos pasaron"} a ${DEFAULT_CATEGORY}` : ""}.`,
@@ -79,15 +85,17 @@ const TEXTS = texts(
     en: {
       created: (label) => `The category ${label} was created.`,
       gone: "This category no longer exists.",
-      defaultOnlyEmoji: `Only the emoji and the English name of “${DEFAULT_CATEGORY}” can be changed.`,
+      defaultOnlyEmoji: (name) => `Only the emoji and the English name of “${name}” can be changed.`,
       nothing: "There was nothing to change.",
       saved: (label) => `The category ${label} was saved.`,
       cannotArchive: `“${DEFAULT_CATEGORY}” can't be archived: it's the default category.`,
+      cannotArchiveTax: (name) => `“${name}” can't be archived: the 4x1000 uses it.`,
       alreadyArchived: "The category is already archived.",
       archived: (label) => `The category ${label} was archived.`,
       notArchived: "The category isn't archived.",
       restored: (label) => `The category ${label} was restored.`,
       cannotDelete: `“${DEFAULT_CATEGORY}” can't be deleted: it's the default category.`,
+      cannotDeleteTax: (name) => `“${name}” can't be deleted: the 4x1000 uses it.`,
       missingDefault: `The “${DEFAULT_CATEGORY}” category is missing: create it before deleting another one.`,
       deleted: (label, moved) =>
         `The category ${label} was deleted${moved ? `; ${moved} ${moved === 1 ? "transaction" : "transactions"} moved to ${DEFAULT_CATEGORY}` : ""}.`,
@@ -147,6 +155,7 @@ export async function listAdminCategories(): Promise<AdminCategory[]> {
     ...row,
     archived: archivedAt !== null,
     isDefault: isDefaultCategory(row.name),
+    isTax: isTaxCategory(row.name, row.type),
   }));
 }
 
@@ -238,8 +247,8 @@ export async function updateCategory(input: { id: string; name: string; nameEn?:
   if (!nameEn.ok) return fail(nameEn.error, "nameEn");
   const emoji = parseEmoji(input.emoji, locale);
   if (!emoji.ok) return fail(emoji.error, "emoji");
-  if (isDefaultCategory(current.name) && name.value !== current.name) {
-    return fail(t.defaultOnlyEmoji, "name");
+  if (isSystemCategory(current.name, current.type) && name.value !== current.name) {
+    return fail(t.defaultOnlyEmoji(current.name), "name");
   }
   const englishChanged = nameEn.value !== current.nameEn;
   if (name.value === current.name && emoji.value === current.emoji && !englishChanged) return { ok: true, message: t.nothing };
@@ -272,6 +281,7 @@ export async function archiveCategory(input: { id: string; code: string }, now =
   const current = await loadCategory(input.id);
   if (!current) return fail(t.gone);
   if (isDefaultCategory(current.name)) return fail(t.cannotArchive);
+  if (isTaxCategory(current.name, current.type)) return fail(t.cannotArchiveTax(current.name));
   if (current.archivedAt) return fail(t.alreadyArchived);
   const check = await confirmAdminCode(input.code, now);
   if (!check.ok) return fail(check.error, "code");
@@ -308,6 +318,7 @@ export async function deleteCategory(input: { id: string; code: string }, now = 
   const current = await loadCategory(input.id);
   if (!current) return fail(t.gone);
   if (isDefaultCategory(current.name)) return fail(t.cannotDelete);
+  if (isTaxCategory(current.name, current.type)) return fail(t.cannotDeleteTax(current.name));
   const [fallback] = await db
     .select({ id: category.id, name: category.name })
     .from(category)

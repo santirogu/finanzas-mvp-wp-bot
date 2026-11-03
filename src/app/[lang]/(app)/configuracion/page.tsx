@@ -8,8 +8,10 @@ import { getBudgetProgress, listBudgetCategories } from "@/modules/budgets/budge
 import { budgetRows } from "@/modules/budgets/progress";
 import { getReminderSettings } from "@/modules/reminders/reminders";
 import { getUpcomingSettings } from "@/modules/reports/upcoming-settings";
+import { getGmfEnabled } from "@/modules/transactions/gmf";
 import { PageSkeleton } from "../page-skeleton";
 import { Budgets } from "./budgets";
+import { GmfSettings } from "./gmf-settings";
 import { LanguagePicker } from "./language-picker";
 import { NotificationSettings } from "./notification-settings";
 import { ReminderSettings } from "./reminder-settings";
@@ -20,7 +22,14 @@ const TEXTS = texts(
     title: "Configuración",
     intro: "Cómo funciona la app para ti.",
     contents: "En esta página",
-    sections: { presupuestos: "Presupuestos", notificaciones: "Notificaciones", recordatorio: "Recordatorio", apariencia: "Apariencia", idioma: "Idioma" },
+    sections: {
+      presupuestos: "Presupuestos",
+      notificaciones: "Notificaciones",
+      recordatorio: "Recordatorio",
+      impuestos: "4x1000",
+      apariencia: "Apariencia",
+      idioma: "Idioma",
+    },
     appearance: "Apariencia",
     appearanceIntro:
       "Con “Sistema”, la app se ve clara u oscura según tu celular o computador. Se guarda en tu cuenta: la ves así en cualquier dispositivo donde inicies sesión.",
@@ -32,7 +41,14 @@ const TEXTS = texts(
       title: "Settings",
       intro: "How the app works for you.",
       contents: "On this page",
-      sections: { presupuestos: "Budgets", notificaciones: "Notifications", recordatorio: "Reminder", apariencia: "Appearance", idioma: "Language" },
+      sections: {
+        presupuestos: "Budgets",
+        notificaciones: "Notifications",
+        recordatorio: "Reminder",
+        impuestos: "4x1000",
+        apariencia: "Appearance",
+        idioma: "Language",
+      },
       appearance: "Appearance",
       appearanceIntro:
         "With “System”, the app looks light or dark depending on your phone or computer. It's saved to your account: you see it this way on any device where you sign in.",
@@ -57,7 +73,7 @@ export default function ConfiguracionPage() {
 
 /**
  * Configuración (en el menú de la cuenta, junto a Mi cuenta): cómo funciona la app para la persona. Presupuestos,
- * los avisos de próximos pagos, el recordatorio de registro, la apariencia y el idioma; lo que se agregue después
+ * los avisos de próximos pagos, el recordatorio de registro, el 4x1000, la apariencia y el idioma; lo que se agregue después
  * va aquí como otra sección. Mi cuenta se queda con quién es y su seguridad (decisión del dueño).
  */
 async function Settings() {
@@ -65,11 +81,12 @@ async function Settings() {
   const locale = await getLocale();
   const t = TEXTS[locale];
   const current = currentMonthRange(user.timezone);
-  const [progress, options, notifications, reminder] = await Promise.all([
+  const [progress, options, notifications, reminder, gmf] = await Promise.all([
     getBudgetProgress(user.id, current, locale),
     listBudgetCategories(user.id, locale),
     getUpcomingSettings(user.id),
     getReminderSettings(user.id),
+    getGmfEnabled(user.id),
   ]);
 
   return (
@@ -99,6 +116,8 @@ async function Settings() {
       <NotificationSettings {...notifications} />
 
       <ReminderSettings {...reminder} />
+
+      <GmfSettings enabled={gmf} />
 
       <section className="card scroll-mt-4 space-y-3 p-4 text-sm" aria-labelledby="apariencia">
         <div className="space-y-1">

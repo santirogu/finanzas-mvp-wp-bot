@@ -8,19 +8,32 @@ import { MEDIA_ID } from "./payload";
 const GRAPH_VERSION = envVar("WHATSAPP_GRAPH_VERSION") || "v26.0";
 
 export type SendResult = { ok: true } | { ok: false; error: string };
-export type Sender = (to: string, body: string) => Promise<SendResult>;
+/** Un botón de respuesta: el id vuelve en el mensaje de la persona al tocarlo; el título, hasta 20 caracteres. */
+export type ReplyButton = { id: string; title: string };
+/** Envía un texto o, con `buttons` (de 1 a 3), el texto con sus botones de respuesta. */
+export type Sender = (to: string, body: string, buttons?: ReplyButton[]) => Promise<SendResult>;
 
 export function isWhatsAppConfigured() {
   return Boolean(envVar("WHATSAPP_ACCESS_TOKEN") && envVar("WHATSAPP_PHONE_NUMBER_ID"));
 }
 
-/** Envía un mensaje de texto con la WhatsApp Cloud API. */
-export const sendWhatsAppText: Sender = async (to, body) => {
+/** Envía un mensaje de texto (o, con botones, uno "interactive") con la WhatsApp Cloud API. */
+export const sendWhatsAppText: Sender = async (to, body, buttons) => {
   if (!isWhatsAppConfigured()) {
     // En desarrollo sin credenciales de Meta, solo se registra en consola.
-    console.info(`[whatsapp:dev] → ${to}\n${body}`);
+    console.info(`[whatsapp:dev] → ${to}\n${body}${buttons ? `\n[${buttons.map((b) => b.title).join("] [")}]` : ""}`);
     return { ok: true };
   }
+  const content = buttons?.length
+    ? {
+        type: "interactive",
+        interactive: {
+          type: "button",
+          body: { text: body },
+          action: { buttons: buttons.map((button) => ({ type: "reply", reply: button })) },
+        },
+      }
+    : { type: "text", text: { preview_url: false, body } };
 
   // WHATSAPP_API_URL: solo para las pruebas E2E (un servidor falso en localhost).
   const base = serviceUrl("WHATSAPP_API_URL", "https://graph.facebook.com");
@@ -37,8 +50,7 @@ export const sendWhatsAppText: Sender = async (to, body) => {
       messaging_product: "whatsapp",
       recipient_type: "individual",
       to,
-      type: "text",
-      text: { preview_url: false, body },
+      ...content,
     }),
     signal: AbortSignal.timeout(10_000),
   }).catch((err: unknown) => describeError(err));

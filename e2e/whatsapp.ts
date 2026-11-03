@@ -5,7 +5,7 @@ import { E2E_WHATSAPP_APP_SECRET, FAKE_SERVICES_URL } from "./fake-config";
 // El WhatsApp de las E2E: mensajes firmados como los manda Meta al webhook, y lo que el bot
 // respondió, guardado por el WhatsApp falso (e2e/fake-services.mjs).
 
-export type Sent = { to: string; text: string };
+export type Sent = { to: string; text: string; buttons?: { id: string; title: string }[] };
 
 /** Número de teléfono distinto en cada prueba (formato de WhatsApp, sin "+"). */
 export const newPhone = () => `57300${randomInt(1_000_000, 10_000_000)}`;
@@ -31,6 +31,13 @@ export const RECEIPT_MEDIA_ID = "7770001";
 export async function sendWhatsAppPhoto(request: APIRequestContext, from: string, caption?: string, mediaId = RECEIPT_MEDIA_ID) {
   const image = { id: mediaId, mime_type: "image/png", sha256: "e2e", ...(caption ? { caption } : {}) };
   const message = { from, id: `wamid.e2e.${randomUUID()}`, timestamp: String(Math.floor(Date.now() / 1000)), type: "image", image };
+  return postToWebhook(request, from, message, E2E_WHATSAPP_APP_SECRET);
+}
+
+/** Toca un botón de un mensaje del bot (el "Sí" o "No" del 4x1000), como lo manda Meta: su id y su título. */
+export async function tapWhatsAppButton(request: APIRequestContext, from: string, button: { id: string; title: string }) {
+  const interactive = { type: "button_reply", button_reply: button };
+  const message = { from, id: `wamid.e2e.${randomUUID()}`, timestamp: String(Math.floor(Date.now() / 1000)), type: "interactive", interactive };
   return postToWebhook(request, from, message, E2E_WHATSAPP_APP_SECRET);
 }
 
@@ -69,8 +76,21 @@ export async function sentTo(request: APIRequestContext, phone: string): Promise
   return response.json();
 }
 
-/** Espera la respuesta número `n` (1, 2, …) al número: el bot procesa después de responderle a Meta. */
+/**
+ * Espera la respuesta número `n` (1, 2, …) al número: el bot procesa después de responderle a Meta. Sin contar las
+ * preguntas con botones (la del 4x1000, después de registrar egresos): esas se leen con `nthQuestion`.
+ */
 export async function nthReply(request: APIRequestContext, phone: string, n: number) {
-  await expect.poll(async () => (await sentTo(request, phone)).length, { timeout: 15_000 }).toBeGreaterThanOrEqual(n);
-  return (await sentTo(request, phone))[n - 1].text;
+  return (await nthOf(request, phone, n, (message) => !message.buttons)).text;
+}
+
+/** La pregunta con botones número `n` que el bot le mandó al número (la del 4x1000), con sus botones. */
+export async function nthQuestion(request: APIRequestContext, phone: string, n: number) {
+  return nthOf(request, phone, n, (message) => Boolean(message.buttons));
+}
+
+async function nthOf(request: APIRequestContext, phone: string, n: number, keep: (message: Sent) => boolean): Promise<Sent> {
+  const matching = async () => (await sentTo(request, phone)).filter(keep);
+  await expect.poll(async () => (await matching()).length, { timeout: 15_000 }).toBeGreaterThanOrEqual(n);
+  return (await matching())[n - 1];
 }

@@ -6,7 +6,15 @@ import { DEFAULT_LOCALE, type Locale } from "@/i18n/locales";
 import { DEFAULT_CATEGORY } from "@/modules/transactions/default-categories";
 
 // "Otros", la comparación de nombres y el orden son comunes con los formularios y el bot.
-export { DEFAULT_CATEGORY, foldName, isDefaultCategory, sortCategories } from "@/modules/transactions/default-categories";
+export {
+  DEFAULT_CATEGORY,
+  foldName,
+  isDefaultCategory,
+  isSystemCategory,
+  isTaxCategory,
+  sortCategories,
+  TAX_CATEGORY,
+} from "@/modules/transactions/default-categories";
 
 export type CategoryType = "expense" | "income";
 

@@ -68,6 +68,33 @@ describe("sendWhatsAppText", () => {
     expect(init.signal).toBeInstanceOf(AbortSignal);
   });
 
+  it("con botones, manda un mensaje interactivo con el texto y sus botones de respuesta", async () => {
+    fetchMock.mockResolvedValue(new Response("{}", { status: 200 }));
+    const { sendWhatsAppText } = await loadClient();
+
+    const buttons = [
+      { id: "gmf:si:wamid.A", title: "Sí" },
+      { id: "gmf:no:wamid.A", title: "No" },
+    ];
+    expect(await sendWhatsAppText("573001112233", "¿Registro también el 4x1000?", buttons)).toEqual({ ok: true });
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
+      messaging_product: "whatsapp",
+      recipient_type: "individual",
+      to: "573001112233",
+      type: "interactive",
+      interactive: {
+        type: "button",
+        body: { text: "¿Registro también el 4x1000?" },
+        action: {
+          buttons: [
+            { type: "reply", reply: { id: "gmf:si:wamid.A", title: "Sí" } },
+            { type: "reply", reply: { id: "gmf:no:wamid.A", title: "No" } },
+          ],
+        },
+      },
+    });
+  });
+
   it("permite cambiar la versión de la Graph API por entorno", async () => {
     vi.stubEnv("WHATSAPP_GRAPH_VERSION", "v27.0");
     fetchMock.mockResolvedValue(new Response("{}", { status: 200 }));

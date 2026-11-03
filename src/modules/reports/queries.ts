@@ -102,7 +102,8 @@ export async function getExpenseDescriptionsByMonth(userId: string, first: Month
     })
     .from(transaction)
     .leftJoin(category, eq(category.id, transaction.categoryId))
-    .where(and(activeBetween(userId, first, last), eq(transaction.type, "expense")))
+    // Sin el 4x1000 de otros egresos (va atado al suyo: no es un gasto fijo aparte).
+    .where(and(activeBetween(userId, first, last), eq(transaction.type, "expense"), isNull(transaction.taxOf)))
     .groupBy(monthOfTransaction, sql`lower(trim(${transaction.description}))`);
   return rows.map((row) => ({ ...row, total: Number(row.total) }));
 }

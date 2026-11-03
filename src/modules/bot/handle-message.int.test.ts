@@ -13,6 +13,7 @@ import {
 } from "@/db/schema";
 import { formatMonthLabel, formatMonthName, monthOf, monthParam, sameDayIn, shiftMonth, todayInTimezone } from "@/lib/dates";
 import { createLinkCode } from "@/modules/whatsapp/link";
+import type { IncomingMessage } from "@/modules/whatsapp/payload";
 import {
   activeTransactions,
   capturingSender,
@@ -795,6 +796,136 @@ describe("handleIncomingMessage · sin la autorización de los datos (src/lib/pr
     await handleIncomingMessage(incoming("almuerzo 30 mil"), deps(add).deps);
     expect(add.calls).toBe(1);
     expect(await activeTransactions(ana.id)).toHaveLength(1);
+  });
+});
+
+describe("handleIncomingMessage · el 4x1000", () => {
+  const tap = (id: string, title = "Sí"): IncomingMessage => ({ ...incoming(null, PHONE), type: "interactive", button: { id, title } });
+  const twoExpenses = fakeExtractor([
+    { type: "expense", amount: 30000, description: "Almuerzo", category: "Alimentación" },
+    { type: "expense", amount: 15000, description: "Taxi", category: "Transporte" },
+    { type: "income", amount: 100000, description: "Venta", category: "Otros" },
+  ]);
+  const taxesOf = async (userId: string) => (await activeTransactions(userId)).filter((row) => row.taxOf !== null);
+
+  it("después de registrar egresos, una sola pregunta con Sí y No, que dice de qué mensaje es", async () => {
+    await linkedUser();
+    const msg = incoming("almuerzo 30 mil, taxi 15 mil y vendí algo en 100 mil");
+    const { deps: d, sender } = deps(twoExpenses);
+    await handleIncomingMessage(msg, d);
+    expect(sender.sent).toHaveLength(1);
+    expect(sender.questions).toEqual([
+      {
+        to: PHONE,
+        body: "¿Registro también el 4x1000 de estos egresos?",
+        buttons: [
+          { id: `gmf:si:${msg.id}`, title: "Sí" },
+          { id: `gmf:no:${msg.id}`, title: "No" },
+        ],
+      },
+    ]);
+    // El registro de mensajes guarda las dos cosas.
+    expect((await loggedMessage(msg.id)).reply).toMatch(/\n\n¿Registro también el 4x1000 de estos egresos\?$/);
+  });
+
+  it("Sí: registra el 4x1000 de cada egreso (no del ingreso), atado a él, y lo dice con el balance", async () => {
+    const ana = await linkedUser();
+    const msg = incoming("almuerzo, taxi y venta");
+    await handleIncomingMessage(msg, deps(twoExpenses).deps);
+    const { deps: d, sender } = deps();
+    await handleIncomingMessage(tap(`gmf:si:${msg.id}`), d);
+
+    const taxes = await taxesOf(ana.id);
+    expect(taxes.map((row) => [row.description, row.amount, row.source, row.externalId]).sort()).toEqual([
+      ["4x1000 · Almuerzo", 120, "whatsapp", `${msg.id}:4x0`],
+      ["4x1000 · Taxi", 60, "whatsapp", `${msg.id}:4x1`],
+    ]);
+    expect(sender.sent[0].body).toMatch(/^✅ Registré el 4x1000 de cada uno:\n• \*4x1000 · Almuerzo\* — \$120,00\n• \*4x1000 · Taxi\* — \$60,00\n\nBalance de /);
+    expect(sender.questions).toEqual([]);
+  });
+
+  it("No: no registra nada y lo dice", async () => {
+    const ana = await linkedUser();
+    const msg = incoming("almuerzo y taxi");
+    await handleIncomingMessage(msg, deps(twoExpenses).deps);
+    const { deps: d, sender } = deps();
+    await handleIncomingMessage(tap(`gmf:no:${msg.id}`, "No"), d);
+    expect(await taxesOf(ana.id)).toEqual([]);
+    expect(sender.sent).toEqual([{ to: PHONE, body: replies.gmfSkippedReply("es") }]);
+  });
+
+  it("tocar Sí dos veces no lo repite; después de deshacer, no hay a qué ponérselo", async () => {
+    const ana = await linkedUser();
+    const msg = incoming("almuerzo y taxi");
+    await handleIncomingMessage(msg, deps(twoExpenses).deps);
+    await handleIncomingMessage(tap(`gmf:si:${msg.id}`), deps().deps);
+    const again = deps();
+    await handleIncomingMessage(tap(`gmf:si:${msg.id}`), again.deps);
+    expect(again.sender.sent[0].body).toBe(replies.gmfAlreadyReply("es"));
+    expect(await taxesOf(ana.id)).toHaveLength(2);
+
+    // "deshacer" se lleva el mensaje entero: los egresos y su 4x1000.
+    await handleIncomingMessage(incoming("deshacer"), deps().deps);
+    expect(await activeTransactions(ana.id)).toEqual([]);
+    const gone = deps();
+    await handleIncomingMessage(tap(`gmf:si:${msg.id}`), gone.deps);
+    expect(gone.sender.sent[0].body).toBe(replies.gmfGoneReply("es"));
+  });
+
+  it("el botón de un mensaje de otra cuenta no le registra nada a nadie", async () => {
+    const beto = await linkedUser("573004445566", "Beto");
+    const betoMsg = incoming("almuerzo y taxi", "573004445566");
+    await handleIncomingMessage(betoMsg, deps(twoExpenses).deps);
+    const ana = await linkedUser();
+    const { deps: d, sender } = deps();
+    await handleIncomingMessage(tap(`gmf:si:${betoMsg.id}`), d);
+    expect(sender.sent[0].body).toBe(replies.gmfGoneReply("es"));
+    expect(await taxesOf(ana.id)).toEqual([]);
+    expect(await taxesOf(beto.id)).toEqual([]);
+  });
+
+  it("con el 4x1000 apagado en Configuración no pregunta; con solo ingresos, tampoco", async () => {
+    const ana = await linkedUser();
+    await db.update(userTable).set({ gmfEnabled: false }).where(eq(userTable.id, ana.id));
+    const off = deps(twoExpenses);
+    await handleIncomingMessage(incoming("almuerzo"), off.deps);
+    expect(off.sender.questions).toEqual([]);
+
+    await db.update(userTable).set({ gmfEnabled: true }).where(eq(userTable.id, ana.id));
+    const income = deps(fakeExtractor([{ type: "income", amount: 100000, description: "Venta", category: "Otros" }]));
+    await handleIncomingMessage(incoming("vendí algo"), income.deps);
+    expect(income.sender.questions).toEqual([]);
+  });
+
+  it("en inglés: la pregunta, los botones y la respuesta", async () => {
+    const ana = await linkedUser();
+    await db.update(userTable).set({ locale: "en" }).where(eq(userTable.id, ana.id));
+    const msg = incoming("lunch");
+    const asked = deps(fakeExtractor([{ type: "expense", amount: 30000, description: "Lunch", category: "Alimentación" }]));
+    await handleIncomingMessage(msg, asked.deps);
+    expect(asked.sender.questions[0]).toMatchObject({
+      body: "Should I also add the 4x1000 for this expense?",
+      buttons: [{ title: "Yes" }, { title: "No" }],
+    });
+    const yes = deps();
+    await handleIncomingMessage(tap(`gmf:si:${msg.id}`, "Yes"), yes.deps);
+    expect(yes.sender.sent[0].body).toMatch(/^✅ I added the 4x1000:\n• \*4x1000 · Lunch\* — \$120\.00\n/);
+  });
+
+  it("si la pregunta no sale, lo registrado queda y el mensaje se marca procesado con el error", async () => {
+    const ana = await linkedUser();
+    const msg = incoming("almuerzo");
+    const failing = capturingSender();
+    const sends: string[] = [];
+    const send: typeof failing.send = async (to, body, buttons) => {
+      sends.push(buttons ? "pregunta" : "respuesta");
+      return buttons ? { ok: false, error: "500 Meta" } : failing.send(to, body);
+    };
+    const { deps: d } = deps(twoExpenses);
+    await handleIncomingMessage(msg, { ...d, send });
+    expect(sends).toEqual(["respuesta", "pregunta"]);
+    expect(await activeTransactions(ana.id)).toHaveLength(3);
+    expect(await loggedMessage(msg.id)).toMatchObject({ status: "processed", error: "pregunta: 500 Meta" });
   });
 });
 

@@ -138,6 +138,11 @@ function SpanishTopics({ values, A }: { values: AppValues; A: PageLink }) {
           categoría.
         </p>
         <p>
+          En un egreso, marca <strong>Aplicar 4x1000</strong> y registramos aparte el 0,4 % del monto, en la categoría Impuestos y con la
+          misma fecha. Queda atado a su egreso: si lo editas o lo borras, el 4x1000 cambia o se borra con él. Si no te lo cobran,
+          apágalo en <A href="/configuracion#impuestos">Configuración → 4x1000</A>.
+        </p>
+        <p>
           Cada movimiento de la lista se edita con el lápiz y se borra con la papelera. Si lo borraste sin querer, toca{" "}
           <strong>Deshacer</strong> en el aviso que aparece abajo.
         </p>
@@ -159,6 +164,9 @@ function SpanishTopics({ values, A }: { values: AppValues; A: PageLink }) {
         <p>Después, escríbele tus ingresos y gastos como se los contarías a alguien:</p>
         <BotExamples locale="es" />
         <p>O envíale la foto de una factura o un recibo: registra un egreso por el total.</p>
+        <p>
+          Después de registrar un egreso, te pregunta si registra también el 4x1000: toca <strong>Sí</strong> o <strong>No</strong>.
+        </p>
         <p>También entiende estos comandos:</p>
         <BotCommands locale="es" />
       </Topic>
@@ -256,6 +264,11 @@ function EnglishTopics({ values, A }: { values: AppValues; A: PageLink }) {
           their category.
         </p>
         <p>
+          On an expense, check <strong>Apply 4x1000</strong> and we add Colombia&apos;s 0.4% bank transaction tax separately, as a tax and
+          with the same date. It&apos;s tied to its expense: if you edit or delete the expense, the 4x1000 changes or goes with it. If
+          you aren&apos;t charged it, turn it off in <A href="/configuracion#impuestos">Settings → 4x1000</A>.
+        </p>
+        <p>
           To edit a transaction, tap the pencil; to delete it, tap the trash can. If you deleted it by mistake, tap{" "}
           <strong>Undo</strong> in the notice that shows up below.
         </p>
@@ -277,6 +290,9 @@ function EnglishTopics({ values, A }: { values: AppValues; A: PageLink }) {
         <p>Then send it your income and expenses the way you&apos;d tell someone:</p>
         <BotExamples locale="en" />
         <p>Or send it a photo of a receipt: it adds an expense for the total.</p>
+        <p>
+          After adding an expense, it asks whether to add the 4x1000 too: tap <strong>Yes</strong> or <strong>No</strong>.
+        </p>
         <p>It also understands these commands:</p>
         <BotCommands locale="en" />
       </Topic>

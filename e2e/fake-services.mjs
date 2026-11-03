@@ -135,7 +135,9 @@ const server = createServer(async (request, response) => {
           error: { message: "(#131030) Recipient phone number not in allowed list", type: "OAuthException", code: 131030 },
         });
       }
-      sent.push({ to: body.to, text: body.text?.body ?? "", at: Date.now() });
+      // Un mensaje con botones ("interactive", la pregunta del 4x1000): su texto y sus botones (id y título).
+      const buttons = body.interactive?.action?.buttons?.map((button) => button.reply);
+      sent.push({ to: body.to, text: body.text?.body ?? body.interactive?.body?.text ?? "", ...(buttons && { buttons }), at: Date.now() });
       return json(response, 200, {
         messaging_product: "whatsapp",
         contacts: [{ input: body.to, wa_id: body.to }],

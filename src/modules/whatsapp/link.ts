@@ -153,6 +153,7 @@ export async function getUserByPhone(phone: string) {
       locale: user.locale,
       suspendedAt: user.suspendedAt,
       privacyVersion: user.privacyVersion,
+      gmfEnabled: user.gmfEnabled,
     })
     .from(whatsappLink)
     .innerJoin(user, eq(user.id, whatsappLink.userId))

@@ -12,6 +12,7 @@ export const DEFAULT_CATEGORIES = {
     { name: "Entretenimiento", emoji: "🎬" },
     { name: "Educación", emoji: "📚" },
     { name: "Deudas", emoji: "💳" },
+    { name: "Impuestos", emoji: "🏛️" },
     { name: "Otros", emoji: "📦" },
   ],
   income: [
@@ -34,6 +35,19 @@ export function foldName(name: string): string {
 
 /** ¿Es "Otros", la categoría por defecto? */
 export const isDefaultCategory = (name: string) => foldName(name) === foldName(DEFAULT_CATEGORY);
+
+/**
+ * La categoría de egresos del 4x1000 (src/modules/transactions/gmf.ts). Si no existe, la crea la app la primera vez
+ * que se registra un 4x1000; como "Otros", solo se le cambian el emoji y el nombre en inglés.
+ */
+export const TAX_CATEGORY = "Impuestos";
+export const TAX_CATEGORY_EMOJI = "🏛️";
+
+/** ¿Es la categoría del 4x1000? Solo la de egresos. */
+export const isTaxCategory = (name: string, type: "income" | "expense") => type === "expense" && foldName(name) === foldName(TAX_CATEGORY);
+
+/** Las categorías de la app ("Otros" y la del 4x1000): no se renombran, archivan ni eliminan. */
+export const isSystemCategory = (name: string, type: "income" | "expense") => isDefaultCategory(name) || isTaxCategory(name, type);
 
 /**
  * Alfabético (sin importar tildes ni mayúsculas), con "Otros" siempre al final. `label`: el nombre a la vista

@@ -15,8 +15,9 @@ import {
 } from "@/modules/transactions/bot-mutations";
 import { reportPeriod } from "@/modules/reports/period";
 import { getReport } from "@/modules/reports/queries";
+import { addGmfToMessage } from "@/modules/transactions/bot-mutations";
 import { getMonthlySummary, listCategories } from "@/modules/transactions/queries";
-import type { MediaDownloader, Sender } from "@/modules/whatsapp/client";
+import type { MediaDownloader, ReplyButton, Sender } from "@/modules/whatsapp/client";
 import { consumeLinkCode, getUserByPhone } from "@/modules/whatsapp/link";
 import type { IncomingImage, IncomingMessage } from "@/modules/whatsapp/payload";
 import { reserveAiCall } from "./ai-quota";
@@ -60,12 +61,13 @@ export async function handleIncomingMessage(
   let userId: string | null = null;
   let error: string | null = null;
   let reply: string;
+  let question: Question | undefined;
   // El idioma de la respuesta: el de la cuenta, en cuanto `respond` sabe cuál es (si falla después, el aviso del
   // error también va en ese idioma).
   const language = { locale: DEFAULT_LOCALE as Locale };
 
   try {
-    ({ reply, intent, userId, status } = await respond(msg, deps, language));
+    ({ reply, intent, userId, status, question } = await respond(msg, deps, language));
     if (intent?.kind === "error") error = intent.reason;
   } catch (err) {
     // Solo el tipo y el código: el mensaje de un error de la base trae los datos del mensaje.
@@ -80,6 +82,14 @@ export async function handleIncomingMessage(
     status = "failed";
     error = [error, `envío: ${sent.error}`].filter(Boolean).join(" · ");
     console.error("[whatsapp] no se pudo enviar la respuesta", msg.id, sent.error);
+  } else if (question) {
+    // La pregunta del 4x1000, aparte y con sus botones. Si no sale, lo registrado queda igual.
+    const asked = await deps.send(msg.from, question.body, question.buttons);
+    if (asked.ok) reply = `${reply}\n\n${question.body}`;
+    else {
+      error = [error, `pregunta: ${asked.error}`].filter(Boolean).join(" · ");
+      console.error("[whatsapp] no se pudo enviar la pregunta del 4x1000", msg.id, asked.error);
+    }
   }
   console.info("[bot] mensaje procesado", {
     id: msg.id,
@@ -100,10 +110,14 @@ export async function handleIncomingMessage(
 /** Lo que queda en el registro de mensajes: el texto o, si no, el tipo ("[image]", con lo que escribió con la foto). */
 function loggedBody(msg: IncomingMessage): string {
   if (msg.text !== null) return msg.text;
+  if (msg.button) return `[${msg.type}] ${msg.button.title}`;
   return msg.image?.caption ? `[${msg.type}] ${msg.image.caption}` : `[${msg.type}]`;
 }
 
-type Response = { reply: string; intent: BotIntent | null; userId: string | null; status: Status };
+/** Lo que el bot pregunta después de responder, con sus botones (el 4x1000). */
+type Question = { body: string; buttons: ReplyButton[] };
+
+type Response = { reply: string; intent: BotIntent | null; userId: string | null; status: Status; question?: Question };
 
 async function respond(msg: IncomingMessage, deps: Deps, language: { locale: Locale }): Promise<Response> {
   // Lo que se interpreta: un texto o una foto. Audios, stickers, videos o documentos, todavía no.
@@ -152,6 +166,12 @@ async function respond(msg: IncomingMessage, deps: Deps, language: { locale: Loc
   // Sin la autorización vigente de sus datos (src/lib/privacy.ts): ni Claude ni registros hasta que la dé en la app.
   if (!hasCurrentConsent(user.privacyVersion)) {
     return { reply: replies.privacyConsentReply(deps.appUrl, locale), intent: null, userId: user.id, status: "processed" };
+  }
+  // El "Sí" o el "No" de la pregunta del 4x1000 (sin Claude: el botón dice de qué mensaje es).
+  const answer = msg.button ? replies.GMF_BUTTON.exec(msg.button.id) : null;
+  if (answer) {
+    const reply = answer[1] === "si" ? await answerGmf(user.id, answer[2], user.timezone, locale) : replies.gmfSkippedReply(locale);
+    return { reply, intent: null, userId: user.id, status: "processed" };
   }
   if (!content) {
     return { reply: replies.unsupportedTypeReply(locale), intent: null, userId: user.id, status: "processed" };
@@ -207,6 +227,7 @@ async function respond(msg: IncomingMessage, deps: Deps, language: { locale: Loc
         items,
         categories,
       });
+      const expenses = saved.filter((row) => row.type === "expense").length;
       // Los presupuestos que cruzaron el 80 % o el límite con estos egresos (solo los de este mes).
       const [summary, crossings, label] = await Promise.all([
         getMonthlySummary(user.id, range),
@@ -225,6 +246,9 @@ async function respond(msg: IncomingMessage, deps: Deps, language: { locale: Loc
             budgetAlerts: crossings.map((crossing) => ({ level: crossing.level, text: budgetAlert(crossing, locale) })),
           },
         ),
+        // Con egresos nuevos y el 4x1000 prendido en Configuración: una sola pregunta para todos (Sí / No). Un
+        // mensaje que Meta reenvía no guarda nada: no pregunta dos veces.
+        question: user.gmfEnabled && expenses > 0 ? replies.gmfQuestion(msg.id, expenses, locale) : undefined,
       };
     }
     case "command": {
@@ -280,6 +304,19 @@ async function respond(msg: IncomingMessage, deps: Deps, language: { locale: Loc
       // Ya se manejó arriba; se deja por exhaustividad.
       return { ...base, reply: replies.helpReply(locale, user.name) };
   }
+}
+
+/**
+ * El "Sí" del 4x1000: lo registra para cada egreso del mensaje `messageId` que siga ahí y no lo tenga, y responde
+ * con lo registrado y el balance del mes. Si ya no hay egresos (los deshizo) o ya lo tenían, lo dice.
+ */
+async function answerGmf(userId: string, messageId: string, timezone: string, locale: Locale): Promise<string> {
+  const { found, added } = await addGmfToMessage(userId, messageId);
+  if (found === 0) return replies.gmfGoneReply(locale);
+  if (added.length === 0) return replies.gmfAlreadyReply(locale);
+  const range = currentMonthRange(timezone);
+  const summary = await getMonthlySummary(userId, range);
+  return replies.gmfAddedReply(added, { balance: summary.balance, range, locale });
 }
 
 /**

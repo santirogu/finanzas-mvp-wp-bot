@@ -162,7 +162,8 @@ de Vercel ni muevas las migraciones fuera del job `deploy`.
      accesibilidad.
 - **Categorías** (README → Categorías): las globales las administra el admin; no las crees ni
   renombres en migraciones o en `scripts/seed.ts` (la semilla solo actúa en una base vacía). "Otros"
-  es la de respaldo del bot y de las eliminadas: no la quites. En los formularios y el bot usa
+  es la de respaldo del bot y de las eliminadas, e "Impuestos" la del 4x1000 (la crea la app si falta,
+  `taxCategoryId`): no las quites. En los formularios y el bot usa
   `listCategories` (sin archivadas); al validar una categoría, `isCategoryAvailable`. Para mostrar su
   nombre en una página, con el idioma: `categoryNameIn(locale)` en la consulta o `categoryLabel`
   (`src/modules/transactions/category-name.ts`); el bot y lo que se guarda usan siempre `name`.

@@ -54,6 +54,7 @@ describe("vinculación de WhatsApp", () => {
       locale: "en",
       suspendedAt: null,
       privacyVersion: user.privacyVersion,
+      gmfEnabled: true,
     });
     expect(await getUserByPhone("573000000000")).toBeNull();
   });

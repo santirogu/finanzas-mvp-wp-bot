@@ -22,6 +22,14 @@ const TEXTS = texts(
     registered: (type: ParsedTransaction["type"]) => `${type === "income" ? "Ingreso" : "Egreso"} ${BRAND_NAME}`,
     monthBalance: (month: string) => `Balance de ${month}`,
     undoHint: "_Escribe *deshacer* si me equivoqué._",
+    // El 4x1000 (src/modules/transactions/gmf.ts): la pregunta después de registrar egresos, con sus dos botones.
+    gmfQuestion: (count: number) => `¿Registro también el 4x1000 de ${count === 1 ? "este egreso" : "estos egresos"}?`,
+    gmfYes: "Sí",
+    gmfNo: "No",
+    gmfAdded: (count: number): string => (count === 1 ? "✅ Registré el 4x1000:" : "✅ Registré el 4x1000 de cada uno:"),
+    gmfSkipped: "Listo, no registré el 4x1000.",
+    gmfGone: "Ya no encontré ese egreso (¿lo deshiciste?), así que no registré el 4x1000.",
+    gmfAlready: "Ya había registrado el 4x1000 de ese egreso.",
     income: "Ingresos",
     expenses: "Egresos",
     tryWriting: "Escríbeme algo como “gasté 20 mil en almuerzo”",
@@ -97,6 +105,13 @@ const TEXTS = texts(
       registered: (type) => `${type === "income" ? "Income" : "Expense"} noted`,
       monthBalance: (month) => `${month} balance`,
       undoHint: "_Send *undo* if I got it wrong._",
+      gmfQuestion: (count) => `Should I also add the 4x1000 for ${count === 1 ? "this expense" : "these expenses"}?`,
+      gmfYes: "Yes",
+      gmfNo: "No",
+      gmfAdded: (count) => (count === 1 ? "✅ I added the 4x1000:" : "✅ I added the 4x1000 for each one:"),
+      gmfSkipped: "Done, I didn't add the 4x1000.",
+      gmfGone: "I couldn't find that expense anymore (did you undo it?), so I didn't add the 4x1000.",
+      gmfAlready: "I had already added the 4x1000 for that expense.",
       income: "Income",
       expenses: "Expenses",
       tryWriting: "Send me something like “spent 20k on lunch”",
@@ -195,6 +210,37 @@ export function registeredReply(
     t.undoHint,
   ].join("\n");
 }
+
+/** El "Sí" y el "No" del 4x1000 llevan el mensaje que registró los egresos: al tocarlos vuelven con él. */
+export const GMF_BUTTON = /^gmf:(si|no):(.{1,240})$/;
+
+/** La pregunta del 4x1000 después de registrar `count` egresos del mensaje `messageId`, con sus dos botones. */
+export function gmfQuestion(messageId: string, count: number, locale: Locale) {
+  const t = TEXTS[locale];
+  return {
+    body: t.gmfQuestion(count),
+    buttons: [
+      { id: `gmf:si:${messageId}`, title: t.gmfYes },
+      { id: `gmf:no:${messageId}`, title: t.gmfNo },
+    ],
+  };
+}
+
+/** El 4x1000 que se registró ("4x1000 · Almuerzo — $80,00") y el balance del mes. */
+export function gmfAddedReply(items: { description: string; amount: number }[], ctx: { balance: number; range: MonthRange; locale: Locale }) {
+  const t = TEXTS[ctx.locale];
+  const money = (n: number) => formatMoney(n, ctx.locale);
+  return [
+    t.gmfAdded(items.length),
+    ...items.map((item) => `• *${item.description}* — ${money(item.amount)}`),
+    "",
+    `${t.monthBalance(formatMonthName(ctx.range, { locale: ctx.locale }))}: *${money(ctx.balance)}*`,
+  ].join("\n");
+}
+
+export const gmfSkippedReply = (locale: Locale) => TEXTS[locale].gmfSkipped;
+export const gmfGoneReply = (locale: Locale) => TEXTS[locale].gmfGone;
+export const gmfAlreadyReply = (locale: Locale) => TEXTS[locale].gmfAlready;
 
 type Summary = { income: number; expense: number; balance: number; count: number };
 
