@@ -30,8 +30,11 @@ export function markSvg({ rounded = true, size } = {}) {
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${mark.viewBox}"${dimensions}>`,
     `<rect width="32" height="32"${rounded ? ` rx="${mark.radius}"` : ""} fill="${mark.brand}"/>`,
-    `<path d="${mark.bubble}" fill="${mark.brandForeground}"/>`,
-    `<path d="${mark.check}" fill="none" stroke="${mark.brand}" stroke-width="${mark.checkWidth}" stroke-linecap="round" stroke-linejoin="round"/>`,
+    `<path d="${mark.letter}" fill="${mark.brandForeground}"/>`,
+    `<path d="${mark.tip}" fill="${mark.brandForeground}" stroke="${mark.brandForeground}" stroke-width="${mark.tipRound}" stroke-linejoin="round"/>`,
+    // El ✓, con un borde del color del fondo que corta la "A" a su alrededor.
+    `<path d="${mark.check}" fill="none" stroke="${mark.brand}" stroke-width="${mark.checkCutWidth}" stroke-linecap="round" stroke-linejoin="round"/>`,
+    `<path d="${mark.check}" fill="none" stroke="${mark.brandForeground}" stroke-width="${mark.checkWidth}" stroke-linecap="round" stroke-linejoin="round"/>`,
     "</svg>",
   ].join("");
 }
