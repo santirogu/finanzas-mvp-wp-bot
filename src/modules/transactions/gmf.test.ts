@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { isDefaultCategory, isSystemCategory, isTaxCategory, sortCategories, TAX_CATEGORY } from "./default-categories";
-import { gmfAmount, gmfDescription, gmfExternalId } from "./gmf";
+// Sin la base (las unitarias corren sin DATABASE_URL): el cálculo y la descripción están aparte de gmf.ts.
+import { gmfAmount, gmfDescription, gmfExternalId } from "./gmf-amount";
 
 describe("gmfAmount (el 4x1000: 4 por cada 1.000, a los centavos)", () => {
   it.each([

@@ -3,9 +3,9 @@ import { and, eq, isNull } from "drizzle-orm";
 import { db } from "@/db";
 import { category, transaction, user } from "@/db/schema";
 import { isTaxCategory, TAX_CATEGORY, TAX_CATEGORY_EMOJI } from "./default-categories";
-import { gmfAmount } from "./gmf-amount";
+import { gmfAmount, gmfDescription, gmfExternalId } from "./gmf-amount";
 
-export { gmfAmount };
+export { gmfAmount, gmfDescription, gmfExternalId };
 
 // El 4x1000 (el gravamen a los movimientos financieros, GMF): un egreso más, por el 0,4 % de otro, en la categoría
 // del 4x1000 y con su misma fecha. Queda atado a su egreso (`transaction.tax_of`): se recalcula si el egreso cambia
@@ -13,22 +13,6 @@ export { gmfAmount };
 // Configuración (`user.gmf_enabled`).
 
 type Executor = Pick<typeof db, "select" | "insert" | "update">;
-
-/** El largo máximo de una descripción (src/modules/transactions/validation.ts). */
-const MAX_DESCRIPTION = 140;
-
-/** La descripción del 4x1000 de un egreso: "4x1000 · Arriendo". */
-export const gmfDescription = (description: string): string => `4x1000 · ${description}`.slice(0, MAX_DESCRIPTION);
-
-/**
- * El id externo del 4x1000 de un egreso del bot: el mismo mensaje ("wamid…:0" → "wamid…:4x0"), así "deshacer" se
- * lleva el egreso y su 4x1000 juntos (src/modules/transactions/bot-mutations.ts).
- */
-export function gmfExternalId(externalId: string | null): string | null {
-  if (!externalId) return null;
-  const cut = externalId.lastIndexOf(":");
-  return `${externalId.slice(0, cut)}:4x${externalId.slice(cut + 1)}`;
-}
 
 /**
  * El id de la categoría del 4x1000. Si no existe (una base de antes), la crea; si el admin la había archivado, la
