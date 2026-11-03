@@ -212,6 +212,15 @@ de Vercel ni muevas las migraciones fuera del job `deploy`.
   - Al escribir un texto nuevo, sigue su glosario (`.claude/skills/auditoria-textos/glosario.md`): el
     tuteo, las palabras de la app en los dos idiomas y los formatos.
   - Su informe va a `reports/textos/` y no se sube.
+- **Auditoría legal:** usa el skill `/auditoria-legal` (README → Pruebas y CI). Compara la app con la Ley 1581 y el
+  Decreto 1377 por escrito; no es asesoría legal.
+  - Antes de abrir un PR que agregue o cambie datos de las personas (una tabla, una columna, un campo, lo que
+    recibe el bot), un servicio externo, la retención, la autorización o las páginas legales, corre
+    `/auditoria-legal cambios`.
+  - Una vez al mes, `/auditoria-legal completa`.
+  - Si agregas una tabla o un servicio externo, clasifícalo en su inventario
+    (`.claude/skills/auditoria-legal/inventario.mjs`): lo marca hasta que lo hagas.
+  - Su informe va a `reports/legal/` y no se sube.
 - **Avisos emergentes** (README → Decisiones importantes): la confirmación de algo que ya pasó va con
   `useToast()` (`src/components/toaster.tsx`): `tone: "success"` (verde) si se guardó o se activó,
   `"removal"` (rojo) si se borró o se desactivó; con `focus: true` si lo que se tocó ya no está (una
