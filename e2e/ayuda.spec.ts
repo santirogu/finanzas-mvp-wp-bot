@@ -56,7 +56,8 @@ test("Ayuda: se abre desde el menú de la cuenta, con sus temas cerrados y lo mi
   });
 
   await test.step("todos abiertos, sin problemas de accesibilidad; sus enlaces llevan a cada página", async () => {
-    const closed = page.locator("main details:not([open])");
+    // Solo los visibles: la página anterior (el registro, con su "Qué autorizas") queda montada y oculta (Next 16).
+    const closed = visible(page.locator("main details:not([open])"));
     while ((await closed.count()) > 0) await closed.first().locator("summary").click();
     await expect(topics.locator("details[open]")).toHaveCount(6);
     await expect(faq.locator("details[open]")).toHaveCount(12);
@@ -90,7 +91,8 @@ test("Ayuda sin sesión: desde la portada, el login y el registro, en /ayuda, co
   });
 
   await test.step("las páginas de la app van en negrita (su enlace llevaría al login); la privacidad, el correo y el registro, con enlace", async () => {
-    const closed = page.locator("main details:not([open])");
+    // Solo los visibles: la página anterior (el registro, con su "Qué autorizas") queda montada y oculta (Next 16).
+    const closed = visible(page.locator("main details:not([open])"));
     while ((await closed.count()) > 0) await closed.first().locator("summary").click();
     const bot = topics.locator("details").filter({ has: page.locator("summary", { hasText: "El bot de WhatsApp" }) });
     for (const { command, description } of BOT_COMMANDS.es) {

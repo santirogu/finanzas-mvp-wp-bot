@@ -32,7 +32,7 @@ const sessionUser = {
   role: "user",
   emailVerified: false,
   image: null,
-  privacyVersion: "2026-11-03",
+  privacyVersion: PRIVACY_VERSION,
 };
 
 // Con llaves: mockReset() devuelve el mock y, si el hook lo devolviera, Vitest lo llamaría como
@@ -58,7 +58,7 @@ describe("getCurrentUser", () => {
       role: "user",
       superAdmin: false,
       twoFactorEnabled: false,
-      privacyVersion: "2026-11-03",
+      privacyVersion: PRIVACY_VERSION,
     });
     const { headers } = mocks.getSession.mock.calls[0][0];
     expect(headers.get("cookie")).toBe("sesion=1");
@@ -173,7 +173,7 @@ describe("requireAdmin", () => {
       role: "admin",
       superAdmin: false,
       twoFactorEnabled: true,
-      privacyVersion: "2026-11-03",
+      privacyVersion: PRIVACY_VERSION,
     });
   });
 });

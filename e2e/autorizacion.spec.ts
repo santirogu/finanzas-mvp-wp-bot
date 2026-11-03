@@ -8,7 +8,7 @@ import { PASSWORD, register, test, visible, withoutPrivacyConsent } from "./help
 // La autorización para tratar los datos (Ley 1581, src/lib/privacy.ts): una cuenta que no la tiene (las de antes
 // de pedirla) no usa nada de la app hasta darla en /autorizacion; si no quiere, cierra sesión o elimina su cuenta.
 
-const box = (page: Page) => visible(page.getByRole("checkbox", { name: /^Autorizo el tratamiento de mis datos personales/ }));
+const box = (page: Page) => visible(page.getByRole("checkbox", { name: /^Soy mayor de 18 años y autorizo el tratamiento de mis datos personales/ }));
 
 async function consentOf(email: string) {
   const sql = postgres(e2eDatabaseUrl(), { max: 1, onnotice: () => {} });

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useId, useState, useTransition, type FormEvent } from "react";
 import { describedBy, FieldError } from "@/components/field-error";
+import { PrivacySummary } from "@/components/privacy-summary";
 import { useFieldErrors } from "@/components/use-field-errors";
 import { useLocale } from "@/i18n/client";
 import { texts } from "@/i18n/texts";
@@ -23,7 +24,7 @@ const TEXTS = texts(
       name: { required: "Escribe tu nombre." },
       email: { required: "Escribe tu correo." },
       password: { required: "Escribe tu contraseña." },
-      privacy: { required: "Para crear tu cuenta, autoriza el tratamiento de tus datos." },
+      privacy: { required: "Para crear tu cuenta, confirma que eres mayor de edad y autoriza el tratamiento de tus datos." },
     } as Record<string, FieldMessages>,
     login: { title: "Inicia sesión", subtitle: "Bienvenido de nuevo", submit: "Entrar", other: "¿No tienes cuenta? ", otherLink: "Regístrate" },
     register: {
@@ -36,8 +37,13 @@ const TEXTS = texts(
     name: "Nombre",
     email: "Correo",
     password: "Contraseña",
-    // La autorización de los datos (Ley 1581): la casilla, sin marcar (src/lib/privacy.ts).
-    privacy: { before: "Autorizo el tratamiento de mis datos personales según la ", link: "política de privacidad", after: "." },
+    // La autorización de los datos (Ley 1581): la casilla, sin marcar (src/lib/privacy.ts), y lo que se autoriza.
+    privacy: {
+      before: "Soy mayor de 18 años y autorizo el tratamiento de mis datos personales según la ",
+      link: "política de privacidad",
+      after: ".",
+      summary: "Qué autorizas",
+    },
     didYouMean: "¿Quisiste decir",
     fix: "Sí, corregir",
     keepEmail: "Si tu correo está bien escrito, toca “Crear cuenta” de nuevo.",
@@ -50,7 +56,7 @@ const TEXTS = texts(
         name: { required: "Enter your name." },
         email: { required: "Enter your email." },
         password: { required: "Enter your password." },
-        privacy: { required: "To create your account, authorize the processing of your data." },
+        privacy: { required: "To create your account, confirm you're of age and authorize the processing of your data." },
       },
       login: { title: "Sign in", subtitle: "Welcome back", submit: "Sign in", other: "Don't have an account? ", otherLink: "Sign up" },
       register: {
@@ -63,7 +69,12 @@ const TEXTS = texts(
       name: "Name",
       email: "Email",
       password: "Password",
-      privacy: { before: "I authorize the processing of my personal data under the ", link: "privacy policy", after: " (in Spanish)." },
+      privacy: {
+        before: "I'm 18 or older and I authorize the processing of my personal data under the ",
+        link: "privacy policy",
+        after: " (in Spanish).",
+        summary: "What you're authorizing",
+      },
       didYouMean: "Did you mean",
       fix: "Yes, fix it",
       keepEmail: "If your email is spelled right, tap “Create account” again.",
@@ -243,6 +254,13 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
               </span>
             </label>
             <FieldError id={privacyErrorId} message={errors.privacy} />
+            {/* Lo que se autoriza (Ley 1581, art. 12), plegado: el formulario sigue corto. */}
+            <details className="text-sm">
+              <summary className="cursor-pointer py-2 font-medium text-brand">{t.privacy.summary}</summary>
+              <div className="mt-1">
+                <PrivacySummary />
+              </div>
+            </details>
           </div>
         )}
 

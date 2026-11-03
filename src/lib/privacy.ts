@@ -4,11 +4,12 @@
 // (`user.privacy_version` y `privacy_accepted_at`) y en su historial (`privacy_accepted`).
 
 /**
- * La versión de la política de privacidad que se autoriza. Cámbiala solo si cambia lo que se hace con los datos
- * (qué se guarda, para qué, con quién o por cuánto tiempo): entonces cada cuenta la vuelve a autorizar al entrar y
- * el bot no le registra nada hasta que lo haga. Un arreglo de forma en /privacidad no la cambia.
+ * La versión de la política de privacidad que se autoriza: la fecha en que se publicó (con ".2", ".3"… si cambia más
+ * de una vez el mismo día). Cámbiala solo si cambia lo que se hace con los datos (qué se guarda, para qué, con quién
+ * o por cuánto tiempo) o lo que la persona declara al autorizar (como su edad): entonces cada cuenta la vuelve a
+ * autorizar al entrar y el bot no le registra nada hasta que lo haga. Un arreglo de forma en /privacidad no la cambia.
  */
-export const PRIVACY_VERSION = "2026-11-03";
+export const PRIVACY_VERSION = "2026-11-03.2";
 
 /** Donde una cuenta sin la autorización vigente la da (o cierra sesión, o elimina su cuenta). */
 export const PRIVACY_CONSENT_PATH = "/autorizacion";
