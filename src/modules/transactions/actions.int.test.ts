@@ -194,7 +194,7 @@ describe("createTransactionAction", () => {
     );
   });
 
-  it("ignora campos extra del formulario: el dueño, la moneda y el origen salen del servidor", async () => {
+  it("ignora campos extra del formulario: el dueño y el origen salen del servidor", async () => {
     const victim = await createUser();
     const user = await signIn();
 
@@ -203,7 +203,6 @@ describe("createTransactionAction", () => {
       form({
         ...validExpense,
         userId: victim.id,
-        currency: "USD",
         source: "whatsapp",
         externalId: "wamid.falso:0",
         deletedAt: "2026-01-01",
@@ -214,7 +213,6 @@ describe("createTransactionAction", () => {
     expect(await activeTransactions(user.id)).toEqual([
       expect.objectContaining({
         userId: user.id,
-        currency: "COP",
         source: "web",
         externalId: null,
         deletedAt: null,
@@ -491,7 +489,7 @@ describe("updateTransactionAction", () => {
     await expect(
       updateTransactionAction(
         { ok: false },
-        editForm(tx.id, { userId: victim.id, source: "whatsapp", externalId: "wamid.falso:0", currency: "USD" }),
+        editForm(tx.id, { userId: victim.id, source: "whatsapp", externalId: "wamid.falso:0" }),
       ),
     ).rejects.toThrow("NEXT_REDIRECT");
 
@@ -500,7 +498,6 @@ describe("updateTransactionAction", () => {
       userId: user.id,
       source: "web",
       externalId: null,
-      currency: "COP",
     });
   });
 

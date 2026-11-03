@@ -17,9 +17,6 @@ export const user = pgTable(
     emailVerified: boolean("email_verified").notNull().default(false),
     image: text("image"),
     timezone: text("timezone").notNull().default("America/Bogota"),
-    // Sin uso: la app lleva todo en pesos (README → Decisiones importantes). Se borra en el PR siguiente,
-    // cuando ninguna versión desplegada la lea.
-    currency: text("currency").notNull().default("COP"),
     // Toda cuenta nace como "user". "admin" lo da el super admin desde /admin/usuarios (con su código)
     // o la terminal (pnpm admin:grant).
     role: userRole("role").notNull().default("user"),
