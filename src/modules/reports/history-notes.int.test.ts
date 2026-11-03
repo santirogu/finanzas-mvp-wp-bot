@@ -41,7 +41,6 @@ async function signIn() {
     name: user.name,
     email: user.email,
     timezone: user.timezone,
-    currency: user.currency,
     role: user.role,
     superAdmin: user.superAdmin,
     twoFactorEnabled: user.twoFactorEnabled,

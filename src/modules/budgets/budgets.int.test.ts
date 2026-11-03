@@ -44,7 +44,7 @@ beforeEach(() => {
 const october = monthRange(2026, 10);
 const globalCategory = async (name: string, type: "income" | "expense" = "expense") =>
   (await listCategories("nadie", type)).find((c) => c.name === name)!;
-const cop = (id: string) => ({ id, currency: "COP" });
+const cop = (id: string) => ({ id });
 
 describe("saveBudget, listBudgets y removeBudget", () => {
   it("pone, cambia y quita los presupuestos propios; los de otra cuenta no se ven ni se tocan", async () => {

@@ -12,7 +12,6 @@ type CategoryRef = { id: string; name: string };
  */
 export async function createTransactionsFromMessage(input: {
   userId: string;
-  currency: string;
   messageId: string;
   items: ParsedTransaction[];
   categories: Record<"income" | "expense", CategoryRef[]>;
@@ -21,7 +20,6 @@ export async function createTransactionsFromMessage(input: {
     userId: input.userId,
     type: item.type,
     amount: item.amount,
-    currency: input.currency,
     description: item.description,
     categoryId: input.categories[item.type].find((c) => c.name === item.category)?.id ?? null,
     occurredOn: item.occurredOn,

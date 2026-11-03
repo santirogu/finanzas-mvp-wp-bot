@@ -19,7 +19,6 @@ const ANA: CurrentUser = {
   name: "Ana Pérez",
   email: "ana@test.local",
   timezone: "America/Bogota",
-  currency: "COP",
   role: "user",
   superAdmin: false,
   twoFactorEnabled: false,

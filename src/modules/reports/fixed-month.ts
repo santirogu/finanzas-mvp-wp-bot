@@ -96,8 +96,8 @@ const TEXTS = texts(
   },
 );
 
-/** El estado del mes en el idioma de la página, con los montos en la moneda de la persona. */
-export function fixedMonthView(month: FixedMonth, today: string, currency: string, locale: Locale = DEFAULT_LOCALE): FixedMonthView {
+/** El estado del mes en el idioma de la página, con los montos en pesos. */
+export function fixedMonthView(month: FixedMonth, today: string, locale: Locale = DEFAULT_LOCALE): FixedMonthView {
   const t = TEXTS[locale];
   const view = (status: FixedMonthStatus): FixedStatusView => {
     if (status.kind === "paid") {
@@ -112,7 +112,7 @@ export function fixedMonthView(month: FixedMonth, today: string, currency: strin
     summary:
       month.expected === 0
         ? null
-        : { paid: t.count(month.paid, month.expected), pending: month.pendingTotal > 0 ? t.pending(formatMoney(month.pendingTotal, currency, locale)) : null },
+        : { paid: t.count(month.paid, month.expected), pending: month.pendingTotal > 0 ? t.pending(formatMoney(month.pendingTotal, locale)) : null },
     statuses: Object.fromEntries([...month.statuses].map(([key, status]) => [key, view(status)])),
   };
 }

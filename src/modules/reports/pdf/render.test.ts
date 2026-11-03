@@ -15,9 +15,9 @@ import { type ReportPdfView, reportPdfView } from "./view";
 const current: Month = { year: 2026, month: 10 };
 const today = "2026-10-20";
 const { report, period, byDay } = sampleReport(sampleMovements(current, today), current);
-const view = reportPdfView({ report, period, byDay, current, today, name: "Ana", currency: "COP" });
+const view = reportPdfView({ report, period, byDay, current, today, name: "Ana" });
 const emptyReport = sampleReport([], current);
-const empty = reportPdfView({ ...emptyReport, current, today, name: "Ana", currency: "COP" });
+const empty = reportPdfView({ ...emptyReport, current, today, name: "Ana" });
 
 /** El texto de la hoja, sin dibujarla: los componentes son funciones sin estado. */
 function textOf(node: ReactNode): string {
@@ -50,7 +50,7 @@ describe("ReportDocument", () => {
 
   it("en inglés, también todos los textos de la vista (y el idioma del documento)", () => {
     const english = sampleReport(sampleMovements(current, today), current, "en");
-    const enView = reportPdfView({ ...english, current, today, name: "Ana", currency: "COP", locale: "en" });
+    const enView = reportPdfView({ ...english, current, today, name: "Ana", locale: "en" });
     const document = ReportDocument({ view: enView });
     const text = textOf(document);
     for (const t of textsIn(enView)) expect(text, t).toContain(t);

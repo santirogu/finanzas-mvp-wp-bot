@@ -22,12 +22,12 @@ test("cambiar la contraseña: esta sesión sigue, las demás se cierran y la vie
   await logIn(other, email);
   await expect(other).toHaveURL(/\/dashboard$/);
 
-  await test.step("Mi cuenta: el correo y la moneda dicen Pronto", async () => {
+  await test.step("Mi cuenta: cambiar el correo dice Pronto", async () => {
     await goToAccount(page);
     const data = visible(page.getByRole("region", { name: "Tus datos" }));
     await expect(data.getByRole("button", { name: "Cambiar correo" })).toBeDisabled();
-    await expect(data).toContainText("Peso colombiano (COP)");
-    await expect(data).toContainText("Pronto: USD y EUR");
+    // La app lleva todo en pesos: no hay moneda para elegir ni para mostrar.
+    await expect(data).not.toContainText("Moneda");
   });
 
   await test.step("los errores van debajo de cada campo, en español", async () => {

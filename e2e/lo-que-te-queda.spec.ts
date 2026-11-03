@@ -49,7 +49,7 @@ test("Lo que te queda este mes: lo libre, por día, de dónde sale y el cierre; 
     await page.goto("/dashboard");
     const fixed: MonthFixed = { pending: [{ description: "Arriendo", amount: 1000000 }], paid: 100000, hasFixed: true };
     const totals = { income: 3000000, expense: 300000 };
-    const view = remainingView(monthRemaining(totals, fixed, today), totals, fixed, today, "COP");
+    const view = remainingView(monthRemaining(totals, fixed, today), totals, fixed, today);
     const card = region(page);
     await expect(card.getByRole("heading", { level: 2 })).toHaveText("Lo que te queda este mes");
     await expect(card).toContainText(view.label);

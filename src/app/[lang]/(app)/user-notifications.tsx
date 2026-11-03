@@ -32,7 +32,7 @@ export async function UserNotifications() {
   const bot = alerts.map((alert) => ({ id: botAlertNotificationId(alert, today), alert: alertView(alert, locale) }));
   return (
     <NotificationBell
-      notifications={unreadNotifications(upcomingItems(upcoming.payments, today, user.currency, locale), read, reminder, bot)}
+      notifications={unreadNotifications(upcomingItems(upcoming.payments, today, locale), read, reminder, bot)}
       today={today}
       upcomingEnabled={upcoming.enabled}
     />

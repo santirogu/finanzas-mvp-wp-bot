@@ -90,6 +90,6 @@ const SMALLEST_SHOWN = 0.005;
  */
 export function formatCost(usd: number | null, locale: Locale = DEFAULT_LOCALE): string {
   if (usd === null) return "—";
-  if (usd > 0 && usd < SMALLEST_SHOWN) return `<${formatMoney(0.01, "USD", locale)}`;
-  return formatMoney(usd, "USD", locale);
+  if (usd > 0 && usd < SMALLEST_SHOWN) return `<${formatMoney(0.01, locale, "USD")}`;
+  return formatMoney(usd, locale, "USD");
 }

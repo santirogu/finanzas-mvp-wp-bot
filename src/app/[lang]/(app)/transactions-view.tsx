@@ -86,7 +86,7 @@ export async function TransactionsView({ type, params = {} }: { type: "income" |
           <h1 className="text-2xl font-semibold tracking-tight">{kind.title}</h1>
         </div>
         <p className={`text-2xl font-semibold tabular-nums ${isIncome ? "text-income" : "text-expense"}`}>
-          {formatMoney(total, user.currency, locale)}
+          {formatMoney(total, locale)}
         </p>
       </div>
 
@@ -128,7 +128,6 @@ export async function TransactionsView({ type, params = {} }: { type: "income" |
             items={items}
             type={type}
             inMonth={inMonth}
-            currency={user.currency}
             emptyMessage={compareMonths(range, current) === 0 ? kind.none : kind.noneIn(inMonth)}
           />
         </section>

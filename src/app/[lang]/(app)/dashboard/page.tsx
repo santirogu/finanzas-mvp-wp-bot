@@ -122,13 +122,13 @@ async function Dashboard({ month }: { month: string | string[] | undefined }) {
     // El dato del mes compara lo que va del mes en curso con lo mismo de los anteriores ("a esta altura").
     isCurrent ? getMonthFact(user.id, current, today, locale) : null,
   ]);
-  const money = (n: number) => formatMoney(n, user.currency, locale);
+  const money = (n: number) => formatMoney(n, locale);
   const firstName = user.name.split(" ")[0];
   const inMonth = inMonthPhrase(range, current, locale);
   // Frente al mes anterior, solo si en ese mes hubo movimientos (si no, todo sería "más que agosto").
   const ref = previousMonthReference(formatMonthName(previous, { locale }), isCurrent, locale);
   const changes = before.count > 0 && {
-    balance: balanceChange(summary.balance, before.balance, ref, user.currency, locale),
+    balance: balanceChange(summary.balance, before.balance, ref, locale),
     income: totalChange(summary.income, before.income, ref, "income", locale),
     expense: totalChange(summary.expense, before.expense, ref, "expense", locale),
   };
@@ -136,7 +136,7 @@ async function Dashboard({ month }: { month: string | string[] | undefined }) {
   // Sin ingresos todavía (antes del sueldo) no hay de qué hablar: todo saldría negativo.
   const remaining =
     fixed && summary.income > 0
-      ? remainingView(monthRemaining(summary, fixed, today), summary, fixed, today, user.currency, locale)
+      ? remainingView(monthRemaining(summary, fixed, today), summary, fixed, today, locale)
       : null;
 
   return (
@@ -182,14 +182,14 @@ async function Dashboard({ month }: { month: string | string[] | undefined }) {
       {remaining && <MonthRemaining view={remaining} />}
 
       {upcoming && upcoming.payments.length > 0 && (
-        <UpcomingPayments items={upcomingItems(upcoming.payments, today, user.currency, locale)} span={windowPhrase(upcoming.days, locale)} today={today} />
+        <UpcomingPayments items={upcomingItems(upcoming.payments, today, locale)} span={windowPhrase(upcoming.days, locale)} today={today} />
       )}
 
       {budgets && budgets.length > 0 && (
         <BudgetsCard
           title={t.budgets(formatMonthName(range, { locale }))}
           edit={t.editBudgets}
-          rows={budgetRows(budgets, user.currency, locale)}
+          rows={budgetRows(budgets, locale)}
         />
       )}
 
@@ -215,7 +215,7 @@ async function Dashboard({ month }: { month: string | string[] | undefined }) {
             {byCategory.length === 0 ? (
               <p className="py-8 text-center text-sm text-muted">{t.noExpenses(inMonth)}</p>
             ) : (
-              <CategoryChart slices={chartSlices(byCategory, summary.expense)} total={summary.expense} currency={user.currency} />
+              <CategoryChart slices={chartSlices(byCategory, summary.expense)} total={summary.expense} />
             )}
             {/* La categoría que más se salió de lo normal a esta altura del mes (src/modules/reports/month-fact.ts). */}
             {fact && (
@@ -229,7 +229,7 @@ async function Dashboard({ month }: { month: string | string[] | undefined }) {
                   </span>
                   <span className="min-w-0">
                     <span aria-hidden>{fact.emoji} </span>
-                    {monthFactText(fact, user.currency, locale)}{" "}
+                    {monthFactText(fact, locale)}{" "}
                     <Link href="/reportes#categorias" className="font-medium text-brand underline-offset-2 hover:underline">
                       {t.factLink}
                     </Link>

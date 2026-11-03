@@ -50,7 +50,6 @@ const props = {
   total: 2750000,
   periodMonths: 12,
   averageExpense: 2750000,
-  currency: "COP",
 };
 
 const section = () => within(screen.getByRole("region", { name: "Gastos fijos" }));

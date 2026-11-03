@@ -130,9 +130,9 @@ export type BudgetRow = {
 };
 
 /** Las filas de los presupuestos, con sus textos en el idioma de la página. */
-export function budgetRows(progress: BudgetProgress[], currency: string, locale: Locale = DEFAULT_LOCALE): BudgetRow[] {
+export function budgetRows(progress: BudgetProgress[], locale: Locale = DEFAULT_LOCALE): BudgetRow[] {
   const t = TEXTS[locale];
-  const money = (n: number) => formatMoney(n, currency, locale);
+  const money = (n: number) => formatMoney(n, locale);
   // Con el punto de los miles: una categoría puede pasarse por mucho ("1.250 %").
   const percent = new Intl.NumberFormat(INTL_LOCALES[locale]);
   return progress.map((p) => ({
@@ -153,9 +153,9 @@ export function budgetRows(progress: BudgetProgress[], currency: string, locale:
  * El aviso de un presupuesto que cruzó un umbral: "Mercado: llevas $410.000,00 de $500.000,00 (82 %)" o "Mercado: te
  * pasaste del presupuesto por $10.000,00 ($510.000,00 de $500.000,00)". El bot le pone su emoji adelante.
  */
-export function budgetAlert(crossing: BudgetCrossing, currency: string, locale: Locale = DEFAULT_LOCALE): string {
+export function budgetAlert(crossing: BudgetCrossing, locale: Locale = DEFAULT_LOCALE): string {
   const t = TEXTS[locale];
-  const money = (n: number) => formatMoney(n, currency, locale);
+  const money = (n: number) => formatMoney(n, locale);
   const percent = new Intl.NumberFormat(INTL_LOCALES[locale]);
   return crossing.level === "over"
     ? t.overBy(crossing.name, money(roundToCents(crossing.spent - crossing.amount)), money(crossing.spent), money(crossing.amount))

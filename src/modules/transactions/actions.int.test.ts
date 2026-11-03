@@ -33,7 +33,6 @@ async function signIn() {
     name: user.name,
     email: user.email,
     timezone: user.timezone,
-    currency: user.currency,
     role: user.role,
     superAdmin: user.superAdmin,
     twoFactorEnabled: user.twoFactorEnabled,
@@ -81,7 +80,6 @@ describe("createTransactionAction", () => {
         amount: 500000,
         description: "Zapatos",
         source: "web",
-        currency: "COP",
         categoryId: null,
       }),
     ]);
@@ -197,7 +195,7 @@ describe("createTransactionAction", () => {
   });
 
   it("ignora campos extra del formulario: el dueño, la moneda y el origen salen del servidor", async () => {
-    const victim = await createUser({ currency: "USD" });
+    const victim = await createUser();
     const user = await signIn();
 
     await createTransactionAction(

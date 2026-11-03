@@ -11,7 +11,6 @@ const row = (overrides: Partial<TransactionRow> = {}): TransactionRow => ({
   id: "00000000-0000-4000-8000-000000000001",
   type: "expense",
   amount: 500000,
-  currency: "COP",
   description: "Zapatos",
   occurredOn: "2026-10-13",
   source: "web",

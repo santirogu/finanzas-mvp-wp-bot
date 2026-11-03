@@ -105,7 +105,6 @@ export function FixedExpenses({
   total,
   periodMonths,
   averageExpense,
-  currency,
 }: {
   items: RecurringExpense[];
   /** El historial de cada gasto, por su clave. */
@@ -120,11 +119,10 @@ export function FixedExpenses({
   periodMonths: number;
   /** El gasto promedio por mes del período; 0 si no hay. */
   averageExpense: number;
-  currency: string;
 }) {
   const locale = useLocale();
   const t = TEXTS[locale];
-  const money = (n: number) => formatMoney(n, currency, locale);
+  const money = (n: number) => formatMoney(n, locale);
   return (
     <section className="card p-4" aria-label={t.section}>
       {items.length === 0 ? (

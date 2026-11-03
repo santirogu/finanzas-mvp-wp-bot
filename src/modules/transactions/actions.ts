@@ -55,7 +55,6 @@ export async function createTransactionAction(
     userId: user.id,
     type: input.type,
     amount: input.amount,
-    currency: user.currency,
     description: input.description,
     categoryId: input.categoryId ?? null,
     occurredOn: input.occurredOn,
@@ -75,7 +74,7 @@ export async function createTransactionAction(
     message: input.type === "income" ? t.income : t.expense,
     occurredOn: input.occurredOn,
     ...(crossings.length > 0 && {
-      budgetAlerts: crossings.map((crossing) => ({ level: crossing.level, text: budgetAlert(crossing, user.currency, locale) })),
+      budgetAlerts: crossings.map((crossing) => ({ level: crossing.level, text: budgetAlert(crossing, locale) })),
     }),
   };
 }

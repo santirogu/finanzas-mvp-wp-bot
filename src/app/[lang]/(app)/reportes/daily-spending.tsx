@@ -92,7 +92,6 @@ export type DailySpendingProps = {
   /** "Gastas más los sábados: …", o null si no hay con qué comparar. */
   insight: string | null;
   halves: { first: number; second: number };
-  currency: string;
   /** Sin egresos (o solo gastos fijos) en el período: lo que se dice en vez del calendario. */
   empty: string | null;
 };
@@ -102,10 +101,10 @@ export type DailySpendingProps = {
 const topDay = (days: CalendarDay[]) =>
   days.reduce<CalendarDay | null>((top, day) => (day.total > 0 && (!top || day.total > top.total) ? day : top), null)?.date ?? null;
 
-export function DailySpending({ monthLabel, prev, next, offset, days, weekdays, insight, halves, currency, empty }: DailySpendingProps) {
+export function DailySpending({ monthLabel, prev, next, offset, days, weekdays, insight, halves, empty }: DailySpendingProps) {
   const locale = useLocale();
   const t = TEXTS[locale];
-  const money = (n: number) => formatMoney(n, currency, locale);
+  const money = (n: number) => formatMoney(n, locale);
   // Al cambiar de mes con las flechas, la página lo vuelve a crear (key): empieza en su día de más gasto.
   const [selected, setSelected] = useState(() => topDay(days));
   const day = days.find((d) => d.date === selected) ?? null;

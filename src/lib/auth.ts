@@ -71,7 +71,6 @@ export const auth = betterAuth({
   user: {
     additionalFields: {
       timezone: { type: "string", required: false, defaultValue: "America/Bogota", input: false },
-      currency: { type: "string", required: false, defaultValue: "COP", input: false },
       // input: false → el registro ignora el rol que mande el cliente (queda "user") y
       // "actualizar perfil" lo rechaza. Lo cambian el super admin (/admin/usuarios) y la terminal.
       role: { type: [...ROLES], required: false, defaultValue: "user", input: false },

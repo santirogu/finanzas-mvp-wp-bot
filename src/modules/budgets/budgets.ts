@@ -136,7 +136,7 @@ async function budgetCategory(userId: string, categoryId: string, locale: Locale
  * el admin archivó se puede cambiar.
  */
 export async function saveBudget(
-  user: { id: string; currency: string },
+  user: { id: string },
   raw: { categoryId: unknown; amount: unknown },
   locale: Locale = DEFAULT_LOCALE,
 ): Promise<BudgetResult> {
@@ -150,7 +150,7 @@ export async function saveBudget(
     .insert(categoryBudget)
     .values({ userId: user.id, categoryId: id.data, amount: amount.data })
     .onConflictDoUpdate({ target: [categoryBudget.userId, categoryBudget.categoryId], set: { amount: amount.data, updatedAt: new Date() } });
-  const money = formatMoney(amount.data, user.currency, locale);
+  const money = formatMoney(amount.data, locale);
   return { ok: true, message: found.exists ? t.changed(found.name, money) : t.saved(found.name, money), tone: "success" };
 }
 

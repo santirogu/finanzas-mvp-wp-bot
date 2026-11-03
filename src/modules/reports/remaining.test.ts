@@ -109,7 +109,7 @@ describe("monthRemaining", () => {
 describe("remainingView (los textos de la tarjeta)", () => {
   const totals = { income: 4200000, expense: 2980000 };
   const view = (f: MonthFixed, today = "2026-10-21", t = totals, locale: "es" | "en" = "es") =>
-    remainingView(monthRemaining(t, f, today), t, f, today, "COP", locale);
+    remainingView(monthRemaining(t, f, today), t, f, today, locale);
   const nbsp = (s: string) => s.replace(/ /g, " ");
 
   it("lo libre, por día, el avance del mes, de dónde sale y el cierre", () => {

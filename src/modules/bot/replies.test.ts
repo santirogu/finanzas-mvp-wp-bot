@@ -53,7 +53,7 @@ describe("registeredReply", () => {
           occurredOn: "2026-10-13",
         },
       ],
-      { today: "2026-10-13", currency: "COP", balance: 2700000, range, locale: "es" },
+      { today: "2026-10-13", balance: 2700000, range, locale: "es" },
     );
     expect(nbsp(text)).toBe(
       [
@@ -70,7 +70,6 @@ describe("registeredReply", () => {
       [{ type: "expense", amount: 25000, description: "Almuerzo", category: "Alimentación", occurredOn: "2026-10-13" }],
       {
         today: "2026-10-13",
-        currency: "COP",
         balance: 1220000,
         range,
         locale: "es",
@@ -94,7 +93,7 @@ describe("registeredReply", () => {
   it("confirma con los centavos que se escribieron", () => {
     const text = registeredReply(
       [{ type: "expense", amount: 25900.5, description: "Almuerzo", category: "Alimentación", occurredOn: "2026-10-13" }],
-      { today: "2026-10-13", currency: "COP", balance: -25900.5, range, locale: "es" },
+      { today: "2026-10-13", balance: -25900.5, range, locale: "es" },
     );
     expect(text).toContain("✅ Egreso Anotado: *Almuerzo* — $25.900,50 (Alimentación)");
     expect(text).toContain("Balance de octubre: *−$25.900,50*");
@@ -119,7 +118,7 @@ describe("registeredReply", () => {
             occurredOn: "2026-10-13",
           },
         ],
-        { today: "2026-10-13", currency: "COP", balance: 70000, range, locale: "es" },
+        { today: "2026-10-13", balance: 70000, range, locale: "es" },
       ),
     );
     expect(text).toContain("Egreso Anotado: *Gasolina* — $30.000,00 (Transporte · 12 de oct.)");
@@ -133,7 +132,7 @@ describe("balanceReply", () => {
       nbsp(
         balanceReply(
           { income: 3200000, expense: 500000, balance: 2700000, count: 2 },
-          { currency: "COP", range, locale: "es" },
+          { range, locale: "es" },
         ),
       ),
     ).toBe(
@@ -148,13 +147,13 @@ describe("balanceReply", () => {
 
   it("con centavos", () => {
     expect(
-      balanceReply({ income: 100000.5, expense: 45900.25, balance: 54100.25, count: 2 }, { currency: "COP", range, locale: "es" }),
+      balanceReply({ income: 100000.5, expense: 45900.25, balance: 54100.25, count: 2 }, { range, locale: "es" }),
     ).toContain("Ingresos: $100.000,50\nEgresos: $45.900,25\nBalance: *$54.100,25*");
   });
 
   it("invita a registrar si no hay movimientos", () => {
     expect(
-      balanceReply({ income: 0, expense: 0, balance: 0, count: 0 }, { currency: "COP", range, locale: "es" }),
+      balanceReply({ income: 0, expense: 0, balance: 0, count: 0 }, { range, locale: "es" }),
     ).toContain("Aún no tienes movimientos en octubre de 2026");
   });
 
@@ -162,22 +161,21 @@ describe("balanceReply", () => {
   const summary = (balance: number, count = 3) => ({ income: balance > 0 ? balance : 0, expense: balance < 0 ? -balance : 0, balance, count });
 
   it("con el mes anterior, una línea más con cómo cambió el balance (como en el Resumen)", () => {
-    const up = balanceReply(summary(2940627.25), { currency: "COP", range, locale: "es", previous: { month: september, summary: summary(1136648.5), upToToday: false } });
+    const up = balanceReply(summary(2940627.25), { range, locale: "es", previous: { month: september, summary: summary(1136648.5), upToToday: false } });
     expect(nbsp(up).split("\n").at(-1)).toBe("_↗ $1.803.978,75 más que septiembre_");
-    const down = balanceReply(summary(100000), { currency: "COP", range, locale: "es", previous: { month: september, summary: summary(250000), upToToday: false } });
+    const down = balanceReply(summary(100000), { range, locale: "es", previous: { month: september, summary: summary(250000), upToToday: false } });
     expect(nbsp(down).split("\n").at(-1)).toBe("_↘ $150.000,00 menos que septiembre_");
-    const same = balanceReply(summary(100000), { currency: "COP", range, locale: "es", previous: { month: september, summary: summary(100000), upToToday: false } });
+    const same = balanceReply(summary(100000), { range, locale: "es", previous: { month: september, summary: summary(100000), upToToday: false } });
     expect(nbsp(same).split("\n").at(-1)).toBe("_Igual que septiembre_");
   });
 
   it("con el mes en curso, contra el anterior hasta el mismo día", () => {
-    const reply = balanceReply(summary(100000), { currency: "COP", range, locale: "es", previous: { month: september, summary: summary(250000), upToToday: true } });
+    const reply = balanceReply(summary(100000), { range, locale: "es", previous: { month: september, summary: summary(250000), upToToday: true } });
     expect(nbsp(reply).split("\n").at(-1)).toBe("_↘ $150.000,00 menos que a esta altura de septiembre_");
   });
 
   it("sin movimientos el mes anterior, no compara (y el título dice el mes pedido)", () => {
     const reply = balanceReply(summary(100000), {
-      currency: "COP",
       range: { year: 2025, month: 12 },
       locale: "es",
       previous: { month: { year: 2025, month: 11 }, summary: summary(0, 0), upToToday: false },
@@ -205,7 +203,7 @@ describe("futureMonthReply", () => {
 
 describe("undoReply", () => {
   it("informa si no hay nada que deshacer", () => {
-    expect(undoReply([], "COP", "es")).toContain("No encontré");
+    expect(undoReply([], "es")).toContain("No encontré");
   });
 });
 
@@ -242,7 +240,7 @@ describe("mensajes de vinculación y ayuda", () => {
 
   it("lista lo que se deshizo", () => {
     expect(
-      undoReply([{ description: "Café", amount: 6500, type: "expense" }], "COP", "es").replace(
+      undoReply([{ description: "Café", amount: 6500, type: "expense" }], "es").replace(
         /\u00a0/g,
         " ",
       ),
@@ -250,7 +248,7 @@ describe("mensajes de vinculación y ayuda", () => {
   });
 
   it("lista lo que se deshizo, con sus centavos", () => {
-    expect(undoReply([{ description: "Café", amount: 6500.5, type: "expense" }], "COP", "es")).toBe(
+    expect(undoReply([{ description: "Café", amount: 6500.5, type: "expense" }], "es")).toBe(
       "Listo, eliminé:\n🗑️ Café — $6.500,50",
     );
   });
@@ -329,7 +327,7 @@ describe("textos fijos del bot", () => {
 
 describe("reportReply", () => {
   const october = { year: 2026, month: 10 };
-  const ctx = { currency: "COP", appUrl: "https://finanzas.app", locale: "es" } as const;
+  const ctx = { appUrl: "https://finanzas.app", locale: "es" } as const;
   const summary: PeriodSummary = {
     income: 33350000,
     expense: 10977000,
@@ -435,7 +433,6 @@ describe("en inglés", () => {
       ],
       {
         today: "2026-10-13",
-        currency: "COP",
         balance: -1500,
         range,
         locale: "en",
@@ -456,7 +453,7 @@ describe("en inglés", () => {
   it("el balance de un mes, con la comparación con el anterior", () => {
     const reply = balanceReply(
       { income: 3200000, expense: 500000, balance: 2700000, count: 2 },
-      { currency: "COP", range, locale: "en", previous: { month: { year: 2026, month: 9 }, summary: { income: 0, expense: 100000, balance: -100000, count: 1 }, upToToday: true } },
+      { range, locale: "en", previous: { month: { year: 2026, month: 9 }, summary: { income: 0, expense: 100000, balance: -100000, count: 1 }, upToToday: true } },
     );
     expect(reply.split("\n")).toEqual([
       "📊 *October 2026*",
@@ -465,7 +462,7 @@ describe("en inglés", () => {
       "Balance: *$2,700,000.00*",
       "_↗ $2,800,000.00 more than at this point in September_",
     ]);
-    expect(balanceReply({ income: 0, expense: 0, balance: 0, count: 0 }, { currency: "COP", range, locale: "en" })).toBe(
+    expect(balanceReply({ income: 0, expense: 0, balance: 0, count: 0 }, { range, locale: "en" })).toBe(
       "You don't have any transactions in October 2026 yet. Send me something like “spent 20k on lunch”.",
     );
   });
@@ -486,7 +483,7 @@ describe("en inglés", () => {
       rows: [{ emoji: "🏠", name: "Housing", total: 7000000, share: 0, color: 0, change: null }],
     };
     const recurring = { items: [{}], total: 1800000 };
-    const ctx = { currency: "COP", appUrl: "https://finanzas.app", locale: "en" } as const;
+    const ctx = { appUrl: "https://finanzas.app", locale: "en" } as const;
     expect(reportReply({ summary, categories, recurring }, reportPeriod(undefined, october, "en"), ctx).split("\n")).toEqual([
       "📊 *Report from November 2025 to October 2026*",
       "Income: $33,350,000.00",
@@ -538,8 +535,8 @@ describe("en inglés", () => {
     expect(linkedReply("", "en")).toMatch(/^✅ All set! /);
     expect(linkInvalidReply("en")).toBe("That code isn't valid or has expired. Get another one in *My account*: tap *Connect WhatsApp*.");
     expect(linkRateLimitedReply("en")).toBe("I got too many wrong codes from this number. Wait an hour and try again.");
-    expect(undoReply([{ description: "Coffee", amount: 6500.5, type: "expense" }], "COP", "en")).toBe("Done, I deleted:\n🗑️ Coffee — $6,500.50");
-    expect(undoReply([], "COP", "en")).toBe("I didn't find any transactions added on WhatsApp to undo.");
+    expect(undoReply([{ description: "Coffee", amount: 6500.5, type: "expense" }], "en")).toBe("Done, I deleted:\n🗑️ Coffee — $6,500.50");
+    expect(undoReply([], "en")).toBe("I didn't find any transactions added on WhatsApp to undo.");
     expect(futureMonthReply({ year: 2026, month: 12 }, "en")).toBe("December 2026 isn't here yet 🙂. Try *balance* (this month) or *balance last month*.");
     expect(tooOldMonthReply("en")).toMatch(/^I can only give you balances from January 2000\./);
     expect(futureYearReply(2027, "en")).toBe("2027 isn't here yet 🙂. Try *report* (the last 12 months) or *report* and a year that already passed.");

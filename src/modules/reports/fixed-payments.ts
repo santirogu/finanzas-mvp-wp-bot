@@ -108,7 +108,7 @@ export type RegisterPaymentResult =
  * monto se lee y los mensajes salen en el idioma de la página (`locale`).
  */
 export async function registerFixedPayment(
-  user: { id: string; currency: string },
+  user: { id: string },
   raw: { description: unknown; amount: unknown; occurredOn: unknown; month?: unknown },
   today: string,
   locale: Locale = DEFAULT_LOCALE,
@@ -134,9 +134,9 @@ export async function registerFixedPayment(
   await db.transaction(async (tx) => {
     const [created] = await tx
       .insert(transaction)
-      .values({ userId: user.id, type: "expense", amount, currency: user.currency, description: last.description, categoryId, occurredOn, source: "web" })
+      .values({ userId: user.id, type: "expense", amount, description: last.description, categoryId, occurredOn, source: "web" })
       .returning({ id: transaction.id });
     if (month) await tx.insert(fixedPaymentLink).values({ userId: user.id, transactionId: created.id, descriptionKey: searchKey(last.description), month });
   });
-  return { ok: true, message: t.registered(last.description, formatMoney(amount, user.currency, locale)), tone: "success" };
+  return { ok: true, message: t.registered(last.description, formatMoney(amount, locale)), tone: "success" };
 }

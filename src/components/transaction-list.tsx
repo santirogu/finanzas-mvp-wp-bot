@@ -77,7 +77,7 @@ export function TransactionList({
                 className={`col-start-2 row-start-1 whitespace-nowrap text-right text-sm font-semibold tabular-nums sm:row-span-2 ${isIncome ? "text-income" : "text-expense"}`}
               >
                 {isIncome ? "+" : "−"}
-                {formatMoney(row.amount, row.currency, locale)}
+                {formatMoney(row.amount, locale)}
               </span>
               <p className={`truncate text-xs text-muted ${allowDelete ? "" : "col-span-2 sm:col-span-1"}`}>
                 {formatShortDate(row.occurredOn, { locale })} ·{" "}

@@ -60,6 +60,8 @@ export const transaction = pgTable(
     // Monto en pesos con centavos: decimal exacto en la base (nunca float). 18 dígitos: cabe cualquier
     // monto que aceptaba la columna anterior (entera); la app limita a MAX_AMOUNT (src/lib/money.ts).
     amount: numeric("amount", { precision: 18, scale: 2, mode: "number" }).notNull(),
+    // Sin uso: la app lleva todo en pesos (README → Decisiones importantes). Se borra en el PR siguiente,
+    // cuando ninguna versión desplegada la lea.
     currency: text("currency").notNull().default("COP"),
     categoryId: uuid("category_id").references(() => category.id, { onDelete: "set null" }),
     description: text("description").notNull(),

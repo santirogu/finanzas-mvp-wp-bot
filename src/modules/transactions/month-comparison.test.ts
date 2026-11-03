@@ -13,10 +13,6 @@ describe("balanceChange", () => {
   it("igual si no cambió (sin restos de float)", () => {
     expect(balanceChange(0.3, 0.1 + 0.2, agosto)).toEqual({ direction: "same", text: "Igual que agosto" });
   });
-
-  it("usa la moneda del usuario", () => {
-    expect(balanceChange(100, 0, agosto, "USD").text).toMatch(/^US\$100,00 más que agosto$/);
-  });
 });
 
 describe("totalChange", () => {
@@ -56,9 +52,9 @@ describe("totalChange", () => {
 
 describe("en inglés", () => {
   it("el balance y los totales frente al mes anterior", () => {
-    expect(balanceChange(850000, 730000, august, "COP", "en")).toEqual({ direction: "up", text: "$120,000.00 more than August" });
-    expect(balanceChange(-50000, 25000.5, august, "COP", "en")).toEqual({ direction: "down", text: "$75,000.50 less than August" });
-    expect(balanceChange(1, 1, august, "COP", "en")).toEqual({ direction: "same", text: "Same as August" });
+    expect(balanceChange(850000, 730000, august, "en")).toEqual({ direction: "up", text: "$120,000.00 more than August" });
+    expect(balanceChange(-50000, 25000.5, august, "en")).toEqual({ direction: "down", text: "$75,000.50 less than August" });
+    expect(balanceChange(1, 1, august, "en")).toEqual({ direction: "same", text: "Same as August" });
     expect(totalChange(250000, 2000, august, "expense", "en").text).toBe("12,400% more than August");
     expect(totalChange(920000, 1000000, august, "income", "en")).toEqual({ direction: "down", text: "8% less than August" });
     expect(totalChange(1004, 1000, august, "expense", "en").text).toBe("Almost the same as August");
@@ -81,7 +77,7 @@ describe("con el mes en curso, contra el anterior hasta el mismo día", () => {
 
   it("en inglés", () => {
     const ref = previousMonthReference("September", true, "en");
-    expect(balanceChange(1220000, 1125000, ref, "COP", "en").text).toBe("$95,000.00 more than at this point in September");
+    expect(balanceChange(1220000, 1125000, ref, "en").text).toBe("$95,000.00 more than at this point in September");
     expect(totalChange(920000, 1000000, ref, "income", "en").text).toBe("8% less than at this point in September");
     expect(totalChange(500000, 0, ref, "expense", "en").text).toBe("No expenses at this point in September");
   });

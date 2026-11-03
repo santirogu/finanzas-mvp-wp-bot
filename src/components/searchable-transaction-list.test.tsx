@@ -13,7 +13,6 @@ const row = (description: string, categoryName: string | null, amount: number, t
   id: `00000000-0000-4000-8000-${String(++next).padStart(12, "0")}`,
   type,
   amount,
-  currency: "COP",
   description,
   occurredOn: "2026-09-30",
   source: "web",
@@ -36,7 +35,6 @@ function renderList(items = SEPTEMBER, type: "income" | "expense" = "expense") {
       items={items}
       type={type}
       inMonth="en septiembre"
-      currency="COP"
       emptyMessage="No registraste egresos en septiembre."
     />,
   );
@@ -157,11 +155,11 @@ describe("SearchableTransactionList", () => {
   it("al borrar uno mientras se busca, la búsqueda sigue aunque queden menos de 6", async () => {
     const user = userEvent.setup();
     const { rerender } = render(
-      <SearchableTransactionList items={SEPTEMBER} type="expense" inMonth="en septiembre" currency="COP" emptyMessage="vacío" />,
+      <SearchableTransactionList items={SEPTEMBER} type="expense" inMonth="en septiembre" emptyMessage="vacío" />,
     );
     await user.type(search(), "civ");
     rerender(
-      <SearchableTransactionList items={SEPTEMBER.slice(1)} type="expense" inMonth="en septiembre" currency="COP" emptyMessage="vacío" />,
+      <SearchableTransactionList items={SEPTEMBER.slice(1)} type="expense" inMonth="en septiembre" emptyMessage="vacío" />,
     );
     expect(search()).toHaveValue("civ");
     expect(heading()).toHaveTextContent("1 de 5 movimientos en septiembre");
@@ -187,7 +185,7 @@ describe("SearchableTransactionList", () => {
 describe("SearchableTransactionList · en inglés", () => {
   it("el título, el buscador, el total y lo que no coincide, en inglés", async () => {
     render(
-      <SearchableTransactionList items={[...SEPTEMBER, row("Almuerzo", null, 25_000)]} type="expense" inMonth="in September" currency="COP" emptyMessage="—" />,
+      <SearchableTransactionList items={[...SEPTEMBER, row("Almuerzo", null, 25_000)]} type="expense" inMonth="in September" emptyMessage="—" />,
       { wrapper: InEnglish },
     );
     expect(screen.getByRole("heading", { name: "7 transactions in September" })).toBeVisible();

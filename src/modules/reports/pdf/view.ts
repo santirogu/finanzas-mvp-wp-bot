@@ -39,8 +39,7 @@ const TEXTS = texts(
       language: INTL_LOCALES.es,
     },
     generated: (day: number, month: string, year: number) => `Generado el ${day} de ${month} de ${year}`,
-    currency: (name: string) => `Montos en ${name}`,
-    currencies: { COP: "pesos colombianos (COP)" } as Record<string, string>,
+    currency: "Montos en pesos colombianos (COP)",
     empty: "Aún no tienes movimientos.",
     allFixed: "Todos los egresos del período son gastos fijos.",
     noExpenses: "Sin egresos en el período.",
@@ -75,8 +74,7 @@ const TEXTS = texts(
         language: INTL_LOCALES.en,
       },
       generated: (day, month, year) => `Generated on ${month} ${day}, ${year}`,
-      currency: (name) => `Amounts in ${name}`,
-      currencies: { COP: "Colombian pesos (COP)" },
+      currency: "Amounts in Colombian pesos (COP)",
       empty: "You don't have transactions yet.",
       allFixed: "All the expenses in the period are bills.",
       noExpenses: "No expenses in the period.",
@@ -162,7 +160,6 @@ export function reportPdfView({
   current,
   today,
   name,
-  currency,
   locale = DEFAULT_LOCALE,
 }: {
   report: Report;
@@ -173,12 +170,11 @@ export function reportPdfView({
   current: Month;
   today: string;
   name: string;
-  currency: string;
   /** El idioma del reporte (el de la página desde la que se descargó). */
   locale?: Locale;
 }): ReportPdfView {
   const t = TEXTS[locale];
-  const money = (n: number) => formatMoney(n, currency, locale);
+  const money = (n: number) => formatMoney(n, locale);
   const { summary, categories, recurring } = report;
   const noExpenses = summary.expense > 0 ? t.allFixed : t.noExpenses;
 
@@ -221,7 +217,7 @@ export function reportPdfView({
     range: period.range,
     name,
     generated: t.generated(Number(today.slice(8, 10)), formatMonthName(monthOf(today), { locale }), Number(today.slice(0, 4))),
-    currency: t.currency(t.currencies[currency] ?? currency),
+    currency: t.currency,
     empty: report.activeMonths.length === 0 ? t.empty : null,
     stats,
     chart: {

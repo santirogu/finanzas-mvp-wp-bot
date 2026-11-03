@@ -154,11 +154,10 @@ export function remainingView(
   totals: { income: number; expense: number },
   fixed: MonthFixed,
   today: string,
-  currency: string,
   locale: Locale = DEFAULT_LOCALE,
 ): RemainingView {
   const t = TEXTS[locale];
-  const money = (n: number) => formatMoney(n, currency, locale);
+  const money = (n: number) => formatMoney(n, locale);
   // Lo que se resta, con el signo menos (sin "−$0,00" cuando es cero).
   const minus = (n: number) => money(n === 0 ? 0 : -n);
   const monthName = formatMonthName(monthOf(today), { locale });

@@ -11,7 +11,6 @@ export type CurrentUser = {
   name: string;
   email: string;
   timezone: string;
-  currency: string;
   role: Role;
   /** La marca de super admin (vale solo con el rol de admin: ver isSuperAdmin en src/lib/roles.ts). */
   superAdmin: boolean;
@@ -28,13 +27,12 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   if (!session) return null;
   // Al suspenderla se cierran sus sesiones; si quedara alguna (dos pedidos a la vez), no sirve.
   if (session.user.suspendedAt) return null;
-  const { id, name, email, timezone, currency, role, superAdmin, twoFactorEnabled } = session.user;
+  const { id, name, email, timezone, role, superAdmin, twoFactorEnabled } = session.user;
   return {
     id,
     name,
     email,
     timezone: timezone ?? "America/Bogota",
-    currency: currency ?? "COP",
     // Sale de la base en cada request (no hay caché de sesión en la cookie): quitar el rol a
     // alguien surte efecto en su siguiente clic.
     role: parseRole(role),

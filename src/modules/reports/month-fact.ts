@@ -86,9 +86,9 @@ const TEXTS = texts(
 );
 
 /** El dato en una frase, en el idioma de la página: "Domicilios: llevas $180.000,00, 40 % más que a esta altura…". */
-export function monthFactText(fact: MonthFact, currency: string, locale: Locale = DEFAULT_LOCALE): string {
+export function monthFactText(fact: MonthFact, locale: Locale = DEFAULT_LOCALE): string {
   const t = TEXTS[locale];
-  const money = (n: number) => formatMoney(n, currency, locale);
+  const money = (n: number) => formatMoney(n, locale);
   const ref = t.ref(fact.averaged);
   if (fact.pct === null) return t.isNew(fact.name, money(fact.current), ref);
   if (fact.current === 0) return t.none(fact.name, money(fact.average), ref);

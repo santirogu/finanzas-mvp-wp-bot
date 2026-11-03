@@ -24,7 +24,6 @@ async function signIn(user: Awaited<ReturnType<typeof createUser>>) {
     name: user.name,
     email: user.email,
     timezone: user.timezone,
-    currency: user.currency,
     role: user.role,
     superAdmin: user.superAdmin,
     twoFactorEnabled: user.twoFactorEnabled,

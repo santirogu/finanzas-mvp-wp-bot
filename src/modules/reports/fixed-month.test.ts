@@ -113,7 +113,7 @@ describe("fixedMonthView", () => {
   };
 
   it("en español", () => {
-    expect(fixedMonthView(month, "2026-10-21", "COP")).toEqual({
+    expect(fixedMonthView(month, "2026-10-21")).toEqual({
       summary: { paid: "2 de 4 pagados este mes", pending: "Faltan $150.000,00" },
       statuses: {
         arriendo: { text: "Pagado el 4 de oct.", tone: "paid" },
@@ -126,7 +126,7 @@ describe("fixedMonthView", () => {
   });
 
   it("en inglés", () => {
-    expect(fixedMonthView(month, "2026-10-21", "COP", "en")).toEqual({
+    expect(fixedMonthView(month, "2026-10-21", "en")).toEqual({
       summary: { paid: "2 of 4 paid this month", pending: "$150,000.00 to go" },
       statuses: {
         arriendo: { text: "Paid on Oct 4", tone: "paid" },
@@ -140,13 +140,13 @@ describe("fixedMonthView", () => {
 
   it("todos pagados, sin lo que falta; sin pagos este mes, sin resumen", () => {
     const allPaid = { ...month, paid: 4, pendingTotal: 0 };
-    expect(fixedMonthView(allPaid, "2026-10-21", "COP").summary).toEqual({ paid: "Todos pagados este mes", pending: null });
-    expect(fixedMonthView(allPaid, "2026-10-21", "COP", "en").summary).toEqual({ paid: "All paid this month", pending: null });
-    expect(fixedMonthView({ statuses: new Map(), paid: 0, expected: 0, pendingTotal: 0 }, "2026-10-21", "COP")).toEqual({ summary: null, statuses: {} });
+    expect(fixedMonthView(allPaid, "2026-10-21").summary).toEqual({ paid: "Todos pagados este mes", pending: null });
+    expect(fixedMonthView(allPaid, "2026-10-21", "en").summary).toEqual({ paid: "All paid this month", pending: null });
+    expect(fixedMonthView({ statuses: new Map(), paid: 0, expected: 0, pendingTotal: 0 }, "2026-10-21")).toEqual({ summary: null, statuses: {} });
   });
 
   it("una clave como '__proto__' queda como una más", () => {
-    const view = fixedMonthView({ statuses: new Map([["__proto__", { kind: "skipped" }]]), paid: 0, expected: 0, pendingTotal: 0 }, "2026-10-21", "COP");
+    const view = fixedMonthView({ statuses: new Map([["__proto__", { kind: "skipped" }]]), paid: 0, expected: 0, pendingTotal: 0 }, "2026-10-21");
     expect(Object.hasOwn(view.statuses, "__proto__")).toBe(true);
     expect(Object.getPrototypeOf(view.statuses)).toBe(Object.prototype);
   });
