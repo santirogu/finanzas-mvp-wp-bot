@@ -5,7 +5,7 @@ import { transaction, user, whatsappMessage } from "@/db/schema";
 import { PRIVACY_VERSION } from "@/lib/privacy";
 import type { ExtractionResult, Extractor } from "@/modules/bot/claude-extractor";
 import type { RawTransaction } from "@/modules/bot/normalize";
-import type { MediaDownloader, SendResult } from "@/modules/whatsapp/client";
+import type { MediaDownloader, ReplyButton, SendResult } from "@/modules/whatsapp/client";
 import type { IncomingMessage } from "@/modules/whatsapp/payload";
 
 /** Una cuenta que ya autorizó el tratamiento de sus datos (src/lib/privacy.ts); `privacyVersion: null`, una que no. */
@@ -71,13 +71,19 @@ export function fakeExtractor(
 }
 
 /** Envío falso de WhatsApp que guarda lo enviado; puede simular fallas de Meta. */
+/**
+ * Un WhatsApp falso que guarda lo que el bot envió: las respuestas en `sent` y, aparte, las preguntas con botones
+ * (la del 4x1000, después de registrar egresos) en `questions`.
+ */
 export function capturingSender(options: { fail?: string } = {}) {
   const sent: { to: string; body: string }[] = [];
-  const send = async (to: string, body: string): Promise<SendResult> => {
-    sent.push({ to, body });
+  const questions: { to: string; body: string; buttons: ReplyButton[] }[] = [];
+  const send = async (to: string, body: string, buttons?: ReplyButton[]): Promise<SendResult> => {
+    if (buttons) questions.push({ to, body, buttons });
+    else sent.push({ to, body });
     return options.fail ? { ok: false, error: options.fail } : { ok: true };
   };
-  return { send, sent };
+  return { send, sent, questions };
 }
 
 export const activeTransactions = (userId: string) =>

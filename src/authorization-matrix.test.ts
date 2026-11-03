@@ -123,6 +123,7 @@ const SERVER_ACTIONS = {
   saveUpcomingSettingsAction: "requireUser; solo la configuración propia de los avisos; días de 0 a 10",
   markNotificationsReadAction: "requireUser; solo marca como leídas notificaciones propias (ids con su formato, hasta 50)",
   saveReminderSettingsAction: "requireUser; solo la configuración propia del recordatorio de registro; días de 1 a 14",
+  saveGmfSettingAction: "requireUser; solo prende o apaga el 4x1000 de la cuenta propia",
   finishTutorialAction: "requireUser; solo da por visto el tutorial de bienvenida de la cuenta propia (sin datos del formulario)",
   registerFixedPaymentAction:
     "requireUser; registra un egreso propio con la descripción y la categoría del último pago propio de ese gasto (las busca el servidor); fecha hasta hoy",

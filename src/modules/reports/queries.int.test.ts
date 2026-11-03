@@ -100,6 +100,13 @@ describe("getExpenseDescriptionsByMonth", () => {
       { month: "2026-10", description: "Netflix", emoji: "•", count: 1, total: 44900, latest: "2026-10-03" },
     ]);
   });
+
+  it("sin el 4x1000 de otros egresos: va atado al suyo, no es un gasto fijo aparte", async () => {
+    const user = await createUser();
+    const rent = await addTx({ userId: user.id, description: "Arriendo", amount: 900000, occurredOn: "2026-10-01" });
+    await addTx({ userId: user.id, description: "4x1000 · Arriendo", amount: 3600, occurredOn: "2026-10-01", taxOf: rent.id });
+    expect((await getExpenseDescriptionsByMonth(user.id, october, october)).map((row) => row.description)).toEqual(["Arriendo"]);
+  });
 });
 
 describe("getExpensesByDay", () => {

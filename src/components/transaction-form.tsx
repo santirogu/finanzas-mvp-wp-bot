@@ -7,12 +7,13 @@ import type { Locale } from "@/i18n/locales";
 import { texts } from "@/i18n/texts";
 import { formatMonthName, monthOf } from "@/lib/dates";
 import type { FieldMessages } from "@/lib/field-errors";
-import { amountInputValue, completeAmountDecimals, formatAmountTyping } from "@/lib/money";
+import { amountInputValue, completeAmountDecimals, formatAmountTyping, formatMoney, parseAmountInput } from "@/lib/money";
 import {
   createTransactionAction,
   updateTransactionAction,
   type FormState,
 } from "@/modules/transactions/actions";
+import { gmfAmount } from "@/modules/transactions/gmf-amount";
 import { type Suggestion, useDescriptionSuggestions } from "./description-suggestions";
 import { describedBy, FieldError } from "./field-error";
 import { useToast } from "./toaster";
@@ -50,6 +51,9 @@ const TEXTS = texts(
     noCategory: "Sin categoría",
     archived: " (archivada)",
     date: "Fecha",
+    gmf: "Aplicar 4x1000",
+    gmfHint: (amount: string) => `Se registra aparte, en la categoría Impuestos: ${amount}.`,
+    gmfHintEmpty: "Se registra aparte, en la categoría Impuestos: el 0,4 % del monto.",
     proposed: (category: string) => `Se eligió la categoría ${category}, la de la última vez.`,
     elsewhere: (month: string) => ` en ${month}`,
     budgets: "Ver presupuestos",
@@ -74,6 +78,9 @@ const TEXTS = texts(
       noCategory: "No category",
       archived: " (archived)",
       date: "Date",
+      gmf: "Apply 4x1000",
+      gmfHint: (amount) => `It's added separately, as a tax: ${amount}.`,
+      gmfHintEmpty: "It's added separately, as a tax: 0.4% of the amount.",
       proposed: (category) => `We chose ${category}, like last time.`,
       elsewhere: (month) => ` in ${month}`,
       budgets: "See budgets",
@@ -93,6 +100,7 @@ export function TransactionForm({
   cancelHref,
   listMonth,
   suggestions = [],
+  gmf = false,
 }: {
   type: "income" | "expense";
   categories: CategoryOption[];
@@ -110,6 +118,8 @@ export function TransactionForm({
   listMonth?: { start: string; end: string };
   /** Lo que se sugiere al escribir la descripción (solo al registrar uno nuevo). */
   suggestions?: DescriptionSuggestion[];
+  /** Ofrecer "Aplicar 4x1000" (un egreso nuevo, con el 4x1000 prendido en Configuración). */
+  gmf?: boolean;
 }) {
   const editing = Boolean(transaction);
   const locale = useLocale();
@@ -134,6 +144,9 @@ export function TransactionForm({
   const categoryRef = useRef<HTMLSelectElement>(null);
   const categoryChosen = useRef(false);
   const [proposed, setProposed] = useState("");
+  // Lo escrito en el monto, para mostrar cuánto sería el 4x1000.
+  const [typedAmount, setTypedAmount] = useState("");
+  const offerGmf = gmf && !editing && type === "expense";
   /** Pone la categoría de la última vez de una descripción conocida (si no la eligió a mano). */
   function proposeCategoryFor(text: string) {
     const category = proposedCategory(text, suggestions, categories);
@@ -148,6 +161,7 @@ export function TransactionForm({
     categoryChosen.current = false;
     setProposed("");
     resetSuggestions();
+    setTypedAmount("");
     amountRef.current?.focus();
     toast({ tone: "success", message: `${state.message}${elsewhere(state.occurredOn, listMonth, locale)}` });
   }, [state, toast, listMonth, resetSuggestions, locale]);
@@ -196,6 +210,7 @@ export function TransactionForm({
               // Puntos de miles mientras se escribe y, tras la coma, hasta dos centavos: 45900,5 → 45.900,5
               // (en inglés, al revés: 45900.5 → 45,900.5).
               e.target.value = formatAmountTyping(e.target.value, locale);
+              setTypedAmount(e.target.value);
             }}
             onBlur={(e) => {
               // Al salir del campo, con sus dos decimales: 500.000 → 500.000,00 y 45.900,5 → 45.900,50
@@ -268,6 +283,8 @@ export function TransactionForm({
         </Field>
       </div>
 
+      {offerGmf && <GmfOption amount={typedAmount || (values.amount ?? "")} checked={values.gmf === "on"} />}
+
       {/* Cuando una descripción conocida elige la categoría, el lector de pantalla lo dice (el cambio
           se ve, pero no se anuncia). Fuera de las etiquetas, para no cambiar el nombre de los campos. */}
       <p aria-live="polite" className="sr-only">
@@ -312,6 +329,35 @@ export function TransactionForm({
 function elsewhere(occurredOn: string | undefined, listMonth: { start: string; end: string } | undefined, locale: Locale) {
   if (!occurredOn || !listMonth || (occurredOn >= listMonth.start && occurredOn < listMonth.end)) return "";
   return TEXTS[locale].elsewhere(formatMonthName(monthOf(occurredOn), { withYear: true, locale }));
+}
+
+/**
+ * "Aplicar 4x1000" (src/modules/transactions/gmf.ts): registra aparte el 0,4 % del egreso, en Impuestos y con su
+ * fecha. Empieza sin marcar en cada egreso; debajo, cuánto sería con el monto escrito.
+ */
+function GmfOption({ amount, checked }: { amount: string; checked: boolean }) {
+  const locale = useLocale();
+  const t = TEXTS[locale];
+  const hintId = useId();
+  const parsed = parseAmountInput(amount, locale);
+  const tax = parsed && parsed > 0 ? gmfAmount(parsed) : 0;
+  return (
+    <div className="space-y-0.5">
+      <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm font-medium pointer-fine:min-h-8">
+        <input
+          type="checkbox"
+          name="gmf"
+          defaultChecked={checked}
+          aria-describedby={hintId}
+          className="size-5 shrink-0 cursor-pointer accent-brand"
+        />
+        {t.gmf}
+      </label>
+      <p id={hintId} className="pl-8 text-xs text-muted">
+        {tax > 0 ? t.gmfHint(formatMoney(tax, locale)) : t.gmfHintEmpty}
+      </p>
+    </div>
+  );
 }
 
 function RequiredMark() {

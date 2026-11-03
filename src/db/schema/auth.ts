@@ -41,6 +41,9 @@ export const user = pgTable(
     // La apariencia que eligió en Configuración ("system", "light" o "dark"); null si no eligió: cada navegador
     // tiene la suya. Al iniciar sesión, se le pone a ese navegador (la cookie `tema`, src/lib/theme.ts).
     theme: text("theme"),
+    // Si le cobran el 4x1000 (Configuración): prendido, el formulario de egresos ofrece aplicarlo y el bot lo
+    // pregunta después de registrar egresos (src/modules/transactions/gmf.ts). Prendido para todos por defecto.
+    gmfEnabled: boolean("gmf_enabled").notNull().default(true),
     // Cuándo terminó u omitió el tutorial de bienvenida (src/modules/tutorial/); null mientras no: lo ve al entrar
     // al Resumen. Las cuentas que ya existían al agregarlo quedaron con la fecha de la migración (no lo ven). No es
     // un campo de Better Auth: el registro y "actualizar perfil" no lo pueden poner.

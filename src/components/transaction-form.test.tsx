@@ -669,3 +669,65 @@ describe("TransactionForm · en inglés", () => {
     expect(await screen.findByText("Enter the amount.")).toBeVisible();
   });
 });
+
+describe("TransactionForm · Aplicar 4x1000", () => {
+  const box = () => screen.getByRole("checkbox", { name: "Aplicar 4x1000" });
+
+  it("solo en un egreso nuevo y con el 4x1000 prendido; empieza sin marcar", () => {
+    const { unmount } = render(<TransactionForm type="expense" categories={CATEGORIES} today="2026-10-14" gmf />);
+    expect(box()).not.toBeChecked();
+    expect(box()).toHaveAccessibleDescription("Se registra aparte, en la categoría Impuestos: el 0,4 % del monto.");
+    unmount();
+
+    for (const ui of [
+      <TransactionForm key="apagado" type="expense" categories={CATEGORIES} today="2026-10-14" />,
+      <TransactionForm key="ingreso" type="income" categories={CATEGORIES} today="2026-10-14" gmf />,
+      <TransactionForm
+        key="editar"
+        type="expense"
+        categories={CATEGORIES}
+        today="2026-10-14"
+        gmf
+        transaction={{ id: "t1", amount: 1000, description: "Café", categoryId: null, occurredOn: "2026-10-14" }}
+      />,
+    ]) {
+      const { unmount: off } = render(ui);
+      expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+      off();
+    }
+  });
+
+  it("dice cuánto sería mientras se escribe el monto, y lo envía marcado", async () => {
+    action.mockResolvedValue({ ok: true, message: "Egreso y 4x1000 registrados" });
+    render(<TransactionForm type="expense" categories={CATEGORIES} today="2026-10-14" gmf />);
+    await userEvent.type(screen.getByLabelText(/^Monto/), "500000");
+    expect(box()).toHaveAccessibleDescription("Se registra aparte, en la categoría Impuestos: $2.000,00.");
+    await userEvent.type(screen.getByLabelText(/^Descripción/), "Arriendo");
+    await userEvent.click(box());
+    await userEvent.click(screen.getByRole("button", { name: "Registrar egreso" }));
+    expect(action.mock.calls[0][1].get("gmf")).toBe("on");
+    expect(await toast("Egreso y 4x1000 registrados")).toBeVisible();
+  });
+
+  it("después de un error en otro campo, vuelve marcada", async () => {
+    action.mockResolvedValue({ ok: false, fieldErrors: { amount: "Escribe un monto mayor que cero." }, values: { amount: "0", gmf: "on" } });
+    render(<TransactionForm type="expense" categories={CATEGORIES} today="2026-10-14" gmf />);
+    await userEvent.type(screen.getByLabelText(/^Monto/), "1");
+    await userEvent.type(screen.getByLabelText(/^Descripción/), "Café");
+    await userEvent.click(box());
+    await userEvent.click(screen.getByRole("button", { name: "Registrar egreso" }));
+    await waitFor(() => expect(box()).toBeChecked());
+  });
+
+  it("en inglés", async () => {
+    renderAlone(
+      <Toaster>
+        <TransactionForm type="expense" categories={CATEGORIES} today="2026-10-14" gmf />
+      </Toaster>,
+      { wrapper: InEnglish },
+    );
+    const english = screen.getByRole("checkbox", { name: "Apply 4x1000" });
+    await userEvent.type(screen.getByLabelText(/^Amount/), "45900.5");
+    expect(english).toHaveAccessibleDescription("It's added separately, as a tax: $183.60.");
+  });
+});

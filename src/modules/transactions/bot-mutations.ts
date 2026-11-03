@@ -3,6 +3,7 @@ import { and, desc, eq, isNotNull, isNull, like } from "drizzle-orm";
 import { db } from "@/db";
 import { transaction } from "@/db/schema";
 import type { ParsedTransaction } from "@/modules/bot/normalize";
+import { addGmf } from "./gmf";
 
 type CategoryRef = { id: string; name: string };
 
@@ -67,4 +68,28 @@ export async function undoLastWhatsAppEntry(userId: string) {
       amount: transaction.amount,
       type: transaction.type,
     });
+}
+
+/** Un id de mensaje para un LIKE: sin comodines (% y _) ni la barra que los escapa. */
+const likePrefix = (messageId: string) => `${messageId.replace(/[%_\\]/g, "\\$&")}:%`;
+
+/**
+ * El "Sí" del 4x1000: registra el de cada egreso del mensaje `messageId` que siga ahí (sin deshacer) y no lo tenga.
+ * `found`: cuántos egresos del mensaje quedan; `added`: los 4x1000 que se registraron ahora.
+ */
+export async function addGmfToMessage(userId: string, messageId: string) {
+  const parents = await db
+    .select({ id: transaction.id, amount: transaction.amount, description: transaction.description, occurredOn: transaction.occurredOn, externalId: transaction.externalId })
+    .from(transaction)
+    .where(
+      and(
+        eq(transaction.userId, userId),
+        like(transaction.externalId, likePrefix(messageId)),
+        eq(transaction.type, "expense"),
+        isNull(transaction.taxOf),
+        isNull(transaction.deletedAt),
+      ),
+    );
+  const added = await addGmf(parents.map((parent) => ({ ...parent, userId, source: "whatsapp" as const })));
+  return { found: parents.length, added };
 }

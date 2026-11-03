@@ -76,6 +76,7 @@ describe("listAdminCategories y categoriesSummary", () => {
       "Deudas",
       "Educación",
       "Entretenimiento",
+      "Impuestos",
       "Mercado",
       "Ropa",
       "Salud",
@@ -94,16 +95,18 @@ describe("listAdminCategories y categoriesSummary", () => {
       archived: false,
       movements: 2,
       isDefault: false,
+      isTax: false,
     });
+    expect(expenses.find((c) => c.name === "Impuestos")).toMatchObject({ isDefault: false, isTax: true });
     expect(expenses.find((c) => c.name === "Otros")).toMatchObject({ isDefault: true, movements: 0 });
     expect(list.some((c) => c.name === "Mía")).toBe(false);
-    expect(await categoriesSummary()).toEqual({ expense: 11, income: 6 });
+    expect(await categoriesSummary()).toEqual({ expense: 12, income: 6 });
   });
 
   it("el resumen cuenta 0 si un tipo no tiene ninguna activa", async () => {
     await adminReady();
     await db.update(category).set({ archivedAt: NOW }).where(and(eq(category.type, "income"), isNull(category.userId)));
-    expect(await categoriesSummary()).toEqual({ expense: 11, income: 0 });
+    expect(await categoriesSummary()).toEqual({ expense: 12, income: 0 });
   });
 });
 
@@ -115,7 +118,7 @@ describe("createCategory", () => {
     expect(await changes()).toEqual([{ action: "created", type: "expense", name: "Café", emoji: "☕", details: {} }]);
     const [log] = await db.select({ adminId: categoryChange.adminId, categoryId: categoryChange.categoryId }).from(categoryChange);
     expect(log).toEqual({ adminId: admin.id, categoryId: (await globalByName("expense", "Café")).id });
-    expect(await categoriesSummary()).toEqual({ expense: 12, income: 6 });
+    expect(await categoriesSummary()).toEqual({ expense: 13, income: 6 });
   });
 
   it("sin emoji usa •; cualquier tipo raro se toma como egreso", async () => {
@@ -237,7 +240,7 @@ describe("archiveCategory y restoreCategory", () => {
     expect(await globalByName("expense", "Ropa")).toMatchObject({ archivedAt: NOW });
     expect((await db.select().from(transaction).where(eq(transaction.id, tx.id)))[0].categoryId).toBe(ropa.id);
     expect((await listAdminCategories()).find((c) => c.id === ropa.id)).toMatchObject({ archived: true, movements: 1 });
-    expect(await categoriesSummary()).toEqual({ expense: 10, income: 6 });
+    expect(await categoriesSummary()).toEqual({ expense: 11, income: 6 });
 
     expect(await archiveCategory({ id: ropa.id, code: codeAt(new Date(NOW.getTime() + 30_000)) }, NOW)).toEqual({
       ok: false,
@@ -255,6 +258,26 @@ describe("archiveCategory y restoreCategory", () => {
     expect(await archiveCategory({ id: ropa.id, code: "000000" }, NOW)).toMatchObject({ ok: false, field: "code" });
     expect(await globalByName("expense", "Ropa")).toMatchObject({ archivedAt: null });
     expect(await changes()).toEqual([]);
+  });
+
+  it("la del 4x1000 tampoco se renombra, se archiva ni se elimina (sin gastar el código)", async () => {
+    const { codeAt } = await adminReady();
+    const impuestos = await globalByName("expense", "Impuestos");
+    expect(await updateCategory({ id: impuestos.id, name: "Tributos", emoji: "🏛️" })).toEqual({
+      ok: false,
+      error: "A “Impuestos” solo se le pueden cambiar el emoji y el nombre en inglés.",
+      field: "name",
+    });
+    expect(await archiveCategory({ id: impuestos.id, code: codeAt(NOW) }, NOW)).toEqual({
+      ok: false,
+      error: "“Impuestos” no se puede archivar: la usa el 4x1000.",
+    });
+    expect(await deleteCategory({ id: impuestos.id, code: codeAt(NOW) }, NOW)).toEqual({
+      ok: false,
+      error: "“Impuestos” no se puede eliminar: la usa el 4x1000.",
+    });
+    expect(await db.$count(adminCodeUse)).toBe(0);
+    expect(await updateCategory({ id: impuestos.id, name: "Impuestos", nameEn: "Taxes", emoji: "🧾" })).toMatchObject({ ok: true });
   });
 
   it("Otros no se archiva (sin gastar el código)", async () => {

@@ -9,6 +9,7 @@ import { formatMoney, sumAmounts } from "@/lib/money";
 import { inMonthPhrase, monthHref, monthNav, selectedMonth } from "@/lib/month-nav";
 import { requireUser } from "@/lib/session";
 import { restoreTransactionAction } from "@/modules/transactions/actions";
+import { getGmfEnabled } from "@/modules/transactions/gmf";
 import {
   getTransactionNotice,
   listActiveMonths,
@@ -64,13 +65,15 @@ export async function TransactionsView({ type, params = {} }: { type: "income" |
   const current = currentMonthRange(user.timezone);
   const range = selectedMonth(params.mes, current);
   const requested = noticeFrom(params);
-  const [items, categories, notice, activeMonths, suggestions] = await Promise.all([
+  const [items, categories, notice, activeMonths, suggestions, gmf] = await Promise.all([
     listTransactions(user.id, range, { type, locale }),
     listCategories(user.id, type, locale),
     requested ? getTransactionNotice(user.id, requested.id, requested.kind) : null,
     listActiveMonths(user.id),
     // Las descripciones de los últimos meses, para sugerirlas al escribir.
     listDescriptionSuggestions(user.id, type, sameDayIn(shiftMonth(monthOf(today), -SUGGESTION_MONTHS), today)),
+    // "Aplicar 4x1000", en los egresos, si lo tiene prendido en Configuración.
+    type === "expense" ? getGmfEnabled(user.id) : false,
   ]);
   const total = sumAmounts(items.map((t) => t.amount));
   const isIncome = type === "income";
@@ -103,6 +106,7 @@ export async function TransactionsView({ type, params = {} }: { type: "income" |
             defaultDate={sameDayIn(range, today)}
             listMonth={range}
             suggestions={suggestions}
+            gmf={gmf}
           />
         </div>
         <section className="card lg:col-span-3">

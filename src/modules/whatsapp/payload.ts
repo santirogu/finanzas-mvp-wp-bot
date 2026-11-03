@@ -4,6 +4,9 @@
 /** Una foto (la de una factura, por ejemplo): su id para descargarla de Meta y el texto que la acompaña. */
 export type IncomingImage = { id: string; caption: string | null };
 
+/** El botón que tocó la persona en un mensaje del bot (el "Sí" o "No" del 4x1000): su id y lo que decía. */
+export type IncomingButton = { id: string; title: string };
+
 export type IncomingMessage = {
   id: string;
   from: string;
@@ -11,6 +14,8 @@ export type IncomingMessage = {
   text: string | null;
   /** La foto, si el mensaje es una; null en los demás. */
   image: IncomingImage | null;
+  /** El botón que tocó, si el mensaje es la respuesta a uno (`type: "interactive"`). */
+  button?: IncomingButton | null;
   type: string;
   timestamp: number;
   profileName: string | null;
@@ -23,6 +28,7 @@ type WebhookMessage = {
   timestamp?: unknown;
   text?: { body?: unknown };
   image?: { id?: unknown; caption?: unknown };
+  interactive?: { type?: unknown; button_reply?: { id?: unknown; title?: unknown } };
 };
 
 /** Los ids de los archivos de Meta son números: así se pueden poner en una URL sin escaparlos. */
@@ -36,6 +42,13 @@ function imageOf(type: string, m: WebhookMessage): IncomingImage | null {
   if (type !== "image" || typeof image?.id !== "string" || !MEDIA_ID.test(image.id)) return null;
   const caption = typeof image.caption === "string" ? withoutNull(image.caption).trim() : "";
   return { id: image.id, caption: caption || null };
+}
+
+/** El botón de una respuesta, con un id de hasta 256 caracteres (el límite de Meta). */
+function buttonOf(type: string, m: WebhookMessage): IncomingButton | null {
+  const reply = m.interactive?.type === "button_reply" ? m.interactive.button_reply : undefined;
+  if (type !== "interactive" || typeof reply?.id !== "string" || reply.id.length > 256) return null;
+  return { id: reply.id, title: typeof reply.title === "string" ? withoutNull(reply.title).slice(0, 20) : "" };
 }
 
 type WebhookValue = {
@@ -66,6 +79,7 @@ export function extractMessages(payload: unknown): IncomingMessage[] {
           type,
           text: type === "text" && typeof m.text?.body === "string" ? withoutNull(m.text.body) : null,
           image: imageOf(type, m),
+          button: buttonOf(type, m),
           timestamp: Number(m.timestamp) || Math.floor(Date.now() / 1000),
           profileName: typeof contact?.profile?.name === "string" ? contact.profile.name : null,
         });

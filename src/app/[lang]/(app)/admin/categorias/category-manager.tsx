@@ -31,7 +31,12 @@ export type ManagedCategory = {
   archived: boolean;
   movements: number;
   isDefault: boolean;
+  /** La del 4x1000: como "Otros", no se renombra, archiva ni elimina. */
+  isTax: boolean;
 };
+
+/** "Otros" y la del 4x1000: solo se les cambian el emoji y el nombre en inglés. */
+const isProtected = (category: ManagedCategory) => category.isDefault || category.isTax;
 
 type ServerAction = (prev: CategoryActionState, formData: FormData) => Promise<CategoryActionState>;
 type Open =
@@ -66,6 +71,7 @@ const TEXTS = texts(
     deleteEmpty: "No tiene movimientos. La eliminación queda en el registro de cambios y no se puede deshacer.",
     movements: (n: number): string => (n === 0 ? "Sin movimientos" : `${n} ${n === 1 ? "movimiento" : "movimientos"}`),
     byDefault: "Por defecto",
+    forGmf: "Del 4x1000",
     onlyEmoji: " · su nombre no se cambia",
     inEnglish: (name: string) => ` · en inglés: ${name}`,
     edit: "Editar",
@@ -83,7 +89,7 @@ const TEXTS = texts(
     name: "Nombre",
     nameEn: "Nombre en inglés",
     nameEnHelp: "Así se ve con la app en inglés. Si lo dejas vacío, en inglés se ve el nombre de arriba. El bot usa siempre el de arriba.",
-    defaultOnlyEmoji: `A “${DEFAULT_CATEGORY}” solo se le pueden cambiar el emoji y el nombre en inglés.`,
+    defaultOnlyEmoji: (name: string) => `A “${name}” solo se le pueden cambiar el emoji y el nombre en inglés.`,
     emoji: "Emoji",
     optional: "(opcional)",
     emojiHelp: "Toca uno de los sugeridos o escribe otro. Si lo dejas vacío, la categoría se mostrará con un punto (•).",
@@ -121,6 +127,7 @@ const TEXTS = texts(
       deleteEmpty: "It has no transactions. The deletion stays in the change log and can't be undone.",
       movements: (n) => (n === 0 ? "No transactions" : `${n} ${n === 1 ? "transaction" : "transactions"}`),
       byDefault: "Default",
+      forGmf: "For the 4x1000",
       onlyEmoji: " · its name can't change",
       inEnglish: (name) => ` · English: ${name}`,
       edit: "Edit",
@@ -137,7 +144,7 @@ const TEXTS = texts(
       name: "Name",
       nameEn: "English name",
       nameEnHelp: "This is what you see with the app in English. If you leave it empty, English shows the name above. The bot always uses the name above.",
-      defaultOnlyEmoji: `Only the emoji and the English name of “${DEFAULT_CATEGORY}” can be changed.`,
+      defaultOnlyEmoji: (name) => `Only the emoji and the English name of “${name}” can be changed.`,
       emoji: "Emoji",
       optional: "(optional)",
       emojiHelp: "Tap one of the suggestions or type another. If you leave it empty, the category will show a dot (•).",
@@ -180,8 +187,8 @@ export function CategoryManager({ type, categories }: { type: CategoryType; cate
       <ul aria-label={t.list(type)} className="divide-y divide-border">
         {active.map((category) => (
           <CategoryRow key={category.id} category={category} onEdit={() => start({ kind: "edit", category })}>
-            {category.isDefault ? (
-              // "Otros" no se archiva ni se elimina: el espacio del "⋯" queda vacío, para que su
+            {isProtected(category) ? (
+              // "Otros" y la del 4x1000 no se archivan ni se eliminan: el espacio del "⋯" queda vacío, para que su
               // "Editar" se alinee con los de las demás filas.
               <span aria-hidden className="invisible rounded-lg border px-2.5 py-1.5 text-sm font-medium">
                 ⋯
@@ -276,12 +283,14 @@ function CategoryRow({ category, onEdit, children }: { category: ManagedCategory
       <div className="min-w-0 flex-1">
         <p className={`flex flex-wrap items-center gap-2 text-sm font-medium ${category.archived ? "text-muted" : ""}`}>
           <span className="break-words">{category.name}</span>
-          {category.isDefault && <span className="rounded-full border border-border px-2 text-xs font-normal text-muted">{t.byDefault}</span>}
+          {isProtected(category) && (
+            <span className="rounded-full border border-border px-2 text-xs font-normal text-muted">{category.isDefault ? t.byDefault : t.forGmf}</span>
+          )}
         </p>
         <p className="text-xs text-muted">
           {t.movements(category.movements)}
           {category.nameEn && t.inEnglish(category.nameEn)}
-          {category.isDefault && t.onlyEmoji}
+          {isProtected(category) && t.onlyEmoji}
         </p>
       </div>
       <div className="flex shrink-0 items-center gap-1">
@@ -443,14 +452,14 @@ function CategoryFormDialog({
                 required
                 maxLength={CATEGORY_NAME_MAX}
                 defaultValue={category?.name ?? ""}
-                readOnly={category?.isDefault}
+                readOnly={category ? isProtected(category) : false}
                 autoComplete="off"
                 aria-invalid={Boolean(nameMessage) || undefined}
                 aria-describedby={describedBy(nameMessage && nameError)}
                 className="input read-only:bg-background read-only:text-muted"
               />
             </label>
-            {category?.isDefault && <p className="text-xs text-muted">{t.defaultOnlyEmoji}</p>}
+            {category && isProtected(category) && <p className="text-xs text-muted">{t.defaultOnlyEmoji(category.name)}</p>}
             {nameMessage && (
               <p id={nameError} className="text-xs text-danger">
                 {nameMessage}

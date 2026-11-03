@@ -121,6 +121,11 @@ export default function PrivacyPage() {
               vinculación de WhatsApp, con el número usado.
             </li>
             <li>
+              <strong>Tu configuración del 4x1000:</strong> si en <strong>Configuración</strong> lo apagas o lo prendes,
+              guardamos esa elección hasta que elimines tu cuenta. El 4x1000 que registras es un egreso más, atado al que
+              lo origina.
+            </li>
+            <li>
               <strong>El tutorial de bienvenida:</strong> guardamos cuándo lo terminaste o lo omitiste, para no
               mostrártelo otra vez, hasta que elimines tu cuenta.
             </li>

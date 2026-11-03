@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  type AnyPgColumn,
   boolean,
   check,
   date,
@@ -67,6 +68,9 @@ export const transaction = pgTable(
     source: transactionSource("source").notNull().default("web"),
     // ID del mensaje de WhatsApp que originó el registro: evita duplicados si Meta reenvía el webhook.
     externalId: text("external_id").unique(),
+    // El 4x1000 de otro egreso (src/modules/transactions/gmf.ts): se registra con él, se recalcula si cambia y se
+    // borra o se restaura con él. Uno por egreso (índice único abajo).
+    taxOf: uuid("tax_of").references((): AnyPgColumn => transaction.id, { onDelete: "cascade" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
@@ -76,6 +80,7 @@ export const transaction = pgTable(
   },
   (t) => [
     index("transaction_user_date_idx").on(t.userId, t.occurredOn),
+    uniqueIndex("transaction_tax_of_uq").on(t.taxOf),
     check("transaction_amount_positive", sql`${t.amount} > 0`),
   ],
 );
