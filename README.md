@@ -327,8 +327,10 @@ con el verde exacto y margen para el recorte en círculo de WhatsApp. Antes era 
 - **Google Authenticator** muestra la app como "Anotado". Quien lo configuró antes la ve como "Finanzas
   MVP", y sus códigos sirven igual.
 - **Fuera del repo:**
-  - el nombre visible del número en Meta (WhatsApp Manager), que pasa por una revisión;
-  - el ícono de la app en Meta for Developers.
+  - la app de Meta for Developers ya se llama "Anotado" y tiene el logo (`public/app-icon-1024.png`, noviembre de
+    2026);
+  - el perfil del número de WhatsApp (el nombre visible, que pasa por una revisión de Meta, y la foto) no se puede
+    cambiar mientras el bot use el número de prueba de Meta: hace falta registrar un número real.
 
   El repositorio y el proyecto de Vercel conservan el nombre viejo.
 
