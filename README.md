@@ -1393,10 +1393,62 @@ intentos fallidos desde su número vinculado); los intentos de números sin cuen
 vínculos vigentes e intentos fallidos, con `details.reconstructed`); lo borrado antes no se puede
 recuperar.
 
+### Consultas, reclamos e incidentes (datos personales)
+
+Lo que hace el responsable de los datos (`DATA_CONTROLLER`, `src/lib/contact.ts`) cuando una persona pide algo
+sobre sus datos o cuando hay un incidente de seguridad. Es el manual interno que pide la Ley 1581 (art. 17 lit.
+k), y `/privacidad` le promete a la persona estos plazos. Los días son **hábiles** (de lunes a viernes, sin los
+festivos de Colombia) y se cuentan desde el día siguiente a recibir la solicitud.
+
+**El registro, fuera del repo** (es público): cada solicitud va a un registro privado, por ejemplo una hoja de
+cálculo en tu Drive, con la fecha en que llegó, el correo, el tipo, la fecha límite, el estado ("reclamo en
+trámite" mientras se resuelve, art. 15) y la fecha de la respuesta. Nunca datos de una persona en el repo, en
+los issues ni en los PRs.
+
+1. **Verificar quién pide.** La solicitud tiene que venir del correo de la cuenta (o de su representante, con su
+   documento). Si llega de otro correo, se le pide confirmarla desde el de la cuenta antes de entregar o borrar
+   nada.
+2. **Resolverla según lo que pide:**
+
+   | Pide | Qué es | Plazo | Cómo |
+   |---|---|---|---|
+   | Conocer sus datos o cómo se usan | Consulta (art. 14) | 10 días hábiles; si no alcanza, avisarle antes de que venzan, con el porqué, y responder en máximo 5 más | Sus movimientos los descarga en **Reportes → Descargar** (CSV). Lo demás (la cuenta, WhatsApp, el historial) está en `/admin/usuarios/<id>`: se le resume por correo. |
+   | La prueba de su autorización | Consulta (art. 8 lit. b) | Igual | En `/admin/usuarios/<id>`, el evento "autorizó el tratamiento de sus datos", con la versión de la política y la fecha. |
+   | Corregir o actualizar un dato | Reclamo (art. 15) | 15 días hábiles; si no alcanza, avisarle y responder en máximo 8 más | Los movimientos los corrige la persona en la app. Para el nombre o el correo todavía no hay comando: si llega una, primero se agrega uno (como `account:delete`), nunca SQL a mano. |
+   | Borrar sus datos o revocar la autorización | Reclamo (art. 15) | 15 días hábiles (lo promete `/eliminar-datos`) | `pnpm account:delete` (abajo) y confirmarle por correo. Revocar es borrar: sin la autorización, la app no puede usar sus datos. |
+   | Una queja porque no cumplimos la política | Reclamo (art. 15) | 15 días hábiles | Revisarlo con `/auditoria-legal` y responderle qué se corrigió. |
+
+3. **Un reclamo incompleto** (sin decir qué pasó o qué pide): pedirle lo que falta dentro de los 5 días
+   siguientes. Si pasan 2 meses sin respuesta, se entiende que desistió: se anota y se cierra.
+4. **Responder siempre por correo**, desde el de contacto, con lo que se hizo. Si no queda conforme, puede
+   quejarse ante la SIC (art. 16), que puede pedir la evidencia: el registro y las respuestas.
+
+**Un incidente de seguridad** (alguien entró donde no debía, se expuso un secreto, se filtraron o se perdieron
+datos):
+
+1. **Contener, lo primero.**
+   - Rotar el secreto expuesto en su proveedor y en Vercel, y volver a desplegar: `ANTHROPIC_API_KEY` (consola
+     de Anthropic), los de WhatsApp (Meta), la contraseña de Neon. `BETTER_AUTH_SECRET` cierra todas las
+     sesiones y, como cifra el secreto de Google Authenticator, los admins tienen que volver a configurarlo
+     (`pnpm admin:reset-2fa --env .env.produccion <correo>`).
+   - Cerrar las sesiones o suspender una cuenta desde `/admin/usuarios`; pausar Claude desde `/admin/bot`.
+2. **Entender qué pasó:** qué datos, de cuántas personas y desde cuándo (los logs de Vercel, el historial de las
+   cuentas, `/admin/salud`). Correr `/auditoria-seguridad` sobre lo afectado.
+3. **Reportarlo a la SIC.** La Ley 1581 (art. 17 lit. n) obliga a informar las violaciones de los códigos de
+   seguridad que pongan en riesgo los datos. Según la Circular Única de la SIC, se reporta en el Registro
+   Nacional de Bases de Datos dentro de los 15 días hábiles siguientes a conocerlo, también quien no está
+   obligado a inscribir sus bases (lo encontramos en fuentes secundarias: confirma en sic.gov.co el plazo y el
+   formulario vigentes).
+4. **Avisar a las personas afectadas** si sus datos quedaron expuestos: qué pasó y qué pueden hacer (cambiar la
+   contraseña, por ejemplo).
+5. **Anotarlo todo** en el registro privado (fechas y lo que se hizo) y arreglar la causa en un PR `hotfix/…` que
+   no describa cómo explotarla hasta que esté desplegado (CLAUDE.md → Seguridad y datos).
+
 ### Borrar datos a pedido
 
 Cada persona puede borrar su cuenta desde **Mi cuenta**. Quien no puede entrar puede pedirlo por
-correo, y `/eliminar-datos` promete hacerlo en máximo 30 días. Para eso:
+correo, y `/eliminar-datos` promete hacerlo en máximo 15 días hábiles (ver [Consultas, reclamos e
+incidentes](#consultas-reclamos-e-incidentes-datos-personales)). Para eso:
 
 ```bash
 pnpm account:delete persona@correo.com
